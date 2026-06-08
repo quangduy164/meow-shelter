@@ -3,7 +3,7 @@ import 'dart:math';
 import 'package:flame/game.dart';
 import 'package:flame/components.dart';
 
-import 'components/orange_cat.dart';
+import 'components/cat_component.dart';
 import 'constants.dart';
 
 class MeowShelterGame extends FlameGame {
@@ -23,12 +23,34 @@ class MeowShelterGame extends FlameGame {
       ),
     );
 
-    // Spawn vài con mèo cam ở vị trí random
-    const catCount = 4;
-    for (var i = 0; i < catCount; i++) {
-      final x = _random.nextDouble() * (size.x - catWidth);
-      final y = size.y * 0.3 + _random.nextDouble() * (size.y * 0.5);
-      add(OrangeCat(position: Vector2(x, y)));
+    // Spawn 3 mèo cam
+    for (var i = 0; i < 3; i++) {
+      add(CatComponent(
+        position: _randomCatPosition(),
+        catType: 'orange',
+      ));
     }
+
+    // Spawn 3 mèo himalaya
+    for (var i = 0; i < 3; i++) {
+      add(CatComponent(
+        position: _randomCatPosition(),
+        catType: 'himalaya',
+      ));
+    }
+
+    // Spawn 3 mèo scottish
+    for (var i = 0; i < 3; i++) {
+      add(CatComponent(
+        position: _randomCatPosition(),
+        catType: 'scottish',
+      ));
+    }
+  }
+
+  Vector2 _randomCatPosition() {
+    final x = _random.nextDouble() * (size.x - catWidth);
+    final y = size.y * 0.3 + _random.nextDouble() * (size.y * 0.5);
+    return Vector2(x, y);
   }
 }

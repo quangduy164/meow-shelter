@@ -16,56 +16,73 @@ enum CatState {
   panic,
   dragged,
   dropWrong,
+  vanish,
 }
 
-class OrangeCat extends SpriteAnimationGroupComponent<CatState>
+/// Component mèo dùng chung — truyền [catType] để đổi sprite folder.
+/// Ví dụ: catType = 'orange' → load từ 'Cat/Orange/cat-orange-idle.png'
+///         catType = 'himalaya' → load từ 'Cat/Himalaya/cat-himalaya-idle.png'
+class CatComponent extends SpriteAnimationGroupComponent<CatState>
     with HasGameRef<FlameGame>, DragCallbacks, TapCallbacks {
-  OrangeCat({required Vector2 position})
-      : super(
+  CatComponent({required Vector2 position, required this.catType})
+      : _folder = 'Cat/${catType[0].toUpperCase()}${catType.substring(1)}',
+        super(
           position: position,
           size: Vector2(catWidth, catHeight),
           current: CatState.idle,
         );
 
+  final String catType;
+  final String _folder;
   final _random = Random();
 
   CatState _state = CatState.idle;
   double _actionTimer = 0;
   double _currentActionDuration = 0;
 
-  /// Hướng di chuyển: 1 = phải, -1 = trái
   int _direction = 1;
-
-  /// Velocity Y hiện tại
   double _velocityY = 0;
-
-  /// Đang bị kéo?
   bool _isDragged = false;
-
-  /// Đang trong trạng thái bị chạm (panic → run)?
   bool _isTapTriggered = false;
-
-  /// Đang chơi animation drop wrong?
   bool _isDropWrong = false;
+  bool _isFalling = false;
+  double _fallSpeed = 0;
+  double _originalY = 0;
+
+  /// Đang trong trạng thái vanish?
+  bool _isVanishing = false;
+
+  /// Đã teleport chưa (frame 4)?
+  bool _hasTeleported = false;
+
+  static const double _gravity = 800.0;
+
+  /// Khoảng cách dịch chuyển khi vanish
+  static const double _vanishTeleportDistance = 200.0;
 
   @override
   Future<void> onLoad() async {
     await super.onLoad();
 
     animations = {
-      CatState.idle: await _loadAnimation('cat-orange-idle.png', framesIdle),
-      CatState.walk: await _loadAnimation('cat-orange-walk.png', framesWalk),
-      CatState.run: await _loadAnimation('cat-orange-run.png', framesRun),
+      CatState.idle:
+          await _loadAnimation('cat-$catType-idle.png', framesIdle),
+      CatState.walk:
+          await _loadAnimation('cat-$catType-walk.png', framesWalk),
+      CatState.run:
+          await _loadAnimation('cat-$catType-run.png', framesRun),
       CatState.turnAround:
-          await _loadAnimation('cat-orange-turn-around.png', framesTurnAround),
+          await _loadAnimation('cat-$catType-turn-around.png', framesTurnAround),
       CatState.dashEscape:
-          await _loadAnimation('cat-orange-dash-escape.png', framesDashEscape),
+          await _loadAnimation('cat-$catType-dash-escape.png', framesDashEscape),
       CatState.panic:
-          await _loadAnimation('cat-orange-panic.png', framesPanic),
+          await _loadAnimation('cat-$catType-panic.png', framesPanic),
       CatState.dragged:
-          await _loadAnimation('cat-orange-dragged.png', framesDragged),
+          await _loadAnimation('cat-$catType-dragged.png', framesDragged),
       CatState.dropWrong:
-          await _loadAnimation('cat-orange-drop-wrong.png', framesDropWrong),
+          await _loadAnimation('cat-$catType-drop-wrong.png', framesDropWrong),
+      CatState.vanish:
+          await _loadVanishAnimation('cat-$catType-vanish.png', framesVanish),
     };
 
     current = CatState.idle;
@@ -74,12 +91,9 @@ class OrangeCat extends SpriteAnimationGroupComponent<CatState>
     _pickNextAction();
   }
 
-  /// Load sprite sheet ngang (1 row, N columns)
-  /// Mỗi frame cố định 256x256
   Future<SpriteAnimation> _loadAnimation(
       String fileName, int frameCount) async {
-    final image = await gameRef.images.load('Cat/$fileName');
-
+    final image = await gameRef.images.load('$_folder/$fileName');
     return SpriteAnimation.fromFrameData(
       image,
       SpriteAnimationData.sequenced(
@@ -90,7 +104,20 @@ class OrangeCat extends SpriteAnimationGroupComponent<CatState>
     );
   }
 
-  // --- TAP: chạm 1 cái → panic rồi run ---
+  Future<SpriteAnimation> _loadVanishAnimation(
+      String fileName, int frameCount) async {
+    final image = await gameRef.images.load('$_folder/$fileName');
+    return SpriteAnimation.fromFrameData(
+      image,
+      SpriteAnimationData.sequenced(
+        amount: frameCount,
+        stepTime: vanishStepTime,
+        textureSize: Vector2(256, 256),
+      ),
+    );
+  }
+
+  // --- TAP ---
 
   @override
   void onTapDown(TapDownEvent event) {
@@ -98,21 +125,18 @@ class OrangeCat extends SpriteAnimationGroupComponent<CatState>
     _isTapTriggered = true;
     _actionTimer = 0;
     _setState(CatState.panic);
-    _currentActionDuration = 0.5; // panic ngắn
+    _currentActionDuration = 0.5;
     _velocityY = 0;
   }
 
-  // --- DRAG: bấm giữ kéo → dragged ---
-
-  /// Vị trí Y trước khi bị bắt lên
-  double _originalY = 0;
+  // --- DRAG ---
 
   @override
   void onDragStart(DragStartEvent event) {
     if (_isDropWrong) return;
     _isDragged = true;
     _isTapTriggered = false;
-    _originalY = position.y; // Ghi nhớ vị trí trước khi kéo
+    _originalY = position.y;
     _setState(CatState.dragged);
     _velocityY = 0;
   }
@@ -123,30 +147,16 @@ class OrangeCat extends SpriteAnimationGroupComponent<CatState>
     position += event.canvasDelta;
   }
 
-  /// Đang rơi xuống đất sau khi thả?
-  bool _isFalling = false;
-
-  /// Tốc độ rơi hiện tại
-  double _fallSpeed = 0;
-
-  /// Gia tốc rơi (trọng lực)
-  static const double _gravity = 800.0;
-
-  /// Vị trí đất (sẽ tính theo game size)
-  double get _groundY => gameRef.size.y - size.y - 10;
-
   @override
   void onDragEnd(DragEndEvent event) {
     if (!_isDragged) return;
     _isDragged = false;
-    // Nếu đang thấp hơn hoặc bằng vị trí cũ → không rơi, dropWrong luôn
     if (position.y >= _originalY) {
       _isDropWrong = true;
       _setState(CatState.dropWrong);
       _actionTimer = 0;
       _currentActionDuration = framesDropWrong * animationStepTime;
     } else {
-      // Cao hơn vị trí cũ → rơi xuống
       _isFalling = true;
       _fallSpeed = 0;
     }
@@ -173,20 +183,15 @@ class OrangeCat extends SpriteAnimationGroupComponent<CatState>
   void update(double dt) {
     super.update(dt);
 
-    // Nếu đang bị kéo → không update logic
     if (_isDragged) return;
 
-    // Đang rơi xuống vị trí cũ (vẫn animation dragged)
     if (_isFalling) {
       _fallSpeed += _gravity * dt;
       position.y += _fallSpeed * dt;
-
-      // Chạm vị trí cũ
       if (position.y >= _originalY) {
         position.y = _originalY;
         _isFalling = false;
         _fallSpeed = 0;
-        // Chạm đất → chuyển sang dropWrong
         _isDropWrong = true;
         _setState(CatState.dropWrong);
         _actionTimer = 0;
@@ -197,7 +202,6 @@ class OrangeCat extends SpriteAnimationGroupComponent<CatState>
 
     _actionTimer += dt;
 
-    // Nếu đang drop wrong, chờ hết animation rồi quay lại tự do
     if (_isDropWrong) {
       if (_actionTimer >= _currentActionDuration) {
         _isDropWrong = false;
@@ -206,11 +210,26 @@ class OrangeCat extends SpriteAnimationGroupComponent<CatState>
       return;
     }
 
-    // Nếu đang tap-triggered panic → hết thời gian thì chuyển sang run
+    // Vanish: frame 4 (index 3) → teleport, frame 6 kết thúc
+    if (_isVanishing) {
+      final elapsedFrames = (_actionTimer / vanishStepTime).floor();
+      // Tới frame 4 (index 3) → teleport
+      if (!_hasTeleported && elapsedFrames >= 3) {
+        _hasTeleported = true;
+        _teleport();
+      }
+      // Hết animation → quay lại bình thường
+      if (_actionTimer >= _currentActionDuration) {
+        _isVanishing = false;
+        _hasTeleported = false;
+        _pickNextAction();
+      }
+      return;
+    }
+
     if (_isTapTriggered) {
       if (_actionTimer >= _currentActionDuration) {
         _isTapTriggered = false;
-        // Chạy trốn sau khi panic
         _setState(CatState.run);
         _actionTimer = 0;
         _currentActionDuration = _randomBetween(1.0, 2.5);
@@ -220,7 +239,6 @@ class OrangeCat extends SpriteAnimationGroupComponent<CatState>
       return;
     }
 
-    // Logic tự do bình thường
     switch (_state) {
       case CatState.idle:
         break;
@@ -240,6 +258,7 @@ class OrangeCat extends SpriteAnimationGroupComponent<CatState>
         break;
       case CatState.dragged:
       case CatState.dropWrong:
+      case CatState.vanish:
         break;
     }
 
@@ -266,48 +285,52 @@ class OrangeCat extends SpriteAnimationGroupComponent<CatState>
       _direction = -1;
       _applyFlip();
     }
-
     final minY = gameSize.y * 0.15;
     final maxY = gameSize.y - size.y - 10;
     position.y = position.y.clamp(minY, maxY);
   }
 
-  /// Chọn hành động tiếp theo ngẫu nhiên
   void _pickNextAction() {
     _actionTimer = 0;
-
     final roll = _random.nextDouble();
 
-    if (roll < 0.30) {
+    if (roll < 0.28) {
       _setState(CatState.idle);
       _currentActionDuration = _randomBetween(minIdleTime, maxIdleTime);
       _velocityY = 0;
-    } else if (roll < 0.55) {
+    } else if (roll < 0.50) {
       _setState(CatState.walk);
       _currentActionDuration = _randomBetween(minActionTime, maxActionTime);
       _maybeChangeDirection(0.3);
       _velocityY = _random.nextDouble() * 30 - 15;
-    } else if (roll < 0.75) {
+    } else if (roll < 0.68) {
       _setState(CatState.run);
       _currentActionDuration = _randomBetween(0.8, 2.0);
       _maybeChangeDirection(0.4);
       _velocityY = _random.nextDouble() * 50 - 25;
-    } else if (roll < 0.85) {
+    } else if (roll < 0.78) {
       _setState(CatState.turnAround);
       _currentActionDuration = _randomBetween(0.3, 0.6);
       _direction *= -1;
       _applyFlip();
       _velocityY = 0;
-    } else if (roll < 0.93) {
+    } else if (roll < 0.86) {
       _setState(CatState.dashEscape);
       _currentActionDuration = _randomBetween(0.5, 1.2);
       _maybeChangeDirection(0.5);
       _velocityY = _random.nextDouble() * 60 - 30;
-    } else {
+    } else if (roll < 0.93) {
       _setState(CatState.panic);
       _currentActionDuration = _randomBetween(0.6, 1.5);
       _maybeChangeDirection(0.6);
       _velocityY = _random.nextDouble() * 80 - 40;
+    } else {
+      // Vanish (tốc biến)
+      _isVanishing = true;
+      _hasTeleported = false;
+      _setState(CatState.vanish);
+      _currentActionDuration = framesVanish * vanishStepTime;
+      _velocityY = 0;
     }
   }
 
@@ -329,6 +352,23 @@ class OrangeCat extends SpriteAnimationGroupComponent<CatState>
     if (shouldFlip != currentlyFlipped) {
       flipHorizontallyAroundCenter();
     }
+  }
+
+  /// Dịch chuyển tức thời khi vanish (frame 4)
+  void _teleport() {
+    final gameSize = gameRef.size;
+    // Random hướng dịch chuyển
+    final dx = (_random.nextDouble() * 2 - 1) * _vanishTeleportDistance;
+    final dy = (_random.nextDouble() * 2 - 1) * _vanishTeleportDistance * 0.5;
+
+    position.x += dx;
+    position.y += dy;
+
+    // Clamp trong bounds
+    final minY = gameSize.y * 0.15;
+    final maxY = gameSize.y - size.y - 10;
+    position.x = position.x.clamp(0, gameSize.x - size.x);
+    position.y = position.y.clamp(minY, maxY);
   }
 
   double _randomBetween(double min, double max) {

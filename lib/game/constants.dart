@@ -24,6 +24,8 @@ const int framesDropWrong = 5;
 const int framesPanic = 4;
 const int framesDashEscape = 6;
 const int framesCelebrate = 5;
+const int framesVanish = 6;
 
 // Tốc độ animation (step time giữa mỗi frame)
 const double animationStepTime = 0.12;
+const double vanishStepTime = 0.22;
