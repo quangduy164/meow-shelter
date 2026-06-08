@@ -1,6 +1,6 @@
 // Tốc độ di chuyển mèo
 const double catWalkSpeed = 60.0;
-const double catRunSpeed = 150.0;
+const double catRunSpeed = 200.0;
 const double catDashSpeed = 250.0;
 
 // Kích thước mèo

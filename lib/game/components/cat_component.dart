@@ -218,11 +218,20 @@ class CatComponent extends SpriteAnimationGroupComponent<CatState>
         _hasTeleported = true;
         _teleport();
       }
-      // Hết animation → quay lại bình thường
+      // Hết animation → 50% vanish tiếp, 50% quay lại bình thường
       if (_actionTimer >= _currentActionDuration) {
-        _isVanishing = false;
-        _hasTeleported = false;
-        _pickNextAction();
+        if (_random.nextBool()) {
+          // Vanish tiếp
+          _hasTeleported = false;
+          _actionTimer = 0;
+          // animation reset lại từ đầu
+          current = CatState.idle;
+          current = CatState.vanish;
+        } else {
+          _isVanishing = false;
+          _hasTeleported = false;
+          _pickNextAction();
+        }
       }
       return;
     }
@@ -230,11 +239,16 @@ class CatComponent extends SpriteAnimationGroupComponent<CatState>
     if (_isTapTriggered) {
       if (_actionTimer >= _currentActionDuration) {
         _isTapTriggered = false;
-        _setState(CatState.run);
-        _actionTimer = 0;
-        _currentActionDuration = _randomBetween(1.0, 2.5);
-        _maybeChangeDirection(0.5);
-        _velocityY = _random.nextDouble() * 50 - 25;
+        // 70% vanish, 30% run
+        if (_random.nextDouble() < 0.7) {
+          _startVanish();
+        } else {
+          _setState(CatState.run);
+          _actionTimer = 0;
+          _currentActionDuration = _randomBetween(1.0, 2.5);
+          _maybeChangeDirection(0.5);
+          _velocityY = _random.nextDouble() * 50 - 25;
+        }
       }
       return;
     }
@@ -325,12 +339,10 @@ class CatComponent extends SpriteAnimationGroupComponent<CatState>
       _maybeChangeDirection(0.6);
       _velocityY = _random.nextDouble() * 80 - 40;
     } else {
-      // Vanish (tốc biến)
-      _isVanishing = true;
-      _hasTeleported = false;
-      _setState(CatState.vanish);
-      _currentActionDuration = framesVanish * vanishStepTime;
-      _velocityY = 0;
+      _setState(CatState.dashEscape);
+      _currentActionDuration = _randomBetween(0.5, 1.2);
+      _maybeChangeDirection(0.5);
+      _velocityY = _random.nextDouble() * 60 - 30;
     }
   }
 
@@ -352,6 +364,16 @@ class CatComponent extends SpriteAnimationGroupComponent<CatState>
     if (shouldFlip != currentlyFlipped) {
       flipHorizontallyAroundCenter();
     }
+  }
+
+  /// Dịch chuyển tức thời khi vanish (frame 4)
+  void _startVanish() {
+    _isVanishing = true;
+    _hasTeleported = false;
+    _setState(CatState.vanish);
+    _actionTimer = 0;
+    _currentActionDuration = framesVanish * vanishStepTime;
+    _velocityY = 0;
   }
 
   /// Dịch chuyển tức thời khi vanish (frame 4)
