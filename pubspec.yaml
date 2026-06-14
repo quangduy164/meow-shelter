@@ -55,6 +55,7 @@ flutter:
     - assets/images/Cat/Orange/
     - assets/images/Cat/Himalaya/
     - assets/images/Cat/Scottish/
+    - assets/images/Cat/Calico/
   #   - images/a_dot_ham.jpeg
 
   # An image asset can refer to one or more resolution-specific "variants", see

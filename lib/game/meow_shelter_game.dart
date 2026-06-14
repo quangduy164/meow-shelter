@@ -23,27 +23,35 @@ class MeowShelterGame extends FlameGame {
       ),
     );
 
-    // Spawn 3 mèo cam
-    for (var i = 0; i < 3; i++) {
+    // Spawn 2 mèo cam
+    for (var i = 0; i < 2; i++) {
       add(CatComponent(
         position: _randomCatPosition(),
         catType: 'orange',
       ));
     }
 
-    // Spawn 3 mèo himalaya
-    for (var i = 0; i < 3; i++) {
+    // Spawn 2 mèo himalaya
+    for (var i = 0; i < 2; i++) {
       add(CatComponent(
         position: _randomCatPosition(),
         catType: 'himalaya',
       ));
     }
 
-    // Spawn 3 mèo scottish
-    for (var i = 0; i < 3; i++) {
+    // Spawn 2 mèo scottish
+    for (var i = 0; i < 2; i++) {
       add(CatComponent(
         position: _randomCatPosition(),
         catType: 'scottish',
+      ));
+    }
+
+    // Spawn 2 mèo calico
+    for (var i = 0; i < 2; i++) {
+      add(CatComponent(
+        position: _randomCatPosition(),
+        catType: 'calico',
       ));
     }
   }

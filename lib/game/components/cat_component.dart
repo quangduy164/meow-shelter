@@ -391,6 +391,12 @@ class CatComponent extends SpriteAnimationGroupComponent<CatState>
     final maxY = gameSize.y - size.y - 10;
     position.x = position.x.clamp(0, gameSize.x - size.x);
     position.y = position.y.clamp(minY, maxY);
+
+    // Quay đầu theo hướng teleport
+    if (dx != 0) {
+      _direction = dx > 0 ? 1 : -1;
+      _applyFlip();
+    }
   }
 
   double _randomBetween(double min, double max) {
