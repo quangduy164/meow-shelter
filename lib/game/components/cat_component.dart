@@ -29,6 +29,7 @@ class CatComponent extends SpriteAnimationGroupComponent<CatState>
     required this.catType,
     required this.onDrop,
     required this.onDelivered,
+    required this.onEscaped,
   })  : _folder = 'Cat/${catType[0].toUpperCase()}${catType.substring(1)}',
         super(
           position: position,
@@ -39,6 +40,7 @@ class CatComponent extends SpriteAnimationGroupComponent<CatState>
   final String catType;
   final bool Function(CatComponent cat) onDrop;
   final void Function(CatComponent cat) onDelivered;
+  final void Function(CatComponent cat) onEscaped;
   final String _folder;
   final _random = Random();
 
@@ -51,6 +53,7 @@ class CatComponent extends SpriteAnimationGroupComponent<CatState>
   bool _isTapTriggered = false;
   bool _isDropWrong = false;
   bool _isDelivered = false;
+  bool _isEscaping = false;
   Vector2 _dragStartPosition = Vector2.zero();
 
   bool _isVanishing = false;
@@ -119,11 +122,11 @@ class CatComponent extends SpriteAnimationGroupComponent<CatState>
   @override
   void onTapDown(TapDownEvent event) {
     super.onTapDown(event);
-    if (_isDragged || _isDropWrong || _isDelivered) return;
+    if (_isDragged || _isDropWrong || _isDelivered || _isEscaping) return;
     _isTapTriggered = true;
     _actionTimer = 0;
     _setState(CatState.panic);
-    _currentActionDuration = 0.5;
+    _currentActionDuration = 0.45;
     _velocityY = 0;
   }
 
@@ -133,6 +136,7 @@ class CatComponent extends SpriteAnimationGroupComponent<CatState>
     if (_isDropWrong || _isDelivered) return;
     _isDragged = true;
     _isTapTriggered = false;
+    _isEscaping = false;
     _dragStartPosition = position.clone();
     _setState(CatState.dragged);
     _velocityY = 0;
@@ -203,6 +207,18 @@ class CatComponent extends SpriteAnimationGroupComponent<CatState>
       return;
     }
 
+    if (_isEscaping) {
+      position.x += _direction * catDashSpeed * 1.35 * dt;
+      final hasLeftScreen =
+          (_direction < 0 && position.x + size.x < 0) ||
+          (_direction > 0 && position.x > gameRef.size.x);
+      if (hasLeftScreen) {
+        onEscaped(this);
+        removeFromParent();
+      }
+      return;
+    }
+
     if (_isVanishing) {
       final elapsedFrames = (_actionTimer / vanishStepTime).floor();
       if (!_hasTeleported && elapsedFrames >= 3) {
@@ -220,11 +236,7 @@ class CatComponent extends SpriteAnimationGroupComponent<CatState>
     if (_isTapTriggered) {
       if (_actionTimer >= _currentActionDuration) {
         _isTapTriggered = false;
-        if (_random.nextDouble() < 0.7) {
-          _startVanish();
-        } else {
-          _startRun();
-        }
+        _startEscape();
       }
       return;
     }
@@ -312,13 +324,13 @@ class CatComponent extends SpriteAnimationGroupComponent<CatState>
     if (shouldFlip != (scale.x < 0)) flipHorizontallyAroundCenter();
   }
 
-  void _startVanish() {
-    _isVanishing = true;
-    _hasTeleported = false;
-    _setState(CatState.vanish);
-    _actionTimer = 0;
-    _currentActionDuration = framesVanish * vanishStepTime;
+  /// A tapped cat panics first, then dashes toward the nearest edge.
+  void _startEscape() {
+    _isEscaping = true;
     _velocityY = 0;
+    _direction = position.x + size.x / 2 < gameRef.size.x / 2 ? -1 : 1;
+    _applyFlip();
+    _setState(CatState.dashEscape);
   }
 
   void _teleport() {

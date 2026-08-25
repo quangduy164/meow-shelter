@@ -9,8 +9,12 @@ import 'components/cat_component.dart';
 import 'components/hud_component.dart';
 import 'components/shelter_zone_component.dart';
 import 'constants.dart';
+import '../level_config.dart';
 
 class MeowShelterGame extends FlameGame with TapCallbacks {
+  MeowShelterGame({required this.level});
+
+  final LevelConfig level;
   final _random = Random();
   final _shelters = <ShelterZoneComponent>[];
   late HudComponent _hud;
@@ -27,8 +31,13 @@ class MeowShelterGame extends FlameGame with TapCallbacks {
     _shelters.clear();
     _secondAccumulator = 0;
     _hud = HudComponent()..size = size;
+    _hud.totalCats = level.catTypes.length;
+    _hud.secondsLeft = level.timeLimit;
+    _hud.lives = level.lives;
+    _hud.levelTitle = 'MÀN ${level.id} · ${level.name.toUpperCase()}';
 
-    final background = await loadSprite('Background/shelter-yard-background.png');
+    final background =
+        await loadSprite('Background/shelter-yard-background.png');
     add(SpriteComponent(sprite: background, size: size, priority: -100));
     await _addCats();
     await _addShelters();
@@ -36,25 +45,53 @@ class MeowShelterGame extends FlameGame with TapCallbacks {
   }
 
   Future<void> _addCats() async {
-    for (final type in ['orange', 'himalaya', 'scottish', 'calico']) {
-      for (var i = 0; i < 2; i++) {
-        add(CatComponent(
-          position: _randomCatPosition(),
-          catType: type,
-          onDrop: _handleDrop,
-          onDelivered: _handleDelivered,
-        ));
-      }
+    for (final type in level.catTypes) {
+      _spawnCat(type);
     }
+  }
+
+  void _spawnCat(String type) {
+    add(CatComponent(
+      position: _randomCatPosition(),
+      catType: type,
+      onDrop: _handleDrop,
+      onDelivered: _handleDelivered,
+      onEscaped: _handleEscape,
+    ));
   }
 
   Future<void> _addShelters() async {
     final bedSize = Vector2(size.x * 0.20, size.x * 0.133);
-    final shelters = <({String type, String label, String asset, double x, double y})>[
-      (type: 'orange', label: 'MÈO CAM', asset: 'Bed/bed-orange.png', x: 0.00, y: 0.20),
-      (type: 'himalaya', label: 'HIMALAYA', asset: 'Bed/bed-himalaya.png', x: 0.80, y: 0.20),
-      (type: 'scottish', label: 'SCOTTISH', asset: 'Bed/bed-scottish.png', x: 0.00, y: 0.59),
-      (type: 'calico', label: 'CALICO', asset: 'Bed/bed-calico.png', x: 0.80, y: 0.59),
+    final shelters =
+        <({String type, String label, String asset, double x, double y})>[
+      (
+        type: 'orange',
+        label: 'MÈO CAM',
+        asset: 'Bed/bed-orange.png',
+        x: 0.00,
+        y: 0.20
+      ),
+      (
+        type: 'himalaya',
+        label: 'HIMALAYA',
+        asset: 'Bed/bed-himalaya.png',
+        x: 0.80,
+        y: 0.20
+      ),
+      (
+        type: 'scottish',
+        label: 'SCOTTISH',
+        asset: 'Bed/bed-scottish.png',
+        x: 0.00,
+        y: 0.59
+      ),
+      (
+        type: 'calico',
+        label: 'CALICO',
+        asset: 'Bed/bed-calico.png',
+        x: 0.80,
+        y: 0.59
+      ),
     ];
     for (final shelter in shelters) {
       final component = ShelterZoneComponent(
@@ -99,6 +136,17 @@ class MeowShelterGame extends FlameGame with TapCallbacks {
 
   void _handleDelivered(CatComponent cat) {
     if (_hud.delivered >= _hud.totalCats) _hud.status = RoundStatus.won;
+  }
+
+  void _handleEscape(CatComponent cat) {
+    if (_hud.status != RoundStatus.playing) return;
+    _hud.lives -= 1;
+    if (_hud.lives <= 0) {
+      _hud.status = RoundStatus.lost;
+      return;
+    }
+    // Mèo chạy ra ngoài được thay bằng một bé cùng loại để màn vẫn có thể thắng.
+    _spawnCat(cat.catType);
   }
 
   @override

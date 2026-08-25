@@ -1,8 +1,7 @@
-import 'package:flame/game.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import 'game/meow_shelter_game.dart';
+import 'level_select_screen.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -14,7 +13,5 @@ void main() {
   // Ẩn status bar & navigation bar
   SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
 
-  runApp(
-    GameWidget(game: MeowShelterGame()),
-  );
+  runApp(const MaterialApp(debugShowCheckedModeBanner: false, home: LevelSelectScreen()));
 }

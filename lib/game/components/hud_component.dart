@@ -1,9 +1,10 @@
 import 'package:flame/components.dart';
+import 'package:flame/game.dart';
 import 'package:flutter/painting.dart';
 
 enum RoundStatus { playing, won, lost }
 
-class HudComponent extends PositionComponent {
+class HudComponent extends PositionComponent with HasGameRef<FlameGame> {
   HudComponent() : super(priority: 100);
 
   int score = 0;
@@ -11,36 +12,69 @@ class HudComponent extends PositionComponent {
   int delivered = 0;
   int totalCats = 8;
   int secondsLeft = 90;
+  String levelTitle = 'MÀN 1 · LÀM QUEN';
   RoundStatus status = RoundStatus.playing;
 
   @override
   void render(Canvas canvas) {
     super.render(canvas);
+    // Dùng kích thước canvas hiện tại thay vì kích thước lúc HUD được tạo.
+    // Điều này giữ màn thắng/thua ở giữa khi thiết bị xoay hoặc đổi tỉ lệ màn hình.
+    final screenSize = gameRef.size;
     final panel = Paint()..color = const Color(0xCC432812);
+    const panelWidth = 390.0;
+    const panelHeight = 58.0;
+    final panelLeft = (screenSize.x - panelWidth) / 2;
     canvas.drawRRect(
-      RRect.fromRectAndRadius(const Rect.fromLTWH(16, 16, 330, 64), const Radius.circular(16)),
+      RRect.fromRectAndRadius(
+        Rect.fromLTWH(panelLeft, 14, panelWidth, panelHeight),
+        const Radius.circular(14),
+      ),
       panel,
     );
-    _drawText(
+    _drawCentered(
+      canvas,
+      levelTitle,
+      screenSize,
+      20,
+      13,
+      const Color(0xFFFFE4A0),
+    );
+    _drawCentered(
       canvas,
       'Điểm: $score     Lượt: $lives     Mèo: $delivered/$totalCats     ${secondsLeft}s',
-      const Offset(30, 36),
-      22,
+      screenSize,
+      38,
+      15,
       const Color(0xFFFFFFFF),
     );
 
     if (status == RoundStatus.playing) return;
     final isWin = status == RoundStatus.won;
     final overlay = Paint()..color = const Color(0xAA000000);
-    canvas.drawRect(Rect.fromLTWH(0, 0, size.x, size.y), overlay);
+    canvas.drawRect(Rect.fromLTWH(0, 0, screenSize.x, screenSize.y), overlay);
     final title = isWin ? 'BẠN ĐÃ THẮNG!' : 'HẾT LƯỢT!';
     final subtitle = isWin
         ? 'Đã đưa đủ mèo về đúng chuồng'
         : 'Thử lại để cứu các bé mèo nhé';
-    _drawCentered(canvas, title, size.y * 0.40, 44, isWin ? const Color(0xFFFFE373) : const Color(0xFFFFA0A0));
-    _drawCentered(canvas, subtitle, size.y * 0.49, 24, const Color(0xFFFFFFFF));
+    _drawCentered(
+      canvas,
+      title,
+      screenSize,
+      screenSize.y * 0.34,
+      42,
+      isWin ? const Color(0xFFFFE373) : const Color(0xFFFFA0A0),
+    );
+    _drawCentered(
+      canvas,
+      subtitle,
+      screenSize,
+      screenSize.y * 0.46,
+      21,
+      const Color(0xFFFFFFFF),
+    );
     final button = Rect.fromCenter(
-      center: Offset(size.x / 2, size.y * 0.61),
+      center: Offset(screenSize.x / 2, screenSize.y * 0.64),
       width: 220,
       height: 58,
     );
@@ -48,22 +82,31 @@ class HudComponent extends PositionComponent {
       RRect.fromRectAndRadius(button, const Radius.circular(18)),
       Paint()..color = const Color(0xFFFFB52A),
     );
-    _drawCentered(canvas, 'CHƠI LẠI', size.y * 0.61 - 14, 26, const Color(0xFF57300F));
+    _drawCentered(
+      canvas,
+      'CHƠI LẠI',
+      screenSize,
+      screenSize.y * 0.64 - 15,
+      24,
+      const Color(0xFF57300F),
+    );
   }
 
-  void _drawText(Canvas canvas, String text, Offset offset, double fontSize, Color color) {
+  void _drawCentered(
+    Canvas canvas,
+    String text,
+    Vector2 screenSize,
+    double y,
+    double fontSize,
+    Color color,
+  ) {
     final painter = TextPainter(
-      text: TextSpan(text: text, style: TextStyle(color: color, fontSize: fontSize, fontWeight: FontWeight.bold)),
+      text: TextSpan(
+          text: text,
+          style: TextStyle(
+              color: color, fontSize: fontSize, fontWeight: FontWeight.bold)),
       textDirection: TextDirection.ltr,
     )..layout();
-    painter.paint(canvas, offset);
-  }
-
-  void _drawCentered(Canvas canvas, String text, double y, double fontSize, Color color) {
-    final painter = TextPainter(
-      text: TextSpan(text: text, style: TextStyle(color: color, fontSize: fontSize, fontWeight: FontWeight.bold)),
-      textDirection: TextDirection.ltr,
-    )..layout();
-    painter.paint(canvas, Offset((size.x - painter.width) / 2, y));
+    painter.paint(canvas, Offset((screenSize.x - painter.width) / 2, y));
   }
 }
