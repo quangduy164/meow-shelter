@@ -54,6 +54,7 @@ class MeowShelterGame extends FlameGame with TapCallbacks {
     add(CatComponent(
       position: _randomCatPosition(),
       catType: type,
+      fullBehavior: level.id == 1,
       onDrop: _handleDrop,
       onDelivered: _handleDelivered,
       onEscaped: _handleEscape,
@@ -93,6 +94,15 @@ class MeowShelterGame extends FlameGame with TapCallbacks {
         y: 0.59
       ),
     ];
+    if (level.catTypes.contains('black')) {
+      shelters.add((
+        type: 'black',
+        label: 'MÈO ĐEN',
+        asset: 'Bed/bed-scottish.png',
+        x: 0.40,
+        y: 0.59,
+      ));
+    }
     for (final shelter in shelters) {
       final component = ShelterZoneComponent(
         catType: shelter.type,

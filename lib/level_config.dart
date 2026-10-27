@@ -26,7 +26,9 @@ const gameLevels = <LevelConfig>[
       'scottish',
       'scottish',
       'calico',
-      'calico'
+      'calico',
+      'black',
+      'black'
     ],
     timeLimit: 90,
     lives: 3,

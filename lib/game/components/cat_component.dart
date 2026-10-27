@@ -1,4 +1,5 @@
 import 'dart:math';
+import 'dart:ui';
 
 import 'package:flame/components.dart';
 import 'package:flame/events.dart';
@@ -30,6 +31,7 @@ class CatComponent extends SpriteAnimationGroupComponent<CatState>
     required this.onDrop,
     required this.onDelivered,
     required this.onEscaped,
+    this.fullBehavior = false,
   })  : _folder = 'Cat/${catType[0].toUpperCase()}${catType.substring(1)}',
         super(
           position: position,
@@ -38,6 +40,7 @@ class CatComponent extends SpriteAnimationGroupComponent<CatState>
         );
 
   final String catType;
+  final bool fullBehavior;
   final bool Function(CatComponent cat) onDrop;
   final void Function(CatComponent cat) onDelivered;
   final void Function(CatComponent cat) onEscaped;
@@ -61,6 +64,30 @@ class CatComponent extends SpriteAnimationGroupComponent<CatState>
   static const double _vanishTeleportDistance = 200.0;
 
   @override
+  void render(Canvas canvas) {
+    final needsSmallerArtwork = ((catType == 'himalaya' ||
+                catType == 'calico') &&
+            (current == CatState.dashEscape || current == CatState.vanish)) ||
+        (catType == 'scottish' &&
+            (current == CatState.run ||
+                current == CatState.dashEscape ||
+                current == CatState.vanish)) ||
+        (catType == 'orange' &&
+            (current == CatState.run || current == CatState.walk));
+    if (!needsSmallerArtwork) {
+      super.render(canvas);
+      return;
+    }
+    // Scale only the artwork around its feet; keep the drag bounds unchanged.
+    const factor = 0.8;
+    canvas.save();
+    canvas.translate(size.x * (1 - factor) / 2, size.y * 0.82 * (1 - factor));
+    canvas.scale(factor);
+    super.render(canvas);
+    canvas.restore();
+  }
+
+  @override
   Future<void> onLoad() async {
     await super.onLoad();
     animations = {
@@ -75,7 +102,8 @@ class CatComponent extends SpriteAnimationGroupComponent<CatState>
         'cat-$catType-dash-escape.png',
         framesDashEscape,
       ),
-      CatState.panic: await _loadAnimation('cat-$catType-panic.png', framesPanic),
+      CatState.panic:
+          await _loadAnimation('cat-$catType-panic.png', framesPanic),
       CatState.dragged: await _loadAnimation(
         'cat-$catType-dragged.png',
         framesDragged,
@@ -123,6 +151,8 @@ class CatComponent extends SpriteAnimationGroupComponent<CatState>
   void onTapDown(TapDownEvent event) {
     super.onTapDown(event);
     if (_isDragged || _isDropWrong || _isDelivered || _isEscaping) return;
+    _isVanishing = false;
+    _hasTeleported = false;
     _isTapTriggered = true;
     _actionTimer = 0;
     _setState(CatState.panic);
@@ -137,6 +167,8 @@ class CatComponent extends SpriteAnimationGroupComponent<CatState>
     _isDragged = true;
     _isTapTriggered = false;
     _isEscaping = false;
+    _isVanishing = false;
+    _hasTeleported = false;
     _dragStartPosition = position.clone();
     _setState(CatState.dragged);
     _velocityY = 0;
@@ -209,8 +241,7 @@ class CatComponent extends SpriteAnimationGroupComponent<CatState>
 
     if (_isEscaping) {
       position.x += _direction * catDashSpeed * 1.35 * dt;
-      final hasLeftScreen =
-          (_direction < 0 && position.x + size.x < 0) ||
+      final hasLeftScreen = (_direction < 0 && position.x + size.x < 0) ||
           (_direction > 0 && position.x > gameRef.size.x);
       if (hasLeftScreen) {
         onEscaped(this);
@@ -285,6 +316,27 @@ class CatComponent extends SpriteAnimationGroupComponent<CatState>
   void _pickNextAction() {
     _actionTimer = 0;
     final roll = _random.nextDouble();
+    if (fullBehavior && roll >= 0.68) {
+      _velocityY = 0;
+      if (roll < 0.78) {
+        _setState(CatState.turnAround);
+        _direction *= -1;
+        _applyFlip();
+        _currentActionDuration = framesTurnAround * animationStepTime;
+      } else if (roll < 0.86) {
+        _setState(CatState.dashEscape);
+        _currentActionDuration = framesDashEscape * animationStepTime;
+      } else if (roll < 0.93) {
+        _setState(CatState.panic);
+        _currentActionDuration = framesPanic * animationStepTime;
+      } else {
+        _isVanishing = true;
+        _hasTeleported = false;
+        _setState(CatState.vanish);
+        _currentActionDuration = framesVanish * vanishStepTime;
+      }
+      return;
+    }
     if (roll < 0.3) {
       _setState(CatState.idle);
       _currentActionDuration = _randomBetween(minIdleTime, maxIdleTime);
@@ -310,6 +362,7 @@ class CatComponent extends SpriteAnimationGroupComponent<CatState>
   void _setState(CatState newState) {
     _state = newState;
     current = newState;
+    animationTicker?.reset();
   }
 
   void _maybeChangeDirection(double probability) {
