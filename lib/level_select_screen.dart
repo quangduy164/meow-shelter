@@ -22,58 +22,60 @@ class LevelSelectScreen extends StatelessWidget {
                 const SizedBox(height: 8),
                 _TitlePlaque(),
                 const SizedBox(height: 8),
-                const Text(
-                  'Chọn một màn để bắt đầu cứu mèo',
-                  style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 14,
-                      fontWeight: FontWeight.w700,
-                      shadows: [Shadow(blurRadius: 4)]),
-                ),
-                const SizedBox(height: 8),
                 Expanded(
                   child: Center(
                     child: ConstrainedBox(
                       constraints: const BoxConstraints(maxWidth: 620),
-                      child: GridView.builder(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 24, vertical: 4),
-                        itemCount: gameLevels.length,
-                        gridDelegate:
-                            const SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: 3,
-                          mainAxisSpacing: 12,
-                          crossAxisSpacing: 12,
-                          childAspectRatio: 1.55,
-                        ),
-                        itemBuilder: (context, index) {
-                          final level = gameLevels[index];
-                          // Mỗi màn mẫu đều có thể chơi, dùng chung cơ chế đã làm.
-                          const unlocked = true;
-                          return _LevelCard(
-                            level: level,
-                            unlocked: unlocked,
-                            onTap: () => Navigator.of(context).push(
-                              MaterialPageRoute<void>(
-                                builder: (_) => GameScreen(level: level),
+                      child: LayoutBuilder(builder: (context, constraints) {
+                        final rows = (gameLevels.length / 3).ceil();
+                        final cardHeight =
+                            (constraints.maxHeight - 8 - (rows - 1) * 12) /
+                                rows;
+                        return GridView.builder(
+                          physics: const NeverScrollableScrollPhysics(),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 24, vertical: 4),
+                          itemCount: gameLevels.length,
+                          gridDelegate:
+                              SliverGridDelegateWithFixedCrossAxisCount(
+                            crossAxisCount: 3,
+                            mainAxisSpacing: 12,
+                            crossAxisSpacing: 12,
+                            mainAxisExtent: cardHeight.clamp(1.0, 114.0),
+                          ),
+                          itemBuilder: (context, index) {
+                            final level = gameLevels[index];
+                            // Mỗi màn mẫu đều có thể chơi, dùng chung cơ chế đã làm.
+                            const unlocked = true;
+                            return _LevelCard(
+                              level: level,
+                              unlocked: unlocked,
+                              onTap: () => Navigator.of(context).push(
+                                MaterialPageRoute<void>(
+                                  builder: (_) => GameScreen(level: level),
+                                ),
                               ),
-                            ),
-                          );
-                        },
-                      ),
+                            );
+                          },
+                        );
+                      }),
                     ),
                   ),
                 ),
-                const Padding(
-                  padding: EdgeInsets.only(bottom: 10),
-                  child: Text(
-                      'Mỗi màn có thử thách riêng — chúc bạn cứu đủ các bé mèo!',
-                      style: TextStyle(
-                          color: Color(0xFFFDE8B3),
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600)),
-                ),
               ],
+            ),
+          ),
+          Positioned(
+            top: 12,
+            left: 12,
+            child: SafeArea(
+              child: Tooltip(
+                message: 'Về Trang chủ',
+                child: _RoundButton(
+                  icon: Icons.arrow_back_rounded,
+                  onPressed: () => Navigator.of(context).pop(),
+                ),
+              ),
             ),
           ),
         ],
@@ -173,30 +175,36 @@ class _LevelCard extends StatelessWidget {
           child: Stack(
             children: [
               Center(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(unlocked ? Icons.pets_rounded : Icons.lock_rounded,
-                        color: unlocked
-                            ? const Color(0xFF78441A)
-                            : const Color(0xFFE3E7E2),
-                        size: 25),
-                    const SizedBox(height: 1),
-                    Text('MÀN ${level.id}',
-                        style: TextStyle(
+                child: Padding(
+                  padding: const EdgeInsets.all(8),
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(unlocked ? Icons.pets_rounded : Icons.lock_rounded,
                             color: unlocked
-                                ? const Color(0xFF603312)
-                                : Colors.white,
-                            fontSize: 17,
-                            fontWeight: FontWeight.w900)),
-                    Text(unlocked ? level.name : 'Chưa mở khóa',
-                        style: TextStyle(
-                            color: unlocked
-                                ? const Color(0xFF75451F)
-                                : const Color(0xFFE8EDEA),
-                            fontSize: 10,
-                            fontWeight: FontWeight.w700)),
-                  ],
+                                ? const Color(0xFF78441A)
+                                : const Color(0xFFE3E7E2),
+                            size: 25),
+                        const SizedBox(height: 1),
+                        Text('MÀN ${level.id}',
+                            style: TextStyle(
+                                color: unlocked
+                                    ? const Color(0xFF603312)
+                                    : Colors.white,
+                                fontSize: 17,
+                                fontWeight: FontWeight.w900)),
+                        Text(unlocked ? level.name : 'Chưa mở khóa',
+                            style: TextStyle(
+                                color: unlocked
+                                    ? const Color(0xFF75451F)
+                                    : const Color(0xFFE8EDEA),
+                                fontSize: 10,
+                                fontWeight: FontWeight.w700)),
+                      ],
+                    ),
+                  ),
                 ),
               ),
               if (unlocked)

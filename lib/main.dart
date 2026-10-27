@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import 'level_select_screen.dart';
+import 'home_screen.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -13,5 +13,6 @@ void main() {
   // Ẩn status bar & navigation bar
   SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
 
-  runApp(const MaterialApp(debugShowCheckedModeBanner: false, home: LevelSelectScreen()));
+  runApp(
+      const MaterialApp(debugShowCheckedModeBanner: false, home: HomeScreen()));
 }
