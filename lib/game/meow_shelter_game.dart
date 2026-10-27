@@ -6,10 +6,14 @@ import 'package:flame/game.dart';
 import 'package:flutter/painting.dart';
 
 import 'components/cat_component.dart';
+import 'components/fish_item_component.dart';
+import '../collection/fish_collection.dart';
 import 'components/hud_component.dart';
 import 'components/shelter_zone_component.dart';
 import 'constants.dart';
-import '../level_config.dart';
+import '../levels/level_config.dart';
+import 'world/shelter_layout.dart';
+import 'systems/bait_system.dart';
 
 class MeowShelterGame extends FlameGame with TapCallbacks {
   MeowShelterGame({required this.level});
@@ -19,6 +23,7 @@ class MeowShelterGame extends FlameGame with TapCallbacks {
   final _shelters = <ShelterZoneComponent>[];
   late HudComponent _hud;
   double _secondAccumulator = 0;
+  final _bait = BaitSystem();
 
   @override
   Future<void> onLoad() async {
@@ -30,6 +35,7 @@ class MeowShelterGame extends FlameGame with TapCallbacks {
     removeAll(children.toList());
     _shelters.clear();
     _secondAccumulator = 0;
+    _bait.reset(ownedFish: FishCollection.instance.count);
     _hud = HudComponent()..size = size;
     _hud.totalCats = level.catTypes.length;
     _hud.secondsLeft = level.timeLimit;
@@ -42,6 +48,11 @@ class MeowShelterGame extends FlameGame with TapCallbacks {
     await _addCats();
     await _addShelters();
     add(_hud);
+    add(FishItemComponent(
+      enabled: () => canPlaceFish,
+      visible: () => _hud.status == RoundStatus.playing,
+      placeFish: _placeFish,
+    ));
   }
 
   Future<void> _addCats() async {
@@ -58,51 +69,13 @@ class MeowShelterGame extends FlameGame with TapCallbacks {
       onDrop: _handleDrop,
       onDelivered: _handleDelivered,
       onEscaped: _handleEscape,
+      isPlaying: () => _hud.status == RoundStatus.playing,
     ));
   }
 
   Future<void> _addShelters() async {
     final bedSize = Vector2(size.x * 0.20, size.x * 0.133);
-    final shelters =
-        <({String type, String label, String asset, double x, double y})>[
-      (
-        type: 'orange',
-        label: 'MÈO CAM',
-        asset: 'Bed/bed-orange.png',
-        x: 0.00,
-        y: 0.20
-      ),
-      (
-        type: 'himalaya',
-        label: 'HIMALAYA',
-        asset: 'Bed/bed-himalaya.png',
-        x: 0.80,
-        y: 0.20
-      ),
-      (
-        type: 'scottish',
-        label: 'SCOTTISH',
-        asset: 'Bed/bed-scottish.png',
-        x: 0.00,
-        y: 0.59
-      ),
-      (
-        type: 'calico',
-        label: 'CALICO',
-        asset: 'Bed/bed-calico.png',
-        x: 0.80,
-        y: 0.59
-      ),
-    ];
-    if (level.catTypes.contains('black')) {
-      shelters.add((
-        type: 'black',
-        label: 'MÈO ĐEN',
-        asset: 'Bed/bed-scottish.png',
-        x: 0.40,
-        y: 0.59,
-      ));
-    }
+    final shelters = shelterLayout(level.catTypes);
     for (final shelter in shelters) {
       final component = ShelterZoneComponent(
         catType: shelter.type,
@@ -145,7 +118,10 @@ class MeowShelterGame extends FlameGame with TapCallbacks {
   }
 
   void _handleDelivered(CatComponent cat) {
-    if (_hud.delivered >= _hud.totalCats) _hud.status = RoundStatus.won;
+    if (_hud.status == RoundStatus.playing &&
+        _hud.delivered >= _hud.totalCats) {
+      _hud.status = RoundStatus.won;
+    }
   }
 
   void _handleEscape(CatComponent cat) {
@@ -163,6 +139,9 @@ class MeowShelterGame extends FlameGame with TapCallbacks {
   void update(double dt) {
     super.update(dt);
     if (!isLoaded || _hud.status != RoundStatus.playing) return;
+    _bait.update(children.whereType<CatComponent>());
+    // Let the last rescued cat finish its success animations before ending.
+    if (_hud.delivered >= _hud.totalCats) return;
     _secondAccumulator += dt;
     if (_secondAccumulator >= 1) {
       _secondAccumulator -= 1;
@@ -176,6 +155,24 @@ class MeowShelterGame extends FlameGame with TapCallbacks {
     super.onTapDown(event);
     if (isLoaded && _hud.status != RoundStatus.playing) {
       _startRound();
+      return;
+    }
+  }
+
+  bool get canPlaceFish =>
+      isLoaded && _hud.status == RoundStatus.playing && _bait.canPlace;
+
+  void _placeFish(Vector2 point) {
+    if (!canPlaceFish) return;
+    _bait.place(point, size, children.whereType<CatComponent>());
+  }
+
+  @override
+  void render(Canvas canvas) {
+    super.render(canvas);
+    if (!isLoaded || _hud.status != RoundStatus.playing) return;
+    for (final fish in _bait.positions) {
+      drawFish(canvas, Offset(fish.x, fish.y));
     }
   }
 

@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 
-import 'level_config.dart';
+import '../../levels/levels.dart';
+import 'game_screen.dart';
 import 'level_select_screen.dart';
+import 'fishing_screen.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -48,6 +50,15 @@ class HomeScreen extends StatelessWidget {
                                   builder: (_) => const LevelSelectScreen())),
                         ),
                         const SizedBox(height: 8),
+                        _HomeButton(
+                          label: 'CÂU CÁ',
+                          icon: Icons.set_meal_rounded,
+                          secondary: true,
+                          onPressed: () => Navigator.of(context).push(
+                              MaterialPageRoute<void>(
+                                  builder: (_) => const FishingScreen())),
+                        ),
+                        const SizedBox(height: 8),
                         TextButton.icon(
                           icon:
                               const Icon(Icons.help_outline_rounded, size: 18),
@@ -64,7 +75,7 @@ class HomeScreen extends StatelessWidget {
                                             BorderRadius.circular(24)),
                                     title: const Text('Cùng cứu mèo nhé!'),
                                     content: const Text(
-                                        'Kéo mèo vào ổ đệm đúng loại để nhận điểm.\n\nChạm vào mèo sẽ khiến bé hoảng loạn rồi chạy trốn — hãy bắt kịp!\n\nThả sai hoặc để mèo chạy thoát sẽ mất một lượt. Cứu đủ mèo trước khi hết giờ để thắng.'),
+                                        'Vào hồ câu từ Trang chủ để sưu tập cá. Cá được lưu trên máy và không mất khi cho mèo ăn.\n\nTrong màn chơi, kéo item cá ra sân để dụ mèo. Có thể đặt nhiều cá liên tiếp, không cần chờ.\n\nKhi mèo tới cá, thanh xanh hiện trong 1 giây: kéo ngay và đưa về đúng ổ trong 3 giây. Chụp hụt không mất lượt; thả sai ổ mất một lượt.'),
                                     actions: [
                                       TextButton(
                                           onPressed: () =>

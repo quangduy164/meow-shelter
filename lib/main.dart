@@ -1,10 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import 'home_screen.dart';
+import 'ui/screens/home_screen.dart';
+import 'collection/fish_collection.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
-void main() {
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  FishCollection.instance =
+      FishCollection(await SharedPreferences.getInstance());
   // Khóa màn hình ngang
   SystemChrome.setPreferredOrientations([
     DeviceOrientation.landscapeLeft,
