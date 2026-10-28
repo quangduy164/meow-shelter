@@ -7,8 +7,6 @@ enum RoundStatus { playing, won, lost }
 class HudComponent extends PositionComponent with HasGameRef<FlameGame> {
   HudComponent() : super(priority: 100);
 
-  int score = 0;
-  int lives = 3;
   int delivered = 0;
   int totalCats = 8;
   int secondsLeft = 90;
@@ -22,8 +20,8 @@ class HudComponent extends PositionComponent with HasGameRef<FlameGame> {
     // Điều này giữ màn thắng/thua ở giữa khi thiết bị xoay hoặc đổi tỉ lệ màn hình.
     final screenSize = gameRef.size;
     final panel = Paint()..color = const Color(0xCC432812);
-    const panelWidth = 390.0;
-    const panelHeight = 58.0;
+    const panelWidth = 100.0;
+    const panelHeight = 40.0;
     final panelLeft = (screenSize.x - panelWidth) / 2;
     canvas.drawRRect(
       RRect.fromRectAndRadius(
@@ -34,18 +32,10 @@ class HudComponent extends PositionComponent with HasGameRef<FlameGame> {
     );
     _drawCentered(
       canvas,
-      levelTitle,
+      '${secondsLeft}s',
       screenSize,
-      20,
-      13,
-      const Color(0xFFFFE4A0),
-    );
-    _drawCentered(
-      canvas,
-      'Điểm: $score     Lượt: $lives     Mèo: $delivered/$totalCats     ${secondsLeft}s',
-      screenSize,
-      38,
-      15,
+      22,
+      18,
       const Color(0xFFFFFFFF),
     );
 
@@ -53,7 +43,7 @@ class HudComponent extends PositionComponent with HasGameRef<FlameGame> {
     final isWin = status == RoundStatus.won;
     final overlay = Paint()..color = const Color(0xAA000000);
     canvas.drawRect(Rect.fromLTWH(0, 0, screenSize.x, screenSize.y), overlay);
-    final title = isWin ? 'BẠN ĐÃ THẮNG!' : 'HẾT LƯỢT!';
+    final title = isWin ? 'BẠN ĐÃ THẮNG!' : 'HẾT GIỜ!';
     final subtitle = isWin
         ? 'Đã đưa đủ mèo về đúng chuồng'
         : 'Thử lại để cứu các bé mèo nhé';

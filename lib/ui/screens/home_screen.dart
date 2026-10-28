@@ -75,7 +75,7 @@ class HomeScreen extends StatelessWidget {
                                             BorderRadius.circular(24)),
                                     title: const Text('Cùng cứu mèo nhé!'),
                                     content: const Text(
-                                        'Vào hồ câu từ Trang chủ để sưu tập cá. Cá được lưu trên máy và không mất khi cho mèo ăn.\n\nTrong màn chơi, kéo item cá ra sân để dụ mèo. Có thể đặt nhiều cá liên tiếp, không cần chờ.\n\nKhi mèo tới cá, thanh xanh hiện trong 1 giây: kéo ngay và đưa về đúng ổ trong 3 giây. Chụp hụt không mất lượt; thả sai ổ mất một lượt.'),
+                                        'Vào hồ câu từ Trang chủ để sưu tập cá. Cá được lưu trên máy và không mất khi cho mèo ăn.\n\nTrong màn chơi, kéo item cá ra sân để dụ mèo. Có thể đặt nhiều cá liên tiếp, không cần chờ.\n\nKhi mèo tới cá, thanh xanh hiện trong 1 giây: kéo ngay và đưa về đúng thảm trong 3 giây. Thả sai có thể bắt lại. Cứu đủ mèo trước khi hết giờ để thắng.'),
                                     actions: [
                                       TextButton(
                                           onPressed: () =>

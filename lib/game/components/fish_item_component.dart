@@ -36,13 +36,34 @@ class FishItemComponent extends PositionComponent with DragCallbacks {
   @override
   void render(Canvas canvas) {
     if (!visible()) return;
+    final frame = RRect.fromRectAndRadius(
+        Rect.fromLTWH(1.5, 1.5, size.x - 3, size.y - 3),
+        const Radius.circular(14));
+    canvas.drawRRect(frame.shift(const Offset(0, 3)),
+        Paint()..color = const Color(0x55402616));
     canvas.drawRRect(
-        RRect.fromRectAndRadius(
-            Rect.fromLTWH(0, 0, size.x, size.y), const Radius.circular(14)),
+        frame,
         Paint()
           ..color =
-              enabled() ? const Color(0xFFFFD477) : const Color(0xFF8B8170));
-    drawFish(canvas, Offset(size.x / 2 + 3, size.y / 2));
+              enabled() ? const Color(0xFFFCCB59) : const Color(0xFFB4A58C));
+    canvas.drawRRect(
+        frame.deflate(4),
+        Paint()
+          ..color = const Color(0x66FFF0CA)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 1);
+    canvas.drawRRect(
+        frame,
+        Paint()
+          ..color = const Color(0xFF774016)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 3);
+    // Fish artwork spans -24..15 horizontally, including its tail.
+    canvas.save();
+    canvas.translate(size.x / 2, size.y / 2);
+    canvas.scale(0.75);
+    drawFish(canvas, const Offset(4.5, 0));
+    canvas.restore();
     final preview = _preview;
     if (preview != null) drawFish(canvas, Offset(preview.x, preview.y));
   }

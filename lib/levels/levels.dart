@@ -17,7 +17,6 @@ const gameLevels = <LevelConfig>[
       'black'
     ],
     timeLimit: 90,
-    lives: 3,
   ),
   LevelConfig(
     id: 2,
@@ -31,7 +30,6 @@ const gameLevels = <LevelConfig>[
       'scottish'
     ],
     timeLimit: 105,
-    lives: 4,
   ),
   LevelConfig(
     id: 3,
@@ -47,7 +45,6 @@ const gameLevels = <LevelConfig>[
       'calico'
     ],
     timeLimit: 90,
-    lives: 3,
   ),
   LevelConfig(
     id: 4,
@@ -63,7 +60,6 @@ const gameLevels = <LevelConfig>[
       'calico'
     ],
     timeLimit: 75,
-    lives: 3,
   ),
   LevelConfig(
     id: 5,
@@ -79,7 +75,6 @@ const gameLevels = <LevelConfig>[
       'calico'
     ],
     timeLimit: 60,
-    lives: 2,
   ),
   LevelConfig(
     id: 6,
@@ -95,6 +90,5 @@ const gameLevels = <LevelConfig>[
       'calico'
     ],
     timeLimit: 50,
-    lives: 2,
   ),
 ];

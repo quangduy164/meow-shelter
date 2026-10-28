@@ -39,7 +39,6 @@ class MeowShelterGame extends FlameGame with TapCallbacks {
     _hud = HudComponent()..size = size;
     _hud.totalCats = level.catTypes.length;
     _hud.secondsLeft = level.timeLimit;
-    _hud.lives = level.lives;
     _hud.levelTitle = 'MÀN ${level.id} · ${level.name.toUpperCase()}';
 
     final background =
@@ -79,28 +78,12 @@ class MeowShelterGame extends FlameGame with TapCallbacks {
     for (final shelter in shelters) {
       final component = ShelterZoneComponent(
         catType: shelter.type,
-        sprite: await loadSprite(shelter.asset),
+        label: shelter.label,
         size: bedSize,
         position: Vector2(size.x * shelter.x, size.y * shelter.y),
       );
       _shelters.add(component);
       add(component);
-      add(
-        TextComponent(
-          text: shelter.label,
-          textRenderer: TextPaint(
-            style: const TextStyle(
-              color: Color(0xFF5B3516),
-              fontSize: 13,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          anchor: Anchor.center,
-          position: component.position +
-              Vector2(component.size.x * 0.5, component.size.y * 0.64),
-          priority: 1,
-        ),
-      );
     }
   }
 
@@ -108,11 +91,7 @@ class MeowShelterGame extends FlameGame with TapCallbacks {
     if (_hud.status != RoundStatus.playing) return false;
     final isCorrect = _shelters.any((shelter) => shelter.accepts(cat));
     if (isCorrect) {
-      _hud.score += 10;
       _hud.delivered += 1;
-    } else {
-      _hud.lives -= 1;
-      if (_hud.lives <= 0) _hud.status = RoundStatus.lost;
     }
     return isCorrect;
   }
@@ -126,11 +105,6 @@ class MeowShelterGame extends FlameGame with TapCallbacks {
 
   void _handleEscape(CatComponent cat) {
     if (_hud.status != RoundStatus.playing) return;
-    _hud.lives -= 1;
-    if (_hud.lives <= 0) {
-      _hud.status = RoundStatus.lost;
-      return;
-    }
     // Mèo chạy ra ngoài được thay bằng một bé cùng loại để màn vẫn có thể thắng.
     _spawnCat(cat.catType);
   }
