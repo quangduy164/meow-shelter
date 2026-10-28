@@ -87,7 +87,7 @@ class FishingController extends ChangeNotifier {
         _progress = (_progress +
                 (_pulling ? (_tension > .82 ? .035 : .15) : -.045) * dt)
             .clamp(0.0, 1.0);
-        if (_tension >= 1) {
+        if (_tension <= 0 || _tension >= 1) {
           _lose('Dây câu bị đứt');
         } else if (_progress <= 0 || _elapsed > 35) {
           _lose('Cá đã tuột khỏi lưỡi câu');

@@ -16,6 +16,7 @@ import '../widgets/fishing_lake_layout.dart';
 import '../widgets/fishing_painter.dart';
 import '../widgets/fishing_water_painter.dart';
 import '../widgets/fishing_sky_painter.dart';
+import '../widgets/fishing_ambient_painter.dart';
 
 class FishingScreen extends StatefulWidget {
   const FishingScreen({super.key});
@@ -127,6 +128,12 @@ class _FishingScreenState extends State<FishingScreen>
                                             phase: _controller.phase,
                                             spot: _controller.spot,
                                             progress: _controller.progress)))),
+                            IgnorePointer(
+                                child: RepaintBoundary(
+                                    child: CustomPaint(
+                                        painter: FishingAmbientPainter(
+                                            clock: _controller.clock,
+                                            lighting: _lighting)))),
                             LayoutBuilder(
                                 builder: (context, scene) => GestureDetector(
                                       behavior: HitTestBehavior.opaque,

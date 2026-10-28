@@ -95,7 +95,7 @@ class FishItemComponent extends PositionComponent with DragCallbacks {
 
   @override
   void onDragCancel(DragCancelEvent event) {
-    super.onDragCancel(event);
     _preview = null;
+    super.onDragCancel(event);
   }
 }

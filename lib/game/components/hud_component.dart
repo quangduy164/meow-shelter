@@ -12,6 +12,11 @@ class HudComponent extends PositionComponent with HasGameRef<FlameGame> {
   int secondsLeft = 90;
   String levelTitle = 'MÀN 1 · LÀM QUEN';
   RoundStatus status = RoundStatus.playing;
+  bool isTutorial = false, hasNextLevel = false;
+  Rect get actionButton => Rect.fromCenter(
+      center: Offset(gameRef.size.x / 2, gameRef.size.y * .64),
+      width: 220,
+      height: 58);
 
   @override
   void render(Canvas canvas) {
@@ -32,12 +37,29 @@ class HudComponent extends PositionComponent with HasGameRef<FlameGame> {
     );
     _drawCentered(
       canvas,
-      '${secondsLeft}s',
+      isTutorial ? '$delivered/$totalCats' : '${secondsLeft}s',
       screenSize,
       22,
       18,
       const Color(0xFFFFFFFF),
     );
+    if (!isTutorial) {
+      final progress = TextPainter(
+          text: TextSpan(
+              text: '$delivered/$totalCats mèo',
+              style: const TextStyle(
+                  color: Color(0xFFFFFFFF),
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold)),
+          textDirection: TextDirection.ltr)
+        ..layout();
+      final badge = Rect.fromLTWH(
+          screenSize.x - progress.width - 32, 14, progress.width + 20, 40);
+      canvas.drawRRect(
+          RRect.fromRectAndRadius(badge, const Radius.circular(8)), panel);
+      progress.paint(canvas,
+          Offset(badge.left + 10, badge.top + (40 - progress.height) / 2));
+    }
 
     if (status == RoundStatus.playing) return;
     final isWin = status == RoundStatus.won;
@@ -63,18 +85,14 @@ class HudComponent extends PositionComponent with HasGameRef<FlameGame> {
       21,
       const Color(0xFFFFFFFF),
     );
-    final button = Rect.fromCenter(
-      center: Offset(screenSize.x / 2, screenSize.y * 0.64),
-      width: 220,
-      height: 58,
-    );
+    final button = actionButton;
     canvas.drawRRect(
       RRect.fromRectAndRadius(button, const Radius.circular(18)),
       Paint()..color = const Color(0xFFFFB52A),
     );
     _drawCentered(
       canvas,
-      'CHƠI LẠI',
+      isWin && hasNextLevel ? 'MÀN TIẾP' : 'CHƠI LẠI',
       screenSize,
       screenSize.y * 0.64 - 15,
       24,

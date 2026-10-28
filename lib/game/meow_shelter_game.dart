@@ -7,6 +7,7 @@ import 'package:flutter/painting.dart';
 
 import 'components/cat_component.dart';
 import 'components/fish_item_component.dart';
+import 'components/catch_tutorial_component.dart';
 import '../collection/fish_collection.dart';
 import 'components/hud_component.dart';
 import 'components/shelter_zone_component.dart';
@@ -16,9 +17,10 @@ import 'world/shelter_layout.dart';
 import 'systems/bait_system.dart';
 
 class MeowShelterGame extends FlameGame with TapCallbacks {
-  MeowShelterGame({required this.level});
+  MeowShelterGame({required this.level, this.onNextLevel});
 
   final LevelConfig level;
+  final void Function()? onNextLevel;
   final _random = Random();
   final _shelters = <ShelterZoneComponent>[];
   late HudComponent _hud;
@@ -35,10 +37,15 @@ class MeowShelterGame extends FlameGame with TapCallbacks {
     removeAll(children.toList());
     _shelters.clear();
     _secondAccumulator = 0;
-    _bait.reset(ownedFish: FishCollection.instance.count);
+    _bait.reset(
+        ownedFish: level.isTutorial
+            ? max(1, FishCollection.instance.count)
+            : FishCollection.instance.count);
     _hud = HudComponent()..size = size;
     _hud.totalCats = level.catTypes.length;
     _hud.secondsLeft = level.timeLimit;
+    _hud.isTutorial = level.isTutorial;
+    _hud.hasNextLevel = onNextLevel != null;
     _hud.levelTitle = 'MÀN ${level.id} · ${level.name.toUpperCase()}';
 
     final background =
@@ -46,6 +53,14 @@ class MeowShelterGame extends FlameGame with TapCallbacks {
     add(SpriteComponent(sprite: background, size: size, priority: -100));
     await _addCats();
     await _addShelters();
+    if (level.isTutorial) {
+      add(CatchTutorialComponent(
+        cat: () => children.whereType<CatComponent>().firstOrNull,
+        shelter: () => _shelters.single,
+        screenSize: () => size,
+        isPlaying: () => _hud.status == RoundStatus.playing,
+      ));
+    }
     add(_hud);
     add(FishItemComponent(
       enabled: () => canPlaceFish,
@@ -62,9 +77,11 @@ class MeowShelterGame extends FlameGame with TapCallbacks {
 
   void _spawnCat(String type) {
     add(CatComponent(
-      position: _randomCatPosition(),
+      position: level.isTutorial
+          ? Vector2(size.x * .43 - catWidth / 2, size.y * .5 - catHeight / 2)
+          : _randomCatPosition(),
       catType: type,
-      fullBehavior: level.id == 1,
+      level: level,
       onDrop: _handleDrop,
       onDelivered: _handleDelivered,
       onEscaped: _handleEscape,
@@ -80,7 +97,9 @@ class MeowShelterGame extends FlameGame with TapCallbacks {
         catType: shelter.type,
         label: shelter.label,
         size: bedSize,
-        position: Vector2(size.x * shelter.x, size.y * shelter.y),
+        position: level.isTutorial
+            ? Vector2(size.x * .74, size.y * .43)
+            : Vector2(size.x * shelter.x, size.y * shelter.y),
       );
       _shelters.add(component);
       add(component);
@@ -116,6 +135,7 @@ class MeowShelterGame extends FlameGame with TapCallbacks {
     _bait.update(children.whereType<CatComponent>());
     // Let the last rescued cat finish its success animations before ending.
     if (_hud.delivered >= _hud.totalCats) return;
+    if (level.isTutorial) return;
     _secondAccumulator += dt;
     if (_secondAccumulator >= 1) {
       _secondAccumulator -= 1;
@@ -128,13 +148,26 @@ class MeowShelterGame extends FlameGame with TapCallbacks {
   void onTapDown(TapDownEvent event) {
     super.onTapDown(event);
     if (isLoaded && _hud.status != RoundStatus.playing) {
-      _startRound();
+      if (!_hud.actionButton
+          .contains(Offset(event.localPosition.x, event.localPosition.y))) {
+        return;
+      }
+      if (_hud.status == RoundStatus.won && onNextLevel != null) {
+        onNextLevel!();
+      } else {
+        _startRound();
+      }
       return;
     }
   }
 
   bool get canPlaceFish =>
-      isLoaded && _hud.status == RoundStatus.playing && _bait.canPlace;
+      isLoaded &&
+      _hud.status == RoundStatus.playing &&
+      _bait.canPlace &&
+      (!level.isTutorial ||
+          (_bait.positions.isEmpty &&
+              !children.whereType<CatComponent>().any((cat) => cat.hasEaten)));
 
   void _placeFish(Vector2 point) {
     if (!canPlaceFish) return;
@@ -151,8 +184,9 @@ class MeowShelterGame extends FlameGame with TapCallbacks {
   }
 
   Vector2 _randomCatPosition() {
-    final x = _random.nextDouble() * (size.x - catWidth);
-    final y = size.y * 0.30 + _random.nextDouble() * (size.y * 0.42);
+    final x =
+        size.x * .22 + _random.nextDouble() * max(0, size.x * .56 - catWidth);
+    final y = size.y * 0.30 + _random.nextDouble() * (size.y * 0.33);
     return Vector2(x, y);
   }
 }

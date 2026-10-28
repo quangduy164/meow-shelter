@@ -66,6 +66,11 @@ class LevelCard extends StatelessWidget {
                                     : const Color(0xFFE8EDEA),
                                 fontSize: 10,
                                 fontWeight: FontWeight.w700)),
+                        if (unlocked)
+                          Text(
+                              '${level.catTypes.length} mèo · ${level.isTutorial ? 'Tập chơi' : '${level.timeLimit}s'}',
+                              style: const TextStyle(
+                                  fontSize: 9, color: Color(0xFF75451F))),
                       ],
                     ),
                   ),

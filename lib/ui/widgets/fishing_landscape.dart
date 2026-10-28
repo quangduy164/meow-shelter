@@ -198,87 +198,16 @@ class FishingLandscape extends CustomPainter {
             ..strokeWidth = 2);
     }
     canvas.restore();
-    final treeRandom = math.Random(73);
     for (final tree in [
       (x: 58.0, base: 407.0, height: 176.0, width: 41.0, lean: -8.0),
       (x: 128.0, base: 421.0, height: 211.0, width: 49.0, lean: 6.0),
       (x: 866.0, base: 405.0, height: 189.0, width: 44.0, lean: -7.0),
       (x: 943.0, base: 424.0, height: 224.0, width: 52.0, lean: 10.0),
     ]) {
-      canvas.save();
-      canvas.translate(tree.x, tree.base);
-      canvas.drawOval(const Rect.fromLTWH(-29, -5, 65, 12),
-          Paint()..color = const Color(0x22604431));
-      canvas.drawPath(
-          Path()
-            ..moveTo(-5, 0)
-            ..quadraticBezierTo(-2, -tree.height * .5, tree.lean, -tree.height)
-            ..quadraticBezierTo(8, -tree.height * .5, 5, 0)
-            ..close(),
-          Paint()..color = const Color(0xFF7B6041));
-      final left = <Offset>[];
-      final right = <Offset>[];
-      for (var layer = 0; layer < 7; layer++) {
-        final progress = (layer + 1) / 7;
-        final y = -tree.height + progress * (tree.height - 28);
-        final center =
-            tree.lean * (1 - progress) + math.sin(layer * 1.7 + tree.x) * 3;
-        final spread = tree.width * progress;
-        left.addAll([
-          Offset(center - spread * (.6 + treeRandom.nextDouble() * .65),
-              y - 4 + treeRandom.nextDouble() * 12),
-          Offset(center - spread * .43, y - 5),
-        ]);
-        right.addAll([
-          Offset(center + spread * (.55 + treeRandom.nextDouble() * .75),
-              y - 8 + treeRandom.nextDouble() * 18),
-          Offset(center + spread * .38, y - 3),
-        ]);
-      }
-      final crown = Path()..moveTo(tree.lean, -tree.height);
-      for (final point in left) {
-        crown.lineTo(point.dx, point.dy);
-      }
-      for (final point in right.reversed) {
-        crown.lineTo(point.dx, point.dy);
-      }
-      crown.close();
-      canvas.drawPath(crown, Paint()..color = const Color(0xFF39765C));
-      canvas.save();
-      canvas.clipPath(crown);
-      for (var layer = 0; layer < 7; layer++) {
-        final l = left[layer * 2];
-        final r = right[layer * 2];
-        final fork = Offset(
-            tree.lean * (1 - (layer + 1) / 7), math.min(l.dy, r.dy) - 19);
-        canvas.drawPath(
-            Path()
-              ..moveTo(fork.dx, fork.dy)
-              ..quadraticBezierTo(l.dx * .6, l.dy - 9, l.dx, l.dy)
-              ..lineTo(fork.dx - 2, fork.dy + 24)
-              ..close(),
-            Paint()..color = const Color(0xFF59865B));
-        canvas.drawPath(
-            Path()
-              ..moveTo(fork.dx, fork.dy + 3)
-              ..lineTo(r.dx, r.dy)
-              ..lineTo(fork.dx + 1, fork.dy + 26)
-              ..close(),
-            Paint()..color = const Color(0x55304F42));
-        for (var needle = 0; needle < 10; needle++) {
-          final t = treeRandom.nextDouble();
-          final point = Offset.lerp(fork, l, t)!;
-          canvas.drawLine(
-              point,
-              point + Offset(-3 - treeRandom.nextDouble() * 4, 4),
-              Paint()
-                ..color = const Color(0x667DB270)
-                ..strokeWidth = 1.2);
-        }
-      }
-      canvas.restore();
-      canvas.restore();
+      _pine(canvas, Offset(tree.x, tree.base), tree.height, tree.width,
+          tree.lean);
     }
+    _shoreDetails(canvas);
     // Reeds and flowers along the foreground banks.
     canvas.save();
     for (final base in [
@@ -399,6 +328,175 @@ class FishingLandscape extends CustomPainter {
           Paint()..color = const Color(0x0D5F563C));
     }
     canvas.restore();
+    canvas.restore();
+  }
+
+  void _pine(
+      Canvas canvas, Offset base, double height, double width, double lean) {
+    canvas.save();
+    canvas.translate(base.dx, base.dy);
+    canvas.drawOval(
+        Rect.fromCenter(
+            center: const Offset(5, 2), width: width * 1.8, height: 15),
+        Paint()..color = const Color(0x28604431));
+    canvas.drawPath(
+        Path()
+          ..moveTo(-6, 0)
+          ..quadraticBezierTo(-2, -height * .55, lean, -height + 22)
+          ..quadraticBezierTo(9, -height * .45, 7, 0)
+          ..close(),
+        Paint()..color = const Color(0xFF806347));
+    canvas.drawLine(
+        const Offset(-2, -6),
+        Offset(lean * .5, -height * .55),
+        Paint()
+          ..color = const Color(0xFFB48C5F)
+          ..strokeWidth = 2);
+    for (var layer = 5; layer >= 0; layer--) {
+      final t = (layer + 1) / 6;
+      final top = -height + layer * (height - 30) / 7;
+      final bottom = top + height * .30;
+      final center = lean * (1 - t) + math.sin(layer * 2 + base.dx) * 2;
+      final spread = width * (.20 + .80 * t);
+      final bough = Path()
+        ..moveTo(center, top)
+        ..cubicTo(center - spread * .2, top + 18, center - spread * .46,
+            bottom - 22, center - spread, bottom - 9)
+        ..quadraticBezierTo(center - spread * .83, bottom + 2,
+            center - spread * .47, bottom - 4)
+        ..quadraticBezierTo(
+            center - spread * .21, bottom + 3, center, bottom - 4)
+        ..quadraticBezierTo(center + spread * .45, bottom + 3,
+            center + spread * .70, bottom - 3)
+        ..quadraticBezierTo(
+            center + spread * .90, bottom + 1, center + spread, bottom - 10)
+        ..cubicTo(center + spread * .5, bottom - 20, center + spread * .24,
+            top + 15, center, top)
+        ..close();
+      canvas.drawPath(bough.shift(const Offset(1, 3)),
+          Paint()..color = const Color(0x33415E43));
+      canvas.drawPath(
+          bough,
+          Paint()
+            ..color = layer.isEven
+                ? const Color(0xFF407F65)
+                : const Color(0xFF4A896B));
+      canvas.drawPath(
+          Path()
+            ..moveTo(center, top + 6)
+            ..quadraticBezierTo(center - spread * .3, bottom - 19,
+                center - spread * .82, bottom - 9)
+            ..quadraticBezierTo(
+                center - spread * .38, bottom - 10, center - 1, bottom - 17)
+            ..close(),
+          Paint()..color = const Color(0xFF71A378));
+      canvas.drawPath(
+          Path()
+            ..moveTo(center + 4, top + 18)
+            ..quadraticBezierTo(center + spread * .4, bottom - 16,
+                center + spread * .86, bottom - 8),
+          Paint()
+            ..color = const Color(0x6651795D)
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = 2);
+    }
+    for (final side in [-1.0, 1.0]) {
+      canvas.drawPath(
+          Path()
+            ..moveTo(side * 3, -4)
+            ..quadraticBezierTo(side * 12, 1, side * 17, 0),
+          Paint()
+            ..color = const Color(0xFF806347)
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = 3
+            ..strokeCap = StrokeCap.round);
+    }
+    canvas.restore();
+  }
+
+  void _shoreDetails(Canvas canvas) {
+    for (final patch in [
+      const Offset(250, 552),
+      const Offset(840, 505),
+      const Offset(174, 365)
+    ]) {
+      canvas.drawOval(Rect.fromCenter(center: patch, width: 53, height: 10),
+          Paint()..color = const Color(0x22507543));
+      for (var i = 0; i < 7; i++) {
+        final root = patch + Offset((i - 3) * 6.0, math.sin(i * 2) * 3);
+        final head = root + Offset(math.sin(i) * 4, -12 - (i % 3) * 6.0);
+        canvas.drawLine(
+            root,
+            head,
+            Paint()
+              ..color = const Color(0xFF547F4C)
+              ..strokeWidth = 1.6);
+        canvas.drawOval(
+            Rect.fromCenter(
+                center: root + const Offset(3, -5), width: 9, height: 4),
+            Paint()..color = const Color(0xFF6B9754));
+        final petal = Paint()
+          ..color =
+              i.isEven ? const Color(0xFFF2EACE) : const Color(0xFFE7A0A1);
+        for (var p = 0; p < 5; p++) {
+          canvas.drawCircle(
+              head + Offset.fromDirection(p * math.pi * 2 / 5, 3), 2.7, petal);
+        }
+        canvas.drawCircle(head, 1.9, Paint()..color = const Color(0xFFE5BB5D));
+      }
+    }
+    for (final rock in [const Offset(110, 478), const Offset(882, 448)]) {
+      canvas.drawOval(
+          Rect.fromCenter(
+              center: rock + const Offset(3, 4), width: 43, height: 11),
+          Paint()..color = const Color(0x22604431));
+      canvas.drawPath(
+          Path()
+            ..moveTo(rock.dx - 20, rock.dy)
+            ..lineTo(rock.dx - 13, rock.dy - 15)
+            ..lineTo(rock.dx + 5, rock.dy - 19)
+            ..lineTo(rock.dx + 21, rock.dy - 5)
+            ..lineTo(rock.dx + 17, rock.dy + 3)
+            ..close(),
+          Paint()..color = const Color(0xFFA9B2A0));
+      canvas.drawPath(
+          Path()
+            ..moveTo(rock.dx - 13, rock.dy - 15)
+            ..lineTo(rock.dx + 5, rock.dy - 19)
+            ..lineTo(rock.dx + 8, rock.dy - 6)
+            ..lineTo(rock.dx - 16, rock.dy - 4)
+            ..close(),
+          Paint()..color = const Color(0xFFCED0B5));
+      canvas.drawOval(
+          Rect.fromCenter(
+              center: rock + const Offset(-9, -2), width: 14, height: 5),
+          Paint()..color = const Color(0xFF749163));
+    }
+    canvas.save();
+    canvas.translate(104, 543);
+    canvas.rotate(-.12);
+    canvas.drawRRect(
+        RRect.fromRectAndRadius(
+            const Rect.fromLTWH(-38, -10, 76, 21), const Radius.circular(5)),
+        Paint()..color = const Color(0xFF967553));
+    canvas.drawOval(const Rect.fromLTWH(29, -10, 17, 21),
+        Paint()..color = const Color(0xFFD9BB88));
+    canvas.drawOval(
+        const Rect.fromLTWH(33, -6, 9, 13),
+        Paint()
+          ..color = const Color(0xFF967553)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 1);
+    for (var i = 0; i < 3; i++) {
+      canvas.drawLine(
+          Offset(-31, -5 + i * 6.0),
+          Offset(26, -3 + i * 5.0),
+          Paint()
+            ..color = const Color(0xFF6E5D45)
+            ..strokeWidth = 1.5);
+    }
+    canvas.drawOval(const Rect.fromLTWH(-17, -12, 29, 8),
+        Paint()..color = const Color(0xFF78975B));
     canvas.restore();
   }
 

@@ -1,5 +1,5 @@
 import 'dart:math';
-import 'dart:ui';
+import 'package:flutter/painting.dart';
 
 import 'package:flame/components.dart';
 import 'package:flame/events.dart';
@@ -9,6 +9,8 @@ import '../constants.dart';
 import '../cats/cat_state.dart';
 import '../cats/cat_animations.dart';
 import '../catch_window.dart';
+import '../../levels/level_config.dart';
+import '../cats/cat_skill.dart';
 
 /// A draggable cat. The game decides whether the cat was dropped in its
 /// matching shelter through [onDrop].
@@ -21,8 +23,14 @@ class CatComponent extends SpriteAnimationGroupComponent<CatState>
     required this.onDelivered,
     required this.onEscaped,
     required this.isPlaying,
-    this.fullBehavior = false,
-  }) : super(
+    required this.level,
+  })  : catchWindow = CatchWindow(
+            readySeconds: level.readySeconds,
+            gripSeconds: level.skillFor(catType) == CatSkill.slippery
+                ? level.gripSeconds * .65
+                : level.gripSeconds,
+            unlimited: level.isTutorial),
+        super(
           position: position,
           size: Vector2(catWidth, catHeight),
           current: CatState.idle,
@@ -30,7 +38,11 @@ class CatComponent extends SpriteAnimationGroupComponent<CatState>
 
   final String catType;
   final bool Function() isPlaying;
-  final catchWindow = CatchWindow();
+  final CatchWindow catchWindow;
+  bool hasEaten = false;
+  bool get isDelivered => _isDelivered;
+  double _skillCooldown = 5;
+  bool _skillActive = false;
   Vector2? fishTarget;
   double _dodgeTime = 0;
   bool get canLure =>
@@ -46,13 +58,15 @@ class CatComponent extends SpriteAnimationGroupComponent<CatState>
   void lure(Vector2 target) {
     if (!canLure) return;
     fishTarget = target.clone();
+    _skillActive = false;
     _isVanishing = false;
     _isTapTriggered = false;
     _velocityY = 0;
     _setState(CatState.walk);
   }
 
-  final bool fullBehavior;
+  final LevelConfig level;
+  CatSkill get skill => level.skillFor(catType);
   final bool Function(CatComponent cat) onDrop;
   final void Function(CatComponent cat) onDelivered;
   final void Function(CatComponent cat) onEscaped;
@@ -77,7 +91,8 @@ class CatComponent extends SpriteAnimationGroupComponent<CatState>
   @override
   void render(Canvas canvas) {
     if (catchWindow.canCatch || _isDragged) {
-      final fraction = _isDragged ? catchWindow.grip / 3 : catchWindow.ready;
+      final fraction =
+          _isDragged ? catchWindow.gripFraction : catchWindow.readyFraction;
       canvas.drawRect(Rect.fromLTWH(8, 0, size.x - 16, 6),
           Paint()..color = const Color(0xAA34221A));
       canvas.drawRect(
@@ -88,6 +103,24 @@ class CatComponent extends SpriteAnimationGroupComponent<CatState>
       canvas.drawOval(Rect.fromLTWH(6, size.y * .8, size.x - 12, 12),
           Paint()..color = const Color(0x8874FF97));
     }
+    if (_skillActive || (skill == CatSkill.slippery && _isDragged)) {
+      final text = TextPainter(
+          text: TextSpan(
+              text: skill.label,
+              style: const TextStyle(
+                  color: Color(0xFF623B54),
+                  fontSize: 10,
+                  fontWeight: FontWeight.bold)),
+          textDirection: TextDirection.ltr)
+        ..layout(maxWidth: size.x);
+      canvas.drawRRect(
+          RRect.fromRectAndRadius(
+              Rect.fromLTWH(
+                  (size.x - text.width) / 2 - 4, -19, text.width + 8, 16),
+              const Radius.circular(4)),
+          Paint()..color = const Color(0xEEFFF1CB));
+      text.paint(canvas, Offset((size.x - text.width) / 2, -18));
+    }
     final needsSmallerArtwork = ((catType == 'himalaya' ||
                 catType == 'calico') &&
             (current == CatState.dashEscape || current == CatState.vanish)) ||
@@ -97,15 +130,17 @@ class CatComponent extends SpriteAnimationGroupComponent<CatState>
                 current == CatState.vanish)) ||
         (catType == 'orange' &&
             (current == CatState.run || current == CatState.walk));
-    if (!needsSmallerArtwork) {
-      super.render(canvas);
-      return;
-    }
-    // Scale only the artwork around its feet; keep the drag bounds unchanged.
-    const factor = 0.8;
     canvas.save();
-    canvas.translate(size.x * (1 - factor) / 2, size.y * 0.82 * (1 - factor));
-    canvas.scale(factor);
+    // Flip artwork only so input, bait and shelter checks share stable bounds.
+    if (_direction == -1) {
+      canvas.translate(size.x, 0);
+      canvas.scale(-1, 1);
+    }
+    if (needsSmallerArtwork) {
+      const factor = 0.8;
+      canvas.translate(size.x * (1 - factor) / 2, size.y * 0.82 * (1 - factor));
+      canvas.scale(factor);
+    }
     super.render(canvas);
     canvas.restore();
   }
@@ -115,14 +150,13 @@ class CatComponent extends SpriteAnimationGroupComponent<CatState>
     await super.onLoad();
     animations = await loadCatAnimations(gameRef.images, catType);
     _direction = _random.nextBool() ? 1 : -1;
-    _applyFlip();
     _pickNextAction();
   }
 
   @override
   void onTapDown(TapDownEvent event) {
     super.onTapDown(event);
-    if (!isPlaying() || catchWindow.canCatch) return;
+    if (!isPlaying() || catchWindow.canCatch || level.isTutorial) return;
     if (_isDragged || _isDropWrong || _isDelivered || _isEscaping) return;
     _dodge();
   }
@@ -137,7 +171,6 @@ class CatComponent extends SpriteAnimationGroupComponent<CatState>
     _actionTimer = 0;
     _setState(CatState.dashEscape);
     _direction *= -1;
-    _applyFlip();
     _velocityY = 0;
   }
 
@@ -146,7 +179,7 @@ class CatComponent extends SpriteAnimationGroupComponent<CatState>
     super.onDragStart(event);
     if (!isPlaying() || _isDropWrong || _isDelivered) return;
     if (!catchWindow.grab()) {
-      if (_dodgeTime <= 0) _dodge();
+      if (_dodgeTime <= 0 && !level.isTutorial) _dodge();
       return;
     }
     fishTarget = null;
@@ -156,6 +189,7 @@ class CatComponent extends SpriteAnimationGroupComponent<CatState>
     _isVanishing = false;
     _hasTeleported = false;
     _dragStartPosition = position.clone();
+    _skillActive = false;
     _setState(CatState.dragged);
     _velocityY = 0;
   }
@@ -174,11 +208,18 @@ class CatComponent extends SpriteAnimationGroupComponent<CatState>
 
   @override
   void onDragCancel(DragCancelEvent event) {
+    final wasDragged = _isDragged;
+    _isDragged = false;
+    // Flame forwards cancellation to onDragEnd; do not treat it as a drop.
     super.onDragCancel(event);
-    if (_isDragged) {
-      _isDragged = false;
+    if (wasDragged) {
       position = _dragStartPosition.clone();
-      _dodge();
+      if (level.isTutorial) {
+        catchWindow.open();
+        _setState(CatState.idle);
+      } else {
+        _dodge();
+      }
     }
   }
 
@@ -205,6 +246,7 @@ class CatComponent extends SpriteAnimationGroupComponent<CatState>
   void update(double dt) {
     if (!isPlaying()) return;
     super.update(dt);
+    _skillCooldown -= dt;
     final wasReady = catchWindow.canCatch;
     catchWindow.tick(dt);
     if (_isDragged) {
@@ -221,7 +263,7 @@ class CatComponent extends SpriteAnimationGroupComponent<CatState>
     }
     if (_dodgeTime > 0) {
       _dodgeTime -= dt;
-      _move(dt, catDashSpeed);
+      _move(dt, catDashSpeed * level.speedMultiplier);
       _clampPosition();
       if (_dodgeTime <= 0) _pickNextAction();
       return;
@@ -230,14 +272,15 @@ class CatComponent extends SpriteAnimationGroupComponent<CatState>
     if (target != null) {
       final delta = target - (position + size / 2);
       final distance = delta.length;
-      if (distance <= catWalkSpeed * dt + 4) {
+      final speed = catWalkSpeed * level.speedMultiplier;
+      if (distance <= speed * dt + 4) {
         fishTarget = null;
+        hasEaten = true;
         catchWindow.open();
         _setState(CatState.idle);
       } else {
         _direction = delta.x >= 0 ? 1 : -1;
-        _applyFlip();
-        position += delta / distance * catWalkSpeed * dt;
+        position += delta / distance * speed * dt;
       }
       return;
     }
@@ -262,7 +305,12 @@ class CatComponent extends SpriteAnimationGroupComponent<CatState>
       if (_actionTimer >= _currentActionDuration) {
         position = _dragStartPosition;
         _isDropWrong = false;
-        _pickNextAction();
+        if (level.isTutorial && hasEaten) {
+          catchWindow.open();
+          _setState(CatState.idle);
+        } else {
+          _pickNextAction();
+        }
       }
       return;
     }
@@ -302,12 +350,15 @@ class CatComponent extends SpriteAnimationGroupComponent<CatState>
 
     switch (_state) {
       case CatState.walk:
-        _move(dt, catWalkSpeed);
+        _move(dt, catWalkSpeed * level.speedMultiplier);
       case CatState.run:
       case CatState.panic:
-        _move(dt, catRunSpeed);
+        if (_skillActive && skill == CatSkill.zigzag) {
+          _velocityY = sin(_actionTimer * 8) * 100;
+        }
+        _move(dt, catRunSpeed * level.speedMultiplier);
       case CatState.dashEscape:
-        _move(dt, catDashSpeed);
+        _move(dt, catDashSpeed * level.speedMultiplier);
       case CatState.idle:
       case CatState.turnAround:
       case CatState.dragged:
@@ -332,44 +383,55 @@ class CatComponent extends SpriteAnimationGroupComponent<CatState>
     if (position.x <= 0) {
       position.x = 0;
       _direction = 1;
-      _applyFlip();
     } else if (position.x >= gameSize.x - size.x) {
       position.x = gameSize.x - size.x;
       _direction = -1;
-      _applyFlip();
     }
     position.y = position.y.clamp(gameSize.y * 0.15, gameSize.y - size.y - 10);
   }
 
   void _pickNextAction() {
     _actionTimer = 0;
-    final roll = _random.nextDouble();
-    if (fullBehavior && roll >= 0.68) {
+    _skillActive = false;
+    if (level.isTutorial) {
       _velocityY = 0;
-      if (roll < 0.78) {
-        _setState(CatState.turnAround);
-        _direction *= -1;
-        _applyFlip();
-        _currentActionDuration = framesTurnAround * animationStepTime;
-      } else if (roll < 0.86) {
-        _setState(CatState.dashEscape);
-        _currentActionDuration = framesDashEscape * animationStepTime;
-      } else if (roll < 0.93) {
-        _setState(CatState.panic);
-        _currentActionDuration = framesPanic * animationStepTime;
-      } else {
-        _isVanishing = true;
-        _hasTeleported = false;
-        _setState(CatState.vanish);
-        _currentActionDuration = framesVanish * vanishStepTime;
+      _setState(CatState.idle);
+      _currentActionDuration = 2;
+      return;
+    }
+    if (_skillCooldown <= 0 &&
+        skill != CatSkill.none &&
+        skill != CatSkill.slippery) {
+      _skillActive = true;
+      _skillCooldown = _randomBetween(6, 10);
+      _velocityY = 0;
+      switch (skill) {
+        case CatSkill.sprint:
+          _setState(CatState.dashEscape);
+          _currentActionDuration = .75;
+        case CatSkill.feint:
+          _direction *= -1;
+          _setState(CatState.turnAround);
+          _currentActionDuration = framesTurnAround * animationStepTime;
+        case CatSkill.zigzag:
+          _setState(CatState.panic);
+          _currentActionDuration = 1.4;
+        case CatSkill.vanish:
+          _isVanishing = true;
+          _hasTeleported = false;
+          _setState(CatState.vanish);
+          _currentActionDuration = framesVanish * vanishStepTime;
+        default:
+          break;
       }
       return;
     }
+    final roll = _random.nextDouble();
     if (roll < 0.3) {
       _setState(CatState.idle);
       _currentActionDuration = _randomBetween(minIdleTime, maxIdleTime);
       _velocityY = 0;
-    } else if (roll < 0.58) {
+    } else if (roll < 0.58 || !level.allowRun) {
       _setState(CatState.walk);
       _currentActionDuration = _randomBetween(minActionTime, maxActionTime);
       _velocityY = _random.nextDouble() * 30 - 15;
@@ -396,13 +458,7 @@ class CatComponent extends SpriteAnimationGroupComponent<CatState>
   void _maybeChangeDirection(double probability) {
     if (_random.nextDouble() < probability) {
       _direction *= -1;
-      _applyFlip();
     }
-  }
-
-  void _applyFlip() {
-    final shouldFlip = _direction == -1;
-    if (shouldFlip != (scale.x < 0)) flipHorizontallyAroundCenter();
   }
 
   /// A tapped cat panics first, then dashes toward the nearest edge.
@@ -410,7 +466,6 @@ class CatComponent extends SpriteAnimationGroupComponent<CatState>
     _isEscaping = true;
     _velocityY = 0;
     _direction = position.x + size.x / 2 < gameRef.size.x / 2 ? -1 : 1;
-    _applyFlip();
     _setState(CatState.dashEscape);
   }
 
@@ -421,7 +476,6 @@ class CatComponent extends SpriteAnimationGroupComponent<CatState>
     _clampPosition();
     if (dx != 0) {
       _direction = dx > 0 ? 1 : -1;
-      _applyFlip();
     }
   }
 

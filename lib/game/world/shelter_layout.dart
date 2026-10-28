@@ -47,5 +47,5 @@ List<ShelterPlacement> shelterLayout(List<String> catTypes) {
       y: 0.59,
     ));
   }
-  return shelters;
+  return shelters.where((shelter) => catTypes.contains(shelter.type)).toList();
 }
