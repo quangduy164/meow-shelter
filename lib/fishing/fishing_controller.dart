@@ -28,6 +28,7 @@ class FishingController extends ChangeNotifier {
   Offset _spot = const Offset(.5, .66);
   double _clock = 0, _elapsed = 0, _wait = 0;
   double _tension = .32, _progress = .12, _fight = 0;
+  double _worldHour = 12;
   bool _pulling = false, _savingCatch = false, _disposed = false;
   String? _error;
 
@@ -46,7 +47,10 @@ class FishingController extends ChangeNotifier {
         FishingPhase.reeling,
         FishingPhase.saving
       ].contains(_phase);
-  bool get _surging => math.sin(_elapsed * 2.7 + _fight) > .35;
+  bool get _surging =>
+      math.sin(_elapsed * (2.2 + _fish.movementSpeed) + _fight) > .35;
+
+  void setWorldHour(double hour) => _worldHour = hour;
 
   String get message => switch (_phase) {
         FishingPhase.ready => 'HỒ CÂU',
@@ -82,7 +86,9 @@ class FishingController extends ChangeNotifier {
       case FishingPhase.bite:
         if (_elapsed > 1.5) _lose('Cá đã nhả mồi');
       case FishingPhase.reeling:
-        _tension = (_tension + (_pulling ? (_surging ? .40 : .21) : -.32) * dt)
+        final pull = _fish.pullStrength;
+        _tension = (_tension +
+                (_pulling ? (_surging ? .40 * pull : .21 * pull) : -.32) * dt)
             .clamp(0.0, 1.0);
         _progress = (_progress +
                 (_pulling ? (_tension > .82 ? .035 : .15) : -.045) * dt)
@@ -111,13 +117,21 @@ class FishingController extends ChangeNotifier {
 
   void cast(Offset position) {
     if (active) return;
-    _spot = position;
-    _fish = FishSpecies.fromRoll(_random.nextInt(100));
+    // Keep every cast readable: the progress bar carries the reel distance.
+    _spot = const Offset(.5, .64);
+    _fish = FishSpecies.fromRollAtTime(_random.nextInt(1000), _worldHour);
     _wait = 2.5 + _random.nextDouble() * 3.5;
     _fight = _random.nextDouble() * math.pi * 2;
     _error = null;
     _setPhase(FishingPhase.casting);
     HapticFeedback.selectionClick();
+    notifyListeners();
+  }
+
+  void dismissResult() {
+    if (_phase != FishingPhase.caught && _phase != FishingPhase.lost) return;
+    _error = null;
+    _setPhase(FishingPhase.ready);
     notifyListeners();
   }
 

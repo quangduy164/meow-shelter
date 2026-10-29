@@ -6,7 +6,7 @@
     android:viewportHeight="108">
 
     <path
-        android:fillColor="#3B2415"
+        android:fillColor="#2F655A"
         android:pathData="M0,0h108v108h-108z" />
     <!-- Match the 108x82 Home CustomPainter, centered on the launcher canvas. -->
     <group android:translateY="13">
@@ -17,6 +17,12 @@
             android:strokeLineJoin="round"
             android:strokeLineCap="round"
             android:pathData="M10,43 L54,7 L98,43 L89,43 L89,73 L19,73 L19,43 Z" />
+        <path
+            android:fillColor="#4F9EA0"
+            android:pathData="M74,60 C79,57 87,57 92,64 C87,71 79,71 74,68 L67,70 L68,58 Z" />
+        <path
+            android:fillColor="#294941"
+            android:pathData="M84.8,62 A1.2,1.2 0,1 0,87.2,62 A1.2,1.2 0,1 0,84.8,62 Z" />
         <path
             android:fillColor="#FFE9B0"
             android:strokeColor="#573215"

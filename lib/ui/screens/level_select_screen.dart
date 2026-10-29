@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../levels/levels.dart';
+import '../../game/world/shelter_garden_painter.dart';
 import 'game_screen.dart';
 import '../widgets/round_button.dart';
 import '../widgets/level_card.dart';
@@ -14,8 +15,7 @@ class LevelSelectScreen extends StatelessWidget {
       body: Stack(
         fit: StackFit.expand,
         children: [
-          Image.asset('assets/images/Background/shelter-yard-background.png',
-              fit: BoxFit.cover),
+          const CustomPaint(painter: ShelterGardenPainter()),
           const ColoredBox(color: Color(0x660F371E)),
           SafeArea(
             child: Column(

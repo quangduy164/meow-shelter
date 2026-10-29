@@ -4,6 +4,7 @@ import '../../game/meow_shelter_game.dart';
 import '../../levels/level_config.dart';
 import '../../levels/levels.dart';
 import '../widgets/round_button.dart';
+import '../widgets/round_result_overlay.dart';
 import '../../collection/fish_collection.dart';
 import 'fishing_screen.dart';
 
@@ -47,23 +48,27 @@ class _GameScreenState extends State<GameScreen> {
                     builder: (_) => GameScreen(level: gameLevels[index + 1])))
             : null);
     return Scaffold(
-      body: Stack(
-        children: [
-          GameWidget(game: _game!),
-          SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.all(12),
-              child: Align(
-                alignment: Alignment.topLeft,
-                child: RoundButton(
-                  icon: Icons.home_rounded,
-                  onPressed: () => Navigator.of(context).pop(),
+      body: GameWidget<MeowShelterGame>(
+          game: _game!,
+          initialActiveOverlays: const [
+            'home'
+          ],
+          overlayBuilderMap: {
+            'roundResult': (context, game) => RoundResultOverlay(
+                game: game, onHome: () => Navigator.of(context).pop()),
+            'home': (context, game) => SafeArea(
+                  child: Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: Align(
+                      alignment: Alignment.topLeft,
+                      child: RoundButton(
+                        icon: Icons.home_rounded,
+                        onPressed: () => Navigator.of(context).pop(),
+                      ),
+                    ),
+                  ),
                 ),
-              ),
-            ),
-          ),
-        ],
-      ),
+          }),
     );
   }
 }

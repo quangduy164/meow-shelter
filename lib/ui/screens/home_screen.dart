@@ -4,6 +4,7 @@ import '../../levels/levels.dart';
 import 'game_screen.dart';
 import 'level_select_screen.dart';
 import 'fishing_screen.dart';
+import '../widgets/home_background_painter.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -14,10 +15,7 @@ class HomeScreen extends StatelessWidget {
       body: Stack(
         fit: StackFit.expand,
         children: [
-          Image.asset(
-            'assets/images/Background/home-background.png',
-            fit: BoxFit.cover,
-          ),
+          const CustomPaint(painter: HomeBackgroundPainter()),
           SafeArea(
             child: Center(
               child: Padding(
@@ -156,6 +154,18 @@ class _ShelterCatLogoPainter extends CustomPainter {
       ..close();
     canvas.drawPath(roof, fill);
     canvas.drawPath(roof, outline);
+
+    final fish = Paint()..color = const Color(0xFF4F9EA0);
+    canvas.drawOval(const Rect.fromLTWH(74, 60, 18, 8), fish);
+    canvas.drawPath(
+        Path()
+          ..moveTo(75, 64)
+          ..lineTo(67, 58)
+          ..lineTo(68, 70)
+          ..close(),
+        fish);
+    canvas.drawCircle(
+        const Offset(86, 63), 1.1, Paint()..color = const Color(0xFF294941));
 
     final cat = Path()
       ..moveTo(center.dx - 28, 58)

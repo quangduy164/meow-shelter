@@ -56,6 +56,7 @@ class FishingWaterPainter extends CustomPainter {
       }
     }
     for (var i = 0; i < 7; i++) {
+      // Background fish keep one shared school pattern between casts.
       final speed = .12 + (i % 3) * .035;
       final angle = clock * speed + i * 2.3;
       final rx = 125 + (i % 3) * 35.0;
@@ -82,12 +83,17 @@ class FishingWaterPainter extends CustomPainter {
         phase == FishingPhase.bite || phase == FishingPhase.reeling;
     if (fighting) {
       var target = FishingLakeLayout.toScene(spot);
-      if (phase == FishingPhase.reeling) {
-        target = Offset.lerp(target, const Offset(680, 468), progress)!;
-      }
       if (!fish.isJunk) {
-        _fish(canvas, target + Offset(math.sin(clock * 8) * 13, 9),
-            math.sin(clock * 5) * .6, clock * 14, 24, const Color(0x8832535B));
+        final wiggle = math.sin(clock * (6 + fish.movementSpeed * 4)) *
+            (8 + fish.movementAmplitude * 8);
+        _fish(
+            canvas,
+            target + Offset(wiggle, 9),
+            math.sin(clock * (3 + fish.movementSpeed * 2)) *
+                (.35 + fish.movementAmplitude * .3),
+            clock * (10 + fish.movementSpeed * 5),
+            24,
+            const Color(0x8832535B));
       }
       for (var i = 0; i < 4; i++) {
         final t = (clock * 1.6 + i / 4) % 1;

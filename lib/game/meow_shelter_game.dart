@@ -1,13 +1,12 @@
 import 'dart:math';
 
-import 'package:flame/components.dart';
-import 'package:flame/events.dart';
 import 'package:flame/game.dart';
 import 'package:flutter/painting.dart';
 
 import 'components/cat_component.dart';
 import 'components/fish_item_component.dart';
 import 'components/catch_tutorial_component.dart';
+import 'components/shelter_garden_component.dart';
 import '../collection/fish_collection.dart';
 import 'components/hud_component.dart';
 import 'components/shelter_zone_component.dart';
@@ -16,7 +15,7 @@ import '../levels/level_config.dart';
 import 'world/shelter_layout.dart';
 import 'systems/bait_system.dart';
 
-class MeowShelterGame extends FlameGame with TapCallbacks {
+class MeowShelterGame extends FlameGame {
   MeowShelterGame({required this.level, this.onNextLevel});
 
   final LevelConfig level;
@@ -24,16 +23,29 @@ class MeowShelterGame extends FlameGame with TapCallbacks {
   final _random = Random();
   final _shelters = <ShelterZoneComponent>[];
   late HudComponent _hud;
+  RoundStatus get roundStatus => _hud.status;
+  bool _restarting = false;
   double _secondAccumulator = 0;
   final _bait = BaitSystem();
 
   @override
   Future<void> onLoad() async {
     await super.onLoad();
-    await _startRound();
+    await restartRound();
+  }
+
+  Future<void> restartRound() async {
+    if (_restarting) return;
+    _restarting = true;
+    try {
+      await _startRound();
+    } finally {
+      _restarting = false;
+    }
   }
 
   Future<void> _startRound() async {
+    overlays.remove('roundResult');
     removeAll(children.toList());
     _shelters.clear();
     _secondAccumulator = 0;
@@ -45,12 +57,10 @@ class MeowShelterGame extends FlameGame with TapCallbacks {
     _hud.totalCats = level.catTypes.length;
     _hud.secondsLeft = level.timeLimit;
     _hud.isTutorial = level.isTutorial;
-    _hud.hasNextLevel = onNextLevel != null;
     _hud.levelTitle = 'MÀN ${level.id} · ${level.name.toUpperCase()}';
 
-    final background =
-        await loadSprite('Background/shelter-yard-background.png');
-    add(SpriteComponent(sprite: background, size: size, priority: -100));
+    add(ShelterGardenComponent(
+        isPlaying: () => _hud.status == RoundStatus.playing));
     await _addCats();
     await _addShelters();
     if (level.isTutorial) {
@@ -118,7 +128,7 @@ class MeowShelterGame extends FlameGame with TapCallbacks {
   void _handleDelivered(CatComponent cat) {
     if (_hud.status == RoundStatus.playing &&
         _hud.delivered >= _hud.totalCats) {
-      _hud.status = RoundStatus.won;
+      _showResult(RoundStatus.won);
     }
   }
 
@@ -140,25 +150,13 @@ class MeowShelterGame extends FlameGame with TapCallbacks {
     if (_secondAccumulator >= 1) {
       _secondAccumulator -= 1;
       _hud.secondsLeft -= 1;
-      if (_hud.secondsLeft <= 0) _hud.status = RoundStatus.lost;
+      if (_hud.secondsLeft <= 0) _showResult(RoundStatus.lost);
     }
   }
 
-  @override
-  void onTapDown(TapDownEvent event) {
-    super.onTapDown(event);
-    if (isLoaded && _hud.status != RoundStatus.playing) {
-      if (!_hud.actionButton
-          .contains(Offset(event.localPosition.x, event.localPosition.y))) {
-        return;
-      }
-      if (_hud.status == RoundStatus.won && onNextLevel != null) {
-        onNextLevel!();
-      } else {
-        _startRound();
-      }
-      return;
-    }
+  void _showResult(RoundStatus status) {
+    _hud.status = status;
+    overlays.add('roundResult');
   }
 
   bool get canPlaceFish =>

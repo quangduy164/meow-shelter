@@ -11,6 +11,7 @@ import '../cats/cat_animations.dart';
 import '../catch_window.dart';
 import '../../levels/level_config.dart';
 import '../cats/cat_skill.dart';
+import '../cats/cat_dialogue.dart';
 
 /// A draggable cat. The game decides whether the cat was dropped in its
 /// matching shelter through [onDrop].
@@ -71,6 +72,7 @@ class CatComponent extends SpriteAnimationGroupComponent<CatState>
   final void Function(CatComponent cat) onDelivered;
   final void Function(CatComponent cat) onEscaped;
   final _random = Random();
+  final _dialogue = CatDialogue();
 
   CatState _state = CatState.idle;
   double _actionTimer = 0;
@@ -103,24 +105,6 @@ class CatComponent extends SpriteAnimationGroupComponent<CatState>
       canvas.drawOval(Rect.fromLTWH(6, size.y * .8, size.x - 12, 12),
           Paint()..color = const Color(0x8874FF97));
     }
-    if (_skillActive || (skill == CatSkill.slippery && _isDragged)) {
-      final text = TextPainter(
-          text: TextSpan(
-              text: skill.label,
-              style: const TextStyle(
-                  color: Color(0xFF623B54),
-                  fontSize: 10,
-                  fontWeight: FontWeight.bold)),
-          textDirection: TextDirection.ltr)
-        ..layout(maxWidth: size.x);
-      canvas.drawRRect(
-          RRect.fromRectAndRadius(
-              Rect.fromLTWH(
-                  (size.x - text.width) / 2 - 4, -19, text.width + 8, 16),
-              const Radius.circular(4)),
-          Paint()..color = const Color(0xEEFFF1CB));
-      text.paint(canvas, Offset((size.x - text.width) / 2, -18));
-    }
     final needsSmallerArtwork = ((catType == 'himalaya' ||
                 catType == 'calico') &&
             (current == CatState.dashEscape || current == CatState.vanish)) ||
@@ -143,6 +127,46 @@ class CatComponent extends SpriteAnimationGroupComponent<CatState>
     }
     super.render(canvas);
     canvas.restore();
+    _drawDialogue(canvas);
+  }
+
+  void _drawDialogue(Canvas canvas) {
+    final line = _dialogue.text;
+    if (line == null) return;
+    final text = TextPainter(
+        text: TextSpan(
+            text: line,
+            style: const TextStyle(
+                color: Color(0xFF31564C),
+                fontSize: 11,
+                fontWeight: FontWeight.w600)),
+        textDirection: TextDirection.ltr,
+        textAlign: TextAlign.center)
+      ..layout(maxWidth: min(154, gameRef.size.x - 32));
+    final width = text.width + 16;
+    final left = (size.x / 2 - width / 2)
+        .clamp(8 - position.x, gameRef.size.x - position.x - width - 8);
+    final below = position.y < text.height + 34;
+    final top = below ? size.y + 8 : -text.height - 20;
+    final bubble = Rect.fromLTWH(left, top, width, text.height + 12);
+    final fill = Paint()..color = const Color(0xF5FFFBEA);
+    final tailX = (size.x / 2).clamp(bubble.left + 8, bubble.right - 8);
+    canvas.drawPath(
+        Path()
+          ..moveTo(tailX - 4, below ? bubble.top : bubble.bottom)
+          ..lineTo(tailX, below ? bubble.top - 6 : bubble.bottom + 6)
+          ..lineTo(tailX + 4, below ? bubble.top : bubble.bottom)
+          ..close(),
+        fill);
+    canvas.drawRRect(
+        RRect.fromRectAndRadius(bubble, const Radius.circular(7)), fill);
+    canvas.drawRRect(
+        RRect.fromRectAndRadius(bubble, const Radius.circular(7)),
+        Paint()
+          ..color = const Color(0x99658670)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 1);
+    text.paint(canvas, Offset(bubble.left + 8, bubble.top + 6));
   }
 
   @override
@@ -246,6 +270,7 @@ class CatComponent extends SpriteAnimationGroupComponent<CatState>
   void update(double dt) {
     if (!isPlaying()) return;
     super.update(dt);
+    _dialogue.update(dt);
     _skillCooldown -= dt;
     final wasReady = catchWindow.canCatch;
     catchWindow.tick(dt);
@@ -452,6 +477,7 @@ class CatComponent extends SpriteAnimationGroupComponent<CatState>
   void _setState(CatState newState) {
     _state = newState;
     current = newState;
+    if (!level.isTutorial) _dialogue.react(newState);
     animationTicker?.reset();
   }
 

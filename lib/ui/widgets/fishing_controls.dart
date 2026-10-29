@@ -12,19 +12,18 @@ class FishingControls extends StatelessWidget {
     return FittedBox(
         fit: BoxFit.scaleDown,
         child: SizedBox(
-            width: 260,
+            width: 132,
             height: 80,
             child: Stack(
-              alignment: Alignment.center,
               children: [
-                _action(),
+                Align(alignment: Alignment.centerRight, child: _action()),
                 if (controller.phase == FishingPhase.reeling)
                   Positioned(
-                      right: 0,
+                      left: 0,
                       top: 0,
                       child: IgnorePointer(
                           child: SizedBox(
-                              width: 72,
+                              width: 52,
                               height: 80,
                               child: FittedBox(
                                   child: FishingGauge(

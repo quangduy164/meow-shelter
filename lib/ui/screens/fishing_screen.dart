@@ -17,6 +17,7 @@ import '../widgets/fishing_painter.dart';
 import '../widgets/fishing_water_painter.dart';
 import '../widgets/fishing_sky_painter.dart';
 import '../widgets/fishing_ambient_painter.dart';
+import '../widgets/fishing_catch_popup.dart';
 
 class FishingScreen extends StatefulWidget {
   const FishingScreen({super.key});
@@ -39,6 +40,7 @@ class _FishingScreenState extends State<FishingScreen>
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _controller = FishingController(FishCollection.instance);
+    _controller.setWorldHour(_lighting.hour);
     _ticker = createTicker(_tick)..start();
     _lightingTimer = Timer.periodic(const Duration(seconds: 30), (_) {
       if (!_paused) _refreshLighting();
@@ -46,7 +48,10 @@ class _FishingScreenState extends State<FishingScreen>
   }
 
   void _refreshLighting() {
-    setState(() => _lighting = FishingLighting(DateTime.now()));
+    setState(() {
+      _lighting = FishingLighting(DateTime.now());
+      _controller.setWorldHour(_lighting.hour);
+    });
   }
 
   void _tick(Duration timestamp) {
@@ -187,12 +192,16 @@ class _FishingScreenState extends State<FishingScreen>
                                   _controller.active ? null : _openCollection,
                               tool: FishingTool.basket)),
                       Positioned(
-                          left: padding.left + 8,
                           right: padding.right + 8,
                           bottom: padding.bottom + 8,
+                          width: 132,
                           height: 80,
-                          child: Center(
-                              child: FishingControls(controller: _controller))),
+                          child: FishingControls(controller: _controller)),
+                      if (_controller.phase == FishingPhase.caught)
+                        Positioned.fill(
+                            child: FishingCatchPopup(
+                                fish: _controller.fish,
+                                onNext: _controller.dismissResult)),
                     ])),
           ]);
         }),

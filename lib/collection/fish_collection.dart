@@ -11,7 +11,7 @@ class FishCollection {
   static const _key = 'fish_collection_species_v1';
   static late FishCollection instance;
   int get count => FishSpecies.values
-      .where((fish) => !fish.isJunk)
+      .where((fish) => !fish.isJunk && fish != FishSpecies.catMew)
       .fold(0, (total, fish) => total + countOf(fish));
   int get junkCount => FishSpecies.values
       .where((fish) => fish.isJunk)

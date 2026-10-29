@@ -2,7 +2,6 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import '../../fishing/fishing_controller.dart';
 import '../../collection/fish_species.dart';
-import 'fishing_fish_art.dart';
 
 class FishingPainter extends CustomPainter {
   const FishingPainter(
@@ -22,10 +21,6 @@ class FishingPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    Offset point(double x, double y) {
-      return Offset(x * size.width, y * size.height);
-    }
-
     final tip = _drawRod(canvas, size);
     if (phase == FishingPhase.ready || phase == FishingPhase.lost) return;
     var bobber = Offset(spot.dx * size.width, spot.dy * size.height);
@@ -34,8 +29,7 @@ class FishingPainter extends CustomPainter {
       bobber =
           Offset.lerp(tip, bobber, t)! - Offset(0, math.sin(t * math.pi) * 80);
     } else if (phase == FishingPhase.reeling) {
-      bobber = Offset.lerp(bobber, point(.68, .78), progress)! +
-          Offset(math.sin(clock * 8) * 7, math.cos(clock * 7) * 3);
+      bobber += Offset(math.sin(clock * 8) * 7, math.cos(clock * 7) * 3);
     } else {
       bobber += Offset(
           0,
@@ -46,12 +40,17 @@ class FishingPainter extends CustomPainter {
       ..color = const Color(0xCCF4F5DB)
       ..strokeWidth = 1.4
       ..style = PaintingStyle.stroke;
-    canvas.drawPath(
-        Path()
-          ..moveTo(tip.dx, tip.dy)
-          ..quadraticBezierTo((tip.dx + bobber.dx) / 2,
-              bobber.dy - (pulling ? 30 : 0), bobber.dx, bobber.dy),
-        line);
+    final taut = phase == FishingPhase.reeling && progress > .78;
+    if (taut) {
+      canvas.drawLine(tip, bobber, line);
+    } else {
+      canvas.drawPath(
+          Path()
+            ..moveTo(tip.dx, tip.dy)
+            ..quadraticBezierTo((tip.dx + bobber.dx) / 2,
+                bobber.dy - (pulling ? 30 : 0), bobber.dx, bobber.dy),
+          line);
+    }
     final ripple = Paint()
       ..color = const Color(0xAACFF8EF)
       ..strokeWidth = 1.5
@@ -89,13 +88,6 @@ class FishingPainter extends CustomPainter {
           textDirection: TextDirection.ltr)
         ..layout();
       painter.paint(canvas, bobber - Offset(painter.width / 2, 58));
-    }
-    if (phase == FishingPhase.caught || phase == FishingPhase.saving) {
-      final catchPosition = point(.68, .70);
-      canvas.save();
-      canvas.translate(catchPosition.dx - 32, catchPosition.dy - 21);
-      FishingFishArt(fish).paint(canvas, const Size(64, 42));
-      canvas.restore();
     }
   }
 
