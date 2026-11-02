@@ -194,7 +194,7 @@ class _FishingScreenState extends State<FishingScreen>
                       Positioned(
                           right: padding.right + 8,
                           bottom: padding.bottom + 8,
-                          width: 132,
+                          width: 80,
                           height: 80,
                           child: FishingControls(controller: _controller)),
                       if (_controller.phase == FishingPhase.caught)

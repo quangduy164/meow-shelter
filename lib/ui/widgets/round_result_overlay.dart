@@ -63,7 +63,7 @@ class _RoundResultOverlayState extends State<RoundResultOverlay>
                 fit: BoxFit.scaleDown,
                 child: SizedBox(
                   width: 430,
-                  height: _won ? 268 : 312,
+                  height: 268,
                   child: Material(
                       color: Colors.transparent,
                       child: CustomPaint(
@@ -99,7 +99,9 @@ class _RoundResultOverlayState extends State<RoundResultOverlay>
                               child: Semantics(
                                   liveRegion: true,
                                   child: Text(
-                                      _won ? 'VỀ NHÀ RỒI!' : 'HẾT GIỜ RỒI!',
+                                      widget.game.level.isInfinite
+                                          ? (_won ? 'CỨU HỘ THÀNH CÔNG!' : 'MÈO ĐÃ CHẠY MẤT!')
+                                          : (_won ? 'VỀ NHÀ RỒI!' : 'HẾT GIỜ RỒI!'),
                                       textAlign: TextAlign.center,
                                       style: TextStyle(
                                           fontSize: 27,
@@ -108,18 +110,6 @@ class _RoundResultOverlayState extends State<RoundResultOverlay>
                                           color: _won
                                               ? const Color(0xFF376B52)
                                               : const Color(0xFFAA6751))))),
-                          if (!_won)
-                            const Positioned(
-                                top: 164,
-                                left: 40,
-                                right: 40,
-                                child: Text(
-                                    'Mấy bé còn mải chơi.\nMình thử thêm lần nữa nhé!',
-                                    textAlign: TextAlign.center,
-                                    style: TextStyle(
-                                        fontSize: 14,
-                                        height: 1.5,
-                                        color: Color(0xFF70644A)))),
                           Positioned(
                               left: 38,
                               right: 38,
@@ -129,7 +119,7 @@ class _RoundResultOverlayState extends State<RoundResultOverlay>
                                   children: [
                                     _ResultButton(
                                         tooltip: 'Về chọn màn',
-                                        icon: Icons.cottage_rounded,
+                                        icon: Icons.home_rounded,
                                         onPressed: widget.onHome),
                                     const SizedBox(width: 10),
                                     if (next) ...[

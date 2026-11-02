@@ -57,6 +57,8 @@ class MeowShelterGame extends FlameGame {
     _hud.totalCats = level.catTypes.length;
     _hud.secondsLeft = level.timeLimit;
     _hud.isTutorial = level.isTutorial;
+    _hud.isInfinite = level.isInfinite;
+    _hud.objective = level.isInfinite ? 'CỨU NHIỀU' : '';
     _hud.levelTitle = 'MÀN ${level.id} · ${level.name.toUpperCase()}';
 
     add(ShelterGardenComponent(
@@ -80,18 +82,27 @@ class MeowShelterGame extends FlameGame {
   }
 
   Future<void> _addCats() async {
+    if (level.isInfinite) {
+      for (var i = 0; i < 2; i++) {
+        _spawnCat(level.catTypes[_random.nextInt(level.catTypes.length)]);
+      }
+      return;
+    }
     for (final type in level.catTypes) {
       _spawnCat(type);
     }
   }
 
   void _spawnCat(String type) {
+    final catLevel = level.isInfinite
+        ? level.forInfiniteProgress(_hud.delivered)
+        : level;
     add(CatComponent(
       position: level.isTutorial
-          ? Vector2(size.x * .43 - catWidth / 2, size.y * .5 - catHeight / 2)
+          ? Vector2(size.x * .43 - catWidth / 2, size.y * .43 - catHeight / 2)
           : _randomCatPosition(),
       catType: type,
-      level: level,
+      level: catLevel,
       onDrop: _handleDrop,
       onDelivered: _handleDelivered,
       onEscaped: _handleEscape,
@@ -108,7 +119,7 @@ class MeowShelterGame extends FlameGame {
         label: shelter.label,
         size: bedSize,
         position: level.isTutorial
-            ? Vector2(size.x * .74, size.y * .43)
+            ? Vector2(size.x * .74, size.y * .42)
             : Vector2(size.x * shelter.x, size.y * shelter.y),
       );
       _shelters.add(component);
@@ -119,21 +130,30 @@ class MeowShelterGame extends FlameGame {
   bool _handleDrop(CatComponent cat) {
     if (_hud.status != RoundStatus.playing) return false;
     final isCorrect = _shelters.any((shelter) => shelter.accepts(cat));
-    if (isCorrect) {
-      _hud.delivered += 1;
-    }
     return isCorrect;
   }
 
   void _handleDelivered(CatComponent cat) {
-    if (_hud.status == RoundStatus.playing &&
-        _hud.delivered >= _hud.totalCats) {
+    if (_hud.status != RoundStatus.playing) return;
+    _hud.delivered += 1;
+    if (level.isInfinite) {
+      if (_hud.delivered % 5 == 0) _shuffleShelters();
+      _spawnCat(level.catTypes[_random.nextInt(level.catTypes.length)]);
+      if (_hud.delivered % 5 == 0 &&
+          children.whereType<CatComponent>().length < 5) {
+        _spawnCat(level.catTypes[_random.nextInt(level.catTypes.length)]);
+      }
+    } else if (_hud.delivered >= _hud.totalCats) {
       _showResult(RoundStatus.won);
     }
   }
 
   void _handleEscape(CatComponent cat) {
     if (_hud.status != RoundStatus.playing) return;
+    if (level.isInfinite) {
+      _showResult(RoundStatus.lost);
+      return;
+    }
     // Mèo chạy ra ngoài được thay bằng một bé cùng loại để màn vẫn có thể thắng.
     _spawnCat(cat.catType);
   }
@@ -145,7 +165,7 @@ class MeowShelterGame extends FlameGame {
     _bait.update(children.whereType<CatComponent>());
     // Let the last rescued cat finish its success animations before ending.
     if (_hud.delivered >= _hud.totalCats) return;
-    if (level.isTutorial) return;
+    if (level.isTutorial || level.isInfinite) return;
     _secondAccumulator += dt;
     if (_secondAccumulator >= 1) {
       _secondAccumulator -= 1;
@@ -172,6 +192,16 @@ class MeowShelterGame extends FlameGame {
     _bait.place(point, size, children.whereType<CatComponent>());
   }
 
+  void _shuffleShelters() {
+    final slots = shelterLayout(level.catTypes)
+        .map((shelter) => Vector2(size.x * shelter.x, size.y * shelter.y))
+        .toList()
+      ..shuffle(_random);
+    for (var i = 0; i < _shelters.length && i < slots.length; i++) {
+      _shelters[i].position = slots[i];
+    }
+  }
+
   @override
   void render(Canvas canvas) {
     super.render(canvas);
@@ -184,7 +214,7 @@ class MeowShelterGame extends FlameGame {
   Vector2 _randomCatPosition() {
     final x =
         size.x * .22 + _random.nextDouble() * max(0, size.x * .56 - catWidth);
-    final y = size.y * 0.30 + _random.nextDouble() * (size.y * 0.33);
+    final y = size.y * 0.28 + _random.nextDouble() * (size.y * 0.32);
     return Vector2(x, y);
   }
 }

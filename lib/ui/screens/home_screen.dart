@@ -4,6 +4,7 @@ import '../../levels/levels.dart';
 import 'game_screen.dart';
 import 'level_select_screen.dart';
 import 'fishing_screen.dart';
+import 'return_home_screen.dart';
 import '../widgets/home_background_painter.dart';
 
 class HomeScreen extends StatelessWidget {
@@ -55,6 +56,25 @@ class HomeScreen extends StatelessWidget {
                           onPressed: () => Navigator.of(context).push(
                               MaterialPageRoute<void>(
                                   builder: (_) => const FishingScreen())),
+                        ),
+                        const SizedBox(height: 8),
+                        _HomeButton(
+                          label: 'CỨU HỘ VÔ HẠN',
+                          icon: Icons.all_inclusive_rounded,
+                          secondary: true,
+                          onPressed: () => Navigator.of(context).push(
+                              MaterialPageRoute<void>(
+                                  builder: (_) =>
+                                      const GameScreen(level: infiniteLevel))),
+                        ),
+                        const SizedBox(height: 8),
+                        _HomeButton(
+                          label: 'MÈO VỀ NHÀ',
+                          icon: Icons.route_rounded,
+                          secondary: true,
+                          onPressed: () => Navigator.of(context).push(
+                              MaterialPageRoute<void>(
+                                  builder: (_) => const ReturnHomeScreen())),
                         ),
                         const SizedBox(height: 8),
                         TextButton.icon(

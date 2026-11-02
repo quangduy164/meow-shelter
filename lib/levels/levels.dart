@@ -66,3 +66,17 @@ const gameLevels = <LevelConfig>[
       gripSeconds: 3.5,
       skillTier: 3),
 ];
+
+const infiniteLevel = LevelConfig(
+    id: 99,
+    name: 'Cứu hộ vô hạn',
+    catTypes: ['orange', 'himalaya', 'scottish', 'calico', 'black'],
+    timeLimit: 0,
+    speedMultiplier: .8,
+    readySeconds: 3,
+    gripSeconds: 4,
+    skillTier: 0,
+    isInfinite: true);
+
+
+

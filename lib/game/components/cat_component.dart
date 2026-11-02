@@ -88,6 +88,7 @@ class CatComponent extends SpriteAnimationGroupComponent<CatState>
 
   bool _isVanishing = false;
   bool _hasTeleported = false;
+  bool _deliveredNotified = false;
   static const double _vanishTeleportDistance = 200.0;
 
   @override
@@ -320,7 +321,10 @@ class CatComponent extends SpriteAnimationGroupComponent<CatState>
         _currentActionDuration = framesCelebrate * animationStepTime;
       } else if (_state == CatState.celebrate &&
           _actionTimer >= _currentActionDuration) {
-        onDelivered(this);
+        if (!_deliveredNotified) {
+          _deliveredNotified = true;
+          onDelivered(this);
+        }
         removeFromParent();
       }
       return;
@@ -412,7 +416,7 @@ class CatComponent extends SpriteAnimationGroupComponent<CatState>
       position.x = gameSize.x - size.x;
       _direction = -1;
     }
-    position.y = position.y.clamp(gameSize.y * 0.15, gameSize.y - size.y - 10);
+    position.y = position.y.clamp(gameSize.y * 0.20, gameSize.y * 0.70);
   }
 
   void _pickNextAction() {

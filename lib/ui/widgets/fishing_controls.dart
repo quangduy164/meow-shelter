@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../fishing/fishing_controller.dart';
 import 'fishing_action_button.dart';
-import 'fishing_gauges.dart';
 
 class FishingControls extends StatelessWidget {
   const FishingControls({super.key, required this.controller});
@@ -12,23 +11,11 @@ class FishingControls extends StatelessWidget {
     return FittedBox(
         fit: BoxFit.scaleDown,
         child: SizedBox(
-            width: 132,
+            width: 80,
             height: 80,
             child: Stack(
               children: [
                 Align(alignment: Alignment.centerRight, child: _action()),
-                if (controller.phase == FishingPhase.reeling)
-                  Positioned(
-                      left: 0,
-                      top: 0,
-                      child: IgnorePointer(
-                          child: SizedBox(
-                              width: 52,
-                              height: 80,
-                              child: FittedBox(
-                                  child: FishingGauge(
-                                      value: controller.tension,
-                                      tension: true))))),
               ],
             )));
   }
@@ -57,7 +44,6 @@ class FishingControls extends StatelessWidget {
             tool: FishingTool.float,
             tooltip: 'Thả câu',
             primary: true,
-            busy: controller.phase == FishingPhase.casting,
             onPressed: controller.phase == FishingPhase.casting
                 ? null
                 : () => controller.cast(controller.spot)),

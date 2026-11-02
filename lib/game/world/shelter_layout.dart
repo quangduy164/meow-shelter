@@ -14,28 +14,28 @@ List<ShelterPlacement> shelterLayout(List<String> catTypes) {
       label: 'MÈO CAM',
       asset: 'Bed/bed-orange.png',
       x: 0.00,
-      y: 0.20
+      y: 0.19
     ),
     (
       type: 'himalaya',
       label: 'HIMALAYA',
       asset: 'Bed/bed-himalaya.png',
       x: 0.80,
-      y: 0.20
+      y: 0.19
     ),
     (
       type: 'scottish',
       label: 'SCOTTISH',
       asset: 'Bed/bed-scottish.png',
       x: 0.00,
-      y: 0.59
+      y: 0.56
     ),
     (
       type: 'calico',
       label: 'CALICO',
       asset: 'Bed/bed-calico.png',
       x: 0.80,
-      y: 0.59
+      y: 0.56
     ),
   ];
   if (catTypes.contains('black')) {
@@ -44,7 +44,7 @@ List<ShelterPlacement> shelterLayout(List<String> catTypes) {
       label: 'MÈO ĐEN',
       asset: 'Bed/bed-scottish.png',
       x: 0.40,
-      y: 0.59,
+      y: 0.56,
     ));
   }
   return shelters.where((shelter) => catTypes.contains(shelter.type)).toList();

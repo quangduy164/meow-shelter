@@ -18,6 +18,10 @@ class ShelterGardenPainter extends CustomPainter {
                   end: Alignment.bottomCenter,
                   colors: [Color(0xFFA8DFE4), Color(0xFFEAF2D4)])
               .createShader(const Rect.fromLTWH(0, 0, 1000, 110)));
+    canvas.drawCircle(
+        const Offset(865, 42), 26, Paint()..color = const Color(0xFFFFE5A3));
+    canvas.drawCircle(
+        const Offset(865, 42), 39, Paint()..color = const Color(0x33FFF0B5));
     for (final cloud in [const Offset(200, 20), const Offset(652, 24)]) {
       canvas.drawPath(
           Path()
@@ -42,6 +46,16 @@ class ShelterGardenPainter extends CustomPainter {
     canvas.drawPath(hedge, Paint()..color = const Color(0xFF76AC80));
     canvas.drawPath(hedge.shift(const Offset(0, 19)),
         Paint()..color = const Color(0xFF8DBC81));
+    final distantHedge = Path()..moveTo(0, 105);
+    for (var x = 0.0; x < 1000; x += 42) {
+      distantHedge.quadraticBezierTo(
+          x + 18, 83 + math.sin(x * .07) * 5, x + 42, 108);
+    }
+    distantHedge
+      ..lineTo(1000, 133)
+      ..lineTo(0, 133)
+      ..close();
+    canvas.drawPath(distantHedge, Paint()..color = const Color(0xFF5F9A72));
     _fence(canvas);
     final path = Path()
       ..moveTo(469, 112)
@@ -59,6 +73,8 @@ class ShelterGardenPainter extends CustomPainter {
           Paint()..color = const Color(0x447C8865));
       canvas.drawOval(stone, Paint()..color = const Color(0xFFF0E7CA));
     }
+    _sideGardenBed(canvas, const Offset(82, 205), false);
+    _sideGardenBed(canvas, const Offset(918, 205), true);
     _tree(canvas, const Offset(10, 125), false);
     _tree(canvas, const Offset(990, 128), true);
     _bench(canvas);
@@ -287,6 +303,39 @@ class ShelterGardenPainter extends CustomPainter {
           ..color = const Color(0xFFBCE0D1)
           ..strokeWidth = 3
           ..strokeCap = StrokeCap.round);
+    canvas.restore();
+  }
+
+  void _sideGardenBed(Canvas canvas, Offset origin, bool mirror) {
+    canvas.save();
+    canvas.translate(origin.dx, origin.dy);
+    if (mirror) canvas.scale(-1, 1);
+    canvas.drawOval(const Rect.fromLTWH(-42, 21, 84, 18),
+        Paint()..color = const Color(0x335B784E));
+    canvas.drawPath(
+        Path()
+          ..moveTo(-42, 18)
+          ..quadraticBezierTo(-26, 2, 0, 13)
+          ..quadraticBezierTo(22, 2, 42, 18)
+          ..quadraticBezierTo(20, 30, 0, 27)
+          ..quadraticBezierTo(-22, 30, -42, 18)
+          ..close(),
+        Paint()..color = const Color(0xFF876D4F));
+    for (var i = 0; i < 5; i++) {
+      final x = -28 + i * 14.0;
+      canvas.drawLine(
+          Offset(x, 18),
+          Offset(x + 3, -3 - (i % 2) * 7),
+          Paint()
+            ..color = const Color(0xFF5B925E)
+            ..strokeWidth = 2);
+      canvas.drawCircle(
+          Offset(x + 3, -7 - (i % 2) * 7),
+          4,
+          Paint()
+            ..color =
+                i.isEven ? const Color(0xFFFFD8A5) : const Color(0xFFE9A1AF));
+    }
     canvas.restore();
   }
 

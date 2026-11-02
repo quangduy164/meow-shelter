@@ -115,6 +115,9 @@ class FishingPainter extends CustomPainter {
     final reel = base +
         Offset(-12 * math.cos(handleAngle) + 17 * math.sin(handleAngle),
             -12 * math.sin(handleAngle) - 17 * math.cos(handleAngle));
+    if (phase == FishingPhase.reeling) {
+      _drawTensionGauge(canvas, reel + const Offset(-34, 0));
+    }
     const guides = [.30, .52, .73, .90, 1.0];
     final stroke = Paint()..strokeCap = StrokeCap.round;
     for (var i = 0; i < 24; i++) {
@@ -213,6 +216,71 @@ class FishingPainter extends CustomPainter {
     canvas.drawCircle(crank, 2.5, Paint()..color = const Color(0xFF725338));
     canvas.restore();
     return guide(1);
+  }
+
+  void _drawTensionGauge(Canvas canvas, Offset center) {
+    const radius = 24.0;
+    final rect = Rect.fromCircle(center: center, radius: radius);
+    final stroke = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 4
+      ..strokeCap = StrokeCap.round;
+    // A transparent left-facing half gauge keeps the reel and rod visible.
+    const start = math.pi * .5;
+    const sweep = math.pi;
+    final redPulse =
+        tension > .8 ? (.5 + math.sin(clock * 10).abs() * .5) : 0.0;
+    final glow = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 8
+      ..strokeCap = StrokeCap.round
+      ..color = const Color(0xCCFFF7D6);
+    canvas.drawArc(rect, start, sweep, false, glow);
+    for (final zone in [
+      (0.0, .55, const Color(0xFF36B887)),
+      (.58, .79, const Color(0xFFFFC247)),
+      (.82, 1.0, const Color(0xFFFF554C)),
+    ]) {
+      final color = zone.$3 == const Color(0xFFFF554C) && redPulse > 0
+          ? Color.lerp(zone.$3, Colors.white, redPulse * .35)!
+          : zone.$3;
+      canvas.drawArc(rect, start + zone.$1 * sweep, (zone.$2 - zone.$1) * sweep,
+          false, stroke..color = color);
+    }
+    final tickPaint = Paint()
+      ..color = const Color(0xFF294941)
+      ..strokeWidth = 1.5
+      ..strokeCap = StrokeCap.round;
+    for (var i = 0; i <= 10; i++) {
+      final angle = start + i / 10 * sweep;
+      final outer =
+          center + Offset(math.cos(angle), math.sin(angle)) * (radius + 4);
+      final inner = center +
+          Offset(math.cos(angle), math.sin(angle)) *
+              (radius - (i % 5 == 0 ? 8 : 5));
+      canvas.drawLine(inner, outer, tickPaint);
+    }
+    final angle = start + tension * sweep;
+    final direction = Offset(math.cos(angle), math.sin(angle));
+    final needleEnd = center + direction * (radius + 1);
+    final needleBase = center - direction * 7;
+    canvas.drawLine(
+        needleBase,
+        needleEnd,
+        Paint()
+          ..color = const Color(0xFF253D38)
+          ..strokeWidth = 3
+          ..strokeCap = StrokeCap.round);
+    final label = TextPainter(
+        text: TextSpan(
+            text: '${(tension * 100).round()}%',
+            style: const TextStyle(
+                fontSize: 9,
+                fontWeight: FontWeight.w900,
+                color: Color(0xFF294941))),
+        textDirection: TextDirection.ltr)
+      ..layout();
+    label.paint(canvas, center - Offset(label.width / 2, label.height / 2));
   }
 
   @override

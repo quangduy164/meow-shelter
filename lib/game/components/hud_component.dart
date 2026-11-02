@@ -13,6 +13,8 @@ class HudComponent extends PositionComponent with HasGameRef<FlameGame> {
   String levelTitle = 'MÀN 1 · LÀM QUEN';
   RoundStatus status = RoundStatus.playing;
   bool isTutorial = false;
+  bool isInfinite = false;
+  String objective = '';
 
   @override
   void render(Canvas canvas) {
@@ -33,14 +35,9 @@ class HudComponent extends PositionComponent with HasGameRef<FlameGame> {
         ),
         panel,
       );
-      _drawCentered(
-        canvas,
-        '${secondsLeft}s',
-        screenSize,
-        22,
-        18,
-        const Color(0xFFFFFFFF),
-      );
+      _drawCentered(canvas,
+          isInfinite ? 'ĐỢT $objective · $delivered' : '${secondsLeft}s',
+          screenSize, 22, 15, const Color(0xFFFFFFFF));
     }
   }
 

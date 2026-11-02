@@ -68,7 +68,7 @@ class LevelCard extends StatelessWidget {
                                 fontWeight: FontWeight.w700)),
                         if (unlocked)
                           Text(
-                              '${level.catTypes.length} mèo · ${level.isTutorial ? 'Tập chơi' : '${level.timeLimit}s'}',
+                              level.mission,
                               style: const TextStyle(
                                   fontSize: 9, color: Color(0xFF75451F))),
                       ],
