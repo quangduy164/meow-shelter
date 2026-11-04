@@ -48,13 +48,62 @@ class ReturnHomeJoystick extends PositionComponent with DragCallbacks {
 
   @override
   void render(Canvas canvas) {
-    canvas.drawCircle(Offset(size.x / 2, size.y / 2), size.x / 2,
-        Paint()..color = const Color(0x887A5B42));
-    canvas.drawCircle(Offset(size.x / 2, size.y / 2), size.x / 2 - 4,
-        Paint()..color = const Color(0x55FFF0CA));
-    final knob = Offset(size.x / 2 + delta.x, size.y / 2 + delta.y);
-    canvas.drawCircle(knob, 29, Paint()..color = const Color(0xFFD88B45));
-    canvas.drawCircle(knob + const Offset(-7, -8), 6,
-        Paint()..color = const Color(0x66FFF5D5));
+    const ink = Color(0xFF5A3214);
+    final c = Offset(size.x / 2, size.y / 2);
+    final r = size.x / 2 - 3;
+    canvas.drawCircle(
+        c + const Offset(0, 3), r, Paint()..color = const Color(0x40000000));
+    canvas.drawCircle(c, r, Paint()..color = const Color(0xB3FFF4DA));
+    canvas.drawCircle(
+        c,
+        r,
+        Paint()
+          ..color = const Color(0xFFB27A3E)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 4);
+    // Direction chevrons around the rim.
+    final chevron = Paint()
+      ..color = const Color(0xFFB27A3E)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 3.5
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round;
+    for (var i = 0; i < 4; i++) {
+      canvas.save();
+      canvas.translate(c.dx, c.dy);
+      canvas.rotate(i * 1.5707963);
+      canvas.drawPath(
+          Path()
+            ..moveTo(r - 18, -7)
+            ..lineTo(r - 11, 0)
+            ..lineTo(r - 18, 7),
+          chevron);
+      canvas.restore();
+    }
+    final knob = c + Offset(delta.x, delta.y);
+    canvas.drawCircle(knob + const Offset(0, 4), 26,
+        Paint()..color = const Color(0xFFB8641E));
+    canvas.drawCircle(knob, 26, Paint()..color = const Color(0xFFF5A04A));
+    canvas.drawCircle(
+        knob,
+        26,
+        Paint()
+          ..color = ink
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 2.5);
+    final paw = Paint()..color = const Color(0xFFFFF4DA);
+    canvas.drawOval(
+        Rect.fromCenter(
+            center: knob + const Offset(0, 5), width: 16, height: 13),
+        paw);
+    for (final toe in const [
+      Offset(-9, -4),
+      Offset(-3.5, -10),
+      Offset(3.5, -10),
+      Offset(9, -4),
+    ]) {
+      canvas.drawOval(
+          Rect.fromCenter(center: knob + toe, width: 6, height: 7.5), paw);
+    }
   }
 }

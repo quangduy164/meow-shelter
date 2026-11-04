@@ -8,17 +8,22 @@ import 'return_home_road.dart';
 /// A shallow stream cutting across the lane. Paws must land on a stone; water
 /// costs one heart and sends the cat back to the near bank.
 class ReturnHomeCrossing extends PositionComponent {
-  ReturnHomeCrossing({required this.road}) : super(priority: 1);
+  ReturnHomeCrossing({required this.road, required this.centerFraction})
+      : super(priority: 1);
 
   final ReturnHomeRoad road;
-  static const double centerFraction = .64;
+  final double centerFraction;
   static const double crossingWidth = 176;
-  static const double stoneRadius = 25;
+
+  /// Generous landing radius: neighbouring stones overlap, so there is always
+  /// a continuous dry path across, it just zigzags.
+  static const double stoneRadius = 28;
   static const _stones = [
-    Offset(-.36, -.42),
-    Offset(-.12, .30),
-    Offset(.12, -.25),
-    Offset(.36, .40),
+    Offset(-.38, -.15),
+    Offset(-.19, .15),
+    Offset(0, -.15),
+    Offset(.19, .15),
+    Offset(.38, -.15),
   ];
 
   double get centerX => road.worldWidth * centerFraction;
@@ -71,9 +76,9 @@ class ReturnHomeCrossing extends PositionComponent {
     for (final stone in stones) {
       canvas.drawOval(
           Rect.fromCenter(
-              center: stone + const Offset(0, 7), width: 54, height: 18),
+              center: stone + const Offset(0, 8), width: 62, height: 20),
           Paint()..color = const Color(0x44406270));
-      canvas.drawOval(Rect.fromCenter(center: stone, width: 52, height: 34),
+      canvas.drawOval(Rect.fromCenter(center: stone, width: 60, height: 40),
           Paint()..color = const Color(0xFF8D9690));
       canvas.drawOval(
           Rect.fromCenter(

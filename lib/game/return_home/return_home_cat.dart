@@ -35,6 +35,13 @@ class ReturnHomeCat extends SpriteAnimationGroupComponent<CatState>
   static const double vanishLeap = 120;
   static const double vanishDuration = .75;
 
+  /// Himalaya dash: a fixed-speed burst that phases through logs, springs and
+  /// water and ignores damage; ~200 px, enough to clear a stream crossing.
+  static const double dashSpeed = 400;
+  static const double dashDuration = .5;
+
+  bool get dashing => _rollTimer > 0;
+
   /// Below this speed the cat is standing rather than walking.
   static const double idleSpeed = 8;
 
@@ -86,8 +93,10 @@ class ReturnHomeCat extends SpriteAnimationGroupComponent<CatState>
     final input = _shaped(game.joystick.relativeDelta);
     final speed = maxSpeed * (_sprintTimer > 0 ? 1.75 : 1);
     final target = Vector2(input.x * speed, input.y * speed);
-    velocity +=
-        (target - velocity) * min(1, dt * (_bumpTimer > 0 ? bumpedGrip : grip));
+    if (!dashing) {
+      velocity += (target - velocity) *
+          min(1, dt * (_bumpTimer > 0 ? bumpedGrip : grip));
+    }
     if (_bumpTimer > 0) _bumpTimer -= dt;
     if (invulnerable > 0) invulnerable = max(0, invulnerable - dt);
     if (_sprintTimer > 0) _sprintTimer = max(0, _sprintTimer - dt);
@@ -127,11 +136,14 @@ class ReturnHomeCat extends SpriteAnimationGroupComponent<CatState>
   /// Moves one axis at a time so the cat can slide along a log instead of
   /// passing through it or sticking on a diagonal input.
   void _moveAxis(Vector2 delta) {
+    // Already overlapping a log (e.g. after a respawn): let the cat walk out
+    // instead of freezing it in place.
+    final wasBlocked = dashing || game.blockedByLog(hitbox);
     final previous = position.clone();
     position += delta;
     position.x = position.x.clamp(ReturnHomeRoad.startX, game.road.endX);
     _clampToLane();
-    if (!game.blockedByLog(hitbox)) return;
+    if (wasBlocked || !game.blockedByLog(hitbox)) return;
     position.setFrom(previous);
     if (delta.x != 0) velocity.x = 0;
     if (delta.y != 0) velocity.y = 0;
@@ -153,13 +165,13 @@ class ReturnHomeCat extends SpriteAnimationGroupComponent<CatState>
       case 'black':
         activateVanish();
       case 'himalaya':
-        _rollTimer = .45;
-        invulnerable = 1;
+        _rollTimer = dashDuration;
+        invulnerable = dashDuration + .4;
         final input = game.joystick.relativeDelta;
         final dir = input.length > .1
             ? input.normalized()
             : Vector2(velocity.x >= 0 ? 1 : -1, 0);
-        velocity = dir * 260;
+        velocity = dir * dashSpeed;
       case 'scottish':
         shield = true;
     }
@@ -179,7 +191,7 @@ class ReturnHomeCat extends SpriteAnimationGroupComponent<CatState>
     current = CatState.vanish;
   }
 
-  void respawn(double x) {
+  void respawn(double x, {double? y}) {
     velocity.setZero();
     _bumpTimer = 0;
     _vanishTimer = 0;
@@ -187,7 +199,7 @@ class ReturnHomeCat extends SpriteAnimationGroupComponent<CatState>
     _rollTimer = 0;
     shield = false;
     invulnerable = 1.5;
-    position = Vector2(x, game.road.centerY(x + size.x / 2) - size.y / 2);
+    position = Vector2(x, y ?? game.road.centerY(x + size.x / 2) - size.y / 2);
     _clampToLane();
   }
 

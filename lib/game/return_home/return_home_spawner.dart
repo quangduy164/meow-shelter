@@ -64,33 +64,38 @@ class ReturnHomeSpawner {
     var x = initialStartX;
     for (var i = 0; i < initialCount; i++) {
       x += initialGap + random.nextDouble() * initialGapJitter;
+      if (x > road.endX - 260) break;
       final biome = road.biomeAt(x);
+      if (biome.calm) continue;
       final roll = random.nextDouble();
-      if (random.nextDouble() < .14) {
-        _addSpring(x);
-      } else if (roll < biome.spikes) {
+      if (roll < biome.spikes) {
         _addSpikes(x);
       } else if (roll < biome.spikes + biome.logs) {
         _addLog(x);
-      } else {
-        _addRock(x, speed: initialRockSpeed);
+      } else if (roll < biome.spikes + biome.logs + biome.springs) {
+        _addSpring(x);
+      } else if (biome.rockRate > 0) {
+        _addRock(x, speed: initialRockSpeed * biome.rockSpeed);
       }
     }
   }
 
-  /// Timed pressure from the right edge; [canSpawn] keeps the final stretch of
-  /// the run clear so reaching home stays a race instead of a wall.
+  /// Timed pressure from the right edge, shaped by the stretch the camera is
+  /// heading into. [canSpawn] keeps the final stretch of the run clear.
   void tick({
     required double dt,
     required double rightEdge,
     required bool canSpawn,
   }) {
-    _rockTimer -= dt;
+    final biome = road.biomeAt(rightEdge);
+    _rockTimer -= dt * biome.rockRate;
     if (_rockTimer <= 0) {
       _rockTimer = rockInterval + random.nextDouble() * rockIntervalJitter;
-      if (canSpawn) _addRock(rightEdge + rockSpawnLead, speed: rockSpeed);
+      if (canSpawn) {
+        _addRock(rightEdge + rockSpawnLead, speed: rockSpeed * biome.rockSpeed);
+      }
     }
-    _birdTimer -= dt;
+    _birdTimer -= dt * biome.birdRate;
     if (_birdTimer <= 0) {
       _birdTimer = birdInterval + random.nextDouble() * birdIntervalJitter;
       if (canSpawn) _addBird(rightEdge + birdSpawnLead);

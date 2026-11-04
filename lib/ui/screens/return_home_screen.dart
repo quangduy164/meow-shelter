@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'dart:async';
 
 import '../../game/return_home/return_home_game.dart';
+import '../widgets/return_home_buttons.dart';
 
 class ReturnHomeScreen extends StatefulWidget {
   const ReturnHomeScreen({super.key});
@@ -32,10 +33,8 @@ class _ReturnHomeScreenState extends State<ReturnHomeScreen> {
                     alignment: Alignment.topRight,
                     child: Padding(
                       padding: const EdgeInsets.all(12),
-                      child: IconButton.filled(
-                        onPressed: () => Navigator.of(context).pop(),
-                        icon: const Icon(Icons.home_rounded),
-                      ),
+                      child: ReturnHomeHomeButton(
+                          onPressed: () => Navigator.of(context).pop()),
                     ),
                   ),
                 ),
@@ -73,56 +72,23 @@ class _SkillButtonState extends State<_SkillButton> {
   Widget build(BuildContext context) {
     final game = widget.game;
     if (!game.started) return const SizedBox.shrink();
-    final ready = game.skillReady;
     return SafeArea(
       child: Align(
-        alignment: Alignment.bottomCenter,
+        alignment: Alignment.bottomRight,
         child: Padding(
-          padding: const EdgeInsets.only(bottom: 18),
-          child: GestureDetector(
-            onTap: ready ? game.activateSkill : null,
-            child: Opacity(
-              opacity: ready ? 1 : .45,
-              child: Container(
-                width: 72,
-                height: 72,
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF1D27C),
-                  shape: BoxShape.circle,
-                  border: Border.all(color: const Color(0xFF8D5A2B), width: 3),
-                  boxShadow: const [
-                    BoxShadow(
-                        color: Color(0x66452B18),
-                        blurRadius: 7,
-                        offset: Offset(0, 4))
-                  ],
-                ),
-                child: Stack(alignment: Alignment.center, children: [
-                  Icon(_skillIcon(game.selectedCat),
-                      size: 34, color: const Color(0xFF603312)),
-                  if (!ready)
-                    Text('${game.skillCooldown.ceil()}',
-                        style: const TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white)),
-                ]),
-              ),
-            ),
+          padding: const EdgeInsets.fromLTRB(0, 0, 28, 22),
+          child: ReturnHomeSkillButton(
+            catType: game.selectedCat,
+            ready: game.skillReady,
+            cooldownLeft: game.skillCooldown,
+            cooldownTotal: ReturnHomeGame.skillCooldownFor(game.selectedCat),
+            onPressed: game.activateSkill,
           ),
         ),
       ),
     );
   }
 }
-
-IconData _skillIcon(String type) => switch (type) {
-      'orange' => Icons.flash_on_rounded,
-      'black' => Icons.auto_awesome,
-      'himalaya' => Icons.sync_rounded,
-      'scottish' => Icons.shield_rounded,
-      _ => Icons.star_rounded,
-    };
 
 class _ChooseCatOverlay extends StatelessWidget {
   const _ChooseCatOverlay({required this.game});

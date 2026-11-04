@@ -10,7 +10,7 @@ void paintReturnHomeHud(
   required int fish,
   required double elapsed,
   required int stars,
-  required bool checkpoint,
+  required String? zone,
   required bool finished,
 }) {
   final hearts = List.filled(lives, '♥').join(' ');
@@ -24,8 +24,9 @@ void paintReturnHomeHud(
     textDirection: TextDirection.ltr,
   )..layout(maxWidth: size.width - 90);
   hud.paint(canvas, const Offset(18, 16));
-  if (checkpoint && !finished) {
-    _center(canvas, size, 'ĐÃ LƯU CHECKPOINT', size.height * .20, 22);
+  if (zone != null && !finished) {
+    _center(canvas, size, zone, size.height * .17, 26);
+    _center(canvas, size, 'Đã lưu checkpoint', size.height * .17 + 34, 14);
   }
   if (!finished) return;
   final card = Rect.fromCenter(

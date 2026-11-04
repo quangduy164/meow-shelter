@@ -3,13 +3,20 @@ import 'dart:math';
 import 'package:flutter/painting.dart';
 
 /// Which roadside decoration set a stretch paints.
-enum ReturnHomeScenery { fence, garden, stream, street }
+enum ReturnHomeScenery {
+  fence,
+  garden,
+  stream,
+  bamboo,
+  field,
+  bridge,
+  village,
+  lane,
+}
 
-/// One stretch of the road: its own palette, lane width, hazard mix and scenery,
-/// so the run reads as a journey through places instead of one long corridor.
-///
-/// Add a biome by appending an entry to [all] (or passing a custom list to
-/// [ReturnHomeRoad]) and giving it a [ReturnHomeScenery] painter.
+/// One stretch of the road. Each stretch has its own palette and scenery and,
+/// more importantly, its own way to play: which hazards appear, how often
+/// rocks and birds arrive, how wide the lane is and whether wind pushes the cat.
 class ReturnHomeBiome {
   const ReturnHomeBiome({
     required this.name,
@@ -20,9 +27,14 @@ class ReturnHomeBiome {
     required this.roadLight,
     required this.edge,
     required this.halfWidth,
-    required this.spikes,
-    required this.logs,
     required this.scenery,
+    this.spikes = 0,
+    this.logs = 0,
+    this.springs = 0,
+    this.rockRate = 0,
+    this.rockSpeed = 1,
+    this.birdRate = 0,
+    this.wind = 0,
     this.dash,
   });
 
@@ -40,12 +52,25 @@ class ReturnHomeBiome {
 
   /// Half of the walkable lane height, as a fraction of the viewport height.
   final double halfWidth;
+
+  /// Share of seeded hazards per kind; whatever is left becomes a rolling rock.
+  /// A stretch with no seeded hazards at all is a calm rest stop.
   final double spikes;
   final double logs;
+  final double springs;
 
-  double get rocks => 1 - spikes - logs;
+  /// Timed pressure: 0 disables, 1 is the base spawner rate.
+  final double rockRate;
+  final double rockSpeed;
+  final double birdRate;
+
+  /// Peak vertical push in px/s from gusts on exposed stretches.
+  final double wind;
+
+  bool get calm => spikes + logs + springs == 0 && rockRate == 0;
 
   static const all = <ReturnHomeBiome>[
+    // 1. Learn the basics: spikes and slow rocks on a wide dirt road.
     ReturnHomeBiome(
       name: 'Đường đất',
       from: 0,
@@ -55,49 +80,114 @@ class ReturnHomeBiome {
       roadLight: Color(0xFFE8D09E),
       edge: Color(0x667C9A63),
       halfWidth: .20,
-      spikes: .55,
-      logs: .10,
+      spikes: .70,
+      rockRate: .6,
+      rockSpeed: .75,
       scenery: ReturnHomeScenery.fence,
     ),
+    // 2. A narrower garden path full of logs: steering, not dodging.
     ReturnHomeBiome(
       name: 'Vườn sau',
-      from: .26,
+      from: .125,
       sky: Color(0xFF8CCFE0),
       grass: Color(0xFF79B85C),
       road: Color(0xFFC9A876),
       roadLight: Color(0xFFE0C694),
       edge: Color(0x666E8F52),
-      halfWidth: .18,
-      spikes: .30,
-      logs: .35,
+      halfWidth: .16,
+      spikes: .20,
+      logs: .65,
+      rockRate: .35,
       scenery: ReturnHomeScenery.garden,
     ),
+    // 3. Stepping stones over the stream; little else to distract.
     ReturnHomeBiome(
       name: 'Bờ suối',
-      from: .54,
+      from: .25,
       sky: Color(0xFF9BC7D8),
       grass: Color(0xFF6FA88C),
-      road: Color(0xFFC2B28E),
-      roadLight: Color(0xFFDACEB4),
+      road: Color(0xFF9FB59A),
+      roadLight: Color(0xFFBCCDB4),
       edge: Color(0x664F8290),
       halfWidth: .16,
-      spikes: .30,
-      logs: .05,
+      spikes: .35,
+      rockRate: .3,
       scenery: ReturnHomeScenery.stream,
     ),
+    // 4. Hidden springs everywhere under the bamboo.
     ReturnHomeBiome(
-      name: 'Ngoại ô',
-      from: .78,
-      sky: Color(0xFFB6C6D2),
-      grass: Color(0xFF87A06B),
-      road: Color(0xFF8C8F93),
-      roadLight: Color(0xFF9FA3A7),
-      edge: Color(0x665C6066),
-      dash: Color(0x8CFFF0C2),
+      name: 'Rừng tre',
+      from: .375,
+      sky: Color(0xFF9FD3C6),
+      grass: Color(0xFF5E9A55),
+      road: Color(0xFFB69A6A),
+      roadLight: Color(0xFFCDB487),
+      edge: Color(0x66406F3A),
       halfWidth: .17,
       spikes: .15,
+      logs: .15,
+      springs: .55,
+      rockRate: .4,
+      scenery: ReturnHomeScenery.bamboo,
+    ),
+    // 5. Wide open field: birds dive constantly, nothing sits on the road.
+    ReturnHomeBiome(
+      name: 'Cánh đồng',
+      from: .50,
+      sky: Color(0xFF86CDEB),
+      grass: Color(0xFFC6C565),
+      road: Color(0xFFD9BE7E),
+      roadLight: Color(0xFFEAD4A0),
+      edge: Color(0x66A08A3E),
+      halfWidth: .22,
+      spikes: .15,
+      rockRate: .3,
+      birdRate: 3,
+      scenery: ReturnHomeScenery.field,
+    ),
+    // 6. Narrow bridge with gusts pushing the cat toward the rails.
+    ReturnHomeBiome(
+      name: 'Cầu gỗ',
+      from: .625,
+      sky: Color(0xFFA8D4E6),
+      grass: Color(0xFF6FA88C),
+      road: Color(0xFFA9774B),
+      roadLight: Color(0xFFC18D5E),
+      edge: Color(0xFF6E4A2E),
+      halfWidth: .13,
+      spikes: .30,
+      rockRate: .45,
+      wind: 85,
+      scenery: ReturnHomeScenery.bridge,
+    ),
+    // 7. Brick village street: fast, frequent rolling rocks.
+    ReturnHomeBiome(
+      name: 'Làng nhỏ',
+      from: .75,
+      sky: Color(0xFFB6C6D2),
+      grass: Color(0xFF87A06B),
+      road: Color(0xFFB0705A),
+      roadLight: Color(0xFFC98A72),
+      edge: Color(0x66704A3A),
+      dash: Color(0x55FFE6CF),
+      halfWidth: .18,
+      spikes: .25,
       logs: .10,
-      scenery: ReturnHomeScenery.street,
+      rockRate: 2.2,
+      rockSpeed: 1.35,
+      scenery: ReturnHomeScenery.village,
+    ),
+    // 8. The calm lane home: no hazards, just the walk to the door.
+    ReturnHomeBiome(
+      name: 'Ngõ về nhà',
+      from: .875,
+      sky: Color(0xFFF2C79A),
+      grass: Color(0xFF8CB86A),
+      road: Color(0xFFDCC9A3),
+      roadLight: Color(0xFFEBDDBE),
+      edge: Color(0x667E8B5E),
+      halfWidth: .18,
+      scenery: ReturnHomeScenery.lane,
     ),
   ];
 }
@@ -107,7 +197,7 @@ class ReturnHomeBiome {
 /// read it, so the curve can be retuned in one place.
 class ReturnHomeRoad {
   ReturnHomeRoad({
-    this.worldMultiplier = 3,
+    this.worldMultiplier = 8,
     this.curveAmplitude = .075,
     this.curveHarmonic = 2.6,
     this.sweepAmplitude = .028,

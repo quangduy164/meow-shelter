@@ -7,36 +7,51 @@ import 'package:flutter/painting.dart';
 ///
 /// A new hazard is one painter here plus one hitbox in the obstacle.
 void paintSpikes(Canvas canvas) {
-  canvas.drawOval(const Rect.fromLTWH(-17, 8, 34, 8),
-      Paint()..color = const Color(0x3D4B392C));
-  canvas.drawRRect(
-      RRect.fromRectAndRadius(
-          const Rect.fromLTWH(-17, 3, 34, 10), const Radius.circular(5)),
-      Paint()..color = const Color(0xFFD58A3E));
-  final spikes = Path()
-    ..moveTo(-14, 5)
-    ..lineTo(-8, -14)
-    ..lineTo(-2, 5)
-    ..lineTo(4, -16)
-    ..lineTo(10, 5)
-    ..lineTo(15, -12)
-    ..lineTo(19, 5)
-    ..close();
-  canvas.drawPath(spikes, Paint()..color = const Color(0xFF6C6870));
-  final edge = Paint()
-    ..color = const Color(0xFFE6E0E4)
+  const ink = Color(0xFF3B2E2A);
+  final outline = Paint()
+    ..color = ink
     ..style = PaintingStyle.stroke
     ..strokeWidth = 2
-    ..strokeCap = StrokeCap.round;
-  canvas.drawLine(const Offset(-8, -13), const Offset(-4, 3), edge);
-  canvas.drawLine(const Offset(4, -15), const Offset(8, 3), edge);
-  canvas.drawLine(const Offset(15, -11), const Offset(17, 3), edge);
+    ..strokeJoin = StrokeJoin.round;
+  canvas.drawOval(const Rect.fromLTWH(-19, 8, 38, 7),
+      Paint()..color = const Color(0x3D4B392C));
+  // Four steel spikes, each with a lit left face and a shaded right face.
+  for (final x in const [-12.0, -4.0, 4.0, 12.0]) {
+    final tall = x.abs() < 8 ? -13.0 : -9.0;
+    canvas.drawPath(
+        Path()
+          ..moveTo(x - 4.5, 5)
+          ..lineTo(x, tall)
+          ..lineTo(x, 5)
+          ..close(),
+        Paint()..color = const Color(0xFFC9CED4));
+    canvas.drawPath(
+        Path()
+          ..moveTo(x, tall)
+          ..lineTo(x + 4.5, 5)
+          ..lineTo(x, 5)
+          ..close(),
+        Paint()..color = const Color(0xFF7D848D));
+    canvas.drawPath(
+        Path()
+          ..moveTo(x - 4.5, 5)
+          ..lineTo(x, tall)
+          ..lineTo(x + 4.5, 5),
+        outline);
+  }
+  final plank = RRect.fromRectAndRadius(
+      const Rect.fromLTWH(-17, 4, 34, 8), const Radius.circular(3));
+  canvas.drawRRect(plank, Paint()..color = const Color(0xFFB9773F));
   canvas.drawLine(
-      const Offset(-14, 8),
-      const Offset(14, 8),
+      const Offset(-14, 6.5),
+      const Offset(14, 6.5),
       Paint()
-        ..color = const Color(0xFFE9A65A)
-        ..strokeWidth = 2);
+        ..color = const Color(0xFFD9995A)
+        ..strokeWidth = 1.6);
+  canvas.drawRRect(plank, outline);
+  for (final x in const [-13.0, 13.0]) {
+    canvas.drawCircle(Offset(x, 8), 1.3, Paint()..color = ink);
+  }
 }
 
 /// Rolling boulder. [spin] is the component's rotation: surface details turn
@@ -210,32 +225,63 @@ void paintBird(
 }
 
 void paintLog(Canvas canvas, {required bool vertical}) {
+  // Shadow stays on the ground; only the trunk turns.
+  canvas.drawOval(
+      vertical
+          ? const Rect.fromLTWH(-13, -30, 26, 64)
+          : const Rect.fromLTWH(-34, 9, 66, 9),
+      Paint()..color = const Color(0x3D4B392C));
   canvas.save();
   if (vertical) canvas.rotate(pi / 2);
-  canvas.drawOval(const Rect.fromLTWH(-34, 11, 68, 12),
-      Paint()..color = const Color(0x3D4B392C));
-  canvas.drawRRect(
-      RRect.fromRectAndRadius(
-          const Rect.fromLTWH(-31, -10, 62, 22), const Radius.circular(8)),
-      Paint()..color = const Color(0xFF8B5635));
-  canvas.drawRRect(
-      RRect.fromRectAndRadius(
-          const Rect.fromLTWH(-27, -7, 54, 7), const Radius.circular(4)),
-      Paint()..color = const Color(0xFFB87543));
-  canvas.drawCircle(
-      const Offset(-27, 1), 11, Paint()..color = const Color(0xFFC98A54));
-  final rings = Paint()
-    ..color = const Color(0xFF8B5635)
+  const ink = Color(0xFF4A2B1C);
+  final outline = Paint()
+    ..color = ink
     ..style = PaintingStyle.stroke
-    ..strokeWidth = 1.5;
-  canvas.drawOval(const Rect.fromLTWH(-34, -7, 14, 16), rings);
-  canvas.drawOval(const Rect.fromLTWH(-31, -4, 8, 10), rings);
-  final bark = Paint()
-    ..color = const Color(0xFF653D2A)
-    ..strokeWidth = 2
+    ..strokeWidth = 2.2
+    ..strokeJoin = StrokeJoin.round
     ..strokeCap = StrokeCap.round;
-  canvas.drawLine(const Offset(-15, -5), const Offset(-8, 7), bark);
-  canvas.drawLine(const Offset(2, -6), const Offset(8, 6), bark);
-  canvas.drawLine(const Offset(17, -5), const Offset(22, 5), bark);
+  final trunk = RRect.fromRectAndRadius(
+      const Rect.fromLTWH(-30, -10, 60, 22), const Radius.circular(10));
+  canvas.drawRRect(trunk, Paint()..color = const Color(0xFF8F5A36));
+  canvas.save();
+  canvas.clipRRect(trunk);
+  canvas.drawRect(const Rect.fromLTWH(-30, -10, 60, 7),
+      Paint()..color = const Color(0xFFB27848));
+  canvas.drawRect(const Rect.fromLTWH(-30, 6, 60, 6),
+      Paint()..color = const Color(0xFF6E4127));
+  final bark = Paint()
+    ..color = const Color(0xFF5B3520)
+    ..style = PaintingStyle.stroke
+    ..strokeWidth = 1.6
+    ..strokeCap = StrokeCap.round;
+  for (final x in const [-12.0, 2.0, 16.0]) {
+    canvas.drawPath(
+        Path()
+          ..moveTo(x, -6)
+          ..quadraticBezierTo(x + 3, 1, x, 8),
+        bark);
+  }
+  canvas.restore();
+  canvas.drawRRect(trunk, outline);
+  // Small leafy twig on top.
+  canvas.drawLine(const Offset(10, -10), const Offset(14, -16), outline);
+  canvas.drawOval(const Rect.fromLTWH(13, -21, 8, 5),
+      Paint()..color = const Color(0xFF7FA35A));
+  canvas.drawOval(
+      const Rect.fromLTWH(13, -21, 8, 5), outline..strokeWidth = 1.5);
+  // Cut end with growth rings.
+  final cap =
+      Rect.fromCenter(center: const Offset(-29, 1), width: 14, height: 22);
+  canvas.drawOval(cap, Paint()..color = const Color(0xFFE2B57A));
+  final ring = Paint()
+    ..color = const Color(0xFFB27848)
+    ..style = PaintingStyle.stroke
+    ..strokeWidth = 1.4;
+  canvas.drawOval(
+      Rect.fromCenter(center: const Offset(-29, 1), width: 8, height: 14),
+      ring);
+  canvas.drawOval(
+      Rect.fromCenter(center: const Offset(-29, 1), width: 3, height: 6), ring);
+  canvas.drawOval(cap, outline..strokeWidth = 2.2);
   canvas.restore();
 }

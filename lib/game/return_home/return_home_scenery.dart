@@ -30,10 +30,18 @@ void paintSceneryProp(
       paintWoodFence(canvas, road, x, x + sceneryStep);
     case ReturnHomeScenery.garden:
       paintGardenProp(canvas, road, x, index);
+    case ReturnHomeScenery.bamboo:
+      paintBamboo(canvas, road, x, index);
     case ReturnHomeScenery.stream:
       paintStreamReeds(canvas, road, x);
-    case ReturnHomeScenery.street:
-      paintStreetProp(canvas, road, x, index);
+    case ReturnHomeScenery.bridge:
+      paintBridgeSpan(canvas, road, x, x + sceneryStep);
+    case ReturnHomeScenery.field:
+      paintFieldProp(canvas, road, x, index);
+    case ReturnHomeScenery.village:
+      paintVillageProp(canvas, road, x, index);
+    case ReturnHomeScenery.lane:
+      paintLaneProp(canvas, road, x, index);
   }
 }
 
@@ -239,4 +247,151 @@ void paintHouse(Canvas canvas, ReturnHomeRoad road) {
   canvas.drawLine(Offset(w - 137, h * .29), Offset(w - 137, h * .36), welcome);
   canvas.drawLine(Offset(w - 67, h * .29), Offset(w - 67, h * .36), welcome);
   canvas.restore();
+}
+
+/// Tall bamboo culms on both sides with a few leaf sprays.
+void paintBamboo(Canvas canvas, ReturnHomeRoad road, double x, int index) {
+  final h = road.viewportHeight;
+  for (final side in [-1.0, 1.0]) {
+    for (var k = 0; k < 3; k++) {
+      final bx = x + k * 26.0 + (index % 2) * 9;
+      final base = road.edgePoint(bx, side) + Offset(0, side * 8);
+      final top =
+          side < 0 ? base - Offset(0, h * .2) : base + Offset(0, h * .1);
+      final stalk = Paint()
+        ..color = k.isEven ? const Color(0xFF6FA84B) : const Color(0xFF85BC59)
+        ..strokeWidth = 6
+        ..strokeCap = StrokeCap.round;
+      canvas.drawLine(base, top, stalk);
+      final joint = Paint()
+        ..color = const Color(0xFF4E7F35)
+        ..strokeWidth = 7;
+      for (var j = 1; j < 4; j++) {
+        final p = Offset.lerp(base, top, j / 4)!;
+        canvas.drawLine(p - const Offset(3, 0), p + const Offset(3, 0), joint);
+      }
+      final leaf = Paint()..color = const Color(0xFF4F9343);
+      canvas.drawOval(
+          Rect.fromCenter(
+              center: top + const Offset(8, 0), width: 18, height: 6),
+          leaf);
+      canvas.drawOval(
+          Rect.fromCenter(
+              center: top - const Offset(7, -3), width: 16, height: 5),
+          leaf);
+    }
+  }
+}
+
+/// A wooden bridge: water under both edges, planks across and handrails.
+void paintBridgeSpan(Canvas canvas, ReturnHomeRoad road, double x0, double x1) {
+  final h = road.viewportHeight;
+  final water = Paint()..color = const Color(0xFF5FB4D0);
+  for (final side in [-1.0, 1.0]) {
+    final a = road.edgePoint(x0, side);
+    final b = road.edgePoint(x1, side);
+    canvas.drawPath(
+        Path()
+          ..moveTo(a.dx, a.dy)
+          ..lineTo(b.dx, b.dy)
+          ..lineTo(b.dx, b.dy + side * h * .09)
+          ..lineTo(a.dx, a.dy + side * h * .09)
+          ..close(),
+        water);
+  }
+  final plank = Paint()
+    ..color = const Color(0x667A4E2C)
+    ..strokeWidth = 2;
+  for (var x = x0; x < x1; x += 14) {
+    canvas.drawLine(road.edgePoint(x, -1), road.edgePoint(x, 1), plank);
+  }
+  final rail = Paint()
+    ..color = const Color(0xFF7A4E2C)
+    ..strokeWidth = 4
+    ..strokeCap = StrokeCap.round;
+  for (final side in [-1.0, 1.0]) {
+    final a = road.edgePoint(x0, side) + Offset(0, side * 2);
+    final b = road.edgePoint(x1, side) + Offset(0, side * 2);
+    canvas.drawLine(a - const Offset(0, 14), b - const Offset(0, 14), rail);
+    canvas.drawLine(a, a - const Offset(0, 16), rail);
+  }
+}
+
+/// Wheat tufts and the odd hay bale along an open field.
+void paintFieldProp(Canvas canvas, ReturnHomeRoad road, double x, int index) {
+  final wheat = Paint()
+    ..color = const Color(0xFFD9A93F)
+    ..strokeWidth = 2
+    ..strokeCap = StrokeCap.round;
+  for (final side in [-1.0, 1.0]) {
+    for (var k = 0; k < 5; k++) {
+      final base = road.edgePoint(x + k * 18.0, side) + Offset(0, side * 12);
+      canvas.drawLine(base, base + const Offset(2, -14), wheat);
+      canvas.drawOval(
+          Rect.fromCenter(
+              center: base + const Offset(2, -16), width: 4, height: 8),
+          Paint()..color = const Color(0xFFE8C063));
+    }
+  }
+  if (index % 3 == 0) {
+    final bale = road.edgePoint(x + 50, 1) + const Offset(0, 34);
+    canvas.drawCircle(bale, 15, Paint()..color = const Color(0xFFD8B256));
+    canvas.drawCircle(
+        bale,
+        9,
+        Paint()
+          ..color = const Color(0xFFB88F38)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 2);
+  }
+}
+
+/// Small houses and brick walls on the village street.
+void paintVillageProp(Canvas canvas, ReturnHomeRoad road, double x, int index) {
+  final base = road.edgePoint(x, -1) - const Offset(0, 6);
+  if (index.isEven) {
+    final colors = [const Color(0xFFF1D7B0), const Color(0xFFE7C3A3)];
+    canvas.drawRect(Rect.fromLTWH(base.dx - 26, base.dy - 34, 52, 34),
+        Paint()..color = colors[index % 4 ~/ 2]);
+    canvas.drawPath(
+        Path()
+          ..moveTo(base.dx - 32, base.dy - 34)
+          ..lineTo(base.dx, base.dy - 56)
+          ..lineTo(base.dx + 32, base.dy - 34)
+          ..close(),
+        Paint()..color = const Color(0xFFB4533F));
+    canvas.drawRect(Rect.fromLTWH(base.dx - 6, base.dy - 18, 12, 18),
+        Paint()..color = const Color(0xFF7D4A33));
+  } else {
+    final brick = Paint()..color = const Color(0xFFA9614B);
+    for (var r = 0; r < 2; r++) {
+      for (var c = 0; c < 4; c++) {
+        canvas.drawRect(
+            Rect.fromLTWH(base.dx - 30 + c * 15.0 + (r.isOdd ? 7 : 0),
+                base.dy - 14 - r * 8.0, 13, 6),
+            brick);
+      }
+    }
+  }
+}
+
+/// The last quiet lane: low hedges and flower pots by the doorsteps.
+void paintLaneProp(Canvas canvas, ReturnHomeRoad road, double x, int index) {
+  for (final side in [-1.0, 1.0]) {
+    final base = road.edgePoint(x, side) + Offset(0, side * 10);
+    canvas.drawRRect(
+        RRect.fromRectAndRadius(
+            Rect.fromCenter(center: base, width: 70, height: 16),
+            const Radius.circular(8)),
+        Paint()..color = const Color(0xFF5E9B54));
+  }
+  final pot = road.edgePoint(x + 56, -1) - const Offset(0, 8);
+  canvas.drawRect(Rect.fromCenter(center: pot, width: 14, height: 12),
+      Paint()..color = const Color(0xFFC0714A));
+  canvas.drawCircle(
+      pot - const Offset(0, 9),
+      5,
+      Paint()
+        ..color =
+            index.isEven ? const Color(0xFFFF9CA8) : const Color(0xFFFFE07A));
 }

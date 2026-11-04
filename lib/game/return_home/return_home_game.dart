@@ -35,7 +35,7 @@ class ReturnHomeGame extends FlameGame {
   late ReturnHomeJoystick joystick;
   late ReturnHomeCat _cat;
   late ReturnHomeSpawner _spawner;
-  late ReturnHomeCrossing _crossing;
+  final _crossings = <ReturnHomeCrossing>[];
 
   /// The winding lane. Resized in place, so collaborators can hold on to it.
   final ReturnHomeRoad road = ReturnHomeRoad();
@@ -53,6 +53,7 @@ class ReturnHomeGame extends FlameGame {
   double elapsed = 0;
   double checkpointX = ReturnHomeRoad.startX;
   double checkpointMessage = 0;
+  String zoneName = '';
   final _pickups = <ReturnHomePickup>[];
 
   int get stars => 1 + (falls == 0 ? 1 : 0) + (fish >= 10 ? 1 : 0);
@@ -119,11 +120,19 @@ class ReturnHomeGame extends FlameGame {
     // the cat along the longer world.
     camera.viewfinder.position = Vector2(size.x / 2, size.y / 2);
     world.add(ReturnHomeBackground(road: road));
-    _crossing = ReturnHomeCrossing(road: road);
-    world.add(_crossing);
+    for (final f in [.285, .335]) {
+      final crossing = ReturnHomeCrossing(road: road, centerFraction: f);
+      _crossings.add(crossing);
+      world.add(crossing);
+    }
     _cat = ReturnHomeCat();
     world.add(_cat);
-    _spawner = ReturnHomeSpawner(road: road, world: world)..seed();
+    _spawner = ReturnHomeSpawner(
+      road: road,
+      world: world,
+      // Keep hazard density constant however long the run is.
+      initialCount: (road.worldWidth / 175).round(),
+    )..seed();
     _clearCrossing();
     _addPickups(world);
     joystick = ReturnHomeJoystick(position: Vector2(92, size.y - 92));
@@ -139,7 +148,7 @@ class ReturnHomeGame extends FlameGame {
   }
 
   bool _nearCrossing(double x) =>
-      x > _crossing.left - 90 && x < _crossing.right + 90;
+      _crossings.any((c) => x > c.left - 90 && x < c.right + 90);
 
   void _addPickups(World world) {
     final random = Random(7);
@@ -190,6 +199,7 @@ class ReturnHomeGame extends FlameGame {
     );
     _contacts
         .removeAll(_spawner.cull(cameraX - size.x / 2 - _spawner.cullBehind));
+    _applyWind(dt);
     _resolveHits(dt);
     resolveObstacleCollisions(_spawner.obstacles);
     _checkWater();
@@ -211,7 +221,9 @@ class ReturnHomeGame extends FlameGame {
       if (obstacle.kind == ReturnHomeObstacleKind.spring) {
         if (!touching) {
           _contacts.remove(obstacle);
-        } else if (obstacle.springT <= 0 && !_contacts.contains(obstacle)) {
+        } else if (obstacle.springT <= 0 &&
+            !_cat.dashing &&
+            !_contacts.contains(obstacle)) {
           _contacts.add(obstacle);
           obstacle.springT = springShowTime;
           _cat.launchBack();
@@ -237,14 +249,25 @@ class ReturnHomeGame extends FlameGame {
     }
   }
 
+  /// Gusts on exposed stretches push the cat up and down the lane; the cat's own
+  /// clamp keeps its paws on the road.
+  void _applyWind(double dt) {
+    final wind = road.biomeAt(_cat.position.x).wind;
+    if (wind == 0) return;
+    _cat.position.y += sin(elapsed * 1.4) * sin(elapsed * .37 + 1) * wind * dt;
+  }
+
   void _checkWater() {
-    if (_hitCooldown > 0 || !_crossing.inWater(_cat.hitbox)) return;
+    if (_hitCooldown > 0 || _cat.dashing) return;
+    final crossing =
+        _crossings.where((c) => c.inWater(_cat.hitbox)).firstOrNull;
+    if (crossing == null) return;
     _hitCooldown = hitCooldown;
     if (_cat.invulnerable <= 0 && !_cat.consumeShield()) lives -= 1;
     if (lives <= 0) {
       _respawn();
     } else {
-      _cat.respawn(_crossing.safeBankX);
+      _respawnAt(crossing.safeBankX);
     }
   }
 
@@ -253,7 +276,8 @@ class ReturnHomeGame extends FlameGame {
       final x = biome.from * road.worldWidth;
       if (_cat.position.x >= x && checkpointX < x) {
         checkpointX = x;
-        checkpointMessage = 1.6;
+        checkpointMessage = 1.8;
+        zoneName = biome.name.toUpperCase();
       }
     }
   }
@@ -276,7 +300,41 @@ class ReturnHomeGame extends FlameGame {
     lives = startingLives;
     _contacts.clear();
     _hitCooldown = 1.5;
-    _cat.respawn(checkpointX);
+    _respawnAt(checkpointX);
+  }
+
+  /// Puts the cat back on a spot that is free of logs, springs and spikes, and
+  /// clears rocks and birds around it, so the player gets control right away
+  /// instead of being stuck or flung again on arrival.
+  void _respawnAt(double x) {
+    final cx = x + _cat.size.x / 2;
+    final half = road.halfWidth(cx);
+    var y = road.centerY(cx) - _cat.size.y / 2;
+    for (final f in const [0.0, -.5, .5, -.8, .8]) {
+      final candidate = road.centerY(cx) + f * half - _cat.size.y / 2;
+      final box = Rect.fromLTWH(
+          x + ReturnHomeCat.hitboxLeft,
+          candidate + ReturnHomeCat.hitboxTop,
+          ReturnHomeCat.hitboxWidth,
+          ReturnHomeCat.hitboxHeight);
+      final blocked = _spawner.obstacles.any((o) =>
+          o.kind != ReturnHomeObstacleKind.rock &&
+          o.kind != ReturnHomeObstacleKind.bird &&
+          o.hits(box.inflate(10)));
+      if (!blocked) {
+        y = candidate;
+        break;
+      }
+    }
+    for (final o in List<ReturnHomeObstacle>.of(_spawner.obstacles)) {
+      final moving = o.kind == ReturnHomeObstacleKind.rock ||
+          o.kind == ReturnHomeObstacleKind.bird;
+      if (!moving || (o.position.x - cx).abs() > size.x * .6) continue;
+      _spawner.obstacles.remove(o);
+      o.removeFromParent();
+    }
+    _contacts.clear();
+    _cat.respawn(x, y: y);
   }
 
   @override
@@ -291,7 +349,7 @@ class ReturnHomeGame extends FlameGame {
       fish: fish,
       elapsed: elapsed,
       stars: stars,
-      checkpoint: checkpointMessage > 0,
+      zone: checkpointMessage > 0 ? zoneName : null,
       finished: finished,
     );
   }
