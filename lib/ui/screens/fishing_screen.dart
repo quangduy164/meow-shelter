@@ -142,6 +142,9 @@ class _FishingScreenState extends State<FishingScreen>
                             LayoutBuilder(
                                 builder: (context, scene) => GestureDetector(
                                       behavior: HitTestBehavior.opaque,
+                                      onHorizontalDragUpdate: (event) =>
+                                          _controller
+                                              .addSteer(event.delta.dx / 90),
                                       onTapUp: (event) {
                                         if (_collectionOpen) return;
                                         final p = Offset(
@@ -162,7 +165,11 @@ class _FishingScreenState extends State<FishingScreen>
                                               elapsed: _controller.elapsed,
                                               progress: _controller.progress,
                                               tension: _controller.tension,
-                                              pulling: _controller.pulling)),
+                                              pulling: _controller.pulling,
+                                              drift: _controller.drift,
+                                              sweetCenter:
+                                                  _controller.sweetCenter,
+                                              combo: _controller.combo)),
                                     )),
                           ])),
                       if (_controller.phase == FishingPhase.reeling)

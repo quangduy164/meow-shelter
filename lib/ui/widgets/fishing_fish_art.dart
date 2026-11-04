@@ -1,11 +1,83 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
+
 import '../../collection/fish_species.dart';
 import 'fishing_junk_art.dart';
 
+class _Look {
+  const _Look(
+      {required this.top,
+      required this.belly,
+      required this.fin,
+      required this.height,
+      this.nose = -38,
+      this.tailBase = 26,
+      this.tailSize = 18});
+  final Color top, belly, fin;
+  final double height, nose, tailBase, tailSize;
+}
+
+/// Side-view fish drawn in a 100x64 box, head facing left.
 class FishingFishArt extends CustomPainter {
   const FishingFishArt(this.fish, {this.locked = false});
   final FishSpecies fish;
   final bool locked;
+
+  static const _ink = Color(0xFF34504A);
+
+  _Look get _look => switch (fish) {
+        FishSpecies.perch => const _Look(
+            top: Color(0xFF5E8A3A),
+            belly: Color(0xFFE7E9A8),
+            fin: Color(0xFFE07A3E),
+            height: 17),
+        FishSpecies.tilapia => const _Look(
+            top: Color(0xFF4F7F95),
+            belly: Color(0xFFD3E8EA),
+            fin: Color(0xFF6E92A3),
+            height: 20),
+        FishSpecies.carp => const _Look(
+            top: Color(0xFFC07A2C),
+            belly: Color(0xFFF6D88A),
+            fin: Color(0xFFD9913F),
+            height: 23),
+        FishSpecies.catfish => const _Look(
+            top: Color(0xFF5E5872),
+            belly: Color(0xFFCBC5D8),
+            fin: Color(0xFF6F6886),
+            height: 12,
+            nose: -42,
+            tailBase: 30,
+            tailSize: 13),
+        FishSpecies.koi => const _Look(
+            top: Color(0xFFFFF6E8),
+            belly: Color(0xFFFFFFFF),
+            fin: Color(0xFFF3E2CF),
+            height: 16,
+            nose: -40,
+            tailSize: 22),
+        FishSpecies.goldfish => const _Look(
+            top: Color(0xFFF08A1E),
+            belly: Color(0xFFFFD27A),
+            fin: Color(0xFFF6A94A),
+            height: 22,
+            nose: -30,
+            tailBase: 18,
+            tailSize: 24),
+        FishSpecies.catMew => const _Look(
+            top: Color(0xFF8F8A92),
+            belly: Color(0xFFEDE7EA),
+            fin: Color(0xFF7D7681),
+            height: 21,
+            nose: -32,
+            tailBase: 22),
+        _ => const _Look(
+            top: Color(0xFF9AA59F),
+            belly: Color(0xFFE0E4E0),
+            fin: Color(0xFF8E9993),
+            height: 18),
+      };
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -15,217 +87,311 @@ class FishingFishArt extends CustomPainter {
     }
     canvas.save();
     canvas.translate(size.width / 2, size.height / 2);
-    final scale = (size.width / 100).clamp(0.0, size.height / 64);
-    canvas.scale(scale);
-    final color = locked
-        ? const Color(0xFFABB9B1)
-        : switch (fish) {
-            FishSpecies.perch => const Color(0xFF9DBB58),
-            FishSpecies.tilapia => const Color(0xFF7ABAC8),
-            FishSpecies.carp => const Color(0xFFE8B667),
-            FishSpecies.catfish => const Color(0xFF9B93BA),
-            FishSpecies.koi => const Color(0xFFF3E7CE),
-            FishSpecies.goldfish => const Color(0xFFEEA642),
-            FishSpecies.catMew => const Color(0xFFB7A6A0),
-            _ => const Color(0xFFABB9B1),
-          };
-    final fin = Color.lerp(color, const Color(0xFF45655C), .25)!;
-    final height = switch (fish) {
-      FishSpecies.catfish => 13.0,
-      FishSpecies.carp || FishSpecies.goldfish || FishSpecies.catMew => 22.0,
-      _ => 18.0,
-    };
+    canvas.scale(math.min(size.width / 100, size.height / 64));
+    final base = _look;
+    final look = locked
+        ? _Look(
+            top: const Color(0xFFA7B3AD),
+            belly: const Color(0xFFD5DCD8),
+            fin: const Color(0xFF9AA6A0),
+            height: base.height,
+            nose: base.nose,
+            tailBase: base.tailBase,
+            tailSize: base.tailSize)
+        : base;
+    final h = look.height, n = look.nose, tb = look.tailBase;
     final outline = Paint()
-      ..color = const Color(0xFF426058)
+      ..color = _ink
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 2;
-    canvas.drawOval(const Rect.fromLTWH(-34, 24, 72, 5),
+      ..strokeWidth = 2
+      ..strokeJoin = StrokeJoin.round
+      ..strokeCap = StrokeCap.round;
+    final finPaint = Paint()..color = look.fin;
+
+    canvas.drawOval(Rect.fromLTWH(n + 4, h + 9, tb - n + 10, 5),
         Paint()..color = const Color(0x18426058));
-    final tail = Path()
-      ..moveTo(23, 0)
-      ..lineTo(44, -18)
-      ..quadraticBezierTo(37, 0, 44, 18)
-      ..close();
-    canvas.drawPath(tail, Paint()..color = fin);
-    canvas.drawPath(tail, outline);
-    final dorsal = Path()
-      ..moveTo(-14, -height + 3)
-      ..lineTo(-4, -height - 10)
-      ..lineTo(15, -height - 2)
-      ..lineTo(22, -height + 8)
-      ..close();
-    canvas.drawPath(dorsal, Paint()..color = fin);
-    if (fish == FishSpecies.catMew) {
-      final ear = Paint()..color = const Color(0xFF9C8780);
+
+    // Tail and fins sit behind the body.
+    final tail = _tail(tb, look.tailSize);
+    canvas.drawPath(tail, finPaint);
+    _tailRays(canvas, tb, look.tailSize);
+    if (fish == FishSpecies.tilapia && !locked) {
       canvas.drawPath(
           Path()
-            ..moveTo(-28, -height + 5)
-            ..lineTo(-23, -height - 19)
-            ..lineTo(-9, -height + 1)
-            ..close(),
-          ear);
-      canvas.drawPath(
-          Path()
-            ..moveTo(-2, -height + 1)
-            ..lineTo(10, -height - 17)
-            ..lineTo(18, -height + 8)
-            ..close(),
-          ear);
-      canvas.drawLine(Offset(-22, -height - 12), Offset(-14, -height - 3),
-          outline..strokeWidth = 1.5);
-      canvas.drawLine(Offset(4, -height - 10), Offset(11, -height - 3),
-          outline..strokeWidth = 1.5);
+            ..moveTo(tb + 18, -look.tailSize)
+            ..quadraticBezierTo(tb + 12, 0, tb + 18, look.tailSize),
+          Paint()
+            ..color = const Color(0xFFD9574A)
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = 3);
     }
-    final body = _bodyPath(fish, height);
-    canvas.drawPath(body, Paint()..color = color);
-    canvas.drawPath(body, outline);
+    canvas.drawPath(tail, outline);
+    final dorsal = _dorsal(n, h, tb);
+    canvas.drawPath(dorsal, finPaint);
+    canvas.drawPath(dorsal, outline);
+    final pelvic = Path()
+      ..moveTo(-8, h * .7)
+      ..quadraticBezierTo(0, h + 9, 9, h * .65)
+      ..close();
+    canvas.drawPath(pelvic, finPaint);
+    canvas.drawPath(pelvic, outline);
+    if (fish == FishSpecies.catMew) _ears(canvas, n, h, look, outline);
+
+    final body = Path()
+      ..moveTo(n, 0)
+      ..cubicTo(n + 4, -h * 1.05, tb - 14, -h * 1.05, tb, -h * .32)
+      ..lineTo(tb, h * .32)
+      ..cubicTo(tb - 14, h * 1.05, n + 4, h * 1.05, n, 0)
+      ..close();
+    canvas.drawPath(
+        body,
+        Paint()
+          ..shader = LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [look.top, look.top, look.belly],
+                  stops: const [0, .42, .9])
+              .createShader(Rect.fromLTWH(-50, -h, 100, h * 2)));
     canvas.save();
     canvas.clipPath(body);
-    if (fish == FishSpecies.koi && !locked) {
-      for (final spot in [const Offset(-14, -9), const Offset(10, 5)]) {
-        canvas.drawOval(Rect.fromCenter(center: spot, width: 18, height: 23),
-            Paint()..color = const Color(0xFFD76B4C));
-      }
-    } else if (fish == FishSpecies.perch || fish == FishSpecies.tilapia) {
-      for (var i = 0; i < 4; i++) {
-        canvas.drawLine(
-            Offset(-9 + i * 9.0, -height),
-            Offset(-4 + i * 9.0, height * .65),
-            Paint()
-              ..color = const Color(0x55426058)
-              ..strokeWidth = 3);
-      }
-    }
+    if (!locked) _pattern(canvas, n, h, tb);
+    canvas.drawOval(Rect.fromLTWH(n + 10, -h * .78, tb - n - 24, h * .32),
+        Paint()..color = const Color(0x33FFFFFF));
+    canvas.drawArc(Rect.fromLTWH(n + 10, -h * .7, 14, h * 1.4), -1.1, 2.2,
+        false, outline..strokeWidth = 1.4);
     canvas.restore();
-    canvas.drawArc(const Rect.fromLTWH(-28, -11, 16, 22), -.9, 1.8, false,
-        outline..strokeWidth = 1);
-    canvas.drawPath(
-        Path()
-          ..moveTo(-4, 3)
-          ..lineTo(10, 17)
-          ..lineTo(12, 4)
-          ..close(),
-        Paint()..color = fin);
-    final ink = Paint()..color = const Color(0xFF294941);
-    for (final eye in [const Offset(-24, -8), const Offset(-10, -10)]) {
-      canvas.drawOval(Rect.fromCenter(center: eye, width: 15, height: 18),
-          Paint()..color = const Color(0xFFFFF9E8));
-      canvas.drawOval(
-          Rect.fromCenter(center: eye, width: 15, height: 18), outline);
-      final pupil = eye + Offset(-2, fish == FishSpecies.perch ? 2 : 0);
-      canvas.drawCircle(pupil, 3.2, ink);
-      canvas.drawCircle(
-          pupil + const Offset(-1, -1), 1, Paint()..color = Colors.white);
-      if (fish == FishSpecies.tilapia || fish == FishSpecies.catfish) {
-        canvas.drawArc(Rect.fromCenter(center: eye, width: 15, height: 18),
-            3.14, 3.14, true, Paint()..color = color);
-        canvas.drawLine(
-            eye + const Offset(-7, 0), eye + const Offset(7, 0), outline);
-      }
-    }
-    if (fish == FishSpecies.perch) {
-      canvas.drawOval(const Rect.fromLTWH(-28, 6, 12, 9), ink);
-      canvas.drawLine(const Offset(-31, -22), const Offset(-20, -19),
-          outline..strokeWidth = 2);
-      canvas.drawLine(const Offset(-14, -21), const Offset(-3, -25), outline);
-    } else if (fish == FishSpecies.koi) {
-      canvas.drawOval(const Rect.fromLTWH(-33, 4, 9, 5),
-          Paint()..color = const Color(0xFFD46B78));
-      canvas.drawOval(const Rect.fromLTWH(-6, 4, 10, 5),
-          Paint()..color = const Color(0x77E4919A));
-    } else {
-      canvas.drawPath(
-          Path()
-            ..moveTo(-29, 5)
-            ..quadraticBezierTo(-20, 17, -9, 5),
-          outline..strokeWidth = 2);
-      if (fish == FishSpecies.carp) {
-        canvas.drawRRect(
-            RRect.fromRectAndRadius(
-                const Rect.fromLTWH(-23, 7, 9, 7), const Radius.circular(1)),
-            Paint()..color = const Color(0xFFFFFAE9));
-        canvas.drawLine(const Offset(-19, 8), const Offset(-19, 13),
-            outline..strokeWidth = 1);
-      }
-    }
-    if (fish == FishSpecies.catMew) {
-      final whisker = outline..strokeWidth = 1;
-      for (final y in [-2.0, 5.0]) {
-        canvas.drawLine(Offset(-32, y), Offset(-48, y - 3), whisker);
-        canvas.drawLine(Offset(14, y), Offset(30, y - 3), whisker);
-      }
-      canvas.drawCircle(
-          const Offset(-9, 4), 2.5, Paint()..color = const Color(0xFFD87883));
-    }
-    if (fish == FishSpecies.goldfish) {
-      final crown = Path()
-        ..moveTo(-22, -21)
-        ..lineTo(-25, -30)
-        ..lineTo(-17, -26)
-        ..lineTo(-12, -32)
-        ..lineTo(-7, -25)
-        ..lineTo(0, -29)
-        ..lineTo(-3, -20)
-        ..close();
-      canvas.drawPath(crown, Paint()..color = const Color(0xFFF6D76A));
-      canvas.drawPath(crown, outline);
-      canvas.drawCircle(
-          const Offset(-12, -24), 2, Paint()..color = const Color(0xFFDE7972));
-    }
-    if (fish == FishSpecies.catfish) {
-      for (final sign in [-1.0, 1.0]) {
-        canvas.drawPath(
-            Path()
-              ..moveTo(-25, 6)
-              ..cubicTo(-36, 1, -46, sign * 17, -40, sign * 19)
-              ..quadraticBezierTo(-36, sign * 20, -37, sign * 15),
-            outline..strokeWidth = 1.5);
-      }
-    }
+    canvas.drawPath(body, outline..strokeWidth = 2);
+
+    final pectoral = Path()
+      ..moveTo(n + 22, h * .15)
+      ..quadraticBezierTo(n + 36, h * .2, n + 38, h * .62)
+      ..quadraticBezierTo(n + 28, h * .55, n + 22, h * .15)
+      ..close();
+    canvas.drawPath(pectoral, finPaint);
+    canvas.drawPath(pectoral, outline..strokeWidth = 1.5);
+    _face(canvas, n, h, outline);
+    if (fish == FishSpecies.goldfish) _crown(canvas, n, h, outline);
     canvas.restore();
   }
 
-  Path _bodyPath(FishSpecies fish, double height) => switch (fish) {
-        FishSpecies.perch => Path()
-          ..moveTo(31, 0)
-          ..cubicTo(18, -height * .95, -18, -height * .78, -34, 0)
-          ..cubicTo(-18, height * .78, 18, height * .95, 31, 0)
-          ..close(),
-        FishSpecies.tilapia => Path()
-          ..moveTo(30, 0)
-          ..cubicTo(18, -height * 1.05, -20, -height * 1.05, -35, 0)
-          ..cubicTo(-20, height * 1.05, 18, height * 1.05, 30, 0)
-          ..close(),
-        FishSpecies.carp => Path()
-          ..moveTo(27, 0)
-          ..cubicTo(19, -height * 1.2, -15, -height * 1.35, -32, -height * .25)
-          ..cubicTo(-36, height * .6, -12, height * 1.35, 24, height * .8)
-          ..cubicTo(31, height * .45, 34, height * .18, 27, 0)
-          ..close(),
-        FishSpecies.catfish => Path()
-          ..moveTo(34, 0)
-          ..cubicTo(18, -height * .72, -18, -height * .65, -37, 0)
-          ..cubicTo(-18, height * .65, 18, height * .72, 34, 0)
-          ..close(),
-        FishSpecies.koi => Path()
-          ..moveTo(35, 0)
-          ..cubicTo(16, -height * .82, -18, -height * .72, -35, 0)
-          ..cubicTo(-18, height * .72, 16, height * .82, 35, 0)
-          ..close(),
-        FishSpecies.goldfish => Path()
-          ..moveTo(27, 0)
-          ..cubicTo(20, -height * 1.35, -17, -height * 1.45, -33, 0)
-          ..cubicTo(-17, height * 1.45, 20, height * 1.35, 27, 0)
-          ..close(),
-        FishSpecies.catMew => Path()
-          ..moveTo(28, 0)
-          ..cubicTo(22, -height * 1.1, -18, -height * 1.15, -31, 0)
-          ..cubicTo(-18, height * 1.15, 22, height * 1.1, 28, 0)
-          ..close(),
-        _ => Path()
-          ..addOval(Rect.fromCenter(
-              center: const Offset(-3, 0), width: 65, height: height * 2)),
-      };
+  Path _tail(double tb, double s) {
+    final fan = fish == FishSpecies.goldfish || fish == FishSpecies.koi;
+    final reach = fan ? 28.0 : 20.0;
+    return Path()
+      ..moveTo(tb - 3, 0)
+      ..quadraticBezierTo(tb + 6, -s * .45, tb + reach, -s)
+      ..quadraticBezierTo(tb + reach * (fan ? .55 : .65), 0, tb + reach, s)
+      ..quadraticBezierTo(tb + 6, s * .45, tb - 3, 0)
+      ..close();
+  }
+
+  void _tailRays(Canvas canvas, double tb, double s) {
+    final ray = Paint()
+      ..color = const Color(0x3334504A)
+      ..strokeWidth = 1.2;
+    for (final y in [-.7, -.35, 0.0, .35, .7]) {
+      canvas.drawLine(Offset(tb + 2, y * 3), Offset(tb + 17, y * s), ray);
+    }
+  }
+
+  Path _dorsal(double n, double h, double tb) {
+    switch (fish) {
+      case FishSpecies.perch:
+        final path = Path()..moveTo(n + 18, -h * .85);
+        for (var i = 0; i < 5; i++) {
+          final x = n + 22 + i * 8.0;
+          path
+            ..lineTo(x, -h - 12 + i)
+            ..lineTo(x + 4, -h * .95);
+        }
+        return path
+          ..lineTo(tb - 6, -h * .5)
+          ..close();
+      case FishSpecies.catfish:
+        return Path()
+          ..moveTo(-12, -h * .9)
+          ..quadraticBezierTo(-4, -h - 9, 4, -h * .85)
+          ..close();
+      case FishSpecies.goldfish:
+        return Path()
+          ..moveTo(n + 14, -h * .9)
+          ..cubicTo(n + 20, -h - 16, tb - 4, -h - 14, tb + 4, -h * .4)
+          ..close();
+      default:
+        return Path()
+          ..moveTo(n + 16, -h * .9)
+          ..quadraticBezierTo(-2, -h - 13, tb - 4, -h * .5)
+          ..close();
+    }
+  }
+
+  void _pattern(Canvas canvas, double n, double h, double tb) {
+    switch (fish) {
+      case FishSpecies.perch:
+        for (var i = 0; i < 5; i++) {
+          canvas.drawRect(Rect.fromLTWH(n + 24 + i * 10.0, -h, 4, h * 1.5),
+              Paint()..color = const Color(0x553A5A20));
+        }
+      case FishSpecies.tilapia:
+        for (var i = 0; i < 6; i++) {
+          canvas.drawLine(
+              Offset(n + 22 + i * 8.0, -h),
+              Offset(n + 20 + i * 8.0, h),
+              Paint()
+                ..color = const Color(0x332C4F60)
+                ..strokeWidth = 3);
+        }
+      case FishSpecies.carp:
+      case FishSpecies.goldfish:
+        final scale = Paint()
+          ..color = fish == FishSpecies.carp
+              ? const Color(0x669A5A1A)
+              : const Color(0x55FFF0C0)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 1.3;
+        for (var row = -1; row <= 1; row++) {
+          for (var col = 0; col < 6; col++) {
+            final x = n + 26 + col * 8.0 + (row.isEven ? 0 : 4);
+            canvas.drawArc(
+                Rect.fromCenter(
+                    center: Offset(x, row * h * .45), width: 9, height: 9),
+                -math.pi / 2,
+                math.pi,
+                false,
+                scale);
+          }
+        }
+      case FishSpecies.catfish:
+        for (final spot in [
+          Offset(n + 30, -h * .4),
+          Offset(n + 44, -h * .2),
+          Offset(n + 56, -h * .45),
+          Offset(n + 64, -h * .1),
+        ]) {
+          canvas.drawCircle(spot, 2, Paint()..color = const Color(0x553B3550));
+        }
+      case FishSpecies.koi:
+        final red = Paint()..color = const Color(0xFFE0543A);
+        canvas.drawOval(Rect.fromLTWH(n + 2, -h, 22, h * 1.1), red);
+        canvas.drawOval(Rect.fromLTWH(n + 34, -h * 1.1, 26, h * 1.2), red);
+        canvas.drawOval(Rect.fromLTWH(tb - 16, -h * .2, 12, h * .7), red);
+        canvas.drawCircle(Offset(n + 30, h * .2), 3,
+            Paint()..color = const Color(0xFF2E2A2A));
+      case FishSpecies.catMew:
+        final stripe = Paint()
+          ..color = const Color(0x885E5862)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 3
+          ..strokeCap = StrokeCap.round;
+        for (var i = 0; i < 4; i++) {
+          final x = n + 24 + i * 9.0;
+          canvas.drawPath(
+              Path()
+                ..moveTo(x, -h)
+                ..quadraticBezierTo(x + 4, -h * .5, x, -h * .1),
+              stripe);
+        }
+      default:
+        break;
+    }
+  }
+
+  void _ears(Canvas canvas, double n, double h, _Look look, Paint outline) {
+    for (final x in [n + 6.0, n + 20.0]) {
+      final ear = Path()
+        ..moveTo(x - 2, -h * .6)
+        ..lineTo(x + 3, -h - 11)
+        ..lineTo(x + 11, -h * .75)
+        ..close();
+      canvas.drawPath(ear, Paint()..color = look.top);
+      canvas.drawPath(ear, outline);
+      canvas.drawPath(
+          Path()
+            ..moveTo(x + 1, -h * .7)
+            ..lineTo(x + 3.5, -h - 5)
+            ..lineTo(x + 8, -h * .78)
+            ..close(),
+          Paint()..color = const Color(0xFFF2B6BE));
+    }
+  }
+
+  void _face(Canvas canvas, double n, double h, Paint outline) {
+    final catfish = fish == FishSpecies.catfish;
+    final eye = Offset(n + (catfish ? 13 : 11), -h * (catfish ? .2 : .28));
+    final r = switch (fish) {
+      FishSpecies.goldfish => 7.5,
+      FishSpecies.catfish => 4.5,
+      _ => 6.0,
+    };
+    canvas.drawCircle(eye, r, Paint()..color = const Color(0xFFFFFBEF));
+    canvas.drawCircle(eye, r, outline..strokeWidth = 1.5);
+    final pupil = eye + Offset(-r * .2, r * .1);
+    canvas.drawCircle(pupil, r * .55, Paint()..color = const Color(0xFF22332F));
+    canvas.drawCircle(pupil + Offset(-r * .2, -r * .25), r * .2,
+        Paint()..color = Colors.white);
+    if (!catfish && !locked) {
+      canvas.drawOval(
+          Rect.fromCenter(center: Offset(n + 15, h * .32), width: 8, height: 4),
+          Paint()..color = const Color(0x66F08A96));
+    }
+    final mouth = Offset(n + 3, h * .14);
+    if (fish == FishSpecies.catMew) {
+      canvas.drawPath(
+          Path()
+            ..moveTo(n + 1, h * .02)
+            ..lineTo(n + 5, h * .02)
+            ..lineTo(n + 3, h * .12)
+            ..close(),
+          Paint()..color = const Color(0xFFE48795));
+      canvas.drawPath(
+          Path()
+            ..moveTo(n + 3, h * .12)
+            ..quadraticBezierTo(n + 1, h * .3, n - 1, h * .22)
+            ..moveTo(n + 3, h * .12)
+            ..quadraticBezierTo(n + 5, h * .3, n + 7, h * .22),
+          outline..strokeWidth = 1.2);
+    } else {
+      canvas.drawArc(Rect.fromCenter(center: mouth, width: 7, height: 5), .2,
+          2.4, false, outline..strokeWidth = 1.5);
+    }
+    if (catfish || fish == FishSpecies.catMew || fish == FishSpecies.carp) {
+      final whisker = Paint()
+        ..color = _ink
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.2
+        ..strokeCap = StrokeCap.round;
+      final length = catfish
+          ? 20.0
+          : fish == FishSpecies.carp
+              ? 7.0
+              : 14.0;
+      for (final dy in catfish ? [-3.0, 2.0, 6.0] : [0.0, 4.0]) {
+        canvas.drawPath(
+            Path()
+              ..moveTo(mouth.dx, mouth.dy + dy * .3)
+              ..quadraticBezierTo(mouth.dx - length * .5, mouth.dy + dy,
+                  mouth.dx - length, mouth.dy + dy * 2.2),
+            whisker);
+      }
+    }
+  }
+
+  void _crown(Canvas canvas, double n, double h, Paint outline) {
+    final x = n + 14;
+    final crown = Path()
+      ..moveTo(x - 9, -h + 1)
+      ..lineTo(x - 11, -h - 9)
+      ..lineTo(x - 4, -h - 4)
+      ..lineTo(x, -h - 12)
+      ..lineTo(x + 4, -h - 4)
+      ..lineTo(x + 11, -h - 9)
+      ..lineTo(x + 9, -h + 1)
+      ..close();
+    canvas.drawPath(crown, Paint()..color = const Color(0xFFF6D76A));
+    canvas.drawPath(crown, outline..strokeWidth = 1.5);
+    canvas.drawCircle(
+        Offset(x, -h - 4), 1.8, Paint()..color = const Color(0xFFDE5F6F));
+  }
 
   @override
   bool shouldRepaint(covariant FishingFishArt oldDelegate) =>

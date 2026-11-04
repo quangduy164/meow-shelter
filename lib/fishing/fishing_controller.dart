@@ -28,12 +28,22 @@ class FishingController extends ChangeNotifier {
   Offset _spot = const Offset(.5, .66);
   double _clock = 0, _elapsed = 0, _wait = 0;
   double _tension = .32, _progress = .12, _fight = 0;
+  double _drift = 0, _driftTarget = 0, _driftTimer = 0, _steer = 0;
+  double _sweetCenter = .45, _comboTime = 0;
+  int _combo = 0;
   double _worldHour = 12;
   bool _pulling = false, _savingCatch = false, _disposed = false;
   String? _error;
 
   FishingPhase get phase => _phase;
-  Offset get spot => _spot;
+  Offset get spot =>
+      _phase == FishingPhase.reeling ? _spot + Offset(_drift * .07, 0) : _spot;
+  double get drift => _drift;
+  double get steer => _steer;
+  double get sweetCenter => _sweetCenter;
+  static const sweetWidth = .16;
+  int get combo => _combo;
+  bool get inSweetZone => (_tension - _sweetCenter).abs() <= sweetWidth / 2;
   double get clock => _clock;
   double get elapsed => _elapsed;
   double get tension => _tension;
@@ -47,10 +57,34 @@ class FishingController extends ChangeNotifier {
         FishingPhase.reeling,
         FishingPhase.saving
       ].contains(_phase);
-  bool get _surging =>
-      math.sin(_elapsed * (2.2 + _fish.movementSpeed) + _fight) > .35;
+  bool get _surging => _surge > .6;
+
+  /// 0..1 fight strength; each species has its own readable rhythm.
+  double get _surge {
+    final t = _elapsed + _fight;
+    return switch (_fish) {
+      // Short, frequent jerks.
+      FishSpecies.perch => math.sin(t * 7).abs() > .8 ? 1.0 : .25,
+      // Strong but steady.
+      FishSpecies.carp => .55 + math.sin(t * 1.2) * .1,
+      // Quiet, then a hard dive every few seconds.
+      FishSpecies.catfish => (t % 3.2) < .7 ? 1.0 : .2,
+      // Gentle pull; it mostly changes direction.
+      FishSpecies.goldfish => .35,
+      FishSpecies.koi => .4 + math.sin(t * 2) * .2,
+      // Pretends to be tired, then bursts.
+      FishSpecies.catMew => (t % 4.5) > 3.6 ? 1.0 : .1,
+      _ => .45 + math.sin(t * 2.5) * .2,
+    };
+  }
 
   void setWorldHour(double hour) => _worldHour = hour;
+
+  /// Horizontal swipe while reeling; push against the fish direction.
+  void addSteer(double delta) {
+    if (_phase != FishingPhase.reeling) return;
+    _steer = (_steer + delta).clamp(-1.0, 1.0);
+  }
 
   String get message => switch (_phase) {
         FishingPhase.ready => 'HỒ CÂU',
@@ -69,6 +103,28 @@ class FishingController extends ChangeNotifier {
     _phase = phase;
     _elapsed = 0;
     _pulling = false;
+    _steer = 0;
+    _drift = 0;
+    _driftTarget = 0;
+    _driftTimer = 0;
+    _combo = 0;
+    _comboTime = 0;
+  }
+
+  void _updateDrift(double dt) {
+    _driftTimer -= dt;
+    if (_driftTimer <= 0) {
+      final restless =
+          _fish == FishSpecies.goldfish || _fish == FishSpecies.catMew;
+      _driftTimer = restless
+          ? .9 + _random.nextDouble() * .8
+          : 1.8 + _random.nextDouble() * 1.6;
+      _driftTarget = (_random.nextDouble() * 2 - 1) *
+          (.45 + _fish.movementAmplitude * .35);
+    }
+    _drift += (_driftTarget - _drift) * math.min(1, dt * 2.5);
+    // The counter-swipe relaxes, so the player has to keep responding.
+    _steer *= math.max(0, 1 - dt * 1.4);
   }
 
   void update(double dt) {
@@ -86,13 +142,35 @@ class FishingController extends ChangeNotifier {
       case FishingPhase.bite:
         if (_elapsed > 1.5) _lose('Cá đã nhả mồi');
       case FishingPhase.reeling:
+        _updateDrift(dt);
+        _sweetCenter = .45 + math.sin(_elapsed * .8 + _fight) * .17;
         final pull = _fish.pullStrength;
+        // Not countering the sideways run strains the line.
+        final imbalance = (_drift + _steer).abs();
         _tension = (_tension +
-                (_pulling ? (_surging ? .40 * pull : .21 * pull) : -.32) * dt)
+                (_pulling ? (.12 + _surge * .32) * pull : -.32) * dt +
+                imbalance * .22 * dt)
             .clamp(0.0, 1.0);
-        _progress = (_progress +
-                (_pulling ? (_tension > .82 ? .035 : .15) : -.045) * dt)
-            .clamp(0.0, 1.0);
+        final sweet = _pulling && inSweetZone;
+        if (sweet) {
+          _comboTime += dt;
+          if (_comboTime >= .8) {
+            _comboTime = 0;
+            _combo++;
+            HapticFeedback.selectionClick();
+          }
+        } else if (_pulling) {
+          _comboTime = 0;
+          if (_tension > _sweetCenter + sweetWidth) _combo = 0;
+        }
+        final reelRate = !_pulling
+            ? -.045
+            : _tension > .82
+                ? .035
+                : sweet
+                    ? .2 * (1 + math.min(_combo, 5) * .08)
+                    : .11;
+        _progress = (_progress + reelRate * dt).clamp(0.0, 1.0);
         if (_tension <= 0 || _tension >= 1) {
           _lose('Dây câu bị đứt');
         } else if (_progress <= 0 || _elapsed > 35) {

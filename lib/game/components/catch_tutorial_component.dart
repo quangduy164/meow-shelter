@@ -31,10 +31,10 @@ class CatchTutorialComponent extends PositionComponent {
     final fed = kitten.hasEaten;
     final approaching = kitten.fishTarget != null;
     final text = fed
-        ? '2. Giữ và kéo mèo vào ổ màu cam'
+        ? 'Giữ và kéo mèo vào ổ màu cam'
         : approaching
             ? 'Mèo đang đến ăn cá…'
-            : '1. Kéo cá ở dưới đến cạnh mèo để cho ăn';
+            : 'Kéo cá ở dưới đến cạnh mèo để cho ăn';
     final caption = TextPainter(
         text: TextSpan(
             text: text,

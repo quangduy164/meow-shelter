@@ -12,12 +12,17 @@ class FishingPainter extends CustomPainter {
       required this.elapsed,
       required this.progress,
       required this.tension,
-      required this.pulling});
+      required this.pulling,
+      this.drift = 0,
+      this.sweetCenter = .45,
+      this.combo = 0});
   final FishingPhase phase;
   final FishSpecies fish;
   final Offset spot;
   final double clock, elapsed, progress, tension;
   final bool pulling;
+  final double drift, sweetCenter;
+  final int combo;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -70,6 +75,9 @@ class FishingPainter extends CustomPainter {
         Paint()
           ..color = const Color(0xFF593822)
           ..strokeWidth = 2);
+    if (phase == FishingPhase.reeling && drift.abs() > .2) {
+      _drawPullArrows(canvas, bobber, drift);
+    }
     canvas.drawOval(Rect.fromCenter(center: bobber, width: 9, height: 15),
         Paint()..color = Colors.white);
     canvas.drawOval(
@@ -218,6 +226,30 @@ class FishingPainter extends CustomPainter {
     return guide(1);
   }
 
+  /// Chevrons show where the fish is running; swipe the other way.
+  void _drawPullArrows(Canvas canvas, Offset bobber, double drift) {
+    final dir = drift.sign;
+    final strength = ((drift.abs() - .2) / .6).clamp(0.0, 1.0);
+    final blink = .55 + math.sin(clock * 9).abs() * .45;
+    final paint = Paint()
+      ..color = Color.lerp(
+              const Color(0xFFFFC247), const Color(0xFFFF554C), strength)!
+          .withOpacity(blink)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 3
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round;
+    for (var i = 0; i < 2; i++) {
+      final x = bobber.dx + dir * (16 + i * 9);
+      canvas.drawPath(
+          Path()
+            ..moveTo(x - dir * 4, bobber.dy - 7)
+            ..lineTo(x + dir * 3, bobber.dy)
+            ..lineTo(x - dir * 4, bobber.dy + 7),
+          paint);
+    }
+  }
+
   void _drawTensionGauge(Canvas canvas, Offset center) {
     const radius = 24.0;
     final rect = Rect.fromCircle(center: center, radius: radius);
@@ -246,6 +278,43 @@ class FishingPainter extends CustomPainter {
           : zone.$3;
       canvas.drawArc(rect, start + zone.$1 * sweep, (zone.$2 - zone.$1) * sweep,
           false, stroke..color = color);
+    }
+    // Golden sweet zone: reeling inside it is faster and builds combo.
+    const half = FishingController.sweetWidth / 2;
+    final sweetRect = Rect.fromCircle(center: center, radius: radius + 7);
+    canvas.drawArc(
+        sweetRect,
+        start + (sweetCenter - half) * sweep,
+        half * 2 * sweep,
+        false,
+        Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 5
+          ..strokeCap = StrokeCap.round
+          ..color = const Color(0xFF8A5A12));
+    canvas.drawArc(
+        sweetRect,
+        start + (sweetCenter - half) * sweep,
+        half * 2 * sweep,
+        false,
+        Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 3
+          ..strokeCap = StrokeCap.round
+          ..color = const Color(0xFFFFE066));
+    if (combo > 0) {
+      final comboText = TextPainter(
+          text: TextSpan(
+              text: 'x$combo',
+              style: const TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w900,
+                  color: Color(0xFFFFE066),
+                  shadows: [Shadow(color: Color(0xFF5A3A10), blurRadius: 3)])),
+          textDirection: TextDirection.ltr)
+        ..layout();
+      comboText.paint(
+          canvas, center + Offset(-comboText.width / 2, -radius - 28));
     }
     final tickPaint = Paint()
       ..color = const Color(0xFF294941)

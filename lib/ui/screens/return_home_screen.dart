@@ -2,7 +2,7 @@ import 'package:flame/game.dart';
 import 'package:flutter/material.dart';
 import 'dart:async';
 
-import '../../game/return_home_game.dart';
+import '../../game/return_home/return_home_game.dart';
 
 class ReturnHomeScreen extends StatefulWidget {
   const ReturnHomeScreen({super.key});
@@ -17,7 +17,7 @@ class _ReturnHomeScreenState extends State<ReturnHomeScreen> {
   @override
   void initState() {
     super.initState();
-    _game = ReturnHomeGame(onExit: () => Navigator.of(context).pop());
+    _game = ReturnHomeGame();
   }
 
   @override
@@ -72,9 +72,7 @@ class _SkillButtonState extends State<_SkillButton> {
   @override
   Widget build(BuildContext context) {
     final game = widget.game;
-    if (!game.started || game.selectedCat != 'black') {
-      return const SizedBox.shrink();
-    }
+    if (!game.started) return const SizedBox.shrink();
     final ready = game.skillReady;
     return SafeArea(
       child: Align(
@@ -100,8 +98,8 @@ class _SkillButtonState extends State<_SkillButton> {
                   ],
                 ),
                 child: Stack(alignment: Alignment.center, children: [
-                  const Icon(Icons.auto_awesome,
-                      size: 34, color: Color(0xFF603312)),
+                  Icon(_skillIcon(game.selectedCat),
+                      size: 34, color: const Color(0xFF603312)),
                   if (!ready)
                     Text('${game.skillCooldown.ceil()}',
                         style: const TextStyle(
@@ -117,6 +115,14 @@ class _SkillButtonState extends State<_SkillButton> {
     );
   }
 }
+
+IconData _skillIcon(String type) => switch (type) {
+      'orange' => Icons.flash_on_rounded,
+      'black' => Icons.auto_awesome,
+      'himalaya' => Icons.sync_rounded,
+      'scottish' => Icons.shield_rounded,
+      _ => Icons.star_rounded,
+    };
 
 class _ChooseCatOverlay extends StatelessWidget {
   const _ChooseCatOverlay({required this.game});
