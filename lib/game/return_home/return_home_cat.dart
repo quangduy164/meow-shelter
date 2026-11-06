@@ -172,6 +172,9 @@ class ReturnHomeCat extends SpriteAnimationGroupComponent<CatState>
             ? input.normalized()
             : Vector2(velocity.x >= 0 ? 1 : -1, 0);
         velocity = dir * dashSpeed;
+      case 'calico':
+        // Patches up one heart, never above the starting count.
+        game.lives = min(ReturnHomeGame.startingLives, game.lives + 1);
       case 'scottish':
         shield = true;
     }

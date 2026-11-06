@@ -8,6 +8,7 @@ import 'components/fish_item_component.dart';
 import 'components/catch_tutorial_component.dart';
 import 'components/shelter_garden_component.dart';
 import '../collection/fish_collection.dart';
+import '../camp/camp_state.dart';
 import 'components/hud_component.dart';
 import 'components/shelter_zone_component.dart';
 import 'constants.dart';
@@ -94,9 +95,8 @@ class MeowShelterGame extends FlameGame {
   }
 
   void _spawnCat(String type) {
-    final catLevel = level.isInfinite
-        ? level.forInfiniteProgress(_hud.delivered)
-        : level;
+    final catLevel =
+        level.isInfinite ? level.forInfiniteProgress(_hud.delivered) : level;
     add(CatComponent(
       position: level.isTutorial
           ? Vector2(size.x * .43 - catWidth / 2, size.y * .43 - catHeight / 2)
@@ -136,6 +136,7 @@ class MeowShelterGame extends FlameGame {
   void _handleDelivered(CatComponent cat) {
     if (_hud.status != RoundStatus.playing) return;
     _hud.delivered += 1;
+    CampState.instance.rescue(cat.catType);
     if (level.isInfinite) {
       if (_hud.delivered % 5 == 0) _shuffleShelters();
       _spawnCat(level.catTypes[_random.nextInt(level.catTypes.length)]);

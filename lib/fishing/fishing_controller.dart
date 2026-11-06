@@ -1,3 +1,4 @@
+import '../camp/camp_state.dart';
 import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart';
@@ -245,6 +246,7 @@ class FishingController extends ChangeNotifier {
     _savingCatch = true;
     try {
       await collection.catchFish(_fish);
+      await CampState.instance.addCoins(2);
       if (_disposed) return;
       _setPhase(FishingPhase.caught);
       HapticFeedback.heavyImpact();

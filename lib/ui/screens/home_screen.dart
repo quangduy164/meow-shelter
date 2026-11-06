@@ -5,6 +5,7 @@ import 'game_screen.dart';
 import 'level_select_screen.dart';
 import 'fishing_screen.dart';
 import 'return_home_screen.dart';
+import 'camp_screen.dart';
 import '../widgets/game_logo.dart';
 import '../widgets/home_background_painter.dart';
 import '../widgets/mode_icon.dart';
@@ -68,6 +69,12 @@ class HomeScreen extends StatelessWidget {
                 tooltip: 'Chọn màn',
                 icon: Icons.grid_view_rounded,
                 onPressed: () => _open(context, const LevelSelectScreen()),
+              ),
+              const SizedBox(width: 12),
+              _IconSquareButton(
+                tooltip: 'Trại mèo',
+                icon: Icons.cottage_rounded,
+                onPressed: () => _open(context, const CampScreen()),
               ),
             ],
           ),
@@ -147,9 +154,9 @@ class _PlayButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => _PressableShell(
-        width: 280,
-        height: 70,
-        radius: 24,
+        width: 220,
+        height: 56,
+        radius: 20,
         face: const LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
@@ -159,12 +166,12 @@ class _PlayButton extends StatelessWidget {
         child: const Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.play_arrow_rounded, size: 38, color: _ink),
+            Icon(Icons.play_arrow_rounded, size: 30, color: _ink),
             SizedBox(width: 4),
             Text('BẮT ĐẦU',
                 style: TextStyle(
                     color: _ink,
-                    fontSize: 26,
+                    fontSize: 21,
                     fontWeight: FontWeight.w900,
                     letterSpacing: 2)),
           ],
@@ -185,13 +192,13 @@ class _IconSquareButton extends StatelessWidget {
         child: Semantics(
           label: tooltip,
           child: _PressableShell(
-            width: 70,
-            height: 70,
-            radius: 22,
+            width: 56,
+            height: 56,
+            radius: 18,
             face: const LinearGradient(colors: [_cream, _cream]),
             base: const Color(0xFFB27A3E),
             onPressed: onPressed,
-            child: Icon(icon, size: 32, color: _ink),
+            child: Icon(icon, size: 26, color: _ink),
           ),
         ),
       );

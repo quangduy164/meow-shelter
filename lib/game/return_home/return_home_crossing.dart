@@ -36,13 +36,30 @@ class ReturnHomeCrossing extends PositionComponent {
         return Offset(x, road.centerY(x) + s.dy * road.halfWidth(x));
       });
 
+  /// Drawn stone is a 60x40 ellipse; landing uses the same ellipse plus a
+  /// small grace margin so what looks dry is dry.
+  static const double stoneRx = 30 + 6;
+  static const double stoneRy = 20 + 6;
+
+  bool _onStone(Offset p) => stones.any((s) {
+        final dx = (p.dx - s.dx) / stoneRx;
+        final dy = (p.dy - s.dy) / stoneRy;
+        return dx * dx + dy * dy <= 1;
+      });
+
+  /// Water surface at a point: inside the crossing, on the lane, off stones.
+  bool isWater(Offset p) {
+    if (p.dx < left || p.dx > right) return false;
+    if (p.dy < road.topEdge(p.dx) || p.dy > road.bottomEdge(p.dx)) return false;
+    return !_onStone(p);
+  }
+
+  /// The cat falls only if its whole paw line is over water: one paw on a
+  /// stone is enough to stand.
   bool inWater(Rect catBox) {
-    final paw = Offset(catBox.center.dx, catBox.bottom - 4);
-    if (paw.dx < left || paw.dx > right) return false;
-    if (paw.dy < road.topEdge(paw.dx) || paw.dy > road.bottomEdge(paw.dx)) {
-      return false;
-    }
-    return !stones.any((stone) => (stone - paw).distance <= stoneRadius);
+    final y = catBox.bottom - 4;
+    return [catBox.left + 6, catBox.center.dx, catBox.right - 6]
+        .every((x) => isWater(Offset(x, y)));
   }
 
   @override

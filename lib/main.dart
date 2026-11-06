@@ -3,12 +3,14 @@ import 'package:flutter/services.dart';
 
 import 'ui/screens/home_screen.dart';
 import 'collection/fish_collection.dart';
+import 'camp/camp_state.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  FishCollection.instance =
-      FishCollection(await SharedPreferences.getInstance());
+  final preferences = await SharedPreferences.getInstance();
+  FishCollection.instance = FishCollection(preferences);
+  CampState.instance = CampState(preferences);
   // Khóa màn hình ngang
   SystemChrome.setPreferredOrientations([
     DeviceOrientation.landscapeLeft,

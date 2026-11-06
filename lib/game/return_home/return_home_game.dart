@@ -1,3 +1,4 @@
+import '../../camp/camp_state.dart';
 import 'dart:math';
 
 import 'package:flame/components.dart';
@@ -29,6 +30,7 @@ class ReturnHomeGame extends FlameGame {
         'black' => 4,
         'himalaya' => 6,
         'scottish' => 8,
+        'calico' => 12,
         _ => 5,
       };
 
@@ -49,6 +51,7 @@ class ReturnHomeGame extends FlameGame {
   double skillCooldown = 0;
   String selectedCat = 'orange';
   int fish = 0;
+  int reward = 0;
   int falls = 0;
   double elapsed = 0;
   double checkpointX = ReturnHomeRoad.startX;
@@ -62,7 +65,7 @@ class ReturnHomeGame extends FlameGame {
   final _contacts = <ReturnHomeObstacle>{};
 
   Future<void> chooseCat(String type) async {
-    if (started || _choosing) return;
+    if (started || _choosing || !CampState.instance.unlocked(type)) return;
     _choosing = true;
     selectedCat = type;
     await _cat.changeType(type);
@@ -74,7 +77,8 @@ class ReturnHomeGame extends FlameGame {
   void activateSkill() {
     if (!started || !skillReady || finished) return;
     skillReady = false;
-    skillCooldown = skillCooldownFor(selectedCat);
+    skillCooldown = skillCooldownFor(selectedCat) -
+        (CampState.instance.bonded(selectedCat) ? 1 : 0);
     _cat.activateSkill();
   }
 
@@ -202,13 +206,18 @@ class ReturnHomeGame extends FlameGame {
     _applyWind(dt);
     _resolveHits(dt);
     resolveObstacleCollisions(_spawner.obstacles);
+    _sinkRocks();
     _checkWater();
     _collectPickups();
     camera.viewfinder.position = Vector2(cameraX, size.y / 2);
     const start = ReturnHomeRoad.startX;
     progress = ((_cat.position.x - start) / max(1.0, road.endX - start))
         .clamp(0.0, 1.0);
-    if (progress >= 1) finished = true;
+    if (progress >= 1) {
+      finished = true;
+      reward = fish * 2 + stars * 10;
+      CampState.instance.addCoins(reward);
+    }
   }
 
   /// The mode's damage rules: a log is a wall that stops forward motion, every
@@ -216,6 +225,9 @@ class ReturnHomeGame extends FlameGame {
   void _resolveHits(double dt) {
     for (final obstacle in _spawner.obstacles) {
       obstacle.updatePhysics(dt, _cat.position.x);
+    }
+    // Iterate a copy: a respawn removes nearby rocks and birds from the list.
+    for (final obstacle in List<ReturnHomeObstacle>.of(_spawner.obstacles)) {
       if (obstacle.kind == ReturnHomeObstacleKind.log) continue;
       final touching = obstacle.hits(_cat.hitbox);
       if (obstacle.kind == ReturnHomeObstacleKind.spring) {
@@ -244,7 +256,10 @@ class ReturnHomeGame extends FlameGame {
         lives -= 1;
         _cat.bumpAwayFrom(obstacle.position);
         _cat.invulnerable = hitCooldown;
-        if (lives <= 0) _respawn();
+        if (lives <= 0) {
+          _respawn();
+          return;
+        }
       }
     }
   }
@@ -255,6 +270,18 @@ class ReturnHomeGame extends FlameGame {
     final wind = road.biomeAt(_cat.position.x).wind;
     if (wind == 0) return;
     _cat.position.y += sin(elapsed * 1.4) * sin(elapsed * .37 + 1) * wind * dt;
+  }
+
+  /// Rolling rocks that reach open water sink instead of rolling across it.
+  void _sinkRocks() {
+    for (final o in List<ReturnHomeObstacle>.of(_spawner.obstacles)) {
+      if (o.kind != ReturnHomeObstacleKind.rock) continue;
+      final p = Offset(o.position.x, o.position.y);
+      if (!_crossings.any((c) => c.isWater(p))) continue;
+      _spawner.obstacles.remove(o);
+      _contacts.remove(o);
+      o.removeFromParent();
+    }
   }
 
   void _checkWater() {
@@ -349,6 +376,7 @@ class ReturnHomeGame extends FlameGame {
       fish: fish,
       elapsed: elapsed,
       stars: stars,
+      reward: reward,
       zone: checkpointMessage > 0 ? zoneName : null,
       finished: finished,
     );

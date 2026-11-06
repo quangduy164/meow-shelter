@@ -67,8 +67,7 @@ class LevelCard extends StatelessWidget {
                                 fontSize: 10,
                                 fontWeight: FontWeight.w700)),
                         if (unlocked)
-                          Text(
-                              level.mission,
+                          Text(level.mission,
                               style: const TextStyle(
                                   fontSize: 9, color: Color(0xFF75451F))),
                       ],

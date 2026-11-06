@@ -1,3 +1,4 @@
+import '../../camp/camp_state.dart';
 import 'package:flame/game.dart';
 import 'package:flutter/material.dart';
 import 'dart:async';
@@ -132,6 +133,8 @@ class _ChooseCatOverlay extends StatelessWidget {
                         const Color(0xFFDCC7A7)),
                     _catButton(context, 'scottish', 'Scottish',
                         const Color(0xFFB77E64)),
+                    _catButton(
+                        context, 'calico', 'Calico', const Color(0xFFE8A86B)),
                   ])
             ]),
           ),
@@ -144,7 +147,9 @@ class _ChooseCatOverlay extends StatelessWidget {
         width: 165,
         height: 52,
         child: ElevatedButton.icon(
-          onPressed: () => game.chooseCat(type),
+          onPressed: CampState.instance.unlocked(type)
+              ? () => game.chooseCat(type)
+              : null,
           icon: SizedBox(
             width: 34,
             height: 34,
@@ -163,7 +168,7 @@ class _ChooseCatOverlay extends StatelessWidget {
               ),
             ),
           ),
-          label: Text(label),
+          label: Text(CampState.instance.unlocked(type) ? label : '$label 🔒'),
           style: ElevatedButton.styleFrom(
               backgroundColor: Colors.white,
               foregroundColor: const Color(0xFF603312),

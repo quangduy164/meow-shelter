@@ -132,6 +132,11 @@ class ReturnHomeSkillButton extends StatelessWidget {
             const Color(0xFF6B9E4E),
             'Lá chắn'
           ),
+        'calico' => (
+            Icons.favorite_rounded,
+            const Color(0xFFD9657B),
+            'Hồi máu'
+          ),
         _ => (Icons.star_rounded, const Color(0xFFF08A3A), 'Kỹ năng'),
       };
 

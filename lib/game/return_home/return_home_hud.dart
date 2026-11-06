@@ -10,6 +10,7 @@ void paintReturnHomeHud(
   required int fish,
   required double elapsed,
   required int stars,
+  required int reward,
   required String? zone,
   required bool finished,
 }) {
@@ -48,8 +49,12 @@ void paintReturnHomeHud(
       List.generate(3, (i) => i < stars ? '★' : '☆').join(' '),
       card.top + 58,
       30);
-  _center(canvas, size, '${elapsed.toStringAsFixed(1)} giây · $fish cá',
-      card.top + 96, 16);
+  _center(
+      canvas,
+      size,
+      '${elapsed.toStringAsFixed(1)} giây · $fish cá · +$reward xu',
+      card.top + 96,
+      16);
 }
 
 void _center(Canvas canvas, Size size, String text, double y, double fontSize) {

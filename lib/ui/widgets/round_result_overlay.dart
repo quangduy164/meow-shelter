@@ -100,8 +100,12 @@ class _RoundResultOverlayState extends State<RoundResultOverlay>
                                   liveRegion: true,
                                   child: Text(
                                       widget.game.level.isInfinite
-                                          ? (_won ? 'CỨU HỘ THÀNH CÔNG!' : 'MÈO ĐÃ CHẠY MẤT!')
-                                          : (_won ? 'VỀ NHÀ RỒI!' : 'HẾT GIỜ RỒI!'),
+                                          ? (_won
+                                              ? 'CỨU HỘ THÀNH CÔNG!'
+                                              : 'MÈO ĐÃ CHẠY MẤT!')
+                                          : (_won
+                                              ? 'VỀ NHÀ RỒI!'
+                                              : 'HẾT GIỜ RỒI!'),
                                       textAlign: TextAlign.center,
                                       style: TextStyle(
                                           fontSize: 27,

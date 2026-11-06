@@ -35,9 +35,13 @@ class HudComponent extends PositionComponent with HasGameRef<FlameGame> {
         ),
         panel,
       );
-      _drawCentered(canvas,
+      _drawCentered(
+          canvas,
           isInfinite ? 'ĐỢT $objective · $delivered' : '${secondsLeft}s',
-          screenSize, 22, 15, const Color(0xFFFFFFFF));
+          screenSize,
+          22,
+          15,
+          const Color(0xFFFFFFFF));
     }
   }
 

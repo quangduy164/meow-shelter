@@ -77,6 +77,3 @@ const infiniteLevel = LevelConfig(
     gripSeconds: 4,
     skillTier: 0,
     isInfinite: true);
-
-
-
