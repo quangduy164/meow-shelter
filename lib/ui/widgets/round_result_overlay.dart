@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
+import '../design.dart';
 import '../../game/components/hud_component.dart';
 import '../../game/meow_shelter_game.dart';
 import '../../game/constants.dart';
@@ -112,7 +113,7 @@ class _RoundResultOverlayState extends State<RoundResultOverlay>
                                           height: 1.15,
                                           fontWeight: FontWeight.w900,
                                           color: _won
-                                              ? const Color(0xFF376B52)
+                                              ? DS.ink
                                               : const Color(0xFFAA6751))))),
                           if (_won && !widget.game.level.isInfinite)
                             Positioned(
@@ -189,34 +190,22 @@ class _ResultButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final green = primary && won;
-    final foreground =
-        green ? const Color(0xFFFFF6DC) : const Color(0xFF70502F);
+    // Primary action is gold, others cream with a wooden border (DESIGN.md).
+    const foreground = DS.ink;
+    final edge = primary ? DS.goldEdge : DS.wood;
     return Tooltip(
         message: tooltip,
         child: Container(
           height: 48,
           width: label == null ? 48 : null,
-          decoration:
-              BoxDecoration(borderRadius: BorderRadius.circular(8), boxShadow: [
-            BoxShadow(
-                color:
-                    green ? const Color(0xFF315740) : const Color(0xFFB49460),
-                offset: const Offset(0, 4)),
-          ]),
+          decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(14),
+              boxShadow: [BoxShadow(color: edge, offset: const Offset(0, 4))]),
           child: Material(
-            color: green
-                ? const Color(0xFF568667)
-                : primary
-                    ? const Color(0xFFF6C967)
-                    : const Color(0xFFE6D8B3),
+            color: primary ? DS.gold : DS.cream,
             shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-                side: BorderSide(
-                    color: green
-                        ? const Color(0xFF315740)
-                        : const Color(0xFFB49460),
-                    width: 1.5)),
+                borderRadius: BorderRadius.circular(14),
+                side: BorderSide(color: edge, width: 2)),
             child: InkWell(
               onTap: onPressed,
               borderRadius: BorderRadius.circular(8),
@@ -230,7 +219,7 @@ class _ResultButton extends StatelessWidget {
                         if (label != null) ...[
                           const SizedBox(width: 7),
                           Text(label!,
-                              style: TextStyle(
+                              style: const TextStyle(
                                   fontSize: 14,
                                   fontWeight: FontWeight.w900,
                                   color: foreground))

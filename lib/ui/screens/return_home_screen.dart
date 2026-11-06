@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'dart:async';
 
 import '../../game/return_home/return_home_game.dart';
+import '../design.dart';
 import '../widgets/return_home_buttons.dart';
 
 class ReturnHomeScreen extends StatefulWidget {
@@ -96,28 +97,15 @@ class _ChooseCatOverlay extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Material(
-        color: const Color(0x88403831),
+        color: DS.scrim,
         child: Center(
           child: Container(
             constraints: const BoxConstraints(maxWidth: 420),
             margin: const EdgeInsets.all(24),
             padding: const EdgeInsets.fromLTRB(20, 18, 20, 20),
-            decoration: BoxDecoration(
-                color: const Color(0xFFFFF3D8),
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: const Color(0xFF9A6028), width: 3),
-                boxShadow: const [
-                  BoxShadow(
-                      color: Color(0x663B2415),
-                      blurRadius: 14,
-                      offset: Offset(0, 7))
-                ]),
+            decoration: DS.card,
             child: Column(mainAxisSize: MainAxisSize.min, children: [
-              const Text('CHỌN MÈO',
-                  style: TextStyle(
-                      fontSize: 23,
-                      fontWeight: FontWeight.w900,
-                      color: Color(0xFF603312))),
+              const Text('CHỌN MÈO', style: DS.title),
               const SizedBox(height: 16),
               Wrap(
                   spacing: 9,
@@ -166,13 +154,7 @@ class _ChooseCatOverlay extends StatelessWidget {
             ),
           ),
           label: Text(label),
-          style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.white,
-              foregroundColor: const Color(0xFF603312),
-              elevation: 2,
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(9),
-                  side: const BorderSide(color: Color(0xFFD4B77A)))),
+          style: DS.primary,
         ),
       );
 }

@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 
 import '../../camp/camp_state.dart';
 import '../../game/world/shelter_garden_painter.dart';
+import '../design.dart';
 import '../widgets/round_button.dart';
 
 /// The cat camp: rescued cats wander the yard, the player pets them and buys
@@ -101,22 +102,14 @@ class _CampScreenState extends State<CampScreen> {
                     onPressed: _openShop,
                     icon: const Icon(Icons.storefront_rounded),
                     label: const Text('CỬA HÀNG'),
-                    style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFFFFC24D),
-                        foregroundColor: const Color(0xFF603312),
-                        textStyle:
-                            const TextStyle(fontWeight: FontWeight.w900)),
+                    style: DS.primary,
                   ),
                   const SizedBox(width: 8),
                   ElevatedButton.icon(
                     onPressed: _openCats,
                     icon: const Icon(Icons.favorite_rounded),
                     label: const Text('CÁC BÉ'),
-                    style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFFFFF0CA),
-                        foregroundColor: const Color(0xFF603312),
-                        textStyle:
-                            const TextStyle(fontWeight: FontWeight.w900)),
+                    style: DS.secondary,
                   ),
                 ]),
               ),
@@ -129,8 +122,9 @@ class _CampScreenState extends State<CampScreen> {
         context: context,
         builder: (context) => StatefulBuilder(
           builder: (context, refresh) => AlertDialog(
-            backgroundColor: const Color(0xFFFFF3D8),
-            title: Text('CỬA HÀNG · ${camp.coins} xu'),
+            backgroundColor: DS.cream,
+            shape: DS.dialogShape,
+            title: Text('CỬA HÀNG · ${camp.coins} xu', style: DS.title),
             content: SizedBox(
               width: 420,
               child: ListView(shrinkWrap: true, children: [
@@ -139,11 +133,14 @@ class _CampScreenState extends State<CampScreen> {
                     leading: SizedBox(
                         width: 48,
                         child: FittedBox(child: _DecorationArt(item.id))),
-                    title: Text(item.name),
+                    title: Text(item.name,
+                        style: const TextStyle(
+                            color: DS.ink, fontWeight: FontWeight.w800)),
                     trailing: camp.owned.contains(item.id)
                         ? const Text('Đã có',
                             style: TextStyle(color: Color(0xFF6B9E4E)))
-                        : FilledButton(
+                        : ElevatedButton(
+                            style: DS.primary,
                             onPressed: camp.coins < item.price
                                 ? null
                                 : () async {
@@ -162,8 +159,9 @@ class _CampScreenState extends State<CampScreen> {
   void _openCats() => showDialog<void>(
         context: context,
         builder: (context) => AlertDialog(
-          backgroundColor: const Color(0xFFFFF3D8),
-          title: const Text('CÁC BÉ MÈO'),
+          backgroundColor: DS.cream,
+          shape: DS.dialogShape,
+          title: const Text('CÁC BÉ MÈO', style: DS.title),
           content: SizedBox(
             width: 420,
             child: ListView(shrinkWrap: true, children: [
@@ -173,7 +171,9 @@ class _CampScreenState extends State<CampScreen> {
                       opacity: camp.unlocked(type) ? 1 : .3,
                       child: _CatSprite(
                           type: type, walking: false, frame: 0, size: 44)),
-                  title: Text(CampState.catNames[type]!),
+                  title: Text(CampState.catNames[type]!,
+                      style: const TextStyle(
+                          color: DS.ink, fontWeight: FontWeight.w800)),
                   subtitle: Text(camp.unlocked(type)
                       ? 'Thân thiết ${camp.affection[type] ?? 0}/${CampState.bondedAffection}'
                           '${camp.bonded(type) ? ' · kỹ năng hồi nhanh 1s' : ''}'
@@ -267,8 +267,8 @@ class _Chip extends StatelessWidget {
           Icon(icon, color: color, size: 20),
           const SizedBox(width: 6),
           Text(text,
-              style: const TextStyle(
-                  fontWeight: FontWeight.w900, color: Color(0xFF5A3214))),
+              style:
+                  const TextStyle(fontWeight: FontWeight.w900, color: DS.ink)),
         ]),
       );
 }

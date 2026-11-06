@@ -23,7 +23,7 @@ class HudComponent extends PositionComponent with HasGameRef<FlameGame> {
     // Dùng kích thước canvas hiện tại thay vì kích thước lúc HUD được tạo.
     // Điều này giữ màn thắng/thua ở giữa khi thiết bị xoay hoặc đổi tỉ lệ màn hình.
     final screenSize = gameRef.size;
-    final panel = Paint()..color = const Color(0xCC432812);
+    final panel = Paint()..color = const Color(0xCC5A3214);
     const panelWidth = 100.0;
     const panelHeight = 40.0;
     final panelLeft = (screenSize.x - panelWidth) / 2;
@@ -41,7 +41,7 @@ class HudComponent extends PositionComponent with HasGameRef<FlameGame> {
           screenSize,
           22,
           15,
-          const Color(0xFFFFFFFF));
+          const Color(0xFFFFF4DA));
     }
   }
 

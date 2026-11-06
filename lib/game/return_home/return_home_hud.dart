@@ -20,7 +20,7 @@ void paintReturnHomeHud(
       text:
           'VỀ NHÀ ${(progress * 100).round()}%   $hearts   🐟 $fish   ${elapsed.toStringAsFixed(1)}s',
       style: const TextStyle(
-          color: Color(0xFF3B2415), fontSize: 17, fontWeight: FontWeight.w900),
+          color: Color(0xFF5A3214), fontSize: 17, fontWeight: FontWeight.w900),
     ),
     textDirection: TextDirection.ltr,
   )..layout(maxWidth: size.width - 90);
@@ -35,11 +35,11 @@ void paintReturnHomeHud(
       width: 330,
       height: 128);
   canvas.drawRRect(RRect.fromRectAndRadius(card, const Radius.circular(18)),
-      Paint()..color = const Color(0xF2FFF3D8));
+      Paint()..color = const Color(0xF2FFF4DA));
   canvas.drawRRect(
       RRect.fromRectAndRadius(card, const Radius.circular(18)),
       Paint()
-        ..color = const Color(0xFF9A6028)
+        ..color = const Color(0xFFB27A3E)
         ..style = PaintingStyle.stroke
         ..strokeWidth = 3);
   _center(canvas, size, 'ĐÃ VỀ ĐẾN NHÀ!', card.top + 18, 28);
@@ -62,7 +62,7 @@ void _center(Canvas canvas, Size size, String text, double y, double fontSize) {
     text: TextSpan(
         text: text,
         style: TextStyle(
-            color: const Color(0xFF573215),
+            color: const Color(0xFF5A3214),
             fontSize: fontSize,
             fontWeight: FontWeight.w900)),
     textDirection: TextDirection.ltr,

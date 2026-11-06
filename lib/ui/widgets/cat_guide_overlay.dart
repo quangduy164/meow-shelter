@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../camp/camp_state.dart';
 import '../../game/cats/cat_catch_rule.dart';
+import '../design.dart';
 
 /// Explains how to catch each breed. Shown before a round when it contains a
 /// breed the player has not met yet, and on demand from the help button.
@@ -23,24 +24,16 @@ class CatGuideOverlay extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Material(
-        color: const Color(0x99302010),
+        color: DS.scrim,
         child: SafeArea(
           child: Center(
             child: Container(
               constraints: const BoxConstraints(maxWidth: 560, maxHeight: 340),
               margin: const EdgeInsets.all(16),
               padding: const EdgeInsets.fromLTRB(18, 14, 18, 12),
-              decoration: BoxDecoration(
-                color: const Color(0xFFFFF3D8),
-                borderRadius: BorderRadius.circular(18),
-                border: Border.all(color: const Color(0xFF9A6028), width: 3),
-              ),
+              decoration: DS.card,
               child: Column(mainAxisSize: MainAxisSize.min, children: [
-                const Text('CÁCH BẮT MÈO',
-                    style: TextStyle(
-                        fontSize: 21,
-                        fontWeight: FontWeight.w900,
-                        color: Color(0xFF603312))),
+                const Text('CÁCH BẮT MÈO', style: DS.title),
                 const SizedBox(height: 8),
                 Flexible(
                   child: ListView(shrinkWrap: true, children: [
@@ -48,13 +41,12 @@ class CatGuideOverlay extends StatelessWidget {
                   ]),
                 ),
                 const SizedBox(height: 8),
-                FilledButton(
+                ElevatedButton(
                   onPressed: () async {
                     await CampState.instance.markGuidesSeen(types);
                     onDone();
                   },
-                  style: FilledButton.styleFrom(
-                      backgroundColor: const Color(0xFFE0703F)),
+                  style: DS.primary,
                   child: const Text('ĐÃ HIỂU',
                       style: TextStyle(fontWeight: FontWeight.w900)),
                 ),
@@ -89,12 +81,10 @@ class CatGuideOverlay extends StatelessWidget {
               Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Text('${CatCatchRule.names[type]} · ${rule.trait}',
                 style: const TextStyle(
-                    fontWeight: FontWeight.w900,
-                    fontSize: 15,
-                    color: Color(0xFF603312))),
+                    fontWeight: FontWeight.w900, fontSize: 15, color: DS.ink)),
             const SizedBox(height: 2),
             Text(rule.how,
-                style: const TextStyle(color: Color(0xFF6E5034), fontSize: 13)),
+                style: const TextStyle(color: DS.soft, fontSize: 13)),
           ]),
         ),
         if (onPractice != null)
@@ -105,8 +95,7 @@ class CatGuideOverlay extends StatelessWidget {
             },
             icon: const Icon(Icons.school_rounded, size: 18),
             label: const Text('TẬP'),
-            style:
-                TextButton.styleFrom(foregroundColor: const Color(0xFFE0703F)),
+            style: TextButton.styleFrom(foregroundColor: DS.goldEdge),
           ),
       ]),
     );

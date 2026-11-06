@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 
+import '../design.dart';
+
+/// Gold circular icon button used for back / home / help in every mode.
 class RoundButton extends StatelessWidget {
   const RoundButton({super.key, required this.icon, required this.onPressed});
   final IconData icon;
@@ -7,11 +10,10 @@ class RoundButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Material(
-        color: const Color(0xFFFCCB59),
-        shape: const CircleBorder(
-            side: BorderSide(color: Color(0xFF774016), width: 3)),
-        child: IconButton(
-            icon: Icon(icon, color: const Color(0xFF643613)),
-            onPressed: onPressed),
+        color: DS.gold,
+        shape:
+            const CircleBorder(side: BorderSide(color: DS.goldEdge, width: 3)),
+        child:
+            IconButton(icon: Icon(icon, color: DS.ink), onPressed: onPressed),
       );
 }

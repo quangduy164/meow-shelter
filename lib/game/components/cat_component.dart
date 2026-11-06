@@ -172,7 +172,7 @@ class CatComponent extends SpriteAnimationGroupComponent<CatState>
         text: TextSpan(
             text: label,
             style: const TextStyle(
-                color: Color(0xFFFFF6E2),
+                color: Color(0xFFFFF4DA),
                 fontSize: 12,
                 fontWeight: FontWeight.w800)),
         textDirection: TextDirection.ltr)
@@ -182,7 +182,7 @@ class CatComponent extends SpriteAnimationGroupComponent<CatState>
         width: text.width + 12,
         height: text.height + 4);
     canvas.drawRRect(RRect.fromRectAndRadius(box, const Radius.circular(8)),
-        Paint()..color = const Color(0xCC4A2A12));
+        Paint()..color = const Color(0xCC5A3214));
     text.paint(canvas, Offset(box.left + 6, box.top + 2));
   }
 

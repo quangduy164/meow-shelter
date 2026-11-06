@@ -11,8 +11,8 @@ import '../widgets/game_logo.dart';
 import '../widgets/home_background_painter.dart';
 import '../widgets/mode_icon.dart';
 
-const _ink = Color(0xFF4A2A12);
-const _cream = Color(0xFFFFF6E2);
+const _ink = Color(0xFF5A3214);
+const _cream = Color(0xFFFFF4DA);
 
 /// Home: logo and the main "play" action on the left, every other mode as a
 /// labelled colour tile on the right, coins always visible.
@@ -176,7 +176,7 @@ class _CoinChip extends StatelessWidget {
         height: 46,
         padding: const EdgeInsets.symmetric(horizontal: 14),
         decoration: BoxDecoration(
-          color: const Color(0xCC4A2A12),
+          color: const Color(0xCC5A3214),
           borderRadius: BorderRadius.circular(23),
         ),
         child: Row(mainAxisSize: MainAxisSize.min, children: [

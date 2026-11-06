@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../collection/fish_collection.dart';
 import '../../collection/fish_species.dart';
 import 'fishing_fish_art.dart';
+import '../design.dart';
 
 class FishCollectionDialog extends StatelessWidget {
   const FishCollectionDialog({super.key, required this.collection});
@@ -9,8 +10,8 @@ class FishCollectionDialog extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Dialog(
-        backgroundColor: const Color(0xFFF2F7EE),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        backgroundColor: DS.cream,
+        shape: DS.dialogShape,
         child: SizedBox(
           width: 620,
           height: MediaQuery.sizeOf(context).height * .75,
@@ -23,14 +24,14 @@ class FishCollectionDialog extends StatelessWidget {
                           'Bộ sưu tập · ${collection.count} cá · ${collection.junkCount} đồ vật',
                           style: const TextStyle(
                               fontSize: 20,
-                              fontWeight: FontWeight.bold,
-                              color: Color(0xFF294941)))),
+                              fontWeight: FontWeight.w900,
+                              color: DS.ink))),
                   IconButton(
                       tooltip: 'Đóng',
                       onPressed: () => Navigator.pop(context),
-                      icon: const Icon(Icons.close)),
+                      icon: const Icon(Icons.close_rounded, color: DS.ink)),
                 ])),
-            const Divider(height: 1),
+            const Divider(height: 1, color: DS.wood),
             Expanded(
                 child: GridView.builder(
               padding: const EdgeInsets.all(12),
@@ -45,10 +46,9 @@ class FishCollectionDialog extends StatelessWidget {
                 final count = collection.countOf(fish);
                 return DecoratedBox(
                   decoration: BoxDecoration(
-                      color:
-                          count == 0 ? const Color(0xFFE6ECE4) : Colors.white,
-                      borderRadius: BorderRadius.circular(6),
-                      border: Border.all(color: const Color(0xFFCEDACB))),
+                      color: count == 0 ? DS.mutedFill : Colors.white,
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(color: DS.wood)),
                   child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
@@ -62,18 +62,17 @@ class FishCollectionDialog extends StatelessWidget {
                             style: const TextStyle(
                                 fontSize: 15,
                                 fontWeight: FontWeight.bold,
-                                color: Color(0xFF294941))),
+                                color: DS.ink)),
                         Text(fish.rarity,
-                            style: const TextStyle(
-                                fontSize: 11, color: Color(0xFF65786D))),
+                            style:
+                                const TextStyle(fontSize: 11, color: DS.soft)),
                         const SizedBox(height: 4),
                         Text(count == 0 ? 'Chưa câu được' : '× $count',
                             style: TextStyle(
                                 fontSize: 13,
                                 fontWeight: FontWeight.w600,
-                                color: count == 0
-                                    ? const Color(0xFF7C8A81)
-                                    : const Color(0xFF226D62))),
+                                color:
+                                    count == 0 ? DS.mutedText : DS.goldEdge)),
                       ]),
                 );
               },

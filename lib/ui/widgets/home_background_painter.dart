@@ -57,7 +57,7 @@ class HomeBackgroundPainter extends CustomPainter {
 
   void _stars(Canvas canvas, double w) {
     final random = math.Random(3);
-    final p = Paint()..color = const Color(0xCCFFF6E2);
+    final p = Paint()..color = const Color(0xCCFFF4DA);
     for (var i = 0; i < 40; i++) {
       final o = Offset(random.nextDouble() * w, random.nextDouble() * 160);
       canvas.drawCircle(o, random.nextDouble() * 1.6 + .6, p);
@@ -155,7 +155,7 @@ class HomeBackgroundPainter extends CustomPainter {
     canvas.drawRect(const Rect.fromLTWH(26, 4, 20, 18),
         Paint()..color = const Color(0xFFFFE08A));
     canvas.drawCircle(
-        const Offset(0, -24), 12, Paint()..color = const Color(0xFFFFF6E2));
+        const Offset(0, -24), 12, Paint()..color = const Color(0xFFFFF4DA));
     final pad = Paint()..color = const Color(0xFFC0564A);
     canvas.drawCircle(const Offset(0, -21), 4.5, pad);
     for (final d in const [Offset(-6, -28), Offset(0, -31), Offset(6, -28)]) {
@@ -181,7 +181,7 @@ class HomeBackgroundPainter extends CustomPainter {
 
   void _flowers(Canvas canvas, double w) {
     final random = math.Random(11);
-    const colors = [Color(0xFFFFF6E2), Color(0xFFF7A9B8), Color(0xFFFFD36B)];
+    const colors = [Color(0xFFFFF4DA), Color(0xFFF7A9B8), Color(0xFFFFD36B)];
     for (var i = 0; i < 46; i++) {
       final x = random.nextDouble() * w;
       final y = 510 + random.nextDouble() * 85;
