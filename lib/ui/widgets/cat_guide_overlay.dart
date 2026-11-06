@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 
 import '../../camp/camp_state.dart';
-import '../../game/cats/cat_catch_rule.dart';
+import '../../game/cats/cat_breed.dart';
+import 'cat_sprite.dart';
 import '../design.dart';
 
 /// Explains how to catch each breed. Shown before a round when it contains a
@@ -57,29 +58,17 @@ class CatGuideOverlay extends StatelessWidget {
       );
 
   Widget _row(String type) {
-    final rule = CatCatchRule.all[type]!;
-    final folder = type[0].toUpperCase() + type.substring(1);
+    final breed = CatBreed.of(type);
+    final rule = breed.catchRule;
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 5),
       child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        SizedBox(
-          width: 56,
-          height: 56,
-          child: ClipRect(
-            child: OverflowBox(
-              maxWidth: 56 * 6,
-              maxHeight: 56,
-              alignment: Alignment.centerLeft,
-              child: Image.asset('assets/images/Cat/$folder/cat-$type-idle.png',
-                  width: 56 * 6, height: 56, fit: BoxFit.fill),
-            ),
-          ),
-        ),
+        CatSprite(type: type, size: 56),
         const SizedBox(width: 10),
         Expanded(
           child:
               Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text('${CatCatchRule.names[type]} · ${rule.trait}',
+            Text('${breed.name} · ${rule.trait}',
                 style: const TextStyle(
                     fontWeight: FontWeight.w900, fontSize: 15, color: DS.ink)),
             const SizedBox(height: 2),

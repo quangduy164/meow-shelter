@@ -1,25 +1,54 @@
 # Project structure
 
-- `main.dart`: app startup and device orientation.
-- `ui/screens/`: Home, Level Select and the Flutter host for Flame.
-- `ui/widgets/`: reusable level cards, title plaque and navigation button.
-- `fishing/fishing_controller.dart`: fishing phases, bite timing, line tension, reeling progress and saving catches.
-- `ui/screens/fishing_screen.dart`: fishing screen layout, ticker, lifecycle and collection dialog.
-- `ui/widgets/fishing_controls.dart`: fishing buttons and progress meters.
-- `ui/widgets/fishing_painter.dart`: rod, line, float, ripples and catch rendering.
-- `ui/widgets/fishing_landscape.dart`: static lake scenery.
-- `levels/level_config.dart`: level data model.
-- `levels/levels.dart`: playable level definitions (cats and time limit).
-- `game/meow_shelter_game.dart`: round orchestration, rescue progress and component wiring.
-- `game/components/`: rendered objects and their input handling (cats, beds, pond, fish inventory and HUD).
-- `game/cats/`: cat animation states and sprite-sheet loading.
-- `game/systems/bait_system.dart`: reusable bait, waiting fish and target selection.
-- `game/world/shelter_layout.dart`: bed assets and normalized placement.
-- `game/catch_window.dart`: catch and grip timing, independent of rendering.
+## Folders
 
-Add levels in `levels/levels.dart`; change bed placement in `shelter_layout.dart`.
-UI does not own fishing rules. The game connects components to the bait system
-through callbacks. Cat movement and gesture transitions remain together in
-`CatComponent` so their state changes stay coordinated.
+- `main.dart`: app start, landscape lock, loading saved progress.
+- `ui/`: Flutter screens and widgets.
+  - `design.dart`: shared colours and button/card styles (`DS`); see
+    `DESIGN.md` at the repo root.
+  - `screens/`: Home, Level Select, Game (Flame host), Fishing, Return Home,
+    Camp.
+  - `widgets/`: shared pieces such as `CatSprite` / `CatFace` (all sprite
+    cropping), `RoundButton`, the catch guide and result overlays, fishing art.
+- `game/cats/`: cat data shared by every mode.
+  - `cat_breed.dart`: **single source of truth per breed** — name, colour,
+    bed asset, catch rule text, Return Home skill (label, icon, cooldown).
+  - `cat_catch_rule.dart`: catch-rule tuning numbers.
+  - `cat_animations.dart`, `cat_state.dart`, `cat_dialogue.dart`.
+- `game/`: the rescue mode (Flame).
+  - `meow_shelter_game.dart`: round flow, rescues, stars.
+  - `components/cat_component.dart`: movement, dragging and escapes.
+  - `components/cat_catch_behaviour.dart`: per-breed catch rules (part of the
+    cat component library).
+  - `systems/bait_system.dart`, `catch_window.dart`, `world/`.
+- `game/return_home/`: the Return Home mode. Road and biomes, spawner,
+  obstacles, cat, scenery, HUD, joystick — one concern per file.
+- `fishing/`: fishing controller (rules, timing, saving catches).
+- `camp/`: the cat camp.
+  - `camp_state.dart`: coins, rescued cats, affection, owned and placed
+    decorations, level stars, seen guides. Saved with shared_preferences.
+  - `camp_resident.dart`: what camp cats do (wander, play, nap, react).
+  - `camp_room_painter.dart`, `camp_decor_painter.dart`: room and item art.
+- `levels/`: `level_config.dart` (data model) and `levels.dart` (chapters,
+  levels, stars and unlock rules).
+- `collection/`: caught fish.
 
-Validation: `flutter analyze` and Android builds. Do not add project-local tools or test files.
+## Common changes
+
+- **New breed:** add a `CatBreed` entry and its sprite sheets, a bed slot in
+  `world/shelter_layout.dart`, its catch rule in `cat_catch_behaviour.dart`
+  and its skill effect in `ReturnHomeCat.activateSkill`.
+- **New level:** add it to a chapter in `levels/levels.dart`.
+- **New decoration:** add a `CampDecoration` entry and a case in
+  `CampDecorPainter`.
+- **New Return Home area:** add a `ReturnHomeBiome` and a scenery painter.
+
+## Rules
+
+- UI does not own game rules; games talk to UI through overlays/callbacks.
+- Draw cats in widgets only through `CatSprite` / `CatFace`.
+- Saves never crash the app: unreadable data is kept under `<key>_broken`
+  and the game starts fresh; failed writes are logged with `debugPrint`.
+
+Validation: `flutter analyze` and Android builds. Do not add project-local
+tools or test files.

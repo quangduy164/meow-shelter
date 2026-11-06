@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 import 'package:flame/components.dart';
 import 'package:flutter/painting.dart';
+import '../cats/cat_breed.dart';
 import '../cats/cat_catch_rule.dart';
 import 'cat_component.dart';
 import 'shelter_zone_component.dart';
@@ -32,7 +33,7 @@ class CatchTutorialComponent extends PositionComponent {
     if (!isPlaying() || kitten == null || kitten.isDelivered) return;
     final screen = screenSize();
     final type = kitten.catType;
-    final name = CatCatchRule.names[type]!;
+    final name = CatBreed.of(type).name;
     final center = kitten.position + kitten.size / 2;
     final bottom = Vector2(screen.x / 2, screen.y - 32);
     final fed = kitten.hasEaten;

@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 
 import '../../camp/camp_state.dart';
-import '../../game/cats/cat_catch_rule.dart';
+import '../../game/cats/cat_breed.dart';
+import '../design.dart';
+import '../widgets/cat_sprite.dart';
 import '../../game/world/shelter_garden_painter.dart';
 import '../../levels/level_config.dart';
 import '../../levels/levels.dart';
@@ -109,7 +111,8 @@ class _ChapterCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final rule = CatCatchRule.all[chapter.breed]!;
+    final breed = CatBreed.of(chapter.breed);
+    final rule = breed.catchRule;
     final mixed = number == levelChapters.length;
     return Container(
       width: 230,
@@ -125,7 +128,8 @@ class _ChapterCard extends StatelessWidget {
       ),
       child: Column(children: [
         Row(children: [
-          _CatFace(chapter.breed),
+          CatFace(chapter.breed,
+              background: const Color(0xFFFFE3B0), border: DS.wood),
           const SizedBox(width: 8),
           Expanded(
             child:
@@ -142,10 +146,7 @@ class _ChapterCard extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
                       color: _ink, fontSize: 18, fontWeight: FontWeight.w900)),
-              Text(
-                  mixed
-                      ? 'Đủ 5 giống mèo'
-                      : '${CatCatchRule.names[chapter.breed]} · ${rule.trait}',
+              Text(mixed ? 'Đủ 5 giống mèo' : '${breed.name} · ${rule.trait}',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style:
@@ -250,34 +251,6 @@ class _LevelRow extends StatelessWidget {
                           : const Color(0x55704019)),
               ]),
           ]),
-        ),
-      ),
-    );
-  }
-}
-
-/// First idle frame of a breed's sprite sheet, cropped into a circle.
-class _CatFace extends StatelessWidget {
-  const _CatFace(this.type);
-  final String type;
-
-  @override
-  Widget build(BuildContext context) {
-    final folder = type[0].toUpperCase() + type.substring(1);
-    return Container(
-      width: 46,
-      height: 46,
-      decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          color: const Color(0xFFFFE3B0),
-          border: Border.all(color: const Color(0xFFB27A3E), width: 2)),
-      child: ClipOval(
-        child: OverflowBox(
-          maxWidth: 46 * 6,
-          maxHeight: 46,
-          alignment: Alignment.centerLeft,
-          child: Image.asset('assets/images/Cat/$folder/cat-$type-idle.png',
-              width: 46 * 6, height: 46, fit: BoxFit.fill),
         ),
       ),
     );

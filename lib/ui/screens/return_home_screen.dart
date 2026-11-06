@@ -3,7 +3,9 @@ import 'package:flutter/material.dart';
 import 'dart:async';
 
 import '../../game/return_home/return_home_game.dart';
+import '../../game/cats/cat_breed.dart';
 import '../design.dart';
+import '../widgets/cat_sprite.dart';
 import '../widgets/return_home_buttons.dart';
 
 class ReturnHomeScreen extends StatefulWidget {
@@ -82,7 +84,7 @@ class _SkillButtonState extends State<_SkillButton> {
             catType: game.selectedCat,
             ready: game.skillReady,
             cooldownLeft: game.skillCooldown,
-            cooldownTotal: ReturnHomeGame.skillCooldownFor(game.selectedCat),
+            cooldownTotal: CatBreed.of(game.selectedCat).homeSkill.cooldown,
             onPressed: game.activateSkill,
           ),
         ),
@@ -112,48 +114,21 @@ class _ChooseCatOverlay extends StatelessWidget {
                   runSpacing: 9,
                   alignment: WrapAlignment.center,
                   children: [
-                    _catButton(
-                        context, 'orange', 'Mèo cam', const Color(0xFFF4A34E)),
-                    _catButton(
-                        context, 'black', 'Mèo đen', const Color(0xFF536066)),
-                    _catButton(context, 'himalaya', 'Himalaya',
-                        const Color(0xFFDCC7A7)),
-                    _catButton(context, 'scottish', 'Scottish',
-                        const Color(0xFFB77E64)),
-                    _catButton(
-                        context, 'calico', 'Calico', const Color(0xFFE8A86B)),
+                    for (final breed in CatBreed.all)
+                      _catButton(context, breed),
                   ])
             ]),
           ),
         ),
       );
 
-  Widget _catButton(
-          BuildContext context, String type, String label, Color color) =>
-      SizedBox(
+  Widget _catButton(BuildContext context, CatBreed breed) => SizedBox(
         width: 165,
         height: 52,
         child: ElevatedButton.icon(
-          onPressed: () => game.chooseCat(type),
-          icon: SizedBox(
-            width: 34,
-            height: 34,
-            child: ClipOval(
-              child: OverflowBox(
-                alignment: Alignment.centerLeft,
-                maxWidth: 204,
-                maxHeight: 34,
-                child: Image.asset(
-                  'assets/images/Cat/${type[0].toUpperCase()}${type.substring(1)}/cat-$type-idle.png',
-                  height: 34,
-                  fit: BoxFit.fitHeight,
-                  errorBuilder: (_, __, ___) =>
-                      CircleAvatar(radius: 13, backgroundColor: color),
-                ),
-              ),
-            ),
-          ),
-          label: Text(label),
+          onPressed: () => game.chooseCat(breed.id),
+          icon: CatFace(breed.id, size: 34),
+          label: Text(breed.name),
           style: DS.primary,
         ),
       );

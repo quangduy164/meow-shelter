@@ -1,4 +1,6 @@
+import 'dart:async';
 import '../../camp/camp_state.dart';
+import '../cats/cat_breed.dart';
 import 'dart:math';
 
 import 'package:flame/components.dart';
@@ -25,14 +27,6 @@ class ReturnHomeGame extends FlameGame {
   static const int startingLives = 3;
   static const double hitCooldown = .9;
   static const double safeFinishStretch = .45;
-  static double skillCooldownFor(String type) => switch (type) {
-        'orange' => 5,
-        'black' => 4,
-        'himalaya' => 6,
-        'scottish' => 8,
-        'calico' => 12,
-        _ => 5,
-      };
 
   late ReturnHomeJoystick joystick;
   late ReturnHomeCat _cat;
@@ -77,7 +71,7 @@ class ReturnHomeGame extends FlameGame {
   void activateSkill() {
     if (!started || !skillReady || finished) return;
     skillReady = false;
-    skillCooldown = skillCooldownFor(selectedCat) -
+    skillCooldown = CatBreed.of(selectedCat).homeSkill.cooldown -
         (CampState.instance.bonded(selectedCat) ? 1 : 0);
     _cat.activateSkill();
   }
@@ -216,7 +210,7 @@ class ReturnHomeGame extends FlameGame {
     if (progress >= 1) {
       finished = true;
       reward = fish * 2 + stars * 10;
-      CampState.instance.addCoins(reward);
+      unawaited(CampState.instance.addCoins(reward));
     }
   }
 

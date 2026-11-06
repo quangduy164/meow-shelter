@@ -1,5 +1,7 @@
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
+
 import 'package:shared_preferences/shared_preferences.dart';
 import 'fish_species.dart';
 
@@ -26,13 +28,20 @@ class FishCollection {
             preferences.getInt('fish_collection_count') ?? 0
       };
     }
-    final decoded = jsonDecode(saved) as Map<String, dynamic>;
-    return decoded.map((key, value) {
-      if (value is! int || value < 0) {
-        throw const FormatException('Invalid fish count');
-      }
-      return MapEntry(key, value);
-    });
+    try {
+      final decoded = jsonDecode(saved) as Map<String, dynamic>;
+      return decoded.map((key, value) {
+        if (value is! int || value < 0) {
+          throw const FormatException('Invalid fish count');
+        }
+        return MapEntry(key, value);
+      });
+    } catch (error) {
+      // Never block app start on a broken save; keep a copy and start empty.
+      debugPrint('FishCollection: unreadable save, starting fresh ($error)');
+      preferences.setString('${_key}_broken', saved);
+      return {};
+    }
   }
 
   Future<void> catchFish(FishSpecies fish) async {

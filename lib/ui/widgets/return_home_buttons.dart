@@ -2,6 +2,8 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
+import '../../game/cats/cat_breed.dart';
+
 const _ink = Color(0xFF5A3214);
 const _cream = Color(0xFFFFF4DA);
 const _wood = Color(0xFFB27A3E);
@@ -119,30 +121,10 @@ class ReturnHomeSkillButton extends StatelessWidget {
   final double cooldownLeft, cooldownTotal;
   final VoidCallback onPressed;
 
-  static (IconData, Color, String) _style(String type) => switch (type) {
-        'orange' => (
-            Icons.flash_on_rounded,
-            const Color(0xFFF08A3A),
-            'Chạy nhanh'
-          ),
-        'black' => (Icons.auto_awesome, const Color(0xFF6D5BA8), 'Biến mất'),
-        'himalaya' => (Icons.sync_rounded, const Color(0xFF3E9FB0), 'Lăn né'),
-        'scottish' => (
-            Icons.shield_rounded,
-            const Color(0xFF6B9E4E),
-            'Lá chắn'
-          ),
-        'calico' => (
-            Icons.favorite_rounded,
-            const Color(0xFFD9657B),
-            'Hồi máu'
-          ),
-        _ => (Icons.star_rounded, const Color(0xFFF08A3A), 'Kỹ năng'),
-      };
-
   @override
   Widget build(BuildContext context) {
-    final (icon, color, label) = _style(catType);
+    final skill = CatBreed.of(catType).homeSkill;
+    final (icon, color, label) = (skill.icon, skill.color, skill.label);
     final left = cooldownTotal <= 0
         ? 0.0
         : (cooldownLeft / cooldownTotal).clamp(0.0, 1.0);

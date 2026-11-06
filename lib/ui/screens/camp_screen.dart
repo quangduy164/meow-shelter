@@ -1,10 +1,14 @@
-import 'dart:async';
 import 'dart:math';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 
 import '../../camp/camp_state.dart';
-import '../../game/world/shelter_garden_painter.dart';
+import '../../camp/camp_room_painter.dart';
+import '../../camp/camp_resident.dart';
+import '../../game/cats/cat_breed.dart';
+import '../widgets/cat_sprite.dart';
+import '../../camp/camp_decor_painter.dart';
 import '../design.dart';
 import '../widgets/round_button.dart';
 
@@ -17,35 +21,48 @@ class CampScreen extends StatefulWidget {
   State<CampScreen> createState() => _CampScreenState();
 }
 
-class _CampScreenState extends State<CampScreen> {
+class _CampScreenState extends State<CampScreen>
+    with SingleTickerProviderStateMixin {
   final _random = Random();
-  final _cats = <_Resident>[];
-  late final Timer _tick;
+  final _cats = <CampResident>[];
+  late final Ticker _tick;
+  Duration _last = Duration.zero;
+  String? _dragging;
   CampState get camp => CampState.instance;
 
   @override
   void initState() {
     super.initState();
     for (final type in camp.residents) {
-      _cats.add(_Resident(type, _random.nextDouble() * .7 + .1,
-          _random.nextDouble() * .35 + .45));
+      _cats.add(CampResident(type, _random.nextDouble() * .7 + .1,
+          _random.nextDouble() * .25 + .64));
     }
-    _tick = Timer.periodic(const Duration(milliseconds: 120), (_) {
+    // Per-frame updates keep the walk smooth instead of stepping 8 times/s.
+    _tick = createTicker((elapsed) {
+      final dt = ((elapsed - _last).inMicroseconds / 1e6).clamp(0.0, .1);
+      _last = elapsed;
+      // Floor toys the cats can visit (wall items are out of reach).
+      final toys = [
+        for (final item in CampDecoration.all)
+          if (camp.owned.contains(item.id) && campToyActs.containsKey(item.id))
+            (item.id, camp.positionOf(item).$1, camp.positionOf(item).$2),
+      ];
       for (final cat in _cats) {
-        cat.step(_random);
+        cat.update(dt, _random, toys);
       }
       setState(() {});
-    });
+    })
+      ..start();
   }
 
   @override
   void dispose() {
-    _tick.cancel();
+    _tick.dispose();
     super.dispose();
   }
 
-  Future<void> _pet(_Resident cat) async {
-    cat.heart = 10;
+  Future<void> _pet(CampResident cat) async {
+    cat.pet();
     await camp.pet(cat.type);
     if (mounted) setState(() {});
   }
@@ -54,21 +71,62 @@ class _CampScreenState extends State<CampScreen> {
   Widget build(BuildContext context) => Scaffold(
         body: LayoutBuilder(builder: (context, box) {
           final w = box.maxWidth, h = box.maxHeight;
-          return Stack(children: [
-            const Positioned.fill(
-                child: CustomPaint(painter: ShelterGardenPainter())),
-            for (final item in CampDecoration.all)
+          // Expand so the yard fills the screen; a loose Stack would shrink to
+          // the height of the top bar and leave the rest blank.
+          return Stack(fit: StackFit.expand, children: [
+            Positioned.fill(
+                child: CustomPaint(
+                    painter: CampRoomPainter(hour: DateTime.now().hour))),
+            for (final item in [
+              ...CampDecoration.all.where((d) => d.id == 'rug'),
+              ...CampDecoration.all.where((d) => d.id != 'rug'),
+            ])
               if (camp.owned.contains(item.id))
-                Positioned(
-                    left: w * item.x - 30,
-                    top: h * item.y - 30,
-                    child: _DecorationArt(item.id)),
+                Builder(builder: (context) {
+                  final (x, y) = camp.positionOf(item);
+                  final dragging = _dragging == item.id;
+                  return Positioned(
+                    left: w * x - 30 * item.scale,
+                    top: h * y - 30 * item.scale,
+                    // Drag to rearrange; the spot is saved when released.
+                    child: GestureDetector(
+                      onPanStart: (_) => setState(() => _dragging = item.id),
+                      onPanUpdate: (d) =>
+                          setState(() => camp.placement[item.id] = (
+                                (x + d.delta.dx / w).clamp(.03, .97),
+                                (y + d.delta.dy / h).clamp(.05, .95),
+                              )),
+                      onPanEnd: (_) {
+                        final (nx, ny) = camp.positionOf(item);
+                        camp.place(item.id, nx, ny);
+                        setState(() => _dragging = null);
+                      },
+                      child: AnimatedScale(
+                        scale: dragging ? 1.08 : 1,
+                        duration: const Duration(milliseconds: 120),
+                        child: Opacity(
+                          opacity: dragging ? .85 : 1,
+                          child: SizedBox.square(
+                              dimension: 60 * item.scale,
+                              child: FittedBox(child: _DecorationArt(item.id))),
+                        ),
+                      ),
+                    ),
+                  );
+                }),
             for (final cat in _cats..sort((a, b) => a.y.compareTo(b.y)))
               Positioned(
                 left: w * cat.x - 40,
                 top: h * cat.y - 60,
+                // Tap to pet; drag to pick the cat up and carry it.
                 child: GestureDetector(
                   onTap: () => _pet(cat),
+                  onPanStart: (_) => setState(cat.pickUp),
+                  onPanUpdate: (d) => setState(() {
+                    cat.x = (cat.x + d.delta.dx / w).clamp(.03, .97);
+                    cat.y = (cat.y + d.delta.dy / h).clamp(.3, .95);
+                  }),
+                  onPanEnd: (_) => setState(cat.drop),
                   child: Column(mainAxisSize: MainAxisSize.min, children: [
                     SizedBox(
                         height: 20,
@@ -76,42 +134,46 @@ class _CampScreenState extends State<CampScreen> {
                             ? const Icon(Icons.favorite,
                                 color: Color(0xFFE85D6F), size: 18)
                             : null),
-                    _CatSprite(
+                    CatSprite(
                         type: cat.type,
-                        walking: cat.moving,
+                        action: cat.act.sheet,
+                        frames: cat.act.frames,
                         frame: cat.frame,
-                        flip: cat.dx < 0),
+                        flip: cat.facingLeft),
                   ]),
                 ),
               ),
-            SafeArea(
-              child: Padding(
-                padding: const EdgeInsets.all(12),
-                child: Row(children: [
-                  RoundButton(
-                      icon: Icons.arrow_back_rounded,
-                      onPressed: () => Navigator.of(context).pop()),
-                  const SizedBox(width: 12),
-                  _Chip(Icons.monetization_on_rounded, '${camp.coins}',
-                      const Color(0xFFE7A72F)),
-                  const SizedBox(width: 8),
-                  _Chip(Icons.pets_rounded, '${_cats.length} bé',
-                      const Color(0xFFD9822B)),
-                  const Spacer(),
-                  ElevatedButton.icon(
-                    onPressed: _openShop,
-                    icon: const Icon(Icons.storefront_rounded),
-                    label: const Text('CỬA HÀNG'),
-                    style: DS.primary,
-                  ),
-                  const SizedBox(width: 8),
-                  ElevatedButton.icon(
-                    onPressed: _openCats,
-                    icon: const Icon(Icons.favorite_rounded),
-                    label: const Text('CÁC BÉ'),
-                    style: DS.secondary,
-                  ),
-                ]),
+            Align(
+              alignment: Alignment.topCenter,
+              child: SafeArea(
+                child: Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: Row(children: [
+                    RoundButton(
+                        icon: Icons.arrow_back_rounded,
+                        onPressed: () => Navigator.of(context).pop()),
+                    const SizedBox(width: 12),
+                    _Chip(Icons.monetization_on_rounded, '${camp.coins}',
+                        const Color(0xFFE7A72F)),
+                    const SizedBox(width: 8),
+                    _Chip(Icons.pets_rounded, '${_cats.length} bé',
+                        const Color(0xFFD9822B)),
+                    const Spacer(),
+                    ElevatedButton.icon(
+                      onPressed: _openShop,
+                      icon: const Icon(Icons.storefront_rounded),
+                      label: const Text('CỬA HÀNG'),
+                      style: DS.primary,
+                    ),
+                    const SizedBox(width: 8),
+                    ElevatedButton.icon(
+                      onPressed: _openCats,
+                      icon: const Icon(Icons.favorite_rounded),
+                      label: const Text('CÁC BÉ'),
+                      style: DS.secondary,
+                    ),
+                  ]),
+                ),
               ),
             ),
           ]);
@@ -165,13 +227,12 @@ class _CampScreenState extends State<CampScreen> {
           content: SizedBox(
             width: 420,
             child: ListView(shrinkWrap: true, children: [
-              for (final type in CampState.catTypes)
+              for (final type in CatBreed.all.map((b) => b.id))
                 ListTile(
                   leading: Opacity(
                       opacity: camp.unlocked(type) ? 1 : .3,
-                      child: _CatSprite(
-                          type: type, walking: false, frame: 0, size: 44)),
-                  title: Text(CampState.catNames[type]!,
+                      child: CatSprite(type: type, size: 44)),
+                  title: Text(CatBreed.of(type).name,
                       style: const TextStyle(
                           color: DS.ink, fontWeight: FontWeight.w800)),
                   subtitle: Text(camp.unlocked(type)
@@ -183,71 +244,6 @@ class _CampScreenState extends State<CampScreen> {
           ),
         ),
       );
-}
-
-class _Resident {
-  _Resident(this.type, this.x, this.y);
-  final String type;
-  double x, y;
-  double dx = 0, dy = 0;
-  int frame = 0, rest = 0, heart = 0;
-  bool get moving => dx != 0 || dy != 0;
-
-  void step(Random random) {
-    frame = (frame + 1) % 6;
-    if (heart > 0) heart -= 1;
-    if (rest > 0) {
-      rest -= 1;
-      if (rest == 0) {
-        dx = (random.nextDouble() - .5) * .012;
-        dy = (random.nextDouble() - .5) * .005;
-      }
-      return;
-    }
-    x = (x + dx).clamp(.06, .94);
-    y = (y + dy).clamp(.42, .88);
-    if (random.nextDouble() < .03) {
-      dx = dy = 0;
-      rest = 15 + random.nextInt(30);
-    }
-  }
-}
-
-/// One frame of a cat sprite sheet (6 frames of 256px side by side).
-class _CatSprite extends StatelessWidget {
-  const _CatSprite(
-      {required this.type,
-      required this.walking,
-      required this.frame,
-      this.flip = false,
-      this.size = 80});
-  final String type;
-  final bool walking;
-  final int frame;
-  final bool flip;
-  final double size;
-
-  @override
-  Widget build(BuildContext context) {
-    final folder = type[0].toUpperCase() + type.substring(1);
-    final sheet = walking ? 'walk' : 'idle';
-    return Transform.flip(
-      flipX: flip,
-      child: SizedBox(
-        width: size,
-        height: size,
-        child: ClipRect(
-          child: OverflowBox(
-            maxWidth: size * 6,
-            maxHeight: size,
-            alignment: Alignment(-1 + 2 * frame / 5, 0),
-            child: Image.asset('assets/images/Cat/$folder/cat-$type-$sheet.png',
-                width: size * 6, height: size, fit: BoxFit.fill),
-          ),
-        ),
-      ),
-    );
-  }
 }
 
 class _Chip extends StatelessWidget {
@@ -280,96 +276,5 @@ class _DecorationArt extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => SizedBox(
-      width: 60, height: 60, child: CustomPaint(painter: _DecorPainter(id)));
-}
-
-class _DecorPainter extends CustomPainter {
-  _DecorPainter(this.id);
-  final String id;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final c = Offset(size.width / 2, size.height / 2);
-    canvas.drawOval(
-        Rect.fromCenter(center: c + const Offset(0, 22), width: 50, height: 10),
-        Paint()..color = const Color(0x334B392C));
-    Paint p(int color) => Paint()..color = Color(color);
-    switch (id) {
-      case 'yarn':
-        canvas.drawCircle(c + const Offset(0, 10), 13, p(0xFFE3A2A4));
-        canvas.drawArc(
-            Rect.fromCircle(center: c + const Offset(0, 10), radius: 9),
-            -1,
-            2.4,
-            false,
-            p(0xFFBE7F88)
-              ..style = PaintingStyle.stroke
-              ..strokeWidth = 2);
-      case 'flowers':
-        canvas.drawRect(
-            Rect.fromCenter(
-                center: c + const Offset(0, 14), width: 22, height: 16),
-            p(0xFFC0714A));
-        for (var i = -1; i <= 1; i++) {
-          canvas.drawCircle(
-              c + Offset(i * 9.0, -2), 6, p(i == 0 ? 0xFFFFE07A : 0xFFFF9CA8));
-        }
-      case 'bed':
-        canvas.drawOval(
-            Rect.fromCenter(
-                center: c + const Offset(0, 12), width: 52, height: 22),
-            p(0xFF9A6A4A));
-        canvas.drawOval(
-            Rect.fromCenter(
-                center: c + const Offset(0, 10), width: 40, height: 14),
-            p(0xFFF2C7A0));
-      case 'post':
-        canvas.drawRect(
-            Rect.fromCenter(
-                center: c + const Offset(0, 22), width: 34, height: 8),
-            p(0xFF8C6245));
-        canvas.drawRect(
-            Rect.fromCenter(
-                center: c + const Offset(0, 0), width: 12, height: 40),
-            p(0xFFD8B47A));
-        canvas.drawRect(
-            Rect.fromCenter(
-                center: c + const Offset(0, -22), width: 30, height: 8),
-            p(0xFF8C6245));
-      case 'lantern':
-        canvas.drawLine(c + const Offset(0, -26), c + const Offset(0, -16),
-            p(0xFF5A3214)..strokeWidth = 2);
-        canvas.drawOval(
-            Rect.fromCenter(center: c, width: 30, height: 34), p(0xFFE0533F));
-        canvas.drawCircle(c, 8, p(0x99FFE7A0));
-      case 'bowl':
-        canvas.drawOval(
-            Rect.fromCenter(
-                center: c + const Offset(0, 6), width: 46, height: 36),
-            p(0x996FB6CE));
-        canvas.drawOval(
-            Rect.fromCenter(
-                center: c + const Offset(-4, 8), width: 14, height: 8),
-            p(0xFFF08A3A));
-      case 'house':
-        canvas.drawRect(
-            Rect.fromCenter(
-                center: c + const Offset(0, 10), width: 44, height: 30),
-            p(0xFFE7C3A3));
-        canvas.drawPath(
-            Path()
-              ..moveTo(c.dx - 28, c.dy - 5)
-              ..lineTo(c.dx, c.dy - 28)
-              ..lineTo(c.dx + 28, c.dy - 5)
-              ..close(),
-            p(0xFFB4533F));
-        canvas.drawOval(
-            Rect.fromCenter(
-                center: c + const Offset(0, 16), width: 16, height: 18),
-            p(0xFF5A3A2A));
-    }
-  }
-
-  @override
-  bool shouldRepaint(_DecorPainter old) => old.id != id;
+      width: 60, height: 60, child: CustomPaint(painter: CampDecorPainter(id)));
 }
