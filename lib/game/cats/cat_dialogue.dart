@@ -13,6 +13,12 @@ class CatDialogue {
     if (_remaining == 0) text = null;
   }
 
+  /// Always shows [line]; used for catch-rule hints that the player needs.
+  void say(String line) {
+    text = line;
+    _remaining = 2;
+  }
+
   void react(CatState action) {
     final lines = switch (action) {
       CatState.dashEscape => const [

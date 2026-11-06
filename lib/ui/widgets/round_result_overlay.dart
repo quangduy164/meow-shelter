@@ -114,6 +114,21 @@ class _RoundResultOverlayState extends State<RoundResultOverlay>
                                           color: _won
                                               ? const Color(0xFF376B52)
                                               : const Color(0xFFAA6751))))),
+                          if (_won && !widget.game.level.isInfinite)
+                            Positioned(
+                                top: 156,
+                                left: 0,
+                                right: 0,
+                                child: Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      for (var i = 0; i < 3; i++)
+                                        Icon(Icons.star_rounded,
+                                            size: 30,
+                                            color: i < widget.game.lastStars
+                                                ? const Color(0xFFFFC23D)
+                                                : const Color(0x55704019)),
+                                    ])),
                           Positioned(
                               left: 38,
                               right: 38,

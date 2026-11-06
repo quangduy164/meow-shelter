@@ -1,85 +1,284 @@
 import 'package:flutter/material.dart';
-import '../../levels/levels.dart';
-import '../../game/world/shelter_garden_painter.dart';
-import 'game_screen.dart';
-import '../widgets/round_button.dart';
-import '../widgets/level_card.dart';
-import '../widgets/title_plaque.dart';
 
-class LevelSelectScreen extends StatelessWidget {
+import '../../camp/camp_state.dart';
+import '../../game/cats/cat_catch_rule.dart';
+import '../../game/world/shelter_garden_painter.dart';
+import '../../levels/level_config.dart';
+import '../../levels/levels.dart';
+import '../widgets/round_button.dart';
+import 'game_screen.dart';
+
+const _ink = Color(0xFF5A3214);
+
+/// Level map: one card per chapter, scrolling sideways. Each chapter shows the
+/// breed it teaches and its catch trait, then its levels with best stars.
+class LevelSelectScreen extends StatefulWidget {
   const LevelSelectScreen({super.key});
 
   @override
+  State<LevelSelectScreen> createState() => _LevelSelectScreenState();
+}
+
+class _LevelSelectScreenState extends State<LevelSelectScreen> {
+  Future<void> _play(LevelConfig level) async {
+    await Navigator.of(context).push(
+        MaterialPageRoute<void>(builder: (_) => GameScreen(level: level)));
+    // A win may have unlocked the next level or improved stars.
+    if (mounted) setState(() {});
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final stars = CampState.instance.levelStars;
+    final total = stars.values.fold(0, (a, b) => a + b);
+    var index = 0;
     return Scaffold(
-      body: Stack(
-        fit: StackFit.expand,
-        children: [
-          const CustomPaint(painter: ShelterGardenPainter()),
-          const ColoredBox(color: Color(0x660F371E)),
-          SafeArea(
-            child: Column(
-              children: [
-                const SizedBox(height: 8),
-                const TitlePlaque(),
-                const SizedBox(height: 8),
-                Expanded(
-                  child: Center(
-                    child: ConstrainedBox(
-                      constraints: const BoxConstraints(maxWidth: 620),
-                      child: LayoutBuilder(builder: (context, constraints) {
-                        final rows = (gameLevels.length / 3).ceil();
-                        final cardHeight =
-                            (constraints.maxHeight - 8 - (rows - 1) * 12) /
-                                rows;
-                        return GridView.builder(
-                          physics: const NeverScrollableScrollPhysics(),
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 24, vertical: 4),
-                          itemCount: gameLevels.length,
-                          gridDelegate:
-                              SliverGridDelegateWithFixedCrossAxisCount(
-                            crossAxisCount: 3,
-                            mainAxisSpacing: 12,
-                            crossAxisSpacing: 12,
-                            mainAxisExtent: cardHeight.clamp(1.0, 114.0),
-                          ),
-                          itemBuilder: (context, index) {
-                            final level = gameLevels[index];
-                            // Mỗi màn mẫu đều có thể chơi, dùng chung cơ chế đã làm.
-                            const unlocked = true;
-                            return LevelCard(
-                              level: level,
-                              unlocked: unlocked,
-                              onTap: () => Navigator.of(context).push(
-                                MaterialPageRoute<void>(
-                                  builder: (_) => GameScreen(level: level),
-                                ),
-                              ),
-                            );
-                          },
-                        );
-                      }),
-                    ),
-                  ),
-                ),
-              ],
+      body: Stack(fit: StackFit.expand, children: [
+        const CustomPaint(painter: ShelterGardenPainter()),
+        const ColoredBox(color: Color(0x660F371E)),
+        SafeArea(
+          child: Column(children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(12, 10, 16, 6),
+              child: Row(children: [
+                RoundButton(
+                    icon: Icons.arrow_back_rounded,
+                    onPressed: () => Navigator.of(context).pop()),
+                const SizedBox(width: 12),
+                const Text('CHỌN MÀN',
+                    style: TextStyle(
+                        color: Color(0xFFFFF4DA),
+                        fontSize: 24,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 1.5,
+                        shadows: [Shadow(color: _ink, blurRadius: 4)])),
+                const Spacer(),
+                const Icon(Icons.star_rounded, color: Color(0xFFFFC23D)),
+                const SizedBox(width: 4),
+                Text('$total/${gameLevels.length * 3}',
+                    style: const TextStyle(
+                        color: Color(0xFFFFF4DA),
+                        fontSize: 18,
+                        fontWeight: FontWeight.w900)),
+              ]),
             ),
-          ),
-          Positioned(
-            top: 12,
-            left: 12,
-            child: SafeArea(
-              child: Tooltip(
-                message: 'Về Trang chủ',
-                child: RoundButton(
-                  icon: Icons.arrow_back_rounded,
-                  onPressed: () => Navigator.of(context).pop(),
-                ),
+            Expanded(
+              child: ListView(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.fromLTRB(16, 4, 16, 14),
+                children: [
+                  for (final chapter in levelChapters) ...[
+                    _ChapterCard(
+                      number: levelChapters.indexOf(chapter) + 1,
+                      chapter: chapter,
+                      entries: [
+                        for (final level in chapter.levels)
+                          (
+                            level: level,
+                            unlocked: levelUnlocked(index++, stars),
+                            stars: stars['${level.id}'] ?? 0,
+                          ),
+                      ],
+                      onPlay: _play,
+                    ),
+                    const SizedBox(width: 14),
+                  ],
+                ],
               ),
             ),
-          ),
+          ]),
+        ),
+      ]),
+    );
+  }
+}
+
+typedef _Entry = ({LevelConfig level, bool unlocked, int stars});
+
+class _ChapterCard extends StatelessWidget {
+  const _ChapterCard({
+    required this.number,
+    required this.chapter,
+    required this.entries,
+    required this.onPlay,
+  });
+  final int number;
+  final LevelChapter chapter;
+  final List<_Entry> entries;
+  final void Function(LevelConfig level) onPlay;
+
+  @override
+  Widget build(BuildContext context) {
+    final rule = CatCatchRule.all[chapter.breed]!;
+    final mixed = number == levelChapters.length;
+    return Container(
+      width: 230,
+      padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+      decoration: BoxDecoration(
+        color: const Color(0xF2FFF4DA),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: const Color(0xFFB27A3E), width: 3),
+        boxShadow: const [
+          BoxShadow(
+              color: Color(0x55000000), blurRadius: 8, offset: Offset(0, 4))
         ],
+      ),
+      child: Column(children: [
+        Row(children: [
+          _CatFace(chapter.breed),
+          const SizedBox(width: 8),
+          Expanded(
+            child:
+                Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text('CHƯƠNG $number',
+                  maxLines: 1,
+                  style: const TextStyle(
+                      color: Color(0xFFB0703A),
+                      fontSize: 11,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: 1)),
+              Text(chapter.title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                      color: _ink, fontSize: 18, fontWeight: FontWeight.w900)),
+              Text(
+                  mixed
+                      ? 'Đủ 5 giống mèo'
+                      : '${CatCatchRule.names[chapter.breed]} · ${rule.trait}',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style:
+                      const TextStyle(color: Color(0xFF8A6446), fontSize: 12)),
+            ]),
+          ),
+        ]),
+        const SizedBox(height: 8),
+        Expanded(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.start,
+            children: [
+              // Rows shrink on short screens instead of overflowing.
+              for (final entry in entries)
+                Flexible(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 3),
+                    child: SizedBox(
+                        height: 46,
+                        child: _LevelRow(
+                            entry: entry, onTap: () => onPlay(entry.level))),
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ]),
+    );
+  }
+}
+
+class _LevelRow extends StatelessWidget {
+  const _LevelRow({required this.entry, required this.onTap});
+  final _Entry entry;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final open = entry.unlocked;
+    return Material(
+      color: open ? const Color(0xFFFFC24D) : const Color(0xFFD9CDB8),
+      borderRadius: BorderRadius.circular(14),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(14),
+        onTap: open ? onTap : null,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10),
+          decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(
+                  color:
+                      open ? const Color(0xFF9A6028) : const Color(0xFFAA9C86),
+                  width: 2)),
+          child: Row(children: [
+            CircleAvatar(
+              radius: 15,
+              backgroundColor: open ? _ink : const Color(0xFF8E8270),
+              child: Text('${entry.level.id}',
+                  style: const TextStyle(
+                      color: Color(0xFFFFF4DA),
+                      fontWeight: FontWeight.w900,
+                      fontSize: 13)),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: Alignment.centerLeft,
+                child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(entry.level.name,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                              color: open ? _ink : const Color(0xFF7A6E5C),
+                              fontSize: 14,
+                              fontWeight: FontWeight.w900)),
+                      Text(
+                          entry.level.isTutorial
+                              ? 'Màn tập'
+                              : '${entry.level.catTypes.length} mèo · ${entry.level.timeLimit}s',
+                          style: TextStyle(
+                              color: open
+                                  ? const Color(0xFF7A4A22)
+                                  : const Color(0xFF8E8270),
+                              fontSize: 11)),
+                    ]),
+              ),
+            ),
+            if (!open)
+              const Icon(Icons.lock_rounded, color: Color(0xFF8E8270), size: 20)
+            else
+              Row(mainAxisSize: MainAxisSize.min, children: [
+                for (var i = 0; i < 3; i++)
+                  Icon(Icons.star_rounded,
+                      size: 17,
+                      color: i < entry.stars
+                          ? const Color(0xFFFFF4DA)
+                          : const Color(0x55704019)),
+              ]),
+          ]),
+        ),
+      ),
+    );
+  }
+}
+
+/// First idle frame of a breed's sprite sheet, cropped into a circle.
+class _CatFace extends StatelessWidget {
+  const _CatFace(this.type);
+  final String type;
+
+  @override
+  Widget build(BuildContext context) {
+    final folder = type[0].toUpperCase() + type.substring(1);
+    return Container(
+      width: 46,
+      height: 46,
+      decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: const Color(0xFFFFE3B0),
+          border: Border.all(color: const Color(0xFFB27A3E), width: 2)),
+      child: ClipOval(
+        child: OverflowBox(
+          maxWidth: 46 * 6,
+          maxHeight: 46,
+          alignment: Alignment.centerLeft,
+          child: Image.asset('assets/images/Cat/$folder/cat-$type-idle.png',
+              width: 46 * 6, height: 46, fit: BoxFit.fill),
+        ),
       ),
     );
   }

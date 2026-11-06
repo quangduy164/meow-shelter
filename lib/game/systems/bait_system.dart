@@ -22,13 +22,18 @@ class BaitSystem {
 
   void update(Iterable<CatComponent> cats) {
     _attracted.removeWhere((cat) => cat.fishTarget == null);
-    final candidates = cats.where((cat) => cat.canLure).toList();
-    while (_waiting.isNotEmpty && candidates.isNotEmpty) {
-      final point = _waiting.removeAt(0);
-      candidates.sort((a, b) => (a.position + a.size / 2 - point)
+    final all = cats.toList();
+    final candidates = all.where((cat) => cat.canLure).toList();
+    for (final point in List<Vector2>.of(_waiting)) {
+      final willing =
+          candidates.where((cat) => cat.acceptsBait(point, all)).toList();
+      if (willing.isEmpty) continue;
+      _waiting.remove(point);
+      willing.sort((a, b) => (a.position + a.size / 2 - point)
           .length2
           .compareTo((b.position + b.size / 2 - point).length2));
-      final cat = candidates.removeAt(0);
+      final cat = willing.first;
+      candidates.remove(cat);
       cat.lure(point);
       _attracted.add(cat);
     }
@@ -41,6 +46,9 @@ class BaitSystem {
         point.x < 12 ||
         point.x > size.x - 12) return false;
     _waiting.add(point.clone());
+    for (final cat in cats) {
+      cat.startleBy(point);
+    }
     update(cats);
     return true;
   }

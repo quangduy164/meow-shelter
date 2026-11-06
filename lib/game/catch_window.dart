@@ -1,3 +1,5 @@
+import 'dart:math';
+
 /// Timings shared by the catch indicator and input handling.
 class CatchWindow {
   CatchWindow(
@@ -9,7 +11,7 @@ class CatchWindow {
   bool get canCatch => ready > 0;
   double get readyFraction => (ready / readySeconds).clamp(0.0, 1.0);
   double get gripFraction => (grip / gripSeconds).clamp(0.0, 1.0);
-  void open() => ready = readySeconds;
+  void open([double scale = 1]) => ready = readySeconds * scale;
   bool grab() {
     if (!canCatch) return false;
     ready = 0;
@@ -19,7 +21,7 @@ class CatchWindow {
 
   void tick(double dt) {
     if (unlimited) return;
-    ready = (ready - dt).clamp(0.0, readySeconds);
+    ready = max(0, ready - dt);
     grip = (grip - dt).clamp(0.0, gripSeconds);
   }
 

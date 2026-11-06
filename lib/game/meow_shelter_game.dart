@@ -13,6 +13,7 @@ import 'components/hud_component.dart';
 import 'components/shelter_zone_component.dart';
 import 'constants.dart';
 import '../levels/level_config.dart';
+import '../levels/levels.dart';
 import 'world/shelter_layout.dart';
 import 'systems/bait_system.dart';
 
@@ -136,7 +137,8 @@ class MeowShelterGame extends FlameGame {
   void _handleDelivered(CatComponent cat) {
     if (_hud.status != RoundStatus.playing) return;
     _hud.delivered += 1;
-    CampState.instance.rescue(cat.catType);
+    // Practice rounds are replayable, so they do not pay out coins.
+    if (!level.isTutorial) CampState.instance.rescue(cat.catType);
     if (level.isInfinite) {
       if (_hud.delivered % 5 == 0) _shuffleShelters();
       _spawnCat(level.catTypes[_random.nextInt(level.catTypes.length)]);
@@ -175,8 +177,14 @@ class MeowShelterGame extends FlameGame {
     }
   }
 
+  int lastStars = 0;
+
   void _showResult(RoundStatus status) {
     _hud.status = status;
+    if (status == RoundStatus.won && !level.isInfinite) {
+      lastStars = starsFor(level, _hud.secondsLeft);
+      CampState.instance.recordLevel(level.id, lastStars);
+    }
     overlays.add('roundResult');
   }
 

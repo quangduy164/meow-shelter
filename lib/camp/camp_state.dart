@@ -34,6 +34,8 @@ class CampState {
     rescued.addAll(Map<String, int>.from(data['rescued'] as Map? ?? {}));
     affection.addAll(Map<String, int>.from(data['affection'] as Map? ?? {}));
     owned.addAll(List<String>.from(data['owned'] as List? ?? []));
+    seenGuides.addAll(List<String>.from(data['seenGuides'] as List? ?? []));
+    levelStars.addAll(Map<String, int>.from(data['levelStars'] as Map? ?? {}));
   }
 
   static late CampState instance;
@@ -55,6 +57,23 @@ class CampState {
   final rescued = <String, int>{};
   final affection = <String, int>{};
   final owned = <String>{};
+
+  /// Best stars per level id (as a string key, for JSON).
+  final levelStars = <String, int>{};
+
+  Future<void> recordLevel(int id, int stars) async {
+    if (stars <= (levelStars['$id'] ?? 0)) return;
+    levelStars['$id'] = stars;
+    await _save();
+  }
+
+  /// Cat breeds whose catch guide the player has already read.
+  final seenGuides = <String>{};
+
+  Future<void> markGuidesSeen(Iterable<String> types) async {
+    seenGuides.addAll(types);
+    await _save();
+  }
 
   /// The orange cat is the starter; every other breed must be rescued first.
   bool unlocked(String type) => type == 'orange' || (rescued[type] ?? 0) > 0;
@@ -93,5 +112,7 @@ class CampState {
         'rescued': rescued,
         'affection': affection,
         'owned': owned.toList(),
+        'seenGuides': seenGuides.toList(),
+        'levelStars': levelStars,
       }));
 }

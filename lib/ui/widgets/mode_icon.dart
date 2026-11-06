@@ -1,21 +1,27 @@
 import 'package:flutter/material.dart';
 
-enum ModeIconKind { catchCat, fishing, rescue, returnHome }
+enum ModeIconKind { catchCat, fishing, rescue, returnHome, camp }
 
 /// Flat mode badges: one colored tile with a single white symbol.
 class ModeIcon extends StatelessWidget {
-  const ModeIcon({super.key, required this.kind, this.size = 52});
+  const ModeIcon(
+      {super.key, required this.kind, this.size = 52, this.onColor = false});
   final ModeIconKind kind;
   final double size;
 
+  /// On a coloured tile: draw a translucent white badge instead of a colour one.
+  final bool onColor;
+
   @override
   Widget build(BuildContext context) => SizedBox.square(
-      dimension: size, child: CustomPaint(painter: _ModeIconPainter(kind)));
+      dimension: size,
+      child: CustomPaint(painter: _ModeIconPainter(kind, onColor)));
 }
 
 class _ModeIconPainter extends CustomPainter {
-  const _ModeIconPainter(this.kind);
+  const _ModeIconPainter(this.kind, this.onColor);
   final ModeIconKind kind;
+  final bool onColor;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -26,10 +32,12 @@ class _ModeIconPainter extends CustomPainter {
       ModeIconKind.fishing => const Color(0xFF3E9FB0),
       ModeIconKind.rescue => const Color(0xFFF08A3A),
       ModeIconKind.returnHome => const Color(0xFF6B9E4E),
+      ModeIconKind.camp => const Color(0xFFC85A7C),
     };
     final tile = RRect.fromRectAndRadius(
         const Rect.fromLTWH(2, 2, 52, 52), const Radius.circular(14));
-    canvas.drawRRect(tile, Paint()..color = color);
+    canvas.drawRRect(
+        tile, Paint()..color = onColor ? const Color(0x33FFFFFF) : color);
     final white = Paint()..color = Colors.white;
     switch (kind) {
       case ModeIconKind.catchCat:
@@ -86,26 +94,53 @@ class _ModeIconPainter extends CustomPainter {
               Rect.fromCenter(center: toe, width: 8, height: 10), white);
         }
       case ModeIconKind.returnHome:
+        final road = Paint()
+          ..color = Colors.white
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 5
+          ..strokeCap = StrokeCap.round;
         canvas.drawPath(
             Path()
-              ..moveTo(10, 28)
-              ..lineTo(28, 12)
-              ..lineTo(46, 28)
-              ..lineTo(41, 28)
-              ..lineTo(41, 44)
-              ..lineTo(15, 44)
-              ..lineTo(15, 28)
+              ..moveTo(12, 44)
+              ..quadraticBezierTo(30, 40, 22, 30)
+              ..quadraticBezierTo(14, 20, 34, 16),
+            road);
+        canvas.drawLine(
+            const Offset(36, 30),
+            const Offset(36, 10),
+            Paint()
+              ..color = Colors.white
+              ..strokeWidth = 3);
+        canvas.drawPath(
+            Path()
+              ..moveTo(37, 10)
+              ..lineTo(47, 14)
+              ..lineTo(37, 18)
               ..close(),
             white);
-        canvas.drawRRect(
-            RRect.fromRectAndRadius(
-                const Rect.fromLTWH(24, 32, 8, 12), const Radius.circular(4)),
-            Paint()..color = color);
+      case ModeIconKind.camp:
+        canvas.drawPath(
+            Path()
+              ..moveTo(9, 27)
+              ..lineTo(28, 11)
+              ..lineTo(47, 27)
+              ..close(),
+            white);
+        canvas.drawRect(const Rect.fromLTWH(14, 26, 28, 19), white);
+        final heart = Paint()
+          ..color = onColor ? const Color(0xFFC85A7C) : color;
+        canvas.drawPath(
+            Path()
+              ..moveTo(28, 41)
+              ..cubicTo(18, 34, 21, 26, 28, 31)
+              ..cubicTo(35, 26, 38, 34, 28, 41)
+              ..close(),
+            heart);
     }
     canvas.restore();
   }
 
   @override
   bool shouldRepaint(covariant _ModeIconPainter oldDelegate) =>
-      kind != oldDelegate.kind;
+      kind != oldDelegate.kind || onColor != oldDelegate.onColor;
 }

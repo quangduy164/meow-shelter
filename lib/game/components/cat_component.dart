@@ -12,6 +12,7 @@ import '../catch_window.dart';
 import '../../levels/level_config.dart';
 import '../cats/cat_skill.dart';
 import '../cats/cat_dialogue.dart';
+import '../cats/cat_catch_rule.dart';
 
 /// A draggable cat. The game decides whether the cat was dropped in its
 /// matching shelter through [onDrop].
@@ -73,6 +74,33 @@ class CatComponent extends SpriteAnimationGroupComponent<CatState>
   final void Function(CatComponent cat) onEscaped;
   final _random = Random();
   final _dialogue = CatDialogue();
+  int _meals = 0;
+  int get meals => _meals;
+  int get playTaps => _playTaps;
+  int _playTaps = 0;
+  double _playTimer = 0;
+
+  Vector2 get _center => position + size / 2;
+
+  /// Per-breed bait rules; see [CatCatchRule].
+  bool acceptsBait(Vector2 point, Iterable<CatComponent> cats) =>
+      switch (catType) {
+        'calico' => false,
+        'himalaya' => (_center - point).length >= CatCatchRule.shyDistance,
+        'black' => !cats.any((other) =>
+            other != this &&
+            !other.isDelivered &&
+            (other._center - point).length < CatCatchRule.lonelyDistance),
+        _ => true,
+      };
+
+  /// A shy cat bolts when fish lands right next to it.
+  void startleBy(Vector2 point) {
+    if (catType != 'himalaya' || !canLure) return;
+    if ((_center - point).length >= CatCatchRule.shyDistance) return;
+    _dodge();
+    _dialogue.say('Á! Giật cả mình!');
+  }
 
   CatState _state = CatState.idle;
   double _actionTimer = 0;
@@ -128,7 +156,34 @@ class CatComponent extends SpriteAnimationGroupComponent<CatState>
     }
     super.render(canvas);
     canvas.restore();
+    _drawProgress(canvas);
     _drawDialogue(canvas);
+  }
+
+  /// Small counter above the cat for multi-step catches.
+  void _drawProgress(Canvas canvas) {
+    final label = catType == 'scottish' && _meals > 0 && !hasEaten
+        ? '🐟 $_meals/${CatCatchRule.scottishMeals}'
+        : catType == 'calico' && _playTaps > 0
+            ? '♥ $_playTaps/${CatCatchRule.calicoTaps}'
+            : null;
+    if (label == null) return;
+    final text = TextPainter(
+        text: TextSpan(
+            text: label,
+            style: const TextStyle(
+                color: Color(0xFFFFF6E2),
+                fontSize: 12,
+                fontWeight: FontWeight.w800)),
+        textDirection: TextDirection.ltr)
+      ..layout();
+    final box = Rect.fromCenter(
+        center: Offset(size.x / 2, size.y + 10),
+        width: text.width + 12,
+        height: text.height + 4);
+    canvas.drawRRect(RRect.fromRectAndRadius(box, const Radius.circular(8)),
+        Paint()..color = const Color(0xCC4A2A12));
+    text.paint(canvas, Offset(box.left + 6, box.top + 2));
   }
 
   void _drawDialogue(Canvas canvas) {
@@ -181,9 +236,49 @@ class CatComponent extends SpriteAnimationGroupComponent<CatState>
   @override
   void onTapDown(TapDownEvent event) {
     super.onTapDown(event);
-    if (!isPlaying() || catchWindow.canCatch || level.isTutorial) return;
+    if (!isPlaying() || catchWindow.canCatch) return;
+    if (level.isTutorial && catType != 'calico') return;
     if (_isDragged || _isDropWrong || _isDelivered || _isEscaping) return;
+    if (catType == 'calico') {
+      _play();
+      return;
+    }
     _dodge();
+  }
+
+  void _eat() {
+    _meals += 1;
+    if (catType == 'scottish' && _meals < CatCatchRule.scottishMeals) {
+      _dialogue.say('Chưa no! Thêm cá nữa đi!');
+      _pickNextAction();
+      return;
+    }
+    hasEaten = true;
+    _setState(CatState.idle);
+    if (catType == 'orange') {
+      catchWindow.open(CatCatchRule.orangeNap);
+      _dialogue.say('No quá… khò khò');
+    } else {
+      catchWindow.open();
+    }
+  }
+
+  /// Calico ignores fish; three quick taps tire it out instead.
+  void _play() {
+    _playTaps += 1;
+    _playTimer = 3;
+    _actionTimer = 0;
+    _velocityY = 0;
+    _setState(CatState.idle);
+    _currentActionDuration = .8;
+    if (_playTaps < CatCatchRule.calicoTaps) {
+      _dialogue.say('Chơi nữa đi!');
+      return;
+    }
+    _playTaps = 0;
+    hasEaten = true;
+    catchWindow.open();
+    _dialogue.say('Mệt rồi, bế em đi…');
   }
 
   void _dodge() {
@@ -272,6 +367,10 @@ class CatComponent extends SpriteAnimationGroupComponent<CatState>
     if (!isPlaying()) return;
     super.update(dt);
     _dialogue.update(dt);
+    if (_playTimer > 0) {
+      _playTimer -= dt;
+      if (_playTimer <= 0) _playTaps = 0;
+    }
     _skillCooldown -= dt;
     final wasReady = catchWindow.canCatch;
     catchWindow.tick(dt);
@@ -301,9 +400,7 @@ class CatComponent extends SpriteAnimationGroupComponent<CatState>
       final speed = catWalkSpeed * level.speedMultiplier;
       if (distance <= speed * dt + 4) {
         fishTarget = null;
-        hasEaten = true;
-        catchWindow.open();
-        _setState(CatState.idle);
+        _eat();
       } else {
         _direction = delta.x >= 0 ? 1 : -1;
         position += delta / distance * speed * dt;

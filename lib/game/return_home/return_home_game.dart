@@ -65,7 +65,7 @@ class ReturnHomeGame extends FlameGame {
   final _contacts = <ReturnHomeObstacle>{};
 
   Future<void> chooseCat(String type) async {
-    if (started || _choosing || !CampState.instance.unlocked(type)) return;
+    if (started || _choosing) return;
     _choosing = true;
     selectedCat = type;
     await _cat.changeType(type);
