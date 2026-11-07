@@ -118,7 +118,9 @@ class ReturnHomeGame extends FlameGame {
     // the cat along the longer world.
     camera.viewfinder.position = Vector2(size.x / 2, size.y / 2);
     world.add(ReturnHomeBackground(road: road));
-    for (final f in [.285, .335]) {
+    // One long crossing near the end of the stream stretch; the dry part
+    // before it belongs to the crabs.
+    for (final f in [.352]) {
       final crossing = ReturnHomeCrossing(road: road, centerFraction: f);
       _crossings.add(crossing);
       world.add(crossing);
@@ -132,6 +134,10 @@ class ReturnHomeGame extends FlameGame {
       initialCount: (road.worldWidth / 175).round(),
     )..seed();
     _clearCrossing();
+    // Crabs keep clear of the crossing and of the bank the cat respawns on.
+    _spawner.fillCrabs(
+        blocked: (x) =>
+            _crossings.any((c) => x > c.safeBankX - 30 && x < c.right + 40));
     _addPickups(world);
     joystick = ReturnHomeJoystick(position: Vector2(92, size.y - 92));
     camera.viewport.add(joystick);
@@ -198,6 +204,7 @@ class ReturnHomeGame extends FlameGame {
     _contacts
         .removeAll(_spawner.cull(cameraX - size.x / 2 - _spawner.cullBehind));
     _applyWind(dt);
+    _rideStones();
     _resolveHits(dt);
     resolveObstacleCollisions(_spawner.obstacles);
     _sinkRocks();
@@ -218,7 +225,7 @@ class ReturnHomeGame extends FlameGame {
   /// other hazard costs a life, and one hit cannot burn several lives at once.
   void _resolveHits(double dt) {
     for (final obstacle in _spawner.obstacles) {
-      obstacle.updatePhysics(dt, _cat.position.x);
+      obstacle.updatePhysics(dt, _cat.hitbox.center);
     }
     // Iterate a copy: a respawn removes nearby rocks and birds from the list.
     for (final obstacle in List<ReturnHomeObstacle>.of(_spawner.obstacles)) {
@@ -275,6 +282,18 @@ class ReturnHomeGame extends FlameGame {
       _spawner.obstacles.remove(o);
       _contacts.remove(o);
       o.removeFromParent();
+    }
+  }
+
+  /// A cat standing on a drifting stone drifts with it.
+  void _rideStones() {
+    if (_cat.dashing) return;
+    for (final crossing in _crossings) {
+      final dy = crossing.carryDy(_cat.hitbox);
+      if (dy != 0) {
+        _cat.nudge(dy);
+        return;
+      }
     }
   }
 
@@ -341,6 +360,7 @@ class ReturnHomeGame extends FlameGame {
       final blocked = _spawner.obstacles.any((o) =>
           o.kind != ReturnHomeObstacleKind.rock &&
           o.kind != ReturnHomeObstacleKind.bird &&
+          o.kind != ReturnHomeObstacleKind.crab &&
           o.hits(box.inflate(10)));
       if (!blocked) {
         y = candidate;

@@ -130,13 +130,16 @@ void paintBird(
   Canvas canvas, {
   required double flap,
   required double tilt,
+  double shadowDx = 0,
   required double shadowDy,
   required double shadowDepth,
 }) {
   final shadow = .25 + shadowDepth * .75;
   canvas.drawOval(
       Rect.fromCenter(
-          center: Offset(0, shadowDy), width: 22 + 26 * shadow, height: 8),
+          center: Offset(shadowDx, shadowDy),
+          width: 22 + 26 * shadow,
+          height: 8),
       Paint()
         ..color = Color.fromARGB((12 + 34 * shadow).round(), 0x4B, 0x39, 0x2C));
   canvas.save();
@@ -284,4 +287,75 @@ void paintLog(Canvas canvas, {required bool vertical}) {
       Rect.fromCenter(center: const Offset(-29, 1), width: 3, height: 6), ring);
   canvas.drawOval(cap, outline..strokeWidth = 2.2);
   canvas.restore();
+}
+
+/// A red river crab seen from above-front: legs tick while it walks, claws
+/// open and snap while it rests at the lane edge.
+void paintCrab(Canvas canvas, {required double walk, required bool resting}) {
+  const shell = Color(0xFFE0583F);
+  const shellLight = Color(0xFFF58A6C);
+  const ink = Color(0xFF5A2418);
+  final outline = Paint()
+    ..color = ink
+    ..style = PaintingStyle.stroke
+    ..strokeWidth = 2
+    ..strokeJoin = StrokeJoin.round
+    ..strokeCap = StrokeCap.round;
+
+  canvas.drawOval(
+      Rect.fromCenter(center: const Offset(0, 9), width: 40, height: 9),
+      Paint()..color = const Color(0x334B392C));
+
+  // Legs: three per side, alternating lift while walking.
+  final leg = Paint()
+    ..color = ink
+    ..strokeWidth = 2.4
+    ..strokeCap = StrokeCap.round;
+  for (final side in const [-1.0, 1.0]) {
+    for (var i = 0; i < 3; i++) {
+      final lift = resting ? 0.0 : sin(walk + i * 2.1 + side) * 2.5;
+      final root = Offset(side * 9, 1.0 + i * 3);
+      final knee = Offset(side * (16 + i), -2.0 + i * 3 + lift);
+      final foot = Offset(side * (20 + i * 1.5), 6.0 + i * 2 + lift);
+      canvas.drawLine(root, knee, leg);
+      canvas.drawLine(knee, foot, leg);
+    }
+  }
+
+  // Claws on short arms; they open wide and snap when resting.
+  final open = resting ? (.5 + .5 * sin(walk)) : .25;
+  for (final side in const [-1.0, 1.0]) {
+    canvas.drawLine(Offset(side * 8, -4), Offset(side * 15, -11), leg);
+    canvas.save();
+    canvas.translate(side * 16, -14);
+    final pincer = Path()
+      ..moveTo(0, 3)
+      ..quadraticBezierTo(side * -7, -2, side * -3, -9)
+      ..lineTo(side * -1, -3 + open * -2)
+      ..lineTo(side * 1, -4 - open * 4)
+      ..quadraticBezierTo(side * 7, -6, side * 5, 1)
+      ..close();
+    canvas.drawPath(pincer, Paint()..color = shell);
+    canvas.drawPath(pincer, outline);
+    canvas.restore();
+  }
+
+  // Shell.
+  final body =
+      Rect.fromCenter(center: const Offset(0, 2), width: 28, height: 18);
+  canvas.drawOval(body, Paint()..color = shell);
+  canvas.drawOval(
+      Rect.fromCenter(center: const Offset(-3, -1), width: 14, height: 6),
+      Paint()..color = shellLight);
+  canvas.drawOval(body, outline);
+
+  // Eye stalks.
+  for (final side in const [-1.0, 1.0]) {
+    canvas.drawLine(Offset(side * 4, -6), Offset(side * 5, -11), outline);
+    canvas.drawCircle(
+        Offset(side * 5, -12), 3, Paint()..color = const Color(0xFFFFFFFF));
+    canvas.drawCircle(Offset(side * 5, -12), 3, outline..strokeWidth = 1.4);
+    canvas.drawCircle(Offset(side * 5.4, -12), 1.4, Paint()..color = ink);
+    outline.strokeWidth = 2;
+  }
 }

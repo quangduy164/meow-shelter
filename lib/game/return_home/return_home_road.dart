@@ -31,6 +31,7 @@ class ReturnHomeBiome {
     this.spikes = 0,
     this.logs = 0,
     this.springs = 0,
+    this.crabs = 0,
     this.rockRate = 0,
     this.rockSpeed = 1,
     this.birdRate = 0,
@@ -59,6 +60,10 @@ class ReturnHomeBiome {
   final double logs;
   final double springs;
 
+  /// Crabs scuttle across the lane and pause at the edges; this is the chance
+  /// each slot in the stretch's row of crabs is filled.
+  final double crabs;
+
   /// Timed pressure: 0 disables, 1 is the base spawner rate.
   final double rockRate;
   final double rockSpeed;
@@ -67,7 +72,7 @@ class ReturnHomeBiome {
   /// Peak vertical push in px/s from gusts on exposed stretches.
   final double wind;
 
-  bool get calm => spikes + logs + springs == 0 && rockRate == 0;
+  bool get calm => spikes + logs + springs + crabs == 0 && rockRate == 0;
 
   static const all = <ReturnHomeBiome>[
     // 1. Learn the basics: spikes and slow rocks on a wide dirt road.
@@ -100,7 +105,7 @@ class ReturnHomeBiome {
       rockRate: .35,
       scenery: ReturnHomeScenery.garden,
     ),
-    // 3. Stepping stones over the stream; little else to distract.
+    // 3. Drifting stepping stones over the stream; crabs instead of rocks.
     ReturnHomeBiome(
       name: 'Bờ suối',
       from: .25,
@@ -110,8 +115,8 @@ class ReturnHomeBiome {
       roadLight: Color(0xFFBCCDB4),
       edge: Color(0x664F8290),
       halfWidth: .16,
-      spikes: .35,
-      rockRate: .3,
+      spikes: .15,
+      crabs: .9,
       scenery: ReturnHomeScenery.stream,
     ),
     // 4. Hidden springs everywhere under the bamboo.

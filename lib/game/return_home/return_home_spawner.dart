@@ -80,6 +80,28 @@ class ReturnHomeSpawner {
     }
   }
 
+  /// Crabs are not rolled with the other hazards: a stretch with crabs gets a
+  /// steady row of them, one every [crabGap] px or so, so the player always
+  /// has a few to time instead of a lone straggler. [blocked] marks x
+  /// positions to keep free (crossings, respawn banks).
+  void fillCrabs({required bool Function(double x) blocked}) {
+    final w = road.worldWidth;
+    for (var i = 0; i < road.biomes.length; i++) {
+      final biome = road.biomes[i];
+      if (biome.crabs <= 0) continue;
+      final end = i + 1 < road.biomes.length ? road.biomes[i + 1].from : 1.0;
+      for (var x = biome.from * w + 110; x < end * w - 60;) {
+        final crowded = obstacles.any((o) => (o.position.x - x).abs() < 36);
+        if (!blocked(x) && !crowded && random.nextDouble() < biome.crabs) {
+          _addCrab(x);
+        }
+        x += crabGap + random.nextDouble() * 25;
+      }
+    }
+  }
+
+  static const double crabGap = 62;
+
   /// Timed pressure from the right edge, shaped by the stretch the camera is
   /// heading into. [canSpawn] keeps the final stretch of the run clear.
   void tick({
@@ -151,6 +173,19 @@ class ReturnHomeSpawner {
             x,
             road.centerY(x) +
                 _depth(road.halfWidth(x) - laneHazardClearance))));
+  }
+
+  /// Crabs walk sideways across the whole lane at a random pace, starting at a
+  /// random depth, so the player times a gap instead of just steering around.
+  void _addCrab(double x) {
+    final crab = ReturnHomeObstacle(
+        kind: ReturnHomeObstacleKind.crab,
+        road: road,
+        position: Vector2(x,
+            road.centerY(x) + _depth(road.halfWidth(x) - laneHazardClearance)));
+    crab.velocity = Vector2(
+        0, (random.nextBool() ? 1 : -1) * (60 + random.nextDouble() * 45));
+    _place(crab);
   }
 
   void _addRock(double x, {required double speed}) {

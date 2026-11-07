@@ -6,7 +6,10 @@ import 'package:flutter/painting.dart';
 import 'return_home_hazard_art.dart';
 import 'return_home_road.dart';
 
-enum ReturnHomeObstacleKind { spikes, rock, log, bird, spring }
+enum ReturnHomeObstacleKind { spikes, rock, log, bird, spring, crab }
+
+/// How long a crab rests at a lane edge, snapping its claws, before turning.
+const double crabPause = .55;
 
 /// A log spans [logLength] across the lane and only stands upright when at least
 /// [logMinGap] of lane stays free, so a blocked lane is never a wall.
@@ -20,8 +23,21 @@ const double logMinGap = 34.0;
 const double laneHazardClearance = 14.0;
 const double rockSpawnClearance = 20.0;
 const double birdCruiseHeight = .16;
-const double birdDiveDuration = .78;
-const double birdDiveRange = 200.0;
+const double birdDiveDuration = .9;
+
+/// A bird ahead of the cat by less than [birdAimRange] stops to aim: it hovers
+/// and its shadow trails the cat for a random [birdAimMin]..+[birdAimJitter]
+/// seconds, then the target freezes and it dives onto that spot. The aim delay
+/// plus half the dive is the player's window to step out of the shadow.
+const double birdAimRange = 260.0;
+const double birdAimMin = .4;
+const double birdAimJitter = .35;
+const double birdAimSlowdown = .25;
+const double birdShadowFollow = 6.0;
+
+final Random _birdRandom = Random();
+
+enum _BirdPhase { cruise, aim, dive, leave }
 
 /// Rock physics: the road slopes gently toward the start, so rocks keep rolling
 /// left; collisions lose some energy; spin follows the rolling speed.
@@ -53,18 +69,30 @@ class ReturnHomeObstacle extends PositionComponent {
   double springT = 0;
 
   double _flap = 0;
-  double _diveT = -1;
   double _tilt = 0;
+  double _shadowDx = 0;
   double _shadowDy = 0;
   double _shadowDepth = 0;
 
-  void updatePhysics(double dt, double catX) {
+  _BirdPhase _phase = _BirdPhase.cruise;
+  double _phaseT = 0;
+  double _aimTime = 0;
+  final Vector2 _target = Vector2.zero();
+  final Vector2 _diveStart = Vector2.zero();
+  double _diveVx = 0;
+
+  /// [cat] is the center of the cat's hitbox in world space.
+  void updatePhysics(double dt, Offset cat) {
     if (kind == ReturnHomeObstacleKind.spring) {
       springT = max(0, springT - dt);
       return;
     }
     if (kind == ReturnHomeObstacleKind.bird) {
-      _updateBird(dt, catX);
+      _updateBird(dt, cat);
+      return;
+    }
+    if (kind == ReturnHomeObstacleKind.crab) {
+      _updateCrab(dt);
       return;
     }
     if (kind != ReturnHomeObstacleKind.rock) return;
@@ -87,34 +115,87 @@ class ReturnHomeObstacle extends PositionComponent {
     }
   }
 
-  /// Cruises high over the road, then swoops onto the lane once. The dive only
-  /// arms while the bird is still ahead of the cat, so the shadow warning and
-  /// the strike land in front of the player instead of behind them.
-  void _updateBird(double dt, double catX) {
-    position += velocity * dt;
-    _flap += dt * 13;
+  /// Cruises high, then aims at the cat: it hovers while its shadow chases
+  /// the player with a little lag, locks the spot after a random delay and
+  /// swoops onto it. Dodging means leaving the shadow before the strike lands.
+  void _updateBird(double dt, Offset cat) {
     final cruise = road.viewportHeight * birdCruiseHeight;
-    final strike = road.centerY(position.x);
-    final shadowY = strike + road.halfWidth(position.x) * .55;
-    if (_diveT < 0) {
-      if (position.x > catX && position.x - catX < birdDiveRange) {
-        _diveT = 0;
-      } else {
+    _phaseT += dt;
+    switch (_phase) {
+      case _BirdPhase.cruise:
+      case _BirdPhase.leave:
+        _flap += dt * 13;
+        position += velocity * dt;
         position.y = cruise;
         _tilt = 0;
         _shadowDepth = 0;
-        _shadowDy = shadowY - cruise;
-        return;
-      }
+        _shadowDx = 0;
+        _shadowDy = road.centerY(position.x) +
+            road.halfWidth(position.x) * .55 -
+            cruise;
+        final ahead = position.x - cat.dx;
+        if (_phase == _BirdPhase.cruise && ahead > 0 && ahead < birdAimRange) {
+          _phase = _BirdPhase.aim;
+          _phaseT = 0;
+          _aimTime = birdAimMin + _birdRandom.nextDouble() * birdAimJitter;
+          // The shadow starts under the bird and slides toward the cat.
+          _target.setValues(position.x, position.y + _shadowDy);
+        }
+      case _BirdPhase.aim:
+        // Hover in place, flapping hard, shadow homing in on the cat.
+        _flap += dt * 22;
+        position.x += velocity.x * birdAimSlowdown * dt;
+        position.y = cruise - sin(_phaseT * 14) * 3;
+        final k = 1 - exp(-birdShadowFollow * dt);
+        _target.x += (cat.dx - _target.x) * k;
+        _target.y += (cat.dy - _target.y) * k;
+        final progress = min(1.0, _phaseT / _aimTime);
+        _tilt = -.25 * progress;
+        _shadowDepth = .3 + .4 * progress;
+        _setShadowToTarget();
+        if (_phaseT >= _aimTime) {
+          // Lock: from here the strike point no longer follows the cat.
+          _phase = _BirdPhase.dive;
+          _phaseT = 0;
+          _diveStart.setFrom(position);
+          _diveVx = (_target.x - position.x) / (birdDiveDuration / 2);
+        }
+      case _BirdPhase.dive:
+        _flap += dt * 8;
+        final t = min(1.0, _phaseT / birdDiveDuration);
+        final dip = sin(pi * t);
+        position.x = _diveStart.x + _diveVx * _phaseT;
+        position.y = cruise + (_target.y - cruise) * dip;
+        _tilt = (t < .5 ? -.55 : .42) * min(1, dip * 2.5);
+        _shadowDepth = .7 + .3 * dip;
+        _setShadowToTarget();
+        if (t >= 1) {
+          _phase = _BirdPhase.leave;
+          _phaseT = 0;
+        }
     }
-    _diveT += dt;
-    final t = min(1.0, _diveT / birdDiveDuration);
-    final dip = sin(pi * t);
-    position.y = cruise + (strike - cruise) * dip;
-    _tilt = (_diveT < birdDiveDuration / 2 ? -.5 : .42) * min(1, dip * 2.5);
-    _shadowDepth = dip;
-    _shadowDy = shadowY - position.y;
-    if (t >= 1) _diveT = -1;
+  }
+
+  /// Sideways shuffle from one lane edge to the other, resting at each edge.
+  void _updateCrab(double dt) {
+    _flap += dt * (springT > 0 ? 18 : 12);
+    if (springT > 0) {
+      springT = max(0, springT - dt);
+      return;
+    }
+    position.y += velocity.y * dt;
+    final reach = road.halfWidth(position.x) - laneHazardClearance;
+    final center = road.centerY(position.x);
+    if (position.y < center - reach || position.y > center + reach) {
+      position.y = position.y.clamp(center - reach, center + reach);
+      velocity.y = -velocity.y;
+      springT = crabPause;
+    }
+  }
+
+  void _setShadowToTarget() {
+    _shadowDx = _target.x - position.x;
+    _shadowDy = _target.y + 10 - position.y;
   }
 
   /// Solid footprint used when hazards collide with each other.
@@ -156,6 +237,10 @@ class ReturnHomeObstacle extends PositionComponent {
               width: logLength,
               height: 22));
     }
+    if (kind == ReturnHomeObstacleKind.crab) {
+      return catBox.overlaps(Rect.fromCenter(
+          center: Offset(position.x, position.y + 1), width: 34, height: 16));
+    }
     if (kind == ReturnHomeObstacleKind.bird) {
       // Body and head only; grazing a flapping wingtip stays a near miss.
       return catBox.overlaps(Rect.fromCenter(
@@ -185,20 +270,24 @@ class ReturnHomeObstacle extends PositionComponent {
         paintBird(canvas,
             flap: _flap,
             tilt: _tilt,
+            shadowDx: _shadowDx,
             shadowDy: _shadowDy,
             shadowDepth: _shadowDepth);
       case ReturnHomeObstacleKind.log:
         paintLog(canvas, vertical: vertical);
       case ReturnHomeObstacleKind.spring:
         _paintSpring(canvas);
+      case ReturnHomeObstacleKind.crab:
+        paintCrab(canvas, walk: _flap, resting: springT > 0);
     }
     canvas.restore();
   }
 }
 
 extension on ReturnHomeObstacle {
-  /// Hidden: only a slightly different grass tuft gives it away. Fired: a
-  /// metal plate on a stretched coil that sinks back into the grass.
+  /// Hidden: only a slightly different grass tuft gives it away.
+  /// Fired: a hinged launch pad whose coil snaps out toward the back (left,
+  /// the way the cat is flung), wobbles, then folds back into the grass.
   void _paintSpring(Canvas canvas) {
     if (springT <= 0) {
       final tuft = Paint()
@@ -211,25 +300,116 @@ extension on ReturnHomeObstacle {
       }
       return;
     }
-    final lift = 22 * min(1.0, springT / springShowTime * 1.6);
-    final coil = Paint()
-      ..color = const Color(0xFF8E979C)
+
+    // Snap out fast, overshoot and wobble, hold, then retract at the end.
+    final e = springShowTime - springT;
+    const snap = .07;
+    final ext = e < snap
+        ? e / snap
+        : 1 + .22 * exp(-(e - snap) * 7) * sin((e - snap) * 32);
+    final retract = min(1.0, springT / (springShowTime * .35));
+    final out = ext * retract;
+    final length = 6 + 24 * out;
+    // Leans back (counter-clockwise = toward the left) as it extends.
+    final lean = -.85 * min(1.0, out);
+
+    const ink = Color(0xFF3A3F44);
+    final outline = Paint()
+      ..color = ink
       ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.6
+      ..strokeJoin = StrokeJoin.round;
+
+    // Dust kicked up on the back side right after firing.
+    if (e < .4) {
+      final puff = 1 - e / .4;
+      final dust = Paint()
+        ..color = Color.fromARGB((120 * puff).round(), 0xD8, 0xC8, 0xA4);
+      for (var i = 0; i < 3; i++) {
+        canvas.drawCircle(
+            Offset(-14 - i * 7 - e * 40, 6 - i * 2.0), 3 + i + e * 10, dust);
+      }
+    }
+
+    // Ground plate with hinge.
+    final base = RRect.fromRectAndRadius(
+        const Rect.fromLTWH(-14, 4, 28, 6), const Radius.circular(2));
+    canvas.drawRRect(base, Paint()..color = const Color(0xFF5C6166));
+    canvas.drawRRect(base, outline);
+
+    canvas.save();
+    canvas.translate(4, 5);
+    canvas.rotate(lean);
+
+    // Back strut of the hinge: a rigid arm from the hinge to the pad.
+    final arm = Paint()
+      ..color = const Color(0xFF6E767C)
       ..strokeWidth = 3
       ..strokeCap = StrokeCap.round;
-    final path = Path()..moveTo(-8, 6);
-    for (var i = 1; i <= 5; i++) {
-      path.lineTo(i.isEven ? -8 : 8, 6 - lift * i / 5);
+    canvas.drawLine(const Offset(8, 0), Offset(8, -length + 2), arm);
+
+    // Coil zig-zag along the launch axis.
+    final coil = Paint()
+      ..color = const Color(0xFFB7C0C6)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 3
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round;
+    final coilPath = Path()..moveTo(0, 0);
+    const turns = 6;
+    for (var i = 1; i <= turns; i++) {
+      coilPath.lineTo(
+          i == turns ? 0 : (i.isEven ? -6 : 6), -(length - 4) * i / turns);
     }
-    canvas.drawPath(path, coil);
+    canvas.drawPath(
+        coilPath,
+        Paint()
+          ..color = ink
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 5
+          ..strokeCap = StrokeCap.round
+          ..strokeJoin = StrokeJoin.round);
+    canvas.drawPath(coilPath, coil);
+
+    // Pad: faces up-and-back, the surface that bats the cat away.
+    final pad = RRect.fromRectAndRadius(
+        Rect.fromCenter(center: Offset(0, -length), width: 30, height: 8),
+        const Radius.circular(3));
+    canvas.drawRRect(pad, Paint()..color = const Color(0xFFC94F45));
     canvas.drawRRect(
         RRect.fromRectAndRadius(
-            Rect.fromLTWH(-15, 2 - lift - 5, 30, 6), const Radius.circular(3)),
-        Paint()..color = const Color(0xFFC94F45));
-    canvas.drawRRect(
-        RRect.fromRectAndRadius(
-            const Rect.fromLTWH(-12, 5, 24, 5), const Radius.circular(2)),
-        Paint()..color = const Color(0xFF5C6166));
+            Rect.fromLTWH(-13, -length - 3, 26, 2.5), const Radius.circular(1)),
+        Paint()..color = const Color(0xFFEF7D6E));
+    canvas.drawRRect(pad, outline);
+    // Arrow chevrons on the pad pointing back.
+    final chevron = Paint()
+      ..color = const Color(0xFFFFF4DA)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.6
+      ..strokeCap = StrokeCap.round;
+    for (final x in const [-4.0, 4.0]) {
+      canvas.drawPath(
+          Path()
+            ..moveTo(x + 2, -length - 2)
+            ..lineTo(x - 1, -length)
+            ..lineTo(x + 2, -length + 2),
+          chevron);
+    }
+    canvas.restore();
+
+    // Speed streaks flying backwards during the snap.
+    if (e < .3) {
+      final k = 1 - e / .3;
+      final streak = Paint()
+        ..color = Color.fromARGB((200 * k).round(), 0xFF, 0xFF, 0xFF)
+        ..strokeWidth = 2
+        ..strokeCap = StrokeCap.round;
+      for (var i = 0; i < 3; i++) {
+        final y = -22.0 + i * 8;
+        final x = -20.0 - e * 60;
+        canvas.drawLine(Offset(x, y), Offset(x - 12 * k - 4, y + 3), streak);
+      }
+    }
   }
 }
 
