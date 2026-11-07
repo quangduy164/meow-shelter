@@ -3,6 +3,8 @@ import '../../collection/fish_collection.dart';
 import '../../collection/fish_species.dart';
 import 'fishing_fish_art.dart';
 import '../design.dart';
+import 'game_glyphs.dart';
+import 'round_button.dart';
 
 /// Fish journal: tabbed grid on the left, details of the picked entry on
 /// the right. Undiscovered entries show as silhouettes named "???".
@@ -50,11 +52,15 @@ class _FishCollectionDialogState extends State<FishCollectionDialog> {
         .where((fish) => widget.collection.countOf(fish) > 0)
         .length;
     final total = FishSpecies.values.length;
+    final width = (screen.width - 48).clamp(320.0, 780.0);
+    // Detail column takes a share of the card so narrow (4:3) screens still
+    // leave room for the grid.
+    final detailWidth = (width * .36).clamp(170.0, 240.0);
     return Dialog(
       backgroundColor: Colors.transparent,
       insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
       child: Container(
-        width: (screen.width - 48).clamp(320.0, 780.0),
+        width: width,
         height: (screen.height * .88).clamp(260.0, 460.0),
         decoration: DS.card.copyWith(color: DS.cream),
         padding: const EdgeInsets.fromLTRB(14, 10, 14, 12),
@@ -66,19 +72,23 @@ class _FishCollectionDialogState extends State<FishCollectionDialog> {
                 Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
               Expanded(
                 child: Column(children: [
-                  Row(children: [
-                    _TabChip(
-                        label: 'Cá',
-                        count: widget.collection.count,
-                        active: !_junkTab,
-                        onTap: () => _switchTab(false)),
-                    const SizedBox(width: 8),
-                    _TabChip(
-                        label: 'Đồ thất lạc',
-                        count: widget.collection.junkCount,
-                        active: _junkTab,
-                        onTap: () => _switchTab(true)),
-                  ]),
+                  FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.centerLeft,
+                    child: Row(mainAxisSize: MainAxisSize.min, children: [
+                      _TabChip(
+                          label: 'Cá',
+                          count: widget.collection.count,
+                          active: !_junkTab,
+                          onTap: () => _switchTab(false)),
+                      const SizedBox(width: 8),
+                      _TabChip(
+                          label: 'Đồ thất lạc',
+                          count: widget.collection.junkCount,
+                          active: _junkTab,
+                          onTap: () => _switchTab(true)),
+                    ]),
+                  ),
                   const SizedBox(height: 8),
                   Expanded(
                     child: GridView.builder(
@@ -104,7 +114,7 @@ class _FishCollectionDialogState extends State<FishCollectionDialog> {
               ),
               const SizedBox(width: 12),
               SizedBox(
-                width: 230,
+                width: detailWidth,
                 child: _DetailPanel(
                     fish: _selected,
                     count: widget.collection.countOf(_selected)),
@@ -166,22 +176,8 @@ class _CloseButton extends StatelessWidget {
   final VoidCallback onTap;
 
   @override
-  Widget build(BuildContext context) => Semantics(
-        button: true,
-        label: 'Đóng',
-        child: GestureDetector(
-          onTap: onTap,
-          child: Container(
-            width: 36,
-            height: 36,
-            decoration: BoxDecoration(
-                color: DS.gold,
-                shape: BoxShape.circle,
-                border: Border.all(color: DS.goldEdge, width: 2)),
-            child: const Icon(Icons.close_rounded, color: DS.ink, size: 22),
-          ),
-        ),
-      );
+  Widget build(BuildContext context) =>
+      RoundButton(glyph: GameGlyph.close, size: 36, onPressed: onTap);
 }
 
 class _TabChip extends StatelessWidget {

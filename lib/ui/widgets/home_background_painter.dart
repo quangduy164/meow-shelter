@@ -2,6 +2,8 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
+import '../../game/world/nature_art.dart';
+
 /// Home background: a soft dusk sky, layered hills and a winding path that
 /// leads to the shelter on the far right. Details stay near the edges so the
 /// logo, the play button and the mode tiles always sit on calm areas.
@@ -22,15 +24,21 @@ class HomeBackgroundPainter extends CustomPainter {
     _sky(canvas, w);
     _stars(canvas, w);
     _sun(canvas, Offset(w * .42, 360));
-    _cloud(canvas, Offset(w * .08, 90), 1);
-    _cloud(canvas, Offset(w * .5, 60), .7);
-    _cloud(canvas, Offset(w * .9, 120), .85);
+    paintPuffyCloud(canvas, Offset(w * .09, 92), 190,
+        seed: 1, palette: CloudPalette.dusk, opacity: .85);
+    paintPuffyCloud(canvas, Offset(w * .5, 58), 130,
+        seed: 2, palette: CloudPalette.dusk, opacity: .75);
+    paintPuffyCloud(canvas, Offset(w * .9, 122), 160,
+        seed: 3, palette: CloudPalette.dusk, opacity: .82);
     _hills(canvas, w, 360, 70, const Color(0xFFB59BC8), 0);
     _hills(canvas, w, 410, 50, const Color(0xFF9DB98F), 1.4);
     _hills(canvas, w, 460, 34, const Color(0xFF7FAA6E), 2.7);
     _hills(canvas, w, 520, 14, const Color(0xFF6A9A5C), 4.1);
     _shelter(canvas, Offset(w - 90, 440));
-    _tree(canvas, const Offset(40, 470), 1.1);
+    paintLeafyTree(canvas, const Offset(104, 482), 104,
+        seed: 5, palette: TreePalette.dusk);
+    paintLeafyTree(canvas, const Offset(40, 476), 160,
+        seed: 4, palette: TreePalette.dusk);
     _path(canvas, w);
     _flowers(canvas, w);
     _vignette(canvas, w);
@@ -74,21 +82,6 @@ class HomeBackgroundPainter extends CustomPainter {
             Color(0x00FFE0A8),
           ]).createShader(Rect.fromCircle(center: c, radius: 230)));
     canvas.drawCircle(c, 70, Paint()..color = const Color(0xFFFFE3A6));
-  }
-
-  void _cloud(Canvas canvas, Offset o, double k) {
-    canvas.save();
-    canvas.translate(o.dx, o.dy);
-    canvas.scale(k, k);
-    final p = Paint()..color = const Color(0xBFFFF1EA);
-    canvas.drawRRect(
-        RRect.fromRectAndRadius(
-            const Rect.fromLTWH(-80, -4, 170, 28), const Radius.circular(14)),
-        p);
-    canvas.drawCircle(const Offset(-30, -4), 24, p);
-    canvas.drawCircle(const Offset(14, -14), 32, p);
-    canvas.drawCircle(const Offset(52, -2), 20, p);
-    canvas.restore();
   }
 
   void _hills(Canvas canvas, double w, double top, double amp, Color color,
@@ -161,21 +154,6 @@ class HomeBackgroundPainter extends CustomPainter {
     for (final d in const [Offset(-6, -28), Offset(0, -31), Offset(6, -28)]) {
       canvas.drawCircle(d, 2, pad);
     }
-    canvas.restore();
-  }
-
-  void _tree(Canvas canvas, Offset base, double k) {
-    canvas.save();
-    canvas.translate(base.dx, base.dy);
-    canvas.scale(k, k);
-    canvas.drawRRect(
-        RRect.fromRectAndRadius(
-            const Rect.fromLTWH(-6, -60, 12, 62), const Radius.circular(4)),
-        Paint()..color = const Color(0xFF7A5236));
-    final dark = Paint()..color = const Color(0xFF4F8A57);
-    final light = Paint()..color = const Color(0xFF6BA765);
-    canvas.drawOval(const Rect.fromLTWH(-40, -132, 80, 92), dark);
-    canvas.drawOval(const Rect.fromLTWH(-30, -128, 50, 60), light);
     canvas.restore();
   }
 

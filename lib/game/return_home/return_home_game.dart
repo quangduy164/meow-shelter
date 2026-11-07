@@ -261,9 +261,9 @@ class ReturnHomeGame extends FlameGame {
   /// Gusts on exposed stretches push the cat up and down the lane; the cat's own
   /// clamp keeps its paws on the road.
   void _applyWind(double dt) {
-    final wind = road.biomeAt(_cat.position.x).wind;
+    final wind = road.windAt(_cat.bodyCenterX);
     if (wind == 0) return;
-    _cat.position.y += sin(elapsed * 1.4) * sin(elapsed * .37 + 1) * wind * dt;
+    _cat.nudge(sin(elapsed * 1.4) * sin(elapsed * .37 + 1) * wind * dt);
   }
 
   /// Rolling rocks that reach open water sink instead of rolling across it.
@@ -358,6 +358,21 @@ class ReturnHomeGame extends FlameGame {
     _cat.respawn(x, y: y);
   }
 
+  /// World x as a share of the run, the same scale as [progress].
+  double _runFraction(double x) {
+    const start = ReturnHomeRoad.startX;
+    return ((x - start) / max(1.0, road.endX - start)).clamp(0.0, 1.0);
+  }
+
+  List<RouteStop> _routeStops() => [
+        for (final biome in road.biomes)
+          (
+            at: _runFraction(biome.from * road.worldWidth),
+            color: biome.grass,
+            name: biome.name,
+          ),
+      ];
+
   @override
   void render(Canvas canvas) {
     super.render(canvas);
@@ -366,6 +381,8 @@ class ReturnHomeGame extends FlameGame {
       canvas,
       size: Size(size.x, size.y),
       progress: progress,
+      stops: _routeStops(),
+      checkpoint: _runFraction(checkpointX),
       lives: lives,
       fish: fish,
       elapsed: elapsed,

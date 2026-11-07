@@ -7,6 +7,8 @@ import 'package:flutter/scheduler.dart';
 import '../../collection/fish_collection.dart';
 import '../../fishing/fishing_controller.dart';
 import '../../fishing/fishing_lighting.dart';
+import '../widgets/game_glyphs.dart';
+import '../widgets/round_button.dart';
 import '../widgets/fish_collection_dialog.dart';
 import '../widgets/fishing_controls.dart';
 import '../widgets/fishing_action_button.dart';
@@ -186,10 +188,11 @@ class _FishingScreenState extends State<FishingScreen>
                               padding: const EdgeInsets.all(8),
                               child: Align(
                                   alignment: Alignment.topLeft,
-                                  child: FishingActionButton(
+                                  child: RoundButton(
+                                      glyph: GameGlyph.back,
                                       tooltip: 'Về Trang chủ',
-                                      onPressed: () => Navigator.pop(context),
-                                      tool: FishingTool.back)))),
+                                      onPressed: () =>
+                                          Navigator.pop(context))))),
                       Positioned(
                           left: padding.left + 12,
                           bottom: padding.bottom + 12,

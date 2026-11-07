@@ -79,6 +79,8 @@ File: `lib/ui/screens/level_select_screen.dart`
 
 ### Behaviour
 
+- Level rows share the card height (46 on phones, up to 62 on tall
+  screens); see Responsive layout.
 - A level unlocks when the previous level has at least one star
   (`levelUnlocked` in `levels.dart`).
 - Best stars per level are stored in `CampState.levelStars`.
@@ -103,8 +105,9 @@ File: `lib/ui/screens/home_screen.dart`
 └────────────────────────────────────────────────────────────┘
 ```
 
-- Content is laid out on a fixed 820×340 canvas inside a scale-down
-  `FittedBox`, 16 px safe padding, so it fits every landscape screen.
+- Content is laid out on a fixed 820×340 design-unit board inside a
+  scale-down `FittedBox`, 16 units safe padding, so it fits every landscape
+  screen (see Responsive layout).
 - Left half: game logo, the main play button, then "CHỌN MÀN" and the coin
   chip side by side. Right half: a 2×2 grid of mode tiles, 12 px gaps.
 - Coins refresh every time the player returns to this screen.
@@ -161,8 +164,59 @@ edges so the logo, buttons and tiles always sit on calm areas.
 The round result card shows three 30 px stars under the title when a level is
 won (not in infinite mode): earned in star colour, missing in star-empty.
 
-## Responsive checks
+## Responsive layout
 
-Menus are landscape only. Check every new menu at least at 740×340 (small
-phone) and 1280×600 (tablet): no overflow, text on one line, nothing hidden
-behind cards.
+The game runs on every landscape screen, from small phones to 4:3 tablets.
+Sizes are never tied to physical pixels.
+
+### Design units
+
+- The app is designed on a reference screen **375 units tall**
+  (`UiScale.designHeight`, a typical phone held sideways).
+- `UiScaleBox` (`lib/ui/responsive.dart`), installed once in `main.dart`
+  through `MaterialApp.builder`, scales every route, dialog, overlay and
+  Flame game canvas uniformly:
+  `scale = shortestSide / 375`, clamped to **0.8–2.0**.
+- So every number written in widgets and painters (`width: 48`,
+  `fontSize: 14`, `EdgeInsets.all(12)`, a cat 80 wide) is a **design unit**.
+  On a 375-tall phone it equals 1 px; on a tablet it grows; on a small phone
+  it shrinks a little.
+- Inside the box, `MediaQuery.sizeOf(context)` is already in design units:
+  height is always about 375–470 and width about 500–960 depending on the
+  aspect ratio (4:3 tablet ≈ 512, phone ≈ 800, 21:9 phone ≈ 880).
+- System font size is honoured up to **1.15×** (`UiScale.maxTextScale`).
+- `UiScale.of(context)` returns the current factor; it is rarely needed.
+
+### Rules for new UI
+
+1. Write sizes as plain design units. Do not multiply by the screen size or
+   device pixel ratio yourself, and do not read `View`/`window` sizes
+   directly. Use `MediaQuery` or `LayoutBuilder`, which are already scaled.
+2. Every layout must fit widths from **500 to 960** units at a height of
+   **375**. Long rows use `Flexible`/`Expanded`, and groups that may not fit
+   go inside `FittedBox(fit: BoxFit.scaleDown)`. Never let a `Row` of fixed
+   chips run off the edge.
+3. Fixed-size boards (home hero, result card) sit inside a scale-down
+   `FittedBox` so they shrink on narrow screens.
+4. Things that should use extra height (level rows, panels) take a share of
+   the available space with a min and max clamp, e.g. level rows are
+   `available / 3.6 − 6`, clamped to 30–62.
+5. Dialog widths come from the screen width with a clamp
+   (e.g. `(width − 48).clamp(320, 780)`), and inner columns take a share
+   of that width instead of a fixed number.
+6. Flame games read `size` (already in design units). Place things as
+   fractions of `size`, or as design units from an edge (the joystick sits
+   92 units from the bottom-left corner).
+
+### Checking
+
+Before finishing a screen, render it with `UiScaleBox` at these physical
+sizes and confirm there is no overflow and nothing is hidden:
+
+| Device | Physical size | Scale | Design-unit screen |
+|---|---|---|---|
+| Small phone | 640×300 | 0.8 | 800×375 |
+| Phone | 844×390 | 1.04 | 811×375 |
+| Wide phone | 960×411 | 1.1 | 876×375 |
+| 4:3 tablet | 1024×768 | 2.0 | 512×384 |
+| Tablet | 1280×800 | 2.0 | 640×400 |

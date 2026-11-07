@@ -69,6 +69,16 @@ class ReturnHomeCat extends SpriteAnimationGroupComponent<CatState>
   /// The lane is sampled at the sprite's center, not its top-left corner.
   double get _bodyCenterX => position.x + size.x / 2;
 
+  /// World x of the middle of the body; lane and wind are sampled here.
+  double get bodyCenterX => _bodyCenterX;
+
+  /// Pushes the cat vertically (wind) through the normal move, so the lane
+  /// clamp and logs still apply.
+  void nudge(double dy) {
+    if (dy == 0 || _vanishTimer > 0) return;
+    _moveAxis(Vector2(0, dy));
+  }
+
   /// What a hazard has to overlap to actually hit the cat.
   Rect get hitbox => Rect.fromLTWH(position.x + hitboxLeft,
       position.y + hitboxTop, hitboxWidth, hitboxHeight);

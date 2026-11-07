@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
 import '../../game/cats/cat_breed.dart';
+import 'game_glyphs.dart';
 
 const _ink = Color(0xFF5A3214);
 const _cream = Color(0xFFFFF4DA);
@@ -102,7 +103,9 @@ class ReturnHomeHomeButton extends StatelessWidget {
   Widget build(BuildContext context) => RoundGameButton(
         tooltip: 'Về Trang chủ',
         onPressed: onPressed,
-        child: const Icon(Icons.home_rounded, size: 28, color: _ink),
+        face: const Color(0xFFFFC24D),
+        base: const Color(0xFF9A6028),
+        child: const GameGlyphView(GameGlyph.home, size: 30),
       );
 }
 

@@ -5,6 +5,7 @@ import '../../levels/level_config.dart';
 import '../../levels/levels.dart';
 import '../widgets/cat_guide_overlay.dart';
 import '../widgets/round_button.dart';
+import '../widgets/game_glyphs.dart';
 import '../widgets/round_result_overlay.dart';
 
 class GameScreen extends StatefulWidget {
@@ -61,7 +62,8 @@ class _GameScreenState extends State<GameScreen> {
                   alignment: Alignment.topLeft,
                   child: Row(mainAxisSize: MainAxisSize.min, children: [
                     RoundButton(
-                      icon: Icons.home_rounded,
+                      glyph: GameGlyph.back,
+                      tooltip: 'Về chọn màn',
                       onPressed: () => Navigator.of(context).pop(),
                     ),
                     const SizedBox(width: 8),

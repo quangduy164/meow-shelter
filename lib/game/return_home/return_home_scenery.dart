@@ -2,6 +2,7 @@ import 'dart:math';
 
 import 'package:flutter/painting.dart';
 
+import '../world/nature_art.dart';
 import 'return_home_road.dart';
 
 /// Roadside art, one painter per [ReturnHomeScenery]. Everything here derives
@@ -67,18 +68,7 @@ void paintGardenProp(Canvas canvas, ReturnHomeRoad road, double x, int index) {
   final h = road.viewportHeight;
   if (index % 3 == 0) {
     final base = road.edgePoint(x, -1) + const Offset(0, -6);
-    final top = base - Offset(0, h * .12);
-    canvas.drawLine(
-        base,
-        top,
-        Paint()
-          ..color = const Color(0xFF8C6245)
-          ..strokeWidth = 9
-          ..strokeCap = StrokeCap.round);
-    for (var k = 0; k < 3; k++) {
-      canvas.drawCircle(top + Offset((k - 1) * 17.0, k == 1 ? -9 : 4), 23,
-          Paint()..color = const Color(0xFF4E9663));
-    }
+    paintLeafyTree(canvas, base, h * .12 + 62, seed: index);
     return;
   }
   final side = index.isEven ? -1.0 : 1.0;
@@ -169,14 +159,10 @@ void paintStreetProp(Canvas canvas, ReturnHomeRoad road, double x, int index) {
 void paintClouds(Canvas canvas, ReturnHomeRoad road) {
   final w = road.worldWidth;
   final h = road.viewportHeight;
-  final paint = Paint()..color = const Color(0xBFFFFFFF);
   for (var i = 0; i < 6; i++) {
     final center = Offset(w * (.05 + i * .17), h * (.06 + (i % 3) * .055));
-    canvas.drawOval(
-        Rect.fromCenter(center: center, width: 118, height: 30), paint);
-    canvas.drawCircle(center + const Offset(-35, 0), 20, paint);
-    canvas.drawCircle(center + const Offset(4, -10), 27, paint);
-    canvas.drawCircle(center + const Offset(39, 2), 17, paint);
+    paintPuffyCloud(canvas, center, 120 + (i % 3) * 18.0,
+        seed: i + 10, opacity: .9);
   }
 }
 

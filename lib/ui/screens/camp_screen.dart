@@ -11,6 +11,7 @@ import '../widgets/cat_sprite.dart';
 import '../../camp/camp_decor_painter.dart';
 import '../design.dart';
 import '../widgets/round_button.dart';
+import '../widgets/game_glyphs.dart';
 
 /// The cat camp: rescued cats wander the yard, the player pets them and buys
 /// decorations with coins earned in every other mode.
@@ -217,29 +218,48 @@ class _CampScreenState extends State<CampScreen>
               child: SafeArea(
                 child: Padding(
                   padding: const EdgeInsets.all(12),
+                  // Both groups shrink instead of overflowing on narrow
+                  // (4:3) screens.
                   child: Row(children: [
                     RoundButton(
-                        icon: Icons.arrow_back_rounded,
+                        glyph: GameGlyph.back,
                         onPressed: () => Navigator.of(context).pop()),
                     const SizedBox(width: 12),
-                    _Chip(Icons.monetization_on_rounded, '${camp.coins}',
-                        const Color(0xFFE7A72F)),
-                    const SizedBox(width: 8),
-                    _Chip(Icons.pets_rounded, '${_cats.length} bé',
-                        const Color(0xFFD9822B)),
-                    const Spacer(),
-                    _PanelButton(
-                      label: 'CỬA HÀNG',
-                      icon: _CampIcon.shop,
-                      active: _panel == _Panel.shop,
-                      onTap: () => _toggle(_Panel.shop),
+                    Flexible(
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        alignment: Alignment.centerLeft,
+                        child: Row(mainAxisSize: MainAxisSize.min, children: [
+                          _Chip(Icons.monetization_on_rounded, '${camp.coins}',
+                              const Color(0xFFE7A72F)),
+                          const SizedBox(width: 8),
+                          _Chip(Icons.pets_rounded, '${_cats.length} bé',
+                              const Color(0xFFD9822B)),
+                        ]),
+                      ),
                     ),
                     const SizedBox(width: 8),
-                    _PanelButton(
-                      label: 'THÂN THIẾT',
-                      icon: _CampIcon.heart,
-                      active: _panel == _Panel.cats,
-                      onTap: () => _toggle(_Panel.cats),
+                    Flexible(
+                      flex: 2,
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        alignment: Alignment.centerRight,
+                        child: Row(mainAxisSize: MainAxisSize.min, children: [
+                          _PanelButton(
+                            label: 'CỬA HÀNG',
+                            icon: _CampIcon.shop,
+                            active: _panel == _Panel.shop,
+                            onTap: () => _toggle(_Panel.shop),
+                          ),
+                          const SizedBox(width: 8),
+                          _PanelButton(
+                            label: 'THÂN THIẾT',
+                            icon: _CampIcon.heart,
+                            active: _panel == _Panel.cats,
+                            onTap: () => _toggle(_Panel.cats),
+                          ),
+                        ]),
+                      ),
                     ),
                   ]),
                 ),
@@ -331,11 +351,13 @@ class _ShopBarState extends State<_ShopBar> {
                   ],
                 ),
               ),
-              IconButton(
-                  visualDensity: VisualDensity.compact,
-                  onPressed: widget.onClose,
-                  icon: const Icon(Icons.keyboard_arrow_down_rounded,
-                      color: DS.ink)),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(6, 2, 10, 0),
+                child: RoundButton(
+                    glyph: GameGlyph.close,
+                    size: 30,
+                    onPressed: widget.onClose),
+              ),
             ]),
           ),
           Expanded(
@@ -404,18 +426,26 @@ class _ShopBarState extends State<_ShopBar> {
             mainAxisAlignment: MainAxisAlignment.center,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(breed.name,
+              // Same two-row height as a decoration card, so it fits the
+              // short shop bar: name · trait on one line, then the button.
+              Text.rich(
+                  TextSpan(children: [
+                    TextSpan(
+                        text: breed.name,
+                        style: const TextStyle(
+                            color: DS.ink,
+                            fontWeight: FontWeight.w900,
+                            fontSize: 12)),
+                    TextSpan(
+                        text: ' · ${breed.catchRule.trait}',
+                        style: const TextStyle(
+                            color: DS.soft,
+                            fontWeight: FontWeight.w600,
+                            fontSize: 10.5)),
+                  ]),
                   maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                      color: DS.ink,
-                      fontWeight: FontWeight.w900,
-                      fontSize: 12.5)),
-              Text(breed.catchRule.trait,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(color: DS.soft, fontSize: 10.5)),
-              const SizedBox(height: 3),
+                  overflow: TextOverflow.ellipsis),
+              const SizedBox(height: 4),
               SizedBox(
                 height: 26,
                 width: double.infinity,
@@ -674,11 +704,11 @@ class _BondBar extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(color: DS.soft, fontSize: 11)),
               ),
-              IconButton(
-                  visualDensity: VisualDensity.compact,
-                  onPressed: onClose,
-                  icon: const Icon(Icons.keyboard_arrow_down_rounded,
-                      color: DS.ink)),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(6, 0, 10, 0),
+                child: RoundButton(
+                    glyph: GameGlyph.close, size: 30, onPressed: onClose),
+              ),
             ]),
           ),
           Expanded(

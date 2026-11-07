@@ -2,6 +2,7 @@ import 'dart:math' as math;
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import '../design.dart';
+import 'game_glyphs.dart';
 import '../../game/components/hud_component.dart';
 import '../../game/meow_shelter_game.dart';
 import '../../game/constants.dart';
@@ -145,6 +146,7 @@ class _RoundResultOverlayState extends State<RoundResultOverlay>
                             _ActionButton(
                                 tooltip: 'Về chọn màn',
                                 icon: Icons.home_rounded,
+                                glyph: GameGlyph.back,
                                 onPressed: widget.onHome),
                             const SizedBox(width: 10),
                             if (next) ...[
@@ -311,9 +313,11 @@ class _ActionButton extends StatelessWidget {
       required this.icon,
       required this.onPressed,
       this.label,
+      this.glyph,
       this.primary = false});
   final String tooltip;
   final IconData icon;
+  final GameGlyph? glyph;
   final VoidCallback onPressed;
   final String? label;
   final bool primary;
@@ -342,7 +346,9 @@ class _ActionButton extends StatelessWidget {
               label: tooltip,
               child:
                   Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                Icon(icon, size: 23, color: DS.ink),
+                glyph != null
+                    ? GameGlyphView(glyph!, size: 26)
+                    : Icon(icon, size: 23, color: DS.ink),
                 if (label != null) ...[
                   const SizedBox(width: 7),
                   Text(label!,

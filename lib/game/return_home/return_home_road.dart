@@ -255,7 +255,29 @@ class ReturnHomeRoad {
             sin(t * pi * sweepHarmonic + sweepPhase) * sweepAmplitude);
   }
 
-  double halfWidth(double x) => _viewportHeight * biomeAt(x).halfWidth;
+  /// Lane half-height at x. Stretches have different widths, so the width
+  /// eases from one to the next over [borderBlend] on each side of a border;
+  /// a hard step made the lane edge jump and shoved a cat standing on the
+  /// border up or down.
+  double halfWidth(double x) =>
+      _viewportHeight * _blended(x, (biome) => biome.halfWidth);
+
+  /// Wind strength at x, eased in and out at stretch borders the same way.
+  double windAt(double x) => _blended(x, (biome) => biome.wind);
+
+  /// Half-length of the smooth hand-over between two stretches, in world px.
+  static const double borderBlend = 70;
+
+  double _blended(double x, double Function(ReturnHomeBiome biome) pick) {
+    for (var i = 1; i < biomes.length; i++) {
+      final d = x - biomes[i].from * _worldWidth;
+      if (d.abs() >= borderBlend) continue;
+      final t = (d + borderBlend) / (2 * borderBlend);
+      final s = t * t * (3 - 2 * t);
+      return pick(biomes[i - 1]) + (pick(biomes[i]) - pick(biomes[i - 1])) * s;
+    }
+    return pick(biomeAt(x));
+  }
 
   double topEdge(double x) => centerY(x) - halfWidth(x);
 

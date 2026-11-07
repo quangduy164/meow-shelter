@@ -4,6 +4,7 @@ import 'dart:ui' as ui;
 import 'package:flame/components.dart';
 import 'package:flutter/painting.dart';
 
+import 'return_home_details.dart';
 import 'return_home_road.dart';
 import 'return_home_scenery.dart';
 
@@ -16,7 +17,8 @@ class ReturnHomeBackground extends PositionComponent {
   final ReturnHomeRoad road;
 
   /// Columns the world is sliced into for palette blending and road geometry.
-  static const int columns = 96;
+  /// Fine enough that colour cross-fades between stretches look smooth.
+  static const int columns = 320;
 
   /// How far before a biome border its palette starts cross-fading in.
   static const double paletteBlend = .07;
@@ -42,9 +44,14 @@ class ReturnHomeBackground extends PositionComponent {
     size = Vector2(road.worldWidth, road.viewportHeight);
     final recorder = ui.PictureRecorder();
     final canvas = Canvas(recorder);
+    final skyHeight = road.viewportHeight * horizon;
     _ground(canvas);
+    paintSkyGradient(canvas, road, skyHeight, _tone);
     paintClouds(canvas, road);
+    paintHorizon(canvas, road, skyHeight, _tone);
+    paintGrassDetail(canvas, road, skyHeight, _tone);
     _road(canvas);
+    paintRoadDetail(canvas, road, _tone);
     paintStream(canvas, road);
     _props(canvas);
     paintFlowers(canvas, road);
@@ -58,6 +65,9 @@ class ReturnHomeBackground extends PositionComponent {
     final scene = _scene;
     if (scene != null) canvas.drawPicture(scene);
   }
+
+  Color _tone(double x, Color Function(ReturnHomeBiome biome) pick) =>
+      _biomeColor(min(1.0, max(0.0, x / road.worldWidth)), pick);
 
   Color _biomeColor(double f, Color Function(ReturnHomeBiome biome) pick) {
     final biomes = road.biomes;
@@ -78,26 +88,44 @@ class ReturnHomeBackground extends PositionComponent {
     for (var i = 0; i < columns; i++) {
       final x = i * dx;
       final f = i / columns;
-      canvas.drawRect(Rect.fromLTWH(x, 0, dx + 1, skyHeight),
-          Paint()..color = _biomeColor(f, (biome) => biome.sky));
-      canvas.drawRect(Rect.fromLTWH(x, skyHeight, dx + 1, h - skyHeight),
-          Paint()..color = _biomeColor(f, (biome) => biome.grass));
+      // Hard edges: anti-aliased column borders show as faint seams.
+      canvas.drawRect(
+          Rect.fromLTWH(x, 0, dx + 1, skyHeight),
+          Paint()
+            ..isAntiAlias = false
+            ..color = _biomeColor(f, (biome) => biome.sky));
+      canvas.drawRect(
+          Rect.fromLTWH(x, skyHeight, dx + 1, h - skyHeight),
+          Paint()
+            ..isAntiAlias = false
+            ..color = _biomeColor(f, (biome) => biome.grass));
     }
   }
 
   void _road(Canvas canvas) {
     final w = road.worldWidth;
     final dx = w / columns;
-    for (var i = 0; i < columns; i++) {
-      final x0 = i * dx;
-      final x1 = x0 + dx;
-      final f = min(1.0, x1 / w);
-      _ribbon(canvas, x0, x1, 1.0, 6,
-          Paint()..color = _biomeColor(f, (biome) => biome.edge));
-      _ribbon(canvas, x0, x1, 1.0, 0,
-          Paint()..color = _biomeColor(f, (biome) => biome.road));
-      _ribbon(canvas, x0, x1, .58, 0,
-          Paint()..color = _biomeColor(f, (biome) => biome.roadLight));
+    // One full pass per layer (shoulder, road, light centre): drawing the
+    // layers column by column let each slice's road fill cover the previous
+    // slice's light centre and left thin dark seams across the lane.
+    final layers = <(double, double, Color Function(ReturnHomeBiome))>[
+      (1.0, 6, (b) => b.edge),
+      (1.0, 0, (b) => b.road),
+      (.58, 0, (b) => b.roadLight),
+    ];
+    for (final (scale, pad, pick) in layers) {
+      for (var i = 0; i < columns; i++) {
+        final x0 = i * dx;
+        final x1 = x0 + dx;
+        final f = min(1.0, x1 / w);
+        var color = _biomeColor(f, pick);
+        if (pad > 0) {
+          // Edge colours are translucent; flatten them onto the grass.
+          color =
+              Color.alphaBlend(color, _biomeColor(f, (biome) => biome.grass));
+        }
+        _ribbon(canvas, x0, x1, scale, pad, Paint()..color = color);
+      }
     }
     _centerDashes(canvas);
   }
@@ -106,6 +134,9 @@ class ReturnHomeBackground extends PositionComponent {
   /// which lets the same shape double as the shoulder behind the road fill.
   void _ribbon(Canvas canvas, double x0, double x1, double scale, double pad,
       Paint paint) {
+    // Each slice reaches 1px into the next one so anti-aliased borders
+    // never show as hairline seams across the road.
+    x1 += 1;
     final c0 = road.centerY(x0);
     final c1 = road.centerY(x1);
     final h0 = road.halfWidth(x0) * scale + pad;

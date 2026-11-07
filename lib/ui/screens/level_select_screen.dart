@@ -8,6 +8,7 @@ import '../../game/world/shelter_garden_painter.dart';
 import '../../levels/level_config.dart';
 import '../../levels/levels.dart';
 import '../widgets/round_button.dart';
+import '../widgets/game_glyphs.dart';
 import 'game_screen.dart';
 
 const _ink = Color(0xFF5A3214);
@@ -61,7 +62,7 @@ class _LevelSelectScreenState extends State<LevelSelectScreen> {
               padding: const EdgeInsets.fromLTRB(12, 10, 16, 6),
               child: Row(children: [
                 RoundButton(
-                    icon: Icons.arrow_back_rounded,
+                    glyph: GameGlyph.back,
                     onPressed: () => Navigator.of(context).pop()),
                 const SizedBox(width: 12),
                 const Text('CHỌN MÀN',
@@ -172,23 +173,27 @@ class _ChapterCard extends StatelessWidget {
           ),
         ]),
         const SizedBox(height: 8),
+        // Rows share the card height: 46 on phones, up to 62 on tall
+        // screens, and they shrink rather than overflow on short ones.
         Expanded(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.start,
-            children: [
-              // Rows shrink on short screens instead of overflowing.
-              for (final entry in entries)
-                Flexible(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 3),
-                    child: SizedBox(
-                        height: 46,
-                        child: _LevelRow(
-                            entry: entry, onTap: () => onPlay(entry.level))),
+          child: LayoutBuilder(builder: (context, box) {
+            final row = (box.maxHeight / 3.6 - 6).clamp(30.0, 62.0);
+            return Column(
+              mainAxisAlignment: MainAxisAlignment.start,
+              children: [
+                for (final entry in entries)
+                  Flexible(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 3),
+                      child: SizedBox(
+                          height: row,
+                          child: _LevelRow(
+                              entry: entry, onTap: () => onPlay(entry.level))),
+                    ),
                   ),
-                ),
-            ],
-          ),
+              ],
+            );
+          }),
         ),
       ]),
     );

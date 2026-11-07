@@ -1,26 +1,48 @@
 import 'package:flutter/material.dart';
 
 import '../design.dart';
+import 'game_glyphs.dart';
+import 'return_home_buttons.dart';
 
-/// Gold circular icon button used for back / home / help in every mode.
+/// Gold 3D round button used for back / home / help / close in every mode.
+/// Pass a hand-drawn [glyph] (preferred) or a Material [icon].
 class RoundButton extends StatelessWidget {
-  const RoundButton({super.key, required this.icon, required this.onPressed});
-  final IconData icon;
-  final VoidCallback onPressed;
+  const RoundButton({
+    super.key,
+    this.icon,
+    this.glyph,
+    required this.onPressed,
+    this.tooltip,
+    this.size = 48,
+  }) : assert(icon != null || glyph != null);
+  final IconData? icon;
+  final GameGlyph? glyph;
+  final VoidCallback? onPressed;
+  final String? tooltip;
+  final double size;
 
+  String get _label =>
+      tooltip ??
+      switch (glyph) {
+        GameGlyph.back => 'Quay lại',
+        GameGlyph.close => 'Đóng',
+        GameGlyph.home => 'Về Trang chủ',
+        null => '',
+      };
+
+  // UnconstrainedBox keeps the fixed size even inside tight parents
+  // (e.g. a Stack with StackFit.expand).
   @override
-  // Fixed size, so a parent with tight constraints (e.g. a Stack with
-  // StackFit.expand) can never stretch it across the screen.
   Widget build(BuildContext context) => UnconstrainedBox(
-        child: SizedBox.square(
-          dimension: 48,
-          child: Material(
-            color: DS.gold,
-            shape: const CircleBorder(
-                side: BorderSide(color: DS.goldEdge, width: 3)),
-            child: IconButton(
-                icon: Icon(icon, color: DS.ink), onPressed: onPressed),
-          ),
+        child: RoundGameButton(
+          tooltip: _label,
+          onPressed: onPressed,
+          size: size,
+          face: DS.gold,
+          base: DS.goldEdge,
+          child: glyph != null
+              ? GameGlyphView(glyph!, size: size * .56)
+              : Icon(icon, color: DS.ink, size: size * .5),
         ),
       );
 }

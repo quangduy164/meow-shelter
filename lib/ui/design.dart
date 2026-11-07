@@ -1,7 +1,14 @@
 import 'package:flutter/material.dart';
 
+import 'responsive.dart';
+
+export 'responsive.dart';
+
 /// Shared design tokens; see DESIGN.md. Menus, dialogs and overlays should
 /// take colours and shapes from here instead of hard-coding near-duplicates.
+///
+/// All sizes are design units on a 375-tall reference screen; the app-wide
+/// [UiScaleBox] in `responsive.dart` scales them to the real screen.
 abstract final class DS {
   static const ink = Color(0xFF5A3214);
   static const cream = Color(0xFFFFF4DA);

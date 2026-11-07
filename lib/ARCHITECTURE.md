@@ -29,6 +29,9 @@
     decorations, level stars, seen guides. Saved with shared_preferences.
   - `camp_resident.dart`: what camp cats do (wander, play, nap, react).
   - `camp_room_painter.dart`, `camp_decor_painter.dart`: room and item art.
+- `ui/responsive.dart`: `UiScaleBox` scales the whole app from design units
+  (375-tall reference screen) to the real screen; see DESIGN.md › Responsive
+  layout.
 - `levels/`: `level_config.dart` (data model) and `level_goal.dart` (missions), `levels.dart` (chapters,
   levels, stars and unlock rules).
 - `collection/`: caught fish.

@@ -7,6 +7,8 @@ import '../../game/cats/cat_breed.dart';
 import '../design.dart';
 import '../widgets/cat_sprite.dart';
 import '../widgets/return_home_buttons.dart';
+import '../widgets/game_glyphs.dart';
+import '../widgets/round_button.dart';
 
 class ReturnHomeScreen extends StatefulWidget {
   const ReturnHomeScreen({super.key});
@@ -100,26 +102,41 @@ class _ChooseCatOverlay extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Material(
         color: DS.scrim,
-        child: Center(
-          child: Container(
-            constraints: const BoxConstraints(maxWidth: 420),
-            margin: const EdgeInsets.all(24),
-            padding: const EdgeInsets.fromLTRB(20, 18, 20, 20),
-            decoration: DS.card,
-            child: Column(mainAxisSize: MainAxisSize.min, children: [
-              const Text('CHỌN MÈO', style: DS.title),
-              const SizedBox(height: 16),
-              Wrap(
-                  spacing: 9,
-                  runSpacing: 9,
-                  alignment: WrapAlignment.center,
-                  children: [
-                    for (final breed in CatBreed.all)
-                      _catButton(context, breed),
-                  ])
-            ]),
+        child: Stack(children: [
+          // The picker covers the in-game exit button, so it has its own.
+          SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.all(12),
+              child: Align(
+                alignment: Alignment.topLeft,
+                child: RoundButton(
+                    glyph: GameGlyph.back,
+                    tooltip: 'Về Trang chủ',
+                    onPressed: () => Navigator.of(context).pop()),
+              ),
+            ),
           ),
-        ),
+          Center(
+            child: Container(
+              constraints: const BoxConstraints(maxWidth: 420),
+              margin: const EdgeInsets.all(24),
+              padding: const EdgeInsets.fromLTRB(20, 18, 20, 20),
+              decoration: DS.card,
+              child: Column(mainAxisSize: MainAxisSize.min, children: [
+                const Text('CHỌN MÈO', style: DS.title),
+                const SizedBox(height: 16),
+                Wrap(
+                    spacing: 9,
+                    runSpacing: 9,
+                    alignment: WrapAlignment.center,
+                    children: [
+                      for (final breed in CatBreed.all)
+                        _catButton(context, breed),
+                    ])
+              ]),
+            ),
+          ),
+        ]),
       );
 
   Widget _catButton(BuildContext context, CatBreed breed) => SizedBox(

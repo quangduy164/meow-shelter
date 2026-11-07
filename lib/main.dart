@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import 'ui/responsive.dart';
 import 'ui/screens/home_screen.dart';
 import 'collection/fish_collection.dart';
 import 'camp/camp_state.dart';
@@ -19,6 +20,11 @@ Future<void> main() async {
   // Ẩn status bar & navigation bar
   SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
 
-  runApp(
-      const MaterialApp(debugShowCheckedModeBanner: false, home: HomeScreen()));
+  runApp(MaterialApp(
+    debugShowCheckedModeBanner: false,
+    // Every route, dialog and game canvas is laid out in design units and
+    // scaled to the real screen; see lib/ui/responsive.dart.
+    builder: (context, child) => UiScaleBox(child: child!),
+    home: const HomeScreen(),
+  ));
 }
