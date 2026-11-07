@@ -16,4 +16,27 @@ class CatCatchRule {
 
   /// Orange naps this many times longer than the normal catch window.
   static const orangeNap = 2.0;
+
+  // Boss cats: bigger, a little slower, and harder to win over.
+  static const bossScale = 1.35;
+  static const bossPace = .85;
+  static const bossShyScale = 1.4;
+  static const bossLonelyScale = 1.3;
+  static const bossTaps = 6;
+
+  static int mealsFor(String type, {required bool boss}) => switch (type) {
+        'calico' => 0,
+        'scottish' => boss ? 4 : scottishMeals,
+        'orange' => boss ? 3 : 1,
+        _ => boss ? 2 : 1,
+      };
+
+  static String bossHint(String type) => switch (type) {
+        'orange' => 'Mèo cam béo phải ăn 3 cá',
+        'himalaya' => 'Himalaya siêu nhát: 2 cá, đặt thật xa',
+        'scottish' => 'Scottish sành ăn phải ăn 4 cá',
+        'calico' => 'Tam thể quậy: chạm 6 lần liền',
+        'black' => 'Mèo đen bóng ma: 2 cá ở chỗ thật vắng',
+        _ => 'Mèo trùm',
+      };
 }

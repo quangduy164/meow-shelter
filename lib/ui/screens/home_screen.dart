@@ -74,9 +74,7 @@ class _HomeScreenState extends State<HomeScreen> {
             shade: const Color(0xFFC0731F),
             // Continue from the first level not yet won.
             onPressed: () => _open(GameScreen(
-                level: gameLevels.firstWhere(
-                    (l) => (CampState.instance.levelStars['${l.id}'] ?? 0) == 0,
-                    orElse: () => gameLevels.last))),
+                level: continueLevel(CampState.instance.levelStars))),
             child: const Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
@@ -115,7 +113,7 @@ class _HomeScreenState extends State<HomeScreen> {
           children: [
             _ModeTile(
               title: 'CÂU CÁ',
-              subtitle: 'Sưu tập cá làm mồi',
+              subtitle: 'Sưu tập cá hiếm',
               icon: ModeIconKind.fishing,
               color: const Color(0xFF3E9FB0),
               onPressed: () => _open(const FishingScreen()),

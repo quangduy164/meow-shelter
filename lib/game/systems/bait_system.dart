@@ -13,9 +13,17 @@ class BaitSystem {
     }
   }
 
-  bool get canPlace => fishCount > 0;
-  void reset({int ownedFish = 0}) {
-    fishCount = ownedFish;
+  /// Whether [fishCount] runs down as fish are placed (fish-limit levels).
+  /// Otherwise bait is unlimited.
+  bool limited = false;
+
+  /// Fish lying on the ground that no cat has claimed or is walking to.
+  bool get hasBaitOut => positions.isNotEmpty;
+
+  bool get canPlace => !limited || fishCount > 0;
+  void reset({int limit = 0}) {
+    limited = limit > 0;
+    fishCount = limit;
     _waiting.clear();
     _attracted.clear();
   }
@@ -46,6 +54,7 @@ class BaitSystem {
         point.x < 12 ||
         point.x > size.x - 12) return false;
     _waiting.add(point.clone());
+    if (limited) fishCount -= 1;
     for (final cat in cats) {
       cat.startleBy(point);
     }

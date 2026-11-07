@@ -9,11 +9,18 @@ class RoundButton extends StatelessWidget {
   final VoidCallback onPressed;
 
   @override
-  Widget build(BuildContext context) => Material(
-        color: DS.gold,
-        shape:
-            const CircleBorder(side: BorderSide(color: DS.goldEdge, width: 3)),
-        child:
-            IconButton(icon: Icon(icon, color: DS.ink), onPressed: onPressed),
+  // Fixed size, so a parent with tight constraints (e.g. a Stack with
+  // StackFit.expand) can never stretch it across the screen.
+  Widget build(BuildContext context) => UnconstrainedBox(
+        child: SizedBox.square(
+          dimension: 48,
+          child: Material(
+            color: DS.gold,
+            shape: const CircleBorder(
+                side: BorderSide(color: DS.goldEdge, width: 3)),
+            child: IconButton(
+                icon: Icon(icon, color: DS.ink), onPressed: onPressed),
+          ),
+        ),
       );
 }

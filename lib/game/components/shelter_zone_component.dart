@@ -82,8 +82,10 @@ class ShelterZoneComponent extends PositionComponent {
     text.paint(canvas, Offset(badge.left + 8, badge.top + 3));
   }
 
-  bool accepts(CatComponent cat) {
-    if (cat.catType != catType) return false;
+  bool accepts(CatComponent cat) => cat.catType == catType && covers(cat);
+
+  /// Whether [cat] was dropped over this bed, whatever its breed.
+  bool covers(CatComponent cat) {
     final catCenter = cat.position + cat.size / 2;
     // Mở rộng hitbox lên cao để thả mèo từ phía trên xuống vẫn được nhận ngay.
     final bedCenter = position + Vector2(size.x * 0.5, size.y * 0.38);

@@ -1,16 +1,18 @@
 import 'dart:async';
 import 'dart:math';
 
+import 'package:flame/effects.dart';
 import 'package:flame/game.dart';
+import 'package:flutter/animation.dart';
 import 'package:flutter/painting.dart';
 
 import 'components/cat_component.dart';
 import 'components/fish_item_component.dart';
 import 'components/catch_tutorial_component.dart';
 import 'components/shelter_garden_component.dart';
-import '../collection/fish_collection.dart';
 import '../camp/camp_state.dart';
 import 'components/hud_component.dart';
+import 'components/darkness_component.dart';
 import 'components/shelter_zone_component.dart';
 import 'constants.dart';
 import '../levels/level_config.dart';
@@ -30,6 +32,20 @@ class MeowShelterGame extends FlameGame {
   bool _restarting = false;
   double _secondAccumulator = 0;
   final _bait = BaitSystem();
+
+  /// Counters for the level goals of the current round.
+  RoundStats stats = RoundStats();
+
+  /// Cats still waiting to enter on wave levels: (breed, isBoss).
+  final _pending = <(String, bool)>[];
+
+  /// Seconds until the beds swap on moving-bed levels.
+  double _bedTimer = 0;
+  bool _bedWarned = false;
+  static const _bedInterval = 18.0;
+
+  /// Why the last round was lost, shown on the result board.
+  String lostReason = 'HẾT GIỜ RỒI!';
 
   @override
   Future<void> onLoad() async {
@@ -52,17 +68,20 @@ class MeowShelterGame extends FlameGame {
     removeAll(children.toList());
     _shelters.clear();
     _secondAccumulator = 0;
-    _bait.reset(
-        ownedFish: level.isTutorial
-            ? max(1, FishCollection.instance.count)
-            : FishCollection.instance.count);
+    stats = RoundStats();
+    _pending.clear();
+    _bedTimer = _bedInterval;
+    _bedWarned = false;
+    lostReason = 'HẾT GIỜ RỒI!';
+    _bait.reset(limit: level.fishLimit);
     _hud = HudComponent()..size = size;
     _hud.totalCats = level.catTypes.length;
     _hud.secondsLeft = level.timeLimit;
     _hud.isTutorial = level.isTutorial;
     _hud.isInfinite = level.isInfinite;
-    _hud.objective = level.isInfinite ? 'CỨU NHIỀU' : '';
-    _hud.levelTitle = 'MÀN ${level.id} · ${level.name.toUpperCase()}';
+    _hud.goals = level.goals;
+    _hud.stats = () => stats;
+    _hud.fishLeft = _bait.limited ? _bait.fishCount : null;
 
     add(ShelterGardenComponent(
         isPlaying: () => _hud.status == RoundStatus.playing));
@@ -76,7 +95,14 @@ class MeowShelterGame extends FlameGame {
         isPlaying: () => _hud.status == RoundStatus.playing,
       ));
     }
+    if (level.darkness) {
+      add(DarknessComponent(
+          lights: _lights, visible: () => _hud.status == RoundStatus.playing));
+    }
     add(_hud);
+    if (level.twistLines.isNotEmpty && !level.isTutorial) {
+      _hud.showBanner(level.twistLines, 4);
+    }
     add(FishItemComponent(
       enabled: () => canPlaceFish,
       visible: () => _hud.status == RoundStatus.playing,
@@ -91,12 +117,22 @@ class MeowShelterGame extends FlameGame {
       }
       return;
     }
+    var bossLeft = level.bossType;
+    final queue = <(String, bool)>[];
     for (final type in level.catTypes) {
-      _spawnCat(type);
+      final boss = type == bossLeft;
+      if (boss) bossLeft = null;
+      queue.add((type, boss));
     }
+    // The boss walks in last on wave levels so it is the finale.
+    final first = level.waveSize > 0 ? level.waveSize : queue.length;
+    for (final (type, boss) in queue.take(first)) {
+      _spawnCat(type, boss: boss);
+    }
+    _pending.addAll(queue.skip(first));
   }
 
-  void _spawnCat(String type) {
+  void _spawnCat(String type, {bool boss = false}) {
     final catLevel =
         level.isInfinite ? level.forInfiniteProgress(_hud.delivered) : level;
     add(CatComponent(
@@ -105,6 +141,8 @@ class MeowShelterGame extends FlameGame {
           : _randomCatPosition(),
       catType: type,
       level: catLevel,
+      isBoss: boss,
+      onStartled: (_) => stats.startles += 1,
       onDrop: _handleDrop,
       onDelivered: _handleDelivered,
       onEscaped: _handleEscape,
@@ -132,6 +170,9 @@ class MeowShelterGame extends FlameGame {
   bool _handleDrop(CatComponent cat) {
     if (_hud.status != RoundStatus.playing) return false;
     final isCorrect = _shelters.any((shelter) => shelter.accepts(cat));
+    if (!isCorrect && _shelters.any((shelter) => shelter.covers(cat))) {
+      stats.wrongDrops += 1;
+    }
     return isCorrect;
   }
 
@@ -149,6 +190,10 @@ class MeowShelterGame extends FlameGame {
       }
     } else if (_hud.delivered >= _hud.totalCats) {
       _showResult(RoundStatus.won);
+    } else if (_pending.isNotEmpty) {
+      final (type, boss) = _pending.removeAt(0);
+      _spawnCat(type, boss: boss);
+      if (boss) _hud.showBanner(['Trùm xuất hiện!', level.twistLines.first]);
     }
   }
 
@@ -159,7 +204,7 @@ class MeowShelterGame extends FlameGame {
       return;
     }
     // Mèo chạy ra ngoài được thay bằng một bé cùng loại để màn vẫn có thể thắng.
-    _spawnCat(cat.catType);
+    _spawnCat(cat.catType, boss: cat.isBoss);
   }
 
   @override
@@ -170,6 +215,12 @@ class MeowShelterGame extends FlameGame {
     // Let the last rescued cat finish its success animations before ending.
     if (_hud.delivered >= _hud.totalCats) return;
     if (level.isTutorial || level.isInfinite) return;
+    if (level.movingBeds) _updateMovingBeds(dt);
+    if (_outOfFish) {
+      lostReason = 'HẾT CÁ RỒI!';
+      _showResult(RoundStatus.lost);
+      return;
+    }
     _secondAccumulator += dt;
     if (_secondAccumulator >= 1) {
       _secondAccumulator -= 1;
@@ -180,10 +231,14 @@ class MeowShelterGame extends FlameGame {
 
   int lastStars = 0;
 
+  /// Cats rescued this round, for the result board.
+  int get rescued => _hud.delivered;
+
   void _showResult(RoundStatus status) {
     _hud.status = status;
     if (status == RoundStatus.won && !level.isInfinite) {
-      lastStars = starsFor(level, _hud.secondsLeft);
+      stats.secondsLeft = _hud.secondsLeft;
+      lastStars = starsFor(level, stats);
       unawaited(CampState.instance.recordLevel(level.id, lastStars));
     }
     overlays.add('roundResult');
@@ -199,7 +254,56 @@ class MeowShelterGame extends FlameGame {
 
   void _placeFish(Vector2 point) {
     if (!canPlaceFish) return;
-    _bait.place(point, size, children.whereType<CatComponent>());
+    if (_bait.place(point, size, children.whereType<CatComponent>())) {
+      stats.fishUsed += 1;
+      if (_bait.limited) _hud.fishLeft = _bait.fishCount;
+    }
+  }
+
+  /// No fish left, none on the ground, and someone still needs a meal.
+  bool get _outOfFish {
+    if (!_bait.limited || _bait.fishCount > 0 || _bait.hasBaitOut) {
+      return false;
+    }
+    final cats = children.whereType<CatComponent>().toList();
+    if (cats.any((cat) => cat.isLit || cat.isDelivered)) return false;
+    return cats.any((cat) => cat.catType != 'calico') ||
+        _pending.any((entry) => entry.$1 != 'calico');
+  }
+
+  void _updateMovingBeds(double dt) {
+    _bedTimer -= dt;
+    if (!_bedWarned && _bedTimer <= 3) {
+      _bedWarned = true;
+      _hud.showBanner(['Ổ sắp dời chỗ!'], 2.5);
+    }
+    // Never pull a bed away while the player is carrying a cat.
+    if (_bedTimer > 0 ||
+        children.whereType<CatComponent>().any((cat) => cat.isCarried)) {
+      return;
+    }
+    _bedTimer = _bedInterval;
+    _bedWarned = false;
+    final spots = [for (final shelter in _shelters) shelter.position.clone()];
+    if (spots.length < 2) return;
+    for (var i = 0; i < _shelters.length; i++) {
+      _shelters[i].add(MoveToEffect(spots[(i + 1) % spots.length],
+          EffectController(duration: .7, curve: Curves.easeInOutCubic)));
+    }
+  }
+
+  /// Light pools for dark levels.
+  Iterable<(Offset, double)> _lights() sync* {
+    for (final fish in _bait.positions) {
+      yield (Offset(fish.x, fish.y), 120);
+    }
+    for (final shelter in _shelters) {
+      yield (shelter.center.toOffset(), 80);
+    }
+    for (final cat in children.whereType<CatComponent>()) {
+      // Every cat glows faintly so calico can still be found.
+      yield (cat.center.toOffset(), cat.isLit ? 85 : 40);
+    }
   }
 
   void _shuffleShelters() {

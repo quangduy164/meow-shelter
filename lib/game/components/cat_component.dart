@@ -28,6 +28,8 @@ class CatComponent extends SpriteAnimationGroupComponent<CatState>
     required this.onEscaped,
     required this.isPlaying,
     required this.level,
+    this.isBoss = false,
+    this.onStartled,
   })  : catchWindow = CatchWindow(
             readySeconds: level.readySeconds,
             gripSeconds: level.skillFor(catType) == CatSkill.slippery
@@ -36,11 +38,18 @@ class CatComponent extends SpriteAnimationGroupComponent<CatState>
             unlimited: level.isTutorial),
         super(
           position: position,
-          size: Vector2(catWidth, catHeight),
+          size: Vector2(catWidth, catHeight) *
+              (isBoss ? CatCatchRule.bossScale : 1),
           current: CatState.idle,
         );
 
   final String catType;
+
+  /// Big chapter boss: slower, but needs more fish or taps.
+  final bool isBoss;
+
+  /// Called whenever the player makes this cat bolt.
+  final void Function(CatComponent cat)? onStartled;
   final bool Function() isPlaying;
   final CatchWindow catchWindow;
   bool hasEaten = false;
@@ -58,6 +67,13 @@ class CatComponent extends SpriteAnimationGroupComponent<CatState>
       fishTarget == null &&
       !catchWindow.canCatch &&
       _dodgeTime <= 0;
+
+  /// Whether the cat shows up in a dark level.
+  bool get isCarried => _isDragged;
+  bool get isLit => catchWindow.canCatch || _isDragged || fishTarget != null;
+
+  double get _pace =>
+      level.speedMultiplier * (isBoss ? CatCatchRule.bossPace : 1);
 
   void lure(Vector2 target) {
     if (!canLure) return;
@@ -138,6 +154,7 @@ class CatComponent extends SpriteAnimationGroupComponent<CatState>
     }
     super.render(canvas);
     canvas.restore();
+    if (isBoss) _drawCrown(canvas);
     _drawProgress(canvas);
     _drawDialogue(canvas);
   }
@@ -160,6 +177,12 @@ class CatComponent extends SpriteAnimationGroupComponent<CatState>
       _play();
       return;
     }
+    _startle();
+  }
+
+  /// A bolt the player caused; counts against the "no startle" goal.
+  void _startle() {
+    onStartled?.call(this);
     _dodge();
   }
 
@@ -181,7 +204,7 @@ class CatComponent extends SpriteAnimationGroupComponent<CatState>
     super.onDragStart(event);
     if (!isPlaying() || _isDropWrong || _isDelivered) return;
     if (!catchWindow.grab()) {
-      if (_dodgeTime <= 0 && !level.isTutorial) _dodge();
+      if (_dodgeTime <= 0 && !level.isTutorial) _startle();
       return;
     }
     fishTarget = null;
@@ -260,17 +283,17 @@ class CatComponent extends SpriteAnimationGroupComponent<CatState>
       if (catchWindow.grip <= 0) {
         _isDragged = false;
         _clampPosition();
-        _dodge();
+        _startle();
       }
       return;
     }
     if (wasReady) {
-      if (!catchWindow.canCatch) _dodge();
+      if (!catchWindow.canCatch) _startle();
       return;
     }
     if (_dodgeTime > 0) {
       _dodgeTime -= dt;
-      _move(dt, catDashSpeed * level.speedMultiplier);
+      _move(dt, catDashSpeed * _pace);
       _clampPosition();
       if (_dodgeTime <= 0) _pickNextAction();
       return;
@@ -279,7 +302,7 @@ class CatComponent extends SpriteAnimationGroupComponent<CatState>
     if (target != null) {
       final delta = target - (position + size / 2);
       final distance = delta.length;
-      final speed = catWalkSpeed * level.speedMultiplier;
+      final speed = catWalkSpeed * _pace;
       if (distance <= speed * dt + 4) {
         fishTarget = null;
         _eat();
@@ -358,15 +381,15 @@ class CatComponent extends SpriteAnimationGroupComponent<CatState>
 
     switch (_state) {
       case CatState.walk:
-        _move(dt, catWalkSpeed * level.speedMultiplier);
+        _move(dt, catWalkSpeed * _pace);
       case CatState.run:
       case CatState.panic:
         if (_skillActive && skill == CatSkill.zigzag) {
           _velocityY = sin(_actionTimer * 8) * 100;
         }
-        _move(dt, catRunSpeed * level.speedMultiplier);
+        _move(dt, catRunSpeed * _pace);
       case CatState.dashEscape:
-        _move(dt, catDashSpeed * level.speedMultiplier);
+        _move(dt, catDashSpeed * _pace);
       case CatState.idle:
       case CatState.turnAround:
       case CatState.dragged:

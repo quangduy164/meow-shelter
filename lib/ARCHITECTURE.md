@@ -25,11 +25,11 @@
   obstacles, cat, scenery, HUD, joystick — one concern per file.
 - `fishing/`: fishing controller (rules, timing, saving catches).
 - `camp/`: the cat camp.
-  - `camp_state.dart`: coins, rescued cats, affection, owned and placed
+  - `camp_state.dart`: coins, bought cats (`cat:<breed>` in owned), rescue counts, affection, owned and placed
     decorations, level stars, seen guides. Saved with shared_preferences.
   - `camp_resident.dart`: what camp cats do (wander, play, nap, react).
   - `camp_room_painter.dart`, `camp_decor_painter.dart`: room and item art.
-- `levels/`: `level_config.dart` (data model) and `levels.dart` (chapters,
+- `levels/`: `level_config.dart` (data model) and `level_goal.dart` (missions), `levels.dart` (chapters,
   levels, stars and unlock rules).
 - `collection/`: caught fish.
 
@@ -38,7 +38,10 @@
 - **New breed:** add a `CatBreed` entry and its sprite sheets, a bed slot in
   `world/shelter_layout.dart`, its catch rule in `cat_catch_behaviour.dart`
   and its skill effect in `ReturnHomeCat.activateSkill`.
-- **New level:** add it to a chapter in `levels/levels.dart`.
+- **New level:** add it to a chapter in `levels/levels.dart` with a new id
+  (ids 201+; never reuse one). Give it a twist (`fishLimit`, `waveSize`,
+  `movingBeds`, `darkness`) or a `bossType`, plus up to two `LevelGoal`s
+  (`levels/level_goal.dart`) for stars 2 and 3.
 - **New decoration:** add a `CampDecoration` entry and a case in
   `CampDecorPainter`.
 - **New Return Home area:** add a `ReturnHomeBiome` and a scenery painter.

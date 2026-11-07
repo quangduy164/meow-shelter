@@ -3,13 +3,9 @@ import 'package:flutter/material.dart';
 import '../../game/meow_shelter_game.dart';
 import '../../levels/level_config.dart';
 import '../../levels/levels.dart';
-import '../widgets/round_button.dart';
-import '../design.dart';
-import '../../game/world/shelter_garden_painter.dart';
 import '../widgets/cat_guide_overlay.dart';
+import '../widgets/round_button.dart';
 import '../widgets/round_result_overlay.dart';
-import '../../collection/fish_collection.dart';
-import 'fishing_screen.dart';
 
 class GameScreen extends StatefulWidget {
   const GameScreen({super.key, required this.level});
@@ -27,46 +23,6 @@ class _GameScreenState extends State<GameScreen> {
 
   @override
   Widget build(BuildContext context) {
-    if (!widget.level.isTutorial && FishCollection.instance.count == 0) {
-      return Scaffold(
-        body: Stack(fit: StackFit.expand, children: [
-          const CustomPaint(painter: ShelterGardenPainter()),
-          const ColoredBox(color: Color(0x660F371E)),
-          Center(
-            child: Container(
-              width: 360,
-              padding: const EdgeInsets.all(20),
-              decoration: DS.card,
-              child: Column(mainAxisSize: MainAxisSize.min, children: [
-                const Text('CẦN CÁ MỒI', style: DS.title),
-                const SizedBox(height: 8),
-                const Text('Câu ít nhất 1 cá để mở mồi dùng mãi trong các màn.',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(color: DS.soft, fontSize: 14)),
-                const SizedBox(height: 16),
-                ElevatedButton.icon(
-                    style: DS.primary,
-                    icon: const Icon(Icons.phishing),
-                    onPressed: () async {
-                      await Navigator.of(context).push(MaterialPageRoute<void>(
-                          builder: (_) => const FishingScreen()));
-                      if (mounted) setState(() {});
-                    },
-                    label: const Text('ĐẾN HỒ CÂU')),
-              ]),
-            ),
-          ),
-          SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.all(12),
-              child: RoundButton(
-                  icon: Icons.arrow_back_rounded,
-                  onPressed: () => Navigator.of(context).pop()),
-            ),
-          ),
-        ]),
-      );
-    }
     final index = gameLevels.indexWhere((level) => level.id == widget.level.id);
     _game ??= MeowShelterGame(
         level: widget.level,

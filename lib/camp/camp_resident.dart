@@ -32,7 +32,7 @@ const campToyActs = {
   'house': CampAct.idle,
   'rug': CampAct.idle,
   'sofa': CampAct.idle,
-  'flowers': CampAct.panic, // sniffs and sneezes
+  'flowers': CampAct.idle, // sits and sniffs the flowers
   'lamp': CampAct.idle,
 };
 
@@ -133,8 +133,6 @@ class CampResident {
       x = minX + random.nextDouble() * (maxX - minX);
     } else if (roll < .66) {
       _play(CampAct.celebrate, CampAct.celebrate.length * 2);
-    } else if (roll < .72) {
-      _play(CampAct.sulk, CampAct.sulk.length);
     } else {
       double target;
       do {

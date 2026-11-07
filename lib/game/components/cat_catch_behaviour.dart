@@ -9,28 +9,66 @@ extension CatCatchBehaviour on CatComponent {
   bool acceptsBait(Vector2 point, Iterable<CatComponent> cats) =>
       switch (catType) {
         'calico' => false,
-        'himalaya' => (_center - point).length >= CatCatchRule.shyDistance,
+        'himalaya' => (_center - point).length >= _shyDistance,
         'black' => !cats.any((other) =>
             other != this &&
             !other.isDelivered &&
-            (other._center - point).length < CatCatchRule.lonelyDistance),
+            (other._center - point).length <
+                CatCatchRule.lonelyDistance *
+                    (isBoss ? CatCatchRule.bossLonelyScale : 1)),
         _ => true,
       };
+
+  double get _shyDistance =>
+      CatCatchRule.shyDistance * (isBoss ? CatCatchRule.bossShyScale : 1);
+
+  int get _mealsNeeded => CatCatchRule.mealsFor(catType, boss: isBoss);
+
+  int get _tapsNeeded =>
+      isBoss ? CatCatchRule.bossTaps : CatCatchRule.calicoTaps;
+
+  /// Small gold crown that marks a boss cat.
+  void _drawCrown(Canvas canvas) {
+    final cx = size.x / 2;
+    final top = size.y * .02;
+    final crown = Path()
+      ..moveTo(cx - 13, top + 12)
+      ..lineTo(cx - 15, top)
+      ..lineTo(cx - 7, top + 6)
+      ..lineTo(cx, top - 4)
+      ..lineTo(cx + 7, top + 6)
+      ..lineTo(cx + 15, top)
+      ..lineTo(cx + 13, top + 12)
+      ..close();
+    canvas.drawPath(crown.shift(const Offset(0, 2)),
+        Paint()..color = const Color(0x55402616));
+    canvas.drawPath(crown, Paint()..color = const Color(0xFFFFC24D));
+    canvas.drawPath(
+        crown,
+        Paint()
+          ..color = const Color(0xFF9A6028)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 1.6);
+    for (final x in [-7.0, 0.0, 7.0]) {
+      canvas.drawCircle(Offset(cx + x, top + 9), 1.8,
+          Paint()..color = const Color(0xFFD9657B));
+    }
+  }
 
   /// A shy cat bolts when fish lands right next to it.
   void startleBy(Vector2 point) {
     if (catType != 'himalaya' || !canLure) return;
-    if ((_center - point).length >= CatCatchRule.shyDistance) return;
-    _dodge();
+    if ((_center - point).length >= _shyDistance) return;
+    _startle();
     _dialogue.say('Á! Giật cả mình!');
   }
 
   /// Small counter above the cat for multi-step catches.
   void _drawProgress(Canvas canvas) {
-    final label = catType == 'scottish' && _meals > 0 && !hasEaten
-        ? '🐟 $_meals/${CatCatchRule.scottishMeals}'
+    final label = _mealsNeeded > 1 && _meals > 0 && !hasEaten
+        ? '🐟 $_meals/$_mealsNeeded'
         : catType == 'calico' && _playTaps > 0
-            ? '♥ $_playTaps/${CatCatchRule.calicoTaps}'
+            ? '♥ $_playTaps/$_tapsNeeded'
             : null;
     if (label == null) return;
     final text = TextPainter(
@@ -92,8 +130,9 @@ extension CatCatchBehaviour on CatComponent {
 
   void _eat() {
     _meals += 1;
-    if (catType == 'scottish' && _meals < CatCatchRule.scottishMeals) {
-      _dialogue.say('Chưa no! Thêm cá nữa đi!');
+    if (_meals < _mealsNeeded) {
+      _dialogue
+          .say(isBoss ? 'Bụng to lắm, thêm cá!' : 'Chưa no! Thêm cá nữa đi!');
       _pickNextAction();
       return;
     }
@@ -115,7 +154,7 @@ extension CatCatchBehaviour on CatComponent {
     _velocityY = 0;
     _setState(CatState.idle);
     _currentActionDuration = .8;
-    if (_playTaps < CatCatchRule.calicoTaps) {
+    if (_playTaps < _tapsNeeded) {
       _dialogue.say('Chơi nữa đi!');
       return;
     }

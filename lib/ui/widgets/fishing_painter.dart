@@ -30,7 +30,8 @@ class FishingPainter extends CustomPainter {
     if (phase == FishingPhase.ready || phase == FishingPhase.lost) return;
     var bobber = Offset(spot.dx * size.width, spot.dy * size.height);
     if (phase == FishingPhase.casting) {
-      final t = (elapsed / .65).clamp(0.0, 1.0);
+      // Bobber hangs at the tip during the wind-up, then flies on the whip.
+      final t = ((elapsed - .2) / .45).clamp(0.0, 1.0);
       bobber =
           Offset.lerp(tip, bobber, t)! - Offset(0, math.sin(t * math.pi) * 80);
     } else if (phase == FishingPhase.reeling) {
@@ -102,10 +103,20 @@ class FishingPainter extends CustomPainter {
   Offset _drawRod(Canvas canvas, Size size) {
     Offset point(double x, double y) => Offset(x * size.width, y * size.height);
     final load = phase == FishingPhase.reeling ? tension : 0.0;
+    final motion = _rodMotion();
     final base = point(.73, .88);
-    final control = point(.65, .45 - (pulling ? .025 : 0));
-    final tip = point(.595 - load * .025,
-        .43 + load * .10 + (pulling ? math.sin(clock * 9) * .004 : 0));
+    // Rotate the whole rod around the hand, then bend the tip.
+    Offset swing(Offset p) {
+      final v = p - base;
+      final c = math.cos(motion.angle), s = math.sin(motion.angle);
+      return base + Offset(v.dx * c - v.dy * s, v.dx * s + v.dy * c);
+    }
+
+    final control = swing(point(.65, .45 - (pulling ? .025 : 0))) +
+        Offset(0, motion.bend * .35 * size.height);
+    final tip = swing(point(.595 - load * .025 + drift * load * .03,
+            .43 + load * .10 + (pulling ? math.sin(clock * 9) * .004 : 0))) +
+        Offset(0, motion.bend * size.height);
     Offset shaft(double t) =>
         base * ((1 - t) * (1 - t)) +
         control * (2 * (1 - t) * t) +
@@ -224,6 +235,55 @@ class FishingPainter extends CustomPainter {
     canvas.drawCircle(crank, 2.5, Paint()..color = const Color(0xFF725338));
     canvas.restore();
     return guide(1);
+  }
+
+  /// Rod pose per phase: [angle] in radians (+ = swung back over the
+  /// shoulder) and [bend] as a fraction of screen height pushed into the tip.
+  ({double angle, double bend}) _rodMotion() {
+    double settle(double t, double amp) =>
+        amp * math.exp(-5 * t) * math.cos(t * 16);
+    switch (phase) {
+      case FishingPhase.ready:
+        return (angle: math.sin(clock * 1.3) * .015, bend: 0);
+      case FishingPhase.casting:
+        // Wind back, whip forward past rest, then spring back.
+        final t = elapsed;
+        if (t < .18) {
+          final k = Curves.easeOut.transform(t / .18);
+          return (angle: .55 * k, bend: -.02 * k);
+        }
+        if (t < .32) {
+          final k = Curves.easeIn.transform((t - .18) / .14);
+          return (angle: .55 - .70 * k, bend: -.02 + .07 * k);
+        }
+        final k = Curves.easeOut.transform(((t - .32) / .33).clamp(0.0, 1.0));
+        return (angle: -.15 * (1 - k), bend: .05 * (1 - k));
+      case FishingPhase.waiting:
+        return (
+          angle: math.sin(clock * 1.6) * .012 + settle(elapsed, .03),
+          bend: math.sin(clock * 3) * .002,
+        );
+      case FishingPhase.bite:
+        // Sharp nods as the fish tugs the line.
+        final tug = math.pow(math.sin(clock * 11).abs(), 3).toDouble();
+        return (angle: -.04 * tug, bend: .035 * tug);
+      case FishingPhase.reeling:
+        return (
+          angle: -.04 * tension + drift * .05 + (pulling ? .06 : 0),
+          bend: .02 * tension * (1 + math.sin(clock * 13) * .3),
+        );
+      case FishingPhase.saving:
+      case FishingPhase.caught:
+        // Lift the catch up out of the water.
+        final k = Curves.easeOutBack.transform((elapsed / .45).clamp(0.0, 1.0));
+        return (angle: .28 * k + math.sin(clock * 2) * .01, bend: .012 * k);
+      case FishingPhase.lost:
+        // Line snaps: the rod recoils upward and wobbles to rest.
+        return (
+          angle: .12 * math.exp(-3 * elapsed) + settle(elapsed, .1),
+          bend: -.01 * math.exp(-4 * elapsed)
+        );
+    }
   }
 
   /// Chevrons show where the fish is running; swipe the other way.

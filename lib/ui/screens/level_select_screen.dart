@@ -22,17 +22,34 @@ class LevelSelectScreen extends StatefulWidget {
 }
 
 class _LevelSelectScreenState extends State<LevelSelectScreen> {
+  // Wins can happen several rounds away ("next level" replaces the game
+  // route), so listen to saved progress instead of waiting for a pop.
+  @override
+  void initState() {
+    super.initState();
+    CampState.instance.progress.addListener(_refresh);
+  }
+
+  @override
+  void dispose() {
+    CampState.instance.progress.removeListener(_refresh);
+    super.dispose();
+  }
+
+  void _refresh() {
+    if (mounted) setState(() {});
+  }
+
   Future<void> _play(LevelConfig level) async {
     await Navigator.of(context).push(
         MaterialPageRoute<void>(builder: (_) => GameScreen(level: level)));
-    // A win may have unlocked the next level or improved stars.
-    if (mounted) setState(() {});
+    _refresh();
   }
 
   @override
   Widget build(BuildContext context) {
     final stars = CampState.instance.levelStars;
-    final total = stars.values.fold(0, (a, b) => a + b);
+    final total = totalStars(stars);
     var index = 0;
     return Scaffold(
       body: Stack(fit: StackFit.expand, children: [
@@ -204,7 +221,7 @@ class _LevelRow extends StatelessWidget {
             CircleAvatar(
               radius: 15,
               backgroundColor: open ? _ink : const Color(0xFF8E8270),
-              child: Text('${entry.level.id}',
+              child: Text('${levelNumber(entry.level)}',
                   style: const TextStyle(
                       color: Color(0xFFFFF4DA),
                       fontWeight: FontWeight.w900,
@@ -227,10 +244,7 @@ class _LevelRow extends StatelessWidget {
                               color: open ? _ink : const Color(0xFF7A6E5C),
                               fontSize: 14,
                               fontWeight: FontWeight.w900)),
-                      Text(
-                          entry.level.isTutorial
-                              ? 'Màn tập'
-                              : '${entry.level.catTypes.length} mèo · ${entry.level.timeLimit}s',
+                      Text(entry.level.tag,
                           style: TextStyle(
                               color: open
                                   ? const Color(0xFF7A4A22)
