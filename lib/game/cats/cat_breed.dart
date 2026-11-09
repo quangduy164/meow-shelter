@@ -1,13 +1,15 @@
 import 'package:flutter/material.dart';
 
+import '../skill_glyph.dart';
 import 'cat_catch_rule.dart';
+import 'home_attack.dart';
 
 /// The Return Home skill of a breed: how it looks on the skill button and how
 /// long it takes to recharge. The effect itself lives in `ReturnHomeCat`.
 class CatHomeSkill {
-  const CatHomeSkill(this.label, this.icon, this.color, this.cooldown);
+  const CatHomeSkill(this.label, this.glyph, this.color, this.cooldown);
   final String label;
-  final IconData icon;
+  final SkillGlyph glyph;
   final Color color;
   final double cooldown;
 }
@@ -26,6 +28,7 @@ class CatBreed {
     required this.bedAsset,
     required this.catchRule,
     required this.homeSkill,
+    required this.attacks,
   });
 
   /// Stable id used in saves, levels and asset file names.
@@ -40,6 +43,10 @@ class CatBreed {
   final CatCatchRule catchRule;
   final CatHomeSkill homeSkill;
 
+  /// The three secondary Return Home skills, in button order around the main
+  /// one (left, diagonal, top).
+  final List<HomeAttack> attacks;
+
   /// Folder under assets/images/Cat, e.g. "Orange".
   String get folder => id[0].toUpperCase() + id.substring(1);
   String sheet(String action) => 'Cat/$folder/cat-$id-$action.png';
@@ -52,8 +59,9 @@ class CatBreed {
     bedAsset: 'Bed/bed-orange.png',
     catchRule: CatCatchRule('Ham ăn',
         'Cho ăn 1 con cá. Ăn xong bé ngủ khò rất lâu, cứ thong thả bế vào ổ.'),
-    homeSkill: CatHomeSkill(
-        'Chạy nhanh', Icons.flash_on_rounded, Color(0xFFF08A3A), 5),
+    homeSkill:
+        CatHomeSkill('Chạy nhanh', SkillGlyph.sprint, Color(0xFFF08A3A), 5),
+    attacks: [HomeAttack.fireball, HomeAttack.flameBreath, HomeAttack.fireBomb],
   );
   static const black = CatBreed(
     id: 'black',
@@ -63,7 +71,8 @@ class CatBreed {
     catchRule: CatCatchRule(
         'Cô độc', 'Chỉ ăn cá ở chỗ vắng: quanh con cá không được có mèo khác.'),
     homeSkill:
-        CatHomeSkill('Biến mất', Icons.auto_awesome, Color(0xFF6D5BA8), 4),
+        CatHomeSkill('Biến mất', SkillGlyph.vanish, Color(0xFF6D5BA8), 4),
+    attacks: [HomeAttack.shadowStep, HomeAttack.decoy, HomeAttack.timeStop],
   );
   static const himalaya = CatBreed(
     id: 'himalaya',
@@ -72,7 +81,8 @@ class CatBreed {
     bedAsset: 'Bed/bed-himalaya.png',
     catchRule: CatCatchRule(
         'Nhút nhát', 'Đặt cá cách xa bé. Đặt sát quá bé giật mình bỏ chạy.'),
-    homeSkill: CatHomeSkill('Lăn né', Icons.sync_rounded, Color(0xFF3E9FB0), 6),
+    homeSkill: CatHomeSkill('Lăn né', SkillGlyph.roll, Color(0xFF3E9FB0), 6),
+    attacks: [HomeAttack.iceShard, HomeAttack.frostNova, HomeAttack.iceBridge],
   );
   static const scottish = CatBreed(
     id: 'scottish',
@@ -81,8 +91,8 @@ class CatBreed {
     bedAsset: 'Bed/bed-scottish.png',
     catchRule:
         CatCatchRule('Kén ăn', 'Phải ăn đủ 2 con cá thì bé mới chịu cho bế.'),
-    homeSkill:
-        CatHomeSkill('Lá chắn', Icons.shield_rounded, Color(0xFF6B9E4E), 8),
+    homeSkill: CatHomeSkill('Lá chắn', SkillGlyph.shield, Color(0xFF6B9E4E), 8),
+    attacks: [HomeAttack.roar, HomeAttack.stoneWall, HomeAttack.reflect],
   );
   static const calico = CatBreed(
     id: 'calico',
@@ -91,8 +101,8 @@ class CatBreed {
     bedAsset: 'Bed/bed-calico.png',
     catchRule: CatCatchRule('Ham chơi',
         'Không thèm cá! Chạm vào bé 3 lần liền để chơi cùng, bé mệt là bế được.'),
-    homeSkill:
-        CatHomeSkill('Hồi máu', Icons.favorite_rounded, Color(0xFFD9657B), 12),
+    homeSkill: CatHomeSkill('Hồi máu', SkillGlyph.heal, Color(0xFFD9657B), 12),
+    attacks: [HomeAttack.magnet, HomeAttack.catEye, HomeAttack.bolt],
   );
 
   static const all = [orange, black, himalaya, scottish, calico];

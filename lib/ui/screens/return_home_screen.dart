@@ -1,6 +1,7 @@
 import 'package:flame/game.dart';
 import 'package:flutter/material.dart';
 import 'dart:async';
+import 'dart:math';
 
 import '../../game/return_home/return_home_game.dart';
 import '../../game/cats/cat_breed.dart';
@@ -59,6 +60,9 @@ class _SkillButton extends StatefulWidget {
 
 class _SkillButtonState extends State<_SkillButton> {
   Timer? _timer;
+  final _cancelKey = GlobalKey();
+  bool _cancelHot = false;
+
   @override
   void initState() {
     super.initState();
@@ -73,24 +77,105 @@ class _SkillButtonState extends State<_SkillButton> {
     super.dispose();
   }
 
+  Widget _attackButton(int slot, double size) {
+    final game = widget.game;
+    final attack = game.attacks[slot];
+    return Column(mainAxisSize: MainAxisSize.min, children: [
+      ReturnHomeAimButton(
+        key: ValueKey(attack),
+        label: attack.label,
+        glyph: attack.glyph,
+        color: attack.color,
+        size: size,
+        aimable: attack.aimable,
+        activeLeft: game.attackActive(slot),
+        cooldownLeft: game.attackCooldown[slot],
+        cooldownTotal: attack.cooldown,
+        cancelKey: _cancelKey,
+        onCancelHover: (hot) => setState(() => _cancelHot = hot),
+        onAim: (stick) {
+          final was = game.aimingSlot;
+          game.aimAttack(slot, stick);
+          if (was != game.aimingSlot) setState(() {});
+        },
+        onCast: (stick) => setState(() => game.castAttack(slot, stick)),
+        onCancel: () => setState(game.cancelAim),
+      ),
+      const SizedBox(height: 2),
+      Text(attack.label,
+          style: const TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w800,
+              color: Colors.white,
+              shadows: [Shadow(color: Color(0xFF3A2010), blurRadius: 3)])),
+    ]);
+  }
+
   @override
   Widget build(BuildContext context) {
     final game = widget.game;
     if (!game.started) return const SizedBox.shrink();
+    // MOBA-style cluster: the breed skill is the big button in the corner,
+    // the three secondary skills sit on an arc around it (left, diagonal,
+    // top), like the attack + skill layout of mobile action games.
+    const main = 84.0, small = 62.0, arc = 118.0, label = 16.0;
+    const box = Size(main / 2 + arc + small / 2 + 20,
+        main / 2 + arc + small / 2 + label + 8);
+    final mainCenter = Offset(box.width - main / 2, box.height - main / 2 - 4);
+    Widget onArc(double degrees, Widget child) {
+      final a = degrees * pi / 180;
+      final c = mainCenter + Offset(cos(a) * arc, -sin(a) * arc);
+      return Positioned(
+          left: c.dx - small / 2 - 20,
+          top: c.dy - small / 2,
+          width: small + 40,
+          child: Center(child: child));
+    }
+
+    final aiming = game.aimingSlot != null;
     return SafeArea(
-      child: Align(
-        alignment: Alignment.bottomRight,
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(0, 0, 28, 22),
-          child: ReturnHomeSkillButton(
-            catType: game.selectedCat,
-            ready: game.skillReady,
-            cooldownLeft: game.skillCooldown,
-            cooldownTotal: CatBreed.of(game.selectedCat).homeSkill.cooldown,
-            onPressed: game.activateSkill,
+      child: Stack(children: [
+        Positioned(
+          key: const ValueKey('cluster'),
+          right: 18,
+          bottom: 14,
+          child: SizedBox.fromSize(
+            size: box,
+            child: Stack(clipBehavior: Clip.none, children: [
+              Positioned(
+                left: mainCenter.dx - main / 2,
+                top: mainCenter.dy - main / 2,
+                child: ReturnHomeSkillButton(
+                  catType: game.selectedCat,
+                  size: main,
+                  ready: game.skillReady,
+                  cooldownLeft: game.skillCooldown,
+                  cooldownTotal:
+                      CatBreed.of(game.selectedCat).homeSkill.cooldown,
+                  onPressed: game.activateSkill,
+                ),
+              ),
+              onArc(180, _attackButton(0, small)),
+              onArc(135, _attackButton(1, small)),
+              onArc(90, _attackButton(2, small)),
+            ]),
           ),
         ),
-      ),
+        // Added after the cluster so showing it never rebuilds the buttons
+        // (that used to drop the held finger and need a second press).
+        if (aiming)
+          Positioned(
+            key: const ValueKey('cancel'),
+            right: 28,
+            top: 78,
+            child: SizedBox.square(
+              dimension: 76,
+              child: Center(
+                child: ReturnHomeCancelButton(key: _cancelKey, hot: _cancelHot),
+              ),
+            ),
+          ),
+      ]),
     );
   }
 }
@@ -110,7 +195,7 @@ class _ChooseCatOverlay extends StatelessWidget {
               child: Align(
                 alignment: Alignment.topLeft,
                 child: RoundButton(
-                    glyph: GameGlyph.back,
+                    glyph: GameGlyph.home,
                     tooltip: 'Về Trang chủ',
                     onPressed: () => Navigator.of(context).pop()),
               ),

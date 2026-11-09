@@ -1,5 +1,6 @@
 import 'level_config.dart';
 import 'level_goal.dart';
+import '../game/world/shelter_map.dart';
 
 export 'level_goal.dart';
 
@@ -55,6 +56,7 @@ const levelChapters = <LevelChapter>[
   LevelChapter('Vườn hoa', 'himalaya', [
     LevelConfig(
         id: 204,
+        map: ShelterMap.garden,
         name: 'Bé rụt rè',
         catTypes: ['himalaya', 'orange', 'orange'],
         timeLimit: 120,
@@ -65,6 +67,7 @@ const levelChapters = <LevelChapter>[
         goals: [LevelGoal.noStartle(), LevelGoal.timeLeft(60)]),
     LevelConfig(
         id: 205,
+        map: ShelterMap.garden,
         name: 'Từng bé một',
         catTypes: ['himalaya', 'orange', 'himalaya', 'orange', 'himalaya'],
         timeLimit: 130,
@@ -75,6 +78,7 @@ const levelChapters = <LevelChapter>[
         goals: [LevelGoal.noWrongBed(), LevelGoal.timeLeft(45)]),
     LevelConfig(
         id: 206,
+        map: ShelterMap.garden,
         name: 'Himalaya siêu nhát',
         catTypes: ['himalaya', 'himalaya', 'orange'],
         timeLimit: 120,
@@ -88,6 +92,7 @@ const levelChapters = <LevelChapter>[
   LevelChapter('Bếp ăn', 'scottish', [
     LevelConfig(
         id: 207,
+        map: ShelterMap.warehouse,
         name: 'Kén cá',
         catTypes: ['scottish', 'orange', 'himalaya'],
         timeLimit: 130,
@@ -98,6 +103,7 @@ const levelChapters = <LevelChapter>[
         goals: [LevelGoal.fishMax(5), LevelGoal.timeLeft(55)]),
     LevelConfig(
         id: 208,
+        map: ShelterMap.warehouse,
         name: 'Ổ dời chỗ',
         catTypes: ['scottish', 'scottish', 'orange', 'himalaya'],
         timeLimit: 130,
@@ -108,6 +114,7 @@ const levelChapters = <LevelChapter>[
         goals: [LevelGoal.noWrongBed(), LevelGoal.timeLeft(40)]),
     LevelConfig(
         id: 209,
+        map: ShelterMap.warehouse,
         name: 'Scottish sành ăn',
         catTypes: ['scottish', 'scottish', 'himalaya'],
         timeLimit: 140,
@@ -122,6 +129,7 @@ const levelChapters = <LevelChapter>[
   LevelChapter('Phòng chơi', 'calico', [
     LevelConfig(
         id: 210,
+        map: ShelterMap.pond,
         name: 'Bé ham chơi',
         catTypes: ['calico', 'orange', 'scottish'],
         timeLimit: 120,
@@ -132,6 +140,7 @@ const levelChapters = <LevelChapter>[
         goals: [LevelGoal.noStartle(), LevelGoal.timeLeft(55)]),
     LevelConfig(
         id: 211,
+        map: ShelterMap.pond,
         name: 'Hết cá rồi',
         catTypes: ['calico', 'calico', 'scottish', 'orange'],
         timeLimit: 130,
@@ -142,6 +151,7 @@ const levelChapters = <LevelChapter>[
         goals: [LevelGoal.fishMax(3), LevelGoal.noWrongBed()]),
     LevelConfig(
         id: 212,
+        map: ShelterMap.pond,
         name: 'Tam thể quậy',
         catTypes: ['calico', 'calico', 'himalaya', 'orange'],
         timeLimit: 130,
@@ -155,6 +165,7 @@ const levelChapters = <LevelChapter>[
   LevelChapter('Góc tối', 'black', [
     LevelConfig(
         id: 213,
+        map: ShelterMap.garden,
         name: 'Bóng đêm',
         catTypes: ['black', 'orange', 'himalaya'],
         timeLimit: 120,
@@ -165,6 +176,7 @@ const levelChapters = <LevelChapter>[
         goals: [LevelGoal.noStartle(), LevelGoal.timeLeft(55)]),
     LevelConfig(
         id: 214,
+        map: ShelterMap.warehouse,
         name: 'Tắt đèn',
         catTypes: ['black', 'black', 'orange', 'scottish'],
         timeLimit: 140,
@@ -175,6 +187,7 @@ const levelChapters = <LevelChapter>[
         goals: [LevelGoal.noWrongBed(), LevelGoal.timeLeft(45)]),
     LevelConfig(
         id: 215,
+        map: ShelterMap.pond,
         name: 'Mèo đen bóng ma',
         catTypes: ['black', 'black', 'calico', 'scottish'],
         timeLimit: 140,
@@ -188,6 +201,7 @@ const levelChapters = <LevelChapter>[
   LevelChapter('Đại cứu hộ', 'calico', [
     LevelConfig(
         id: 216,
+        map: ShelterMap.garden,
         name: 'Cả nhà',
         catTypes: [
           'orange',
@@ -206,6 +220,7 @@ const levelChapters = <LevelChapter>[
         goals: [LevelGoal.noWrongBed(), LevelGoal.timeLeft(45)]),
     LevelConfig(
         id: 217,
+        map: ShelterMap.pond,
         name: 'Đêm dời ổ',
         catTypes: ['orange', 'himalaya', 'scottish', 'calico', 'black'],
         timeLimit: 160,
@@ -218,6 +233,7 @@ const levelChapters = <LevelChapter>[
         goals: [LevelGoal.noStartle(), LevelGoal.timeLeft(40)]),
     LevelConfig(
         id: 218,
+        map: ShelterMap.warehouse,
         name: 'Đội cứu hộ',
         catTypes: [
           'orange',

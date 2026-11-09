@@ -1,6 +1,7 @@
 import '../game/cats/cat_catch_rule.dart';
 import '../game/cats/cat_skill.dart';
 import 'level_goal.dart';
+import '../game/world/shelter_map.dart';
 
 class LevelConfig {
   const LevelConfig({
@@ -21,7 +22,11 @@ class LevelConfig {
     this.darkness = false,
     this.bossType,
     this.goals = const [],
+    this.map,
   });
+
+  /// Field layout with its own rule; null keeps the open lawn.
+  final ShelterMap? map;
 
   final int id;
   final String name;
@@ -65,6 +70,7 @@ class LevelConfig {
     final cats = '${catTypes.length} mèo';
     if (isBoss) return 'Màn trùm · $cats';
     final twists = [
+      if (map != null) map!.name,
       if (fishLimit > 0) 'Chỉ $fishLimit cá',
       if (waveSize > 0) 'Từng đợt',
       if (movingBeds) 'Ổ dời chỗ',
@@ -77,6 +83,7 @@ class LevelConfig {
 
   /// Short toast lines about this level's twist, shown when it starts.
   List<String> get twistLines => [
+        if (map != null) '${map!.name}: ${map!.rule}',
         if (bossType != null) 'Trùm: ${CatCatchRule.bossHint(bossType!)}',
         if (fishLimit > 0) 'Chỉ có $fishLimit cá mồi',
         if (waveSize > 0) 'Mèo đến từng đợt',

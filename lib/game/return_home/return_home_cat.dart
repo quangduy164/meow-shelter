@@ -190,6 +190,25 @@ class ReturnHomeCat extends SpriteAnimationGroupComponent<CatState>
     }
   }
 
+  /// Dịch chuyển bóng: reappear with the hitbox centered on [center]. If a
+  /// log is in the way the cat lands just short of it.
+  void blinkTo(Vector2 center) {
+    final from = position.clone();
+    final to = center -
+        Vector2(hitboxLeft + hitboxWidth / 2, hitboxTop + hitboxHeight / 2);
+    for (var k = 1.0; k >= 0; k -= .1) {
+      position = from + (to - from) * k;
+      position.x = position.x.clamp(ReturnHomeRoad.startX, game.road.endX);
+      _clampToLane();
+      if (!game.blockedByLog(hitbox)) break;
+    }
+    velocity.scale(.3);
+    _bumpTimer = 0;
+    _vanishTimer = 0;
+    _rollTimer = 0;
+    invulnerable = max(invulnerable, .35);
+  }
+
   bool consumeShield() {
     if (!shield) return false;
     shield = false;

@@ -5,6 +5,7 @@ import 'package:flutter/painting.dart';
 
 import 'return_home_hazard_art.dart';
 import 'return_home_road.dart';
+import 'return_home_skills.dart';
 
 enum ReturnHomeObstacleKind { spikes, rock, log, bird, spring, crab }
 
@@ -65,6 +66,39 @@ class ReturnHomeObstacle extends PositionComponent {
   double angularVelocity = 0;
   bool vertical = false;
 
+  /// Fireball hits taken; a log breaks on the second one.
+  int damage = 0;
+
+  /// A bird scared off by a roar flies away and can no longer hit.
+  bool harmless = false;
+
+  /// Seconds left encased in ice: a frozen hazard stands still and cannot
+  /// hurt the cat (a frozen log is still a wall). The game counts it down.
+  double frozen = 0;
+
+  /// Roar shockwave from [from]: rocks are blown away, crabs scuttle off,
+  /// birds abort their dive. Spikes, logs and springs are fixed in the ground.
+  void scare(Vector2 from, double push) {
+    switch (kind) {
+      case ReturnHomeObstacleKind.rock:
+        final away = position - from;
+        if (away.length2 == 0) away.setValues(1, 0);
+        velocity = away.normalized() * push;
+      case ReturnHomeObstacleKind.crab:
+        final side = position.y >= from.y ? 1.0 : -1.0;
+        velocity.y = side * velocity.y.abs();
+        springT = 0;
+        position.y += side * 28;
+      case ReturnHomeObstacleKind.bird:
+        _phase = _BirdPhase.leave;
+        harmless = true;
+      case ReturnHomeObstacleKind.spikes:
+      case ReturnHomeObstacleKind.log:
+      case ReturnHomeObstacleKind.spring:
+        break;
+    }
+  }
+
   /// Seconds left in the popped-up pose; 0 means armed and hidden.
   double springT = 0;
 
@@ -83,6 +117,7 @@ class ReturnHomeObstacle extends PositionComponent {
 
   /// [cat] is the center of the cat's hitbox in world space.
   void updatePhysics(double dt, Offset cat) {
+    if (frozen > 0 || dt <= 0) return;
     if (kind == ReturnHomeObstacleKind.spring) {
       springT = max(0, springT - dt);
       return;
@@ -126,7 +161,8 @@ class ReturnHomeObstacle extends PositionComponent {
       case _BirdPhase.leave:
         _flap += dt * 13;
         position += velocity * dt;
-        position.y = cruise;
+        // Eases back up after a dive or a scare instead of snapping.
+        position.y += (cruise - position.y) * min(1.0, dt * 8);
         _tilt = 0;
         _shadowDepth = 0;
         _shadowDx = 0;
@@ -242,6 +278,7 @@ class ReturnHomeObstacle extends PositionComponent {
           center: Offset(position.x, position.y + 1), width: 34, height: 16));
     }
     if (kind == ReturnHomeObstacleKind.bird) {
+      if (harmless) return false;
       // Body and head only; grazing a flapping wingtip stays a near miss.
       return catBox.overlaps(Rect.fromCenter(
           center: Offset(position.x, position.y), width: 28, height: 16));
@@ -275,16 +312,41 @@ class ReturnHomeObstacle extends PositionComponent {
             shadowDepth: _shadowDepth);
       case ReturnHomeObstacleKind.log:
         paintLog(canvas, vertical: vertical);
+        if (damage > 0) _paintScorch(canvas);
       case ReturnHomeObstacleKind.spring:
         _paintSpring(canvas);
       case ReturnHomeObstacleKind.crab:
         paintCrab(canvas, walk: _flap, resting: springT > 0);
+    }
+    if (frozen > 0) {
+      switch (kind) {
+        case ReturnHomeObstacleKind.log:
+          paintIceBlock(canvas, frozen,
+              width: vertical ? 34 : 78, height: vertical ? 78 : 34);
+        case ReturnHomeObstacleKind.spring:
+          if (springT > 0) paintIceBlock(canvas, frozen, height: 46);
+        default:
+          paintIceBlock(canvas, frozen);
+      }
     }
     canvas.restore();
   }
 }
 
 extension on ReturnHomeObstacle {
+  /// Charred patch and embers on a log that has taken a fireball.
+  void _paintScorch(Canvas canvas) {
+    final rect = vertical
+        ? Rect.fromCenter(center: const Offset(-1, -3), width: 22, height: 40)
+        : Rect.fromCenter(center: const Offset(-3, 1), width: 40, height: 22);
+    canvas.drawRRect(RRect.fromRectAndRadius(rect, const Radius.circular(8)),
+        Paint()..color = const Color(0x88201008));
+    final ember = Paint()..color = const Color(0xFFFF8A3A);
+    canvas.drawCircle(rect.center + const Offset(-5, -3), 2.2, ember);
+    canvas.drawCircle(rect.center + const Offset(6, 2), 1.8, ember);
+    canvas.drawCircle(rect.center + const Offset(0, 5), 1.5, ember);
+  }
+
   /// Hidden: only a slightly different grass tuft gives it away.
   /// Fired: a hinged launch pad whose coil snaps out toward the back (left,
   /// the way the cat is flung), wobbles, then folds back into the grass.

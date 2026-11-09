@@ -28,6 +28,8 @@ class CatComponent extends SpriteAnimationGroupComponent<CatState>
     required this.onEscaped,
     required this.isPlaying,
     required this.level,
+    this.isBlocked,
+    this.terrainSpeed,
     this.isBoss = false,
     this.onStartled,
   })  : catchWindow = CatchWindow(
@@ -86,6 +88,12 @@ class CatComponent extends SpriteAnimationGroupComponent<CatState>
   }
 
   final LevelConfig level;
+  final bool Function(Vector2 position, Vector2 size)? isBlocked;
+
+  /// Speed factor of the ground under the cat (mud on the pond map).
+  final double Function(Vector2 center)? terrainSpeed;
+  double _lureStuck = 0;
+  double _detourSide = 1;
   CatSkill get skill => level.skillFor(catType);
   final bool Function(CatComponent cat) onDrop;
   final void Function(CatComponent cat) onDelivered;
@@ -302,13 +310,18 @@ class CatComponent extends SpriteAnimationGroupComponent<CatState>
     if (target != null) {
       final delta = target - (position + size / 2);
       final distance = delta.length;
-      final speed = catWalkSpeed * _pace;
+      final speed = catWalkSpeed * _pace * _terrain;
       if (distance <= speed * dt + 4) {
         fishTarget = null;
+        _lureStuck = 0;
         _eat();
-      } else {
-        _direction = delta.x >= 0 ? 1 : -1;
-        position += delta / distance * speed * dt;
+      } else if (_steer(delta / distance, speed * dt)) {
+        _lureStuck = 0;
+      } else if ((_lureStuck += dt) > 2.5) {
+        // shortcut: a fish nobody can reach is dropped, not refunded.
+        fishTarget = null;
+        _lureStuck = 0;
+        _pickNextAction();
       }
       return;
     }
@@ -405,8 +418,38 @@ class CatComponent extends SpriteAnimationGroupComponent<CatState>
   }
 
   void _move(double dt, double speed) {
-    position.x += _direction * speed * dt;
-    position.y += _velocityY * dt;
+    final step = Vector2(_direction * speed * dt, _velocityY * dt) * _terrain;
+    if (_blockedStep(step)) {
+      _direction *= -1;
+      _velocityY *= -1;
+      return;
+    }
+    position.add(step);
+  }
+
+  double get _terrain => terrainSpeed?.call(_center) ?? 1;
+
+  /// A cat caught inside a moving blocker may always walk out of it.
+  bool _blockedStep(Vector2 step) {
+    final blocked = isBlocked;
+    if (blocked == null) return false;
+    return blocked(position + step, size) && !blocked(position, size);
+  }
+
+  /// Walks along [dir], turning along walls when the straight way is shut.
+  bool _steer(Vector2 dir, double length) {
+    for (final angle in const [0.0, .8, -.8, 1.5, -1.5]) {
+      final turn = angle * _detourSide;
+      final step = Vector2(dir.x * cos(turn) - dir.y * sin(turn),
+              dir.x * sin(turn) + dir.y * cos(turn)) *
+          length;
+      if (_blockedStep(step)) continue;
+      position.add(step);
+      if (step.x.abs() > .01) _direction = step.x >= 0 ? 1 : -1;
+      return true;
+    }
+    _detourSide = -_detourSide;
+    return false;
   }
 
   void _clampPosition() {
@@ -502,10 +545,15 @@ class CatComponent extends SpriteAnimationGroupComponent<CatState>
   }
 
   void _teleport() {
+    final start = position.clone();
     final dx = (_random.nextDouble() * 2 - 1) * _vanishTeleportDistance;
     final dy = (_random.nextDouble() * 2 - 1) * _vanishTeleportDistance * 0.5;
     position += Vector2(dx, dy);
     _clampPosition();
+    if (isBlocked?.call(position, size) ?? false) {
+      position.setFrom(start);
+      return;
+    }
     if (dx != 0) {
       _direction = dx > 0 ? 1 : -1;
     }

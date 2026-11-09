@@ -222,7 +222,7 @@ class _CampScreenState extends State<CampScreen>
                   // (4:3) screens.
                   child: Row(children: [
                     RoundButton(
-                        glyph: GameGlyph.back,
+                        glyph: GameGlyph.home,
                         onPressed: () => Navigator.of(context).pop()),
                     const SizedBox(width: 12),
                     Flexible(

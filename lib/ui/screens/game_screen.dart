@@ -62,7 +62,7 @@ class _GameScreenState extends State<GameScreen> {
                   alignment: Alignment.topLeft,
                   child: Row(mainAxisSize: MainAxisSize.min, children: [
                     RoundButton(
-                      glyph: GameGlyph.back,
+                      glyph: GameGlyph.home,
                       tooltip: 'Về chọn màn',
                       onPressed: () => Navigator.of(context).pop(),
                     ),

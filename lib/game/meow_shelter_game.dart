@@ -18,6 +18,7 @@ import 'constants.dart';
 import '../levels/level_config.dart';
 import '../levels/levels.dart';
 import 'world/shelter_layout.dart';
+import 'world/shelter_map.dart';
 import 'systems/bait_system.dart';
 
 class MeowShelterGame extends FlameGame {
@@ -32,6 +33,12 @@ class MeowShelterGame extends FlameGame {
   bool _restarting = false;
   double _secondAccumulator = 0;
   final _bait = BaitSystem();
+  ShelterMap _map = ShelterMap.none;
+
+  // Infinite mode: map clock drives gates and crates; twists change per map.
+  double _mapClock = 0;
+  int _nextCatType = 0;
+  bool _darkTwist = false, _bedTwist = false;
 
   /// Counters for the level goals of the current round.
   RoundStats stats = RoundStats();
@@ -72,6 +79,12 @@ class MeowShelterGame extends FlameGame {
     _pending.clear();
     _bedTimer = _bedInterval;
     _bedWarned = false;
+    _map =
+        level.isInfinite ? ShelterMap.maps.first : level.map ?? ShelterMap.none;
+    _mapClock = 0;
+    _nextCatType = 0;
+    _darkTwist = false;
+    _bedTwist = false;
     lostReason = 'HẾT GIỜ RỒI!';
     _bait.reset(limit: level.fishLimit);
     _hud = HudComponent()..size = size;
@@ -84,7 +97,9 @@ class MeowShelterGame extends FlameGame {
     _hud.fishLeft = _bait.limited ? _bait.fishCount : null;
 
     add(ShelterGardenComponent(
-        isPlaying: () => _hud.status == RoundStatus.playing));
+        isPlaying: () => _hud.status == RoundStatus.playing,
+        map: () => _map,
+        mapTime: () => _mapClock));
     await _addCats();
     await _addShelters();
     if (level.isTutorial) {
@@ -95,13 +110,19 @@ class MeowShelterGame extends FlameGame {
         isPlaying: () => _hud.status == RoundStatus.playing,
       ));
     }
-    if (level.darkness) {
+    if (level.darkness || level.isInfinite) {
       add(DarknessComponent(
-          lights: _lights, visible: () => _hud.status == RoundStatus.playing));
+          lights: _lights,
+          visible: () =>
+              _hud.status == RoundStatus.playing &&
+              (level.darkness || _darkTwist)));
     }
     add(_hud);
     if (level.twistLines.isNotEmpty && !level.isTutorial) {
       _hud.showBanner(level.twistLines, 4);
+    }
+    if (level.isInfinite) {
+      _hud.showBanner(['BẢN ĐỒ: ${_map.name.toUpperCase()}', _map.rule], 4);
     }
     add(FishItemComponent(
       enabled: () => canPlaceFish,
@@ -113,7 +134,7 @@ class MeowShelterGame extends FlameGame {
   Future<void> _addCats() async {
     if (level.isInfinite) {
       for (var i = 0; i < 2; i++) {
-        _spawnCat(level.catTypes[_random.nextInt(level.catTypes.length)]);
+        _spawnCat(_nextInfiniteType());
       }
       return;
     }
@@ -142,6 +163,8 @@ class MeowShelterGame extends FlameGame {
       catType: type,
       level: catLevel,
       isBoss: boss,
+      isBlocked: _isMapBlocked,
+      terrainSpeed: _terrainSpeed,
       onStartled: (_) => stats.startles += 1,
       onDrop: _handleDrop,
       onDelivered: _handleDelivered,
@@ -182,11 +205,11 @@ class MeowShelterGame extends FlameGame {
     // Practice rounds are replayable, so they do not pay out coins.
     if (!level.isTutorial) unawaited(CampState.instance.rescue(cat.catType));
     if (level.isInfinite) {
-      if (_hud.delivered % 5 == 0) _shuffleShelters();
-      _spawnCat(level.catTypes[_random.nextInt(level.catTypes.length)]);
+      if (_hud.delivered % 5 == 0) _enterNextMap();
+      _spawnCat(_nextInfiniteType());
       if (_hud.delivered % 5 == 0 &&
           children.whereType<CatComponent>().length < 5) {
-        _spawnCat(level.catTypes[_random.nextInt(level.catTypes.length)]);
+        _spawnCat(_nextInfiniteType());
       }
     } else if (_hud.delivered >= _hud.totalCats) {
       _showResult(RoundStatus.won);
@@ -200,6 +223,7 @@ class MeowShelterGame extends FlameGame {
   void _handleEscape(CatComponent cat) {
     if (_hud.status != RoundStatus.playing) return;
     if (level.isInfinite) {
+      lostReason = 'MÈO ĐÃ CHẠY MẤT!';
       _showResult(RoundStatus.lost);
       return;
     }
@@ -212,6 +236,11 @@ class MeowShelterGame extends FlameGame {
     super.update(dt);
     if (!isLoaded || _hud.status != RoundStatus.playing) return;
     _bait.update(children.whereType<CatComponent>());
+    _mapClock += dt;
+    if (level.isInfinite) {
+      _updateInfinite(dt);
+      return;
+    }
     // Let the last rescued cat finish its success animations before ending.
     if (_hud.delivered >= _hud.totalCats) return;
     if (level.isTutorial || level.isInfinite) return;
@@ -254,6 +283,11 @@ class MeowShelterGame extends FlameGame {
 
   void _placeFish(Vector2 point) {
     if (!canPlaceFish) return;
+    final reach = Vector2(catWidth, catHeight);
+    if (_isMapBlocked(point - reach / 2, reach)) {
+      _hud.showBanner(['Mèo không tới được chỗ này'], 1.5);
+      return;
+    }
     if (_bait.place(point, size, children.whereType<CatComponent>())) {
       stats.fishUsed += 1;
       if (_bait.limited) _hud.fishLeft = _bait.fishCount;
@@ -316,6 +350,55 @@ class MeowShelterGame extends FlameGame {
     }
   }
 
+  bool _isMapBlocked(Vector2 position, Vector2 size) {
+    final bounds = Rect.fromLTWH(position.x / this.size.x,
+        position.y / this.size.y, size.x / this.size.x, size.y / this.size.y);
+    return _map.blockersAt(_mapClock).any(bounds.overlaps);
+  }
+
+  double _terrainSpeed(Vector2 center) {
+    final point = Offset(center.x / size.x, center.y / size.y);
+    return _map.mud.any((mud) => mud.contains(point)) ? ShelterMap.mudSpeed : 1;
+  }
+
+  String _nextInfiniteType() =>
+      level.catTypes[_nextCatType++ % level.catTypes.length];
+
+  void _updateInfinite(double dt) {
+    if (_bedTwist) _updateMovingBeds(dt);
+    if (_outOfFish) {
+      lostReason = 'HẾT CÁ RỒI!';
+      _showResult(RoundStatus.lost);
+    }
+  }
+
+  /// Every five rescues: next map, shuffled beds and a random twist.
+  void _enterNextMap() {
+    _map = ShelterMap.maps[(_hud.delivered ~/ 5) % ShelterMap.maps.length];
+    _mapClock = 0;
+    _shuffleShelters();
+    final twist = _random.nextInt(4);
+    _darkTwist = twist == 1;
+    _bedTwist = twist == 2;
+    _bedTimer = _bedInterval;
+    _bedWarned = false;
+    _bait.limited = twist == 3;
+    _bait.fishCount = twist == 3 ? 6 : 0;
+    _hud.fishLeft = _bait.limited ? _bait.fishCount : null;
+    for (final cat in children.whereType<CatComponent>()) {
+      if (!cat.isCarried && _isMapBlocked(cat.position, cat.size)) {
+        cat.position = _randomCatPosition();
+      }
+    }
+    _hud.showBanner([
+      'BẢN ĐỒ: ${_map.name.toUpperCase()}',
+      _map.rule,
+      if (twist == 1) 'Tắt đèn! Thả cá để soi đường',
+      if (twist == 2) 'Các ổ sẽ dời chỗ',
+      if (twist == 3) 'Chỉ có 6 cá mồi',
+    ], 4);
+  }
+
   @override
   void render(Canvas canvas) {
     super.render(canvas);
@@ -326,9 +409,14 @@ class MeowShelterGame extends FlameGame {
   }
 
   Vector2 _randomCatPosition() {
-    final x =
-        size.x * .22 + _random.nextDouble() * max(0, size.x * .56 - catWidth);
-    final y = size.y * 0.28 + _random.nextDouble() * (size.y * 0.32);
-    return Vector2(x, y);
+    for (var i = 0;; i++) {
+      final x =
+          size.x * .22 + _random.nextDouble() * max(0, size.x * .56 - catWidth);
+      final y = size.y * 0.28 + _random.nextDouble() * (size.y * 0.32);
+      final spot = Vector2(x, y);
+      if (i >= 20 || !_isMapBlocked(spot, Vector2(catWidth, catHeight))) {
+        return spot;
+      }
+    }
   }
 }

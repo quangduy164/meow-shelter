@@ -189,7 +189,7 @@ class _FishingScreenState extends State<FishingScreen>
                               child: Align(
                                   alignment: Alignment.topLeft,
                                   child: RoundButton(
-                                      glyph: GameGlyph.back,
+                                      glyph: GameGlyph.home,
                                       tooltip: 'Về Trang chủ',
                                       onPressed: () =>
                                           Navigator.pop(context))))),

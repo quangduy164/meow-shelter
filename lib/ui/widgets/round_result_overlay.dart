@@ -65,7 +65,7 @@ class _RoundResultOverlayState extends State<RoundResultOverlay>
   }
 
   String get _title {
-    if (_game.level.isInfinite) return 'MÈO ĐÃ CHẠY MẤT!';
+    if (_game.level.isInfinite) return _game.lostReason;
     if (!_won) return _game.lostReason;
     return _game.level.isTutorial ? 'GIỎI LẮM!' : 'VỀ NHÀ RỒI!';
   }
@@ -146,7 +146,7 @@ class _RoundResultOverlayState extends State<RoundResultOverlay>
                             _ActionButton(
                                 tooltip: 'Về chọn màn',
                                 icon: Icons.home_rounded,
-                                glyph: GameGlyph.back,
+                                glyph: GameGlyph.home,
                                 onPressed: widget.onHome),
                             const SizedBox(width: 10),
                             if (next) ...[

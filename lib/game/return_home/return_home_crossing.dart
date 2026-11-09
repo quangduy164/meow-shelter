@@ -41,6 +41,9 @@ class ReturnHomeCrossing extends PositionComponent {
   late final List<Offset> _previous;
   double _time = 0;
 
+  /// 0 while time is stopped: the stones hold still.
+  double timeScale = 1;
+
   double get centerX => road.worldWidth * centerFraction;
   double get left => centerX - crossingWidth / 2;
   double get right => centerX + crossingWidth / 2;
@@ -91,7 +94,7 @@ class ReturnHomeCrossing extends PositionComponent {
   void update(double dt) {
     super.update(dt);
     _previous.setAll(0, _stones);
-    _time += dt;
+    _time += dt * timeScale;
     _layout();
   }
 
@@ -125,7 +128,9 @@ class ReturnHomeCrossing extends PositionComponent {
 
   /// The cat falls only if its whole paw line is over water: one paw on a
   /// stone is enough to stand.
-  bool inWater(Rect catBox) => _paws(catBox).every(isWater);
+  /// [dry] marks extra footing laid over the water (ice bridges).
+  bool inWater(Rect catBox, {bool Function(Offset)? dry}) =>
+      _paws(catBox).every((p) => isWater(p) && !(dry?.call(p) ?? false));
 
   /// Vertical distance the stone under the cat moved this frame, or 0 when
   /// the cat is not standing on one. With paws on two stones the one holding

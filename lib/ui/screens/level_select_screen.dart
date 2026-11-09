@@ -62,7 +62,7 @@ class _LevelSelectScreenState extends State<LevelSelectScreen> {
               padding: const EdgeInsets.fromLTRB(12, 10, 16, 6),
               child: Row(children: [
                 RoundButton(
-                    glyph: GameGlyph.back,
+                    glyph: GameGlyph.home,
                     onPressed: () => Navigator.of(context).pop()),
                 const SizedBox(width: 12),
                 const Text('CHỌN MÀN',
