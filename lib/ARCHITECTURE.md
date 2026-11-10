@@ -23,6 +23,31 @@
   - `systems/bait_system.dart`, `catch_window.dart`, `world/`.
 - `game/return_home/`: the Return Home mode. Road and biomes, spawner,
   obstacles, cat, scenery, HUD, joystick — one concern per file.
+- `game/cat_herd/`: Lead the Herd mode, independent of rescue and Return Home.
+  - `herd_round.dart`: deterministic simulation when seeded: recruitment,
+    distance-sampled leader trail, followers, patrol hits, scattering,
+    delivery, score and win/loss. `reset` starts a fresh round; `update`
+    consumes a normalized direction and a small time step.
+  - `herd_game.dart`: Flame lifecycle, shared joystick adapter, sprite cache,
+    fixed substeps and overlays. It does not write camp progress.
+  - `herd_map.dart`: the four exclusive maps (market/desert/snow/playground), normalized
+    walls and terrain patches, traffic clock and player-facing rule text.
+  - `herd_route.dart`: suggested paths, optional branch and four group
+    anchors per map. Paths guide placement; they do not constrain movement.
+  - `herd_route_painter.dart`: optional footprints and group counters. The whole
+    field is open except for the map's visible solid obstacles.
+  - `herd_map_painter.dart`: map-specific scenery; reads the same rectangles
+    as collision/terrain rules. Never imports rescue-mode maps.
+  - `herd_scene.dart`: home and map-specific hazards; no rule mutations.
+  - `ui/screens/herd_screen.dart`: result/replay and app lifecycle.
+  - `ui/widgets/herd_map_select.dart`: horizontally scrolling region cards.
+    Preview art reuses `paintHerdField`; tapping a card starts immediately.
+  - Debug tuning starts in `HerdRound`: `target`, `spacing`, patrol setup,
+    `requiredCats` (8 to open the home), movement speed, pickup/hit radii and
+    the score formula. Spawns use four authored anchors with a jittered
+    three-cat formation, rejecting walls, overlap and traffic lanes; keep all
+    anchors reachable and off traffic when adding a route. Resize restarts
+    the round because its positions belong to the current viewport.
 - `fishing/`: fishing controller (rules, timing, saving catches).
 - `camp/`: the cat camp.
   - `camp_state.dart`: coins, bought cats (`cat:<breed>` in owned), rescue counts, affection, owned and placed

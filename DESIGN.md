@@ -220,3 +220,11 @@ sizes and confirm there is no overflow and nothing is hidden:
 | Wide phone | 960×411 | 1.1 | 876×375 |
 | 4:3 tablet | 1024×768 | 2.0 | 512×384 |
 | Tablet | 1280×800 | 2.0 | 640×400 |
+
+## Lead the Herd mode
+
+Home now uses a two-column, three-row mode grid with 168x88 tiles to fit the
+820x340 board. Lead the Herd has its own three-cat badge and purple tile.
+Its Flame field uses the shared joystick; intro and result use DS cards and
+buttons. The HUD shows delivered cats, current chain, score and remaining
+lives. Cat art comes from the existing idle/walk sprite sheets.

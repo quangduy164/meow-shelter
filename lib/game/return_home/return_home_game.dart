@@ -139,7 +139,7 @@ class ReturnHomeGame extends FlameGame {
   // ---- Secondary skills -------------------------------------------------
 
   bool get _canAttack => started && !finished;
-  double get _facing => _cat.velocity.x < -2 ? -1 : 1;
+  double get _facing => _cat.facing;
   Vector2 get _catCenter {
     final c = _cat.hitbox.center;
     return Vector2(c.dx, c.dy);
@@ -349,7 +349,7 @@ class ReturnHomeGame extends FlameGame {
         final decoy = ReturnHomeDecoy(
             animations: _cat.animations!,
             center: _aimPoint(attack, stick),
-            flip: _cat.velocity.x < -2);
+            flip: _cat.facing < 0);
         _decoy = decoy;
         _world.add(decoy);
       case HomeAttack.timeStop:

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-enum ModeIconKind { catchCat, fishing, rescue, returnHome, camp }
+enum ModeIconKind { catchCat, fishing, rescue, returnHome, camp, herd }
 
 /// Flat mode badges: one colored tile with a single white symbol.
 class ModeIcon extends StatelessWidget {
@@ -33,6 +33,7 @@ class _ModeIconPainter extends CustomPainter {
       ModeIconKind.rescue => const Color(0xFFF08A3A),
       ModeIconKind.returnHome => const Color(0xFF6B9E4E),
       ModeIconKind.camp => const Color(0xFFC85A7C),
+      ModeIconKind.herd => const Color(0xFF8277B2),
     };
     final tile = RRect.fromRectAndRadius(
         const Rect.fromLTWH(2, 2, 52, 52), const Radius.circular(14));
@@ -118,6 +119,23 @@ class _ModeIconPainter extends CustomPainter {
               ..lineTo(37, 18)
               ..close(),
             white);
+      case ModeIconKind.herd:
+        for (final c in [
+          const Offset(15, 39),
+          const Offset(28, 28),
+          const Offset(41, 17)
+        ]) {
+          canvas.drawCircle(c, 7, white);
+          canvas.drawPath(
+              Path()
+                ..moveTo(c.dx - 6, c.dy - 3)
+                ..lineTo(c.dx - 6, c.dy - 11)
+                ..lineTo(c.dx, c.dy - 6)
+                ..lineTo(c.dx + 6, c.dy - 11)
+                ..lineTo(c.dx + 6, c.dy - 3)
+                ..close(),
+              white);
+        }
       case ModeIconKind.camp:
         canvas.drawPath(
             Path()

@@ -7,6 +7,7 @@ import 'fishing_screen.dart';
 import 'game_screen.dart';
 import 'level_select_screen.dart';
 import 'return_home_screen.dart';
+import 'herd_screen.dart';
 import '../widgets/game_logo.dart';
 import '../widgets/home_background_painter.dart';
 import '../widgets/mode_icon.dart';
@@ -124,6 +125,12 @@ class _HomeScreenState extends State<HomeScreen> {
               onPressed: () => _open(const GameScreen(level: infiniteLevel)),
             ),
             _ModeTile(
+              title: 'DẪN ĐÀN VỀ NHÀ',
+              icon: ModeIconKind.herd,
+              color: const Color(0xFF8277B2),
+              onPressed: () => _open(const HerdScreen()),
+            ),
+            _ModeTile(
               title: 'TRẠI MÈO',
               icon: ModeIconKind.camp,
               color: const Color(0xFFC85A7C),
@@ -171,7 +178,7 @@ class _ModeTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) => _Pressable(
         width: 168,
-        height: 116,
+        height: 88,
         color: color,
         shade: Color.lerp(color, Colors.black, .35)!,
         onPressed: onPressed,
@@ -181,7 +188,7 @@ class _ModeTile extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.center,
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              ModeIcon(kind: icon, size: 44, onColor: true),
+              ModeIcon(kind: icon, size: 30, onColor: true),
               const SizedBox(height: 8),
               Text(title,
                   maxLines: 1,
@@ -189,7 +196,7 @@ class _ModeTile extends StatelessWidget {
                   textAlign: TextAlign.center,
                   style: const TextStyle(
                       color: Colors.white,
-                      fontSize: 15,
+                      fontSize: 13,
                       fontWeight: FontWeight.w900,
                       letterSpacing: .2)),
             ],

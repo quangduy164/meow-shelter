@@ -58,6 +58,11 @@ class ReturnHomeCat extends SpriteAnimationGroupComponent<CatState>
   static const double pawLine = 66;
 
   Vector2 velocity = Vector2.zero();
+  double _facing = 1;
+
+  /// Last horizontal direction, retained while idle or moving vertically.
+  double get facing => _facing;
+
   double _bumpTimer = 0;
   double _vanishTimer = 0;
   bool _vanished = false;
@@ -107,6 +112,7 @@ class ReturnHomeCat extends SpriteAnimationGroupComponent<CatState>
       velocity += (target - velocity) *
           min(1, dt * (_bumpTimer > 0 ? bumpedGrip : grip));
     }
+    if (velocity.x.abs() > 2) _facing = velocity.x.sign;
     if (_bumpTimer > 0) _bumpTimer -= dt;
     if (invulnerable > 0) invulnerable = max(0, invulnerable - dt);
     if (_sprintTimer > 0) _sprintTimer = max(0, _sprintTimer - dt);
@@ -116,7 +122,7 @@ class ReturnHomeCat extends SpriteAnimationGroupComponent<CatState>
       if (!_vanished && _vanishTimer < .35) {
         _vanished = true;
         final previous = position.clone();
-        position.x = (position.x + (velocity.x >= 0 ? vanishLeap : -vanishLeap))
+        position.x = (position.x + facing * vanishLeap)
             .clamp(ReturnHomeRoad.startX, game.road.endX);
         _clampToLane();
         if (game.blockedByLog(hitbox)) position.setFrom(previous);
@@ -178,10 +184,9 @@ class ReturnHomeCat extends SpriteAnimationGroupComponent<CatState>
         _rollTimer = dashDuration;
         invulnerable = dashDuration + .4;
         final input = game.joystick.relativeDelta;
-        final dir = input.length > .1
-            ? input.normalized()
-            : Vector2(velocity.x >= 0 ? 1 : -1, 0);
+        final dir = input.length > .1 ? input.normalized() : Vector2(facing, 0);
         velocity = dir * dashSpeed;
+        if (dir.x.abs() > .01) _facing = dir.x.sign;
       case 'calico':
         // Patches up one heart, never above the starting count.
         game.lives = min(ReturnHomeGame.startingLives, game.lives + 1);
@@ -252,7 +257,7 @@ class ReturnHomeCat extends SpriteAnimationGroupComponent<CatState>
   void render(Canvas canvas) {
     if (invulnerable > 0 && (invulnerable * 12).floor().isEven) return;
     canvas.save();
-    if (velocity.x < -2) {
+    if (facing < 0) {
       // Flip around the sprite's own right edge; position stays unchanged.
       canvas.translate(size.x, 0);
       canvas.scale(-1, 1);
