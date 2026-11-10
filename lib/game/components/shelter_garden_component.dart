@@ -105,7 +105,7 @@ class ShelterGardenComponent extends PositionComponent {
         mapConfig.untilChange(t) < 1.5 ? .5 + .5 * math.sin(_clock * 14) : 0.0;
     switch (mapConfig.kind) {
       case ShelterMapKind.garden:
-        _drawGarden(canvas, mapConfig, t, warn);
+        _drawGarden(canvas, mapConfig, t);
       case ShelterMapKind.warehouse:
         _drawWarehouse(canvas, mapConfig, t, warn);
       case ShelterMapKind.pond:
@@ -121,7 +121,7 @@ class ShelterGardenComponent extends PositionComponent {
       Rect.fromLTWH(r.left - 4, r.bottom - 8, r.width + 8, 16),
       Paint()..color = const Color(0x33402A14));
 
-  void _drawGarden(Canvas canvas, ShelterMap m, double t, double warn) {
+  void _drawGarden(Canvas canvas, ShelterMap m, double t) {
     // Dirt path with stepping stones running through the gate.
     final path = Path()
       ..moveTo(470, 112)
@@ -176,94 +176,99 @@ class ShelterGardenComponent extends PositionComponent {
         }
       }
     }
-    final gate = _px(m.gate!);
-    final closed = m.gateClosed(t);
-    // Horizontal picket fence makes the opening readable from above.
-    void fence(double left, double right) {
-      final y = gate.center.dy;
-      for (final railY in [y - 16, y - 3]) {
-        canvas.drawRect(Rect.fromLTWH(left, railY, right - left, 5),
-            Paint()..color = const Color(0xFF936035));
-      }
-      for (var x = left + 3; x < right; x += 15) {
-        final picket = Path()
-          ..moveTo(x, y + 8)
-          ..lineTo(x, y - 25)
-          ..lineTo(x + 5, y - 31)
-          ..lineTo(x + 10, y - 25)
-          ..lineTo(x + 10, y + 8)
-          ..close();
-        canvas.drawPath(picket, Paint()..color = const Color(0xFFFFE4AD));
-        canvas.drawPath(
-            picket,
-            Paint()
-              ..color = const Color(0xFF986535)
-              ..style = PaintingStyle.stroke
-              ..strokeWidth = 1.5);
+    // A flower arch frames the path, leaving the passage underneath clear.
+    final timber = Paint()
+      ..color = const Color(0xFF98754E)
+      ..strokeWidth = 7
+      ..strokeCap = StrokeCap.round;
+    for (final x in [382.0, 618.0]) {
+      canvas.drawLine(Offset(x, 185), Offset(x, 120), timber);
+      canvas.drawCircle(
+          Offset(x, 185), 6, Paint()..color = const Color(0xFF75934C));
+    }
+    final arch = Path()
+      ..moveTo(382, 120)
+      ..quadraticBezierTo(500, 65, 618, 120);
+    canvas.drawPath(arch, timber..style = PaintingStyle.stroke);
+    for (var i = 0; i <= 18; i++) {
+      final u = i / 18;
+      final x = 382 + 236 * u;
+      final y = 120 - 110 * u * (1 - u);
+      canvas.drawOval(
+          Rect.fromCenter(center: Offset(x, y), width: 20, height: 12),
+          Paint()..color = const Color(0xFF538B54));
+      if (i.isEven) {
+        for (var petal = 0; petal < 5; petal++) {
+          canvas.drawCircle(
+              Offset(x, y) + Offset.fromDirection(petal * 1.2566, 4),
+              3,
+              Paint()..color = const Color(0xFFF2AEC2));
+        }
+        canvas.drawCircle(
+            Offset(x, y), 2, Paint()..color = const Color(0xFFFFDF88));
       }
     }
-
-    fence(230, gate.left);
-    fence(gate.right, 770);
-    final open = closed ? 0.0 : 1.0;
-    // Two framed leaves swing toward the flower beds when open.
-    for (final side in [-1.0, 1.0]) {
+    final spray = _px(m.sprinkler!);
+    final active = m.spraying(t);
+    final center = spray.center;
+    // Hose runs to the sprinkler along the path.
+    canvas.drawPath(
+        Path()
+          ..moveTo(495, 260)
+          ..cubicTo(470, 242, 530, 225, center.dx, center.dy),
+        Paint()
+          ..color = const Color(0xFF527B4D)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 4);
+    if (active) {
+      canvas.drawRRect(
+          RRect.fromRectAndRadius(spray, const Radius.circular(16)),
+          Paint()..color = const Color(0x5555BDE2));
+      canvas.drawRRect(
+          RRect.fromRectAndRadius(spray, const Radius.circular(16)),
+          Paint()
+            ..color = const Color(0xAA91E6F2)
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = 2);
+    }
+    if (active) {
       canvas.save();
-      canvas.translate(side < 0 ? gate.left : gate.right, gate.center.dy);
-      canvas.rotate(side * open * math.pi / 2);
-      if (side > 0) canvas.scale(-1, 1);
-      final leaf = Rect.fromLTWH(0, -24, gate.width / 2 - 3, 32);
-      canvas.drawRect(leaf.shift(const Offset(2, 4)),
-          Paint()..color = const Color(0x33402A14));
-      canvas.drawRect(leaf, Paint()..color = const Color(0xFFD6A45F));
-      final frame = Paint()
-        ..color = const Color(0xFF79502F)
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 4;
-      canvas.drawRect(leaf, frame);
-      for (var x = 14.0; x < leaf.right; x += 16) {
-        canvas.drawLine(Offset(x, leaf.top), Offset(x, leaf.bottom),
-            frame..strokeWidth = 1.5);
+      canvas.clipRect(spray);
+      for (var jet = 0; jet < 4; jet++) {
+        final angle = t * 3 + jet * math.pi / 2;
+        final end = center + Offset(math.cos(angle) * 90, math.sin(angle) * 62);
+        canvas.drawLine(
+            center,
+            end,
+            Paint()
+              ..color = const Color(0xBBCEFAFF)
+              ..strokeWidth = 2
+              ..strokeCap = StrokeCap.round);
+        for (var drop = 1; drop <= 6; drop++) {
+          final f = ((t * 2 + drop / 6) % 1);
+          canvas.drawCircle(Offset.lerp(center, end, f)!, 1.5 + f,
+              Paint()..color = const Color(0xDDE0FBFF));
+        }
       }
-      canvas.drawLine(leaf.bottomLeft, leaf.topRight, frame..strokeWidth = 5);
-      canvas.drawCircle(Offset(leaf.right - 8, -8), 3,
-          Paint()..color = const Color(0xFF503823));
       canvas.restore();
     }
-    for (final x in [gate.left, gate.right]) {
-      final post = Rect.fromLTWH(x - 8, gate.center.dy - 38, 16, 51);
-      canvas.drawRect(post, Paint()..color = const Color(0xFF97613A));
-      canvas.drawRect(Rect.fromLTWH(x - 11, post.top - 4, 22, 7),
-          Paint()..color = const Color(0xFFDEB777));
-      canvas.drawCircle(
-          Offset(x, post.top - 8), 5, Paint()..color = const Color(0xFFDEB777));
-    }
-    final label = TextPainter(
-        text: TextSpan(
-            text: closed ? 'CỔNG ĐÓNG' : 'CỔNG MỞ',
-            style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.bold,
-                color: closed
-                    ? const Color(0xFF854327)
-                    : const Color(0xFF315F37))),
-        textDirection: TextDirection.ltr)
-      ..layout();
-    final sign = Rect.fromCenter(
-        center: Offset(gate.center.dx, gate.center.dy + 29),
-        width: label.width + 18,
-        height: 23);
-    canvas.drawRRect(RRect.fromRectAndRadius(sign, const Radius.circular(6)),
-        Paint()..color = const Color(0xFFFFEBC5));
-    label.paint(canvas, sign.topLeft + const Offset(9, 4));
-    if (warn > 0) {
-      canvas.drawRRect(
-          RRect.fromRectAndRadius(gate.inflate(6), const Radius.circular(8)),
-          Paint()
-            ..color = Color.fromRGBO(255, 196, 64, .35 + .5 * warn)
-            ..style = PaintingStyle.stroke
-            ..strokeWidth = 3);
-    }
+    canvas.drawOval(
+        Rect.fromCenter(
+            center: center + const Offset(0, 4), width: 26, height: 12),
+        Paint()..color = const Color(0x44402A14));
+    canvas.drawCircle(center, 10, Paint()..color = const Color(0xFF537F6B));
+    canvas.drawCircle(center, 5, Paint()..color = const Color(0xFFD7DDD1));
+    canvas.save();
+    canvas.translate(center.dx, center.dy);
+    canvas.rotate(active ? t * 3 : 0);
+    canvas.drawLine(
+        const Offset(-13, 0),
+        const Offset(13, 0),
+        Paint()
+          ..color = const Color(0xFFDBC287)
+          ..strokeWidth = 4
+          ..strokeCap = StrokeCap.round);
+    canvas.restore();
   }
 
   void _drawWarehouse(Canvas canvas, ShelterMap m, double t, double warn) {

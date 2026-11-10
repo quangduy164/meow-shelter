@@ -300,11 +300,22 @@ class ReturnHomeFireBomb extends PositionComponent {
   double _t = 0;
   bool explodeNow = false;
   bool tickNow = false;
+  bool empowered = false;
 
   double get radius => HomeAttack.fireBomb.radius;
   double get _burn => HomeAttack.fireBomb.duration;
   bool get landed => _t >= bombFlight;
   bool covers(Vector2 p) => inGroundEllipse(p, target, radius);
+
+  /// A burning patch can be reignited by a fireball once per bomb.
+  bool ignite() {
+    if (!landed || empowered || _t >= bombFlight + _burn) return false;
+    empowered = true;
+    _t = bombFlight;
+    explodeNow = true;
+    tickNow = false;
+    return true;
+  }
 
   @override
   void update(double dt) {
@@ -476,6 +487,7 @@ class ReturnHomeDecoy extends SpriteAnimationGroupComponent<CatState> {
 
   final bool flip;
   double timeLeft = HomeAttack.decoy.duration;
+  bool empowered = false;
   double _t = 0;
 
   /// Where birds aim: the middle of its paws, like the real cat's hitbox.

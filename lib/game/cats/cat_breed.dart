@@ -105,6 +105,26 @@ class CatBreed {
     attacks: [HomeAttack.magnet, HomeAttack.catEye, HomeAttack.bolt],
   );
 
+  ({String name, String hint}) get homeCombo => switch (id) {
+        'black' => (
+            name: 'Ảnh nổ',
+            hint: 'Đặt phân thân gần mình rồi dịch chuyển'
+          ),
+        'himalaya' => (
+            name: 'Phá băng',
+            hint: 'Đóng băng mục tiêu rồi bắn Mũi băng'
+          ),
+        'scottish' => (
+            name: 'Gầm phản chấn',
+            hint: 'Bật Phản đòn rồi Gầm đẩy đá vào địch'
+          ),
+        'calico' => (
+            name: 'Sét tinh anh',
+            hint: 'Bật Mắt mèo rồi Sét trúng địch ở gần'
+          ),
+        _ => (name: 'Bùng cháy', hint: 'Bom rơi rồi bắn Cầu lửa vào vùng cháy'),
+      };
+
   static const all = [orange, black, himalaya, scottish, calico];
 
   static CatBreed of(String id) =>

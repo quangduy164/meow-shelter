@@ -80,6 +80,8 @@ class ReturnHomeGame extends FlameGame {
   Offset? _aimStick;
   late World _world;
   int _boltSeed = 0;
+  final _comboRocks = <ReturnHomeObstacle, double>{};
+  double _comboNoticeCooldown = 0;
 
   /// Slot whose button is being held (range preview showing), if any.
   int? aimingSlot;
@@ -120,6 +122,10 @@ class ReturnHomeGame extends FlameGame {
     started = true;
     overlays.remove('chooseCat');
     overlays.add('skill');
+    final combo = CatBreed.of(type).homeCombo;
+    zoneName = 'COMBO: ${combo.name.toUpperCase()}';
+    zoneSubtitle = combo.hint;
+    checkpointMessage = 4.5;
   }
 
   void activateSkill() {
@@ -185,6 +191,19 @@ class ReturnHomeGame extends FlameGame {
   Vector2 _aimDirection(HomeAttack attack, Offset? stick) {
     if (_steered(stick)) return Vector2(stick!.dx, stick.dy).normalized();
     if (attack == HomeAttack.iceBridge) return Vector2(_facing, 0);
+    if (attack == HomeAttack.fireball) {
+      final patch = _bombs
+          .where((b) =>
+              b.isMounted &&
+              b.landed &&
+              !b.empowered &&
+              b.target.distanceTo(_castOrigin) <= attack.range &&
+              (b.target.x - _castOrigin.x) * _facing >= -10)
+          .firstOrNull;
+      if (patch != null && patch.target.distanceTo(_castOrigin) > 1) {
+        return (patch.target - _castOrigin).normalized();
+      }
+    }
     final target = _autoTarget(attack.range);
     final boss = _boss;
     if (boss != null &&
@@ -313,6 +332,15 @@ class ReturnHomeGame extends FlameGame {
       case HomeAttack.shadowStep:
         final target = _aimPoint(attack, stick);
         if (!_blinkValid(target)) return false;
+        final decoy = _decoy;
+        if (decoy != null &&
+            !decoy.expired &&
+            decoy.lureCenter.distanceTo(_catCenter) <=
+                HomeAttack.decoy.radius) {
+          decoy.empowered = true;
+          decoy.timeLeft = 0;
+          _showCombo('ẢNH NỔ!', decoy.lureCenter, const Color(0xFFB799F2));
+        }
         _world.add(ReturnHomeShadowStep(from: _catCenter, to: target));
         _cat.blinkTo(target);
         _contacts.clear();
@@ -376,13 +404,21 @@ class ReturnHomeGame extends FlameGame {
     for (final o in _spawner.obstacles) {
       if (o.position.distanceTo(center) <= roarRadius) {
         o.scare(center, roarPush);
+        if (reflectTime > 0 && o.kind == ReturnHomeObstacleKind.rock) {
+          _comboRocks[o] = 2.5;
+          o.comboProjectile = true;
+          _showCombo('GẦM PHẢN CHẤN!', o.position, const Color(0xFF8EE6CC));
+        }
         _contacts.remove(o);
       }
     }
     final boss = _boss;
     if (boss != null && boss.core.distanceTo(center) <= roarRadius + 80) {
       boss.interrupt();
-      _damageBoss(1, boss.core);
+      _damageBoss(reflectTime > 0 ? 2 : 1, boss.core);
+      if (reflectTime > 0) {
+        _showCombo('GẦM PHẢN CHẤN!', boss.core, const Color(0xFF8EE6CC));
+      }
     }
     _cat.invulnerable = max(_cat.invulnerable, .35);
   }
@@ -405,6 +441,16 @@ class ReturnHomeGame extends FlameGame {
   }
 
   void _tickSkillTimers(double dt) {
+    _comboNoticeCooldown = max(0, _comboNoticeCooldown - dt);
+    for (final rock in _comboRocks.keys.toList()) {
+      final left = _comboRocks[rock]! - dt;
+      if (left <= 0 || rock.isRemoved) {
+        rock.comboProjectile = false;
+        _comboRocks.remove(rock);
+      } else {
+        _comboRocks[rock] = left;
+      }
+    }
     for (var i = 0; i < attackCooldown.length; i++) {
       attackCooldown[i] = max(0, attackCooldown[i] - dt);
     }
@@ -477,13 +523,35 @@ class ReturnHomeGame extends FlameGame {
   void _resolveAttacks() {
     final boss = _boss;
     for (final shot in List<ReturnHomeProjectile>.of(_projectiles)) {
+      if (!shot.icy) {
+        final patch = _bombs
+            .where((b) =>
+                b.isMounted &&
+                b.landed &&
+                !b.empowered &&
+                inGroundEllipse(shot.position, b.target, b.radius, margin: 0))
+            .firstOrNull;
+        if (patch != null && patch.ignite()) {
+          _projectiles.remove(shot);
+          shot.removeFromParent();
+          _showCombo('BÙNG CHÁY!', patch.target, const Color(0xFFFFCA67));
+          continue;
+        }
+      }
       if (boss != null && !shot.hitBoss && boss.hitTest(shot.hitRect)) {
         shot.hitBoss = true;
         if (shot.icy) {
+          final shatter = boss.frozen > 0;
           boss
-            ..frozen = max(boss.frozen, 1.2)
+            ..frozen = shatter ? 0 : 1.2
             ..interrupt();
-          _damageBoss(1, shot.position);
+          _damageBoss(shatter ? 3 : 1, shot.position);
+          if (shatter) {
+            _world.add(ReturnHomeBurst(
+                position: shot.position.clone(),
+                color: const Color(0xFFBDE8FA)));
+            _showCombo('PHÁ BĂNG!', shot.position, const Color(0xFFBDE8FA));
+          }
         } else {
           _damageBoss(2, shot.position);
           _projectiles.remove(shot);
@@ -504,6 +572,7 @@ class ReturnHomeGame extends FlameGame {
         for (final o in hits) {
           shot.hit.add(o);
           if (o.frozen > 0) {
+            _showCombo('PHÁ BĂNG!', o.position, const Color(0xFFBDE8FA));
             _destroy(o, icy: true);
           } else {
             o.frozen = shot.attack.duration;
@@ -554,7 +623,7 @@ class ReturnHomeGame extends FlameGame {
           inGroundEllipse(boss.position, bomb.target, bomb.radius,
               margin: 70)) {
         // Only the blast hurts the dragon; the burning patch is for hazards.
-        if (bomb.explodeNow) _damageBoss(3, boss.core);
+        if (bomb.explodeNow) _damageBoss(bomb.empowered ? 6 : 3, boss.core);
       }
       for (final o in List<ReturnHomeObstacle>.of(_spawner.obstacles)) {
         if (_hidden(o) || !bomb.covers(o.position)) continue;
@@ -569,17 +638,28 @@ class ReturnHomeGame extends FlameGame {
       }
       if (!bolt.strikeNow) continue;
       final p = bolt.position;
+      var markedHit = false;
+      bool marked(Vector2 point) =>
+          catEyeTime > 0 &&
+          point.distanceTo(_catCenter) <= HomeAttack.catEye.radius + 20;
       if (boss != null &&
           inGroundEllipse(boss.position, p, boltRadius, margin: 70)) {
-        _damageBoss(4, boss.core);
+        markedHit = marked(boss.core);
+        _damageBoss(markedHit ? 6 : 4, boss.core);
       }
       for (final o in List<ReturnHomeObstacle>.of(_spawner.obstacles)) {
         final inColumn = o.kind == ReturnHomeObstacleKind.bird &&
             (o.position.x - p.x).abs() < 34 &&
             o.position.y < p.y;
         if (inGroundEllipse(o.position, p, boltRadius) || inColumn) {
+          markedHit = markedHit || marked(o.position);
           _destroy(o);
         }
+      }
+      if (markedHit) {
+        final slot = attacks.indexOf(HomeAttack.bolt);
+        if (slot >= 0) attackCooldown[slot] = max(0, attackCooldown[slot] - 2);
+        _showCombo('SÉT TINH ANH!', p, const Color(0xFFFFE497));
       }
     }
 
@@ -626,6 +706,8 @@ class ReturnHomeGame extends FlameGame {
       }
     }
 
+    _resolveComboRocks();
+
     final decoy = _decoy;
     if (decoy != null && decoy.expired) {
       _decoy = null;
@@ -642,7 +724,36 @@ class ReturnHomeGame extends FlameGame {
       final boss = _boss;
       if (boss != null &&
           boss.core.distanceTo(center) <= HomeAttack.decoy.radius + 80) {
-        _damageBoss(4, boss.core);
+        _damageBoss(decoy.empowered ? 6 : 4, boss.core);
+      }
+    }
+  }
+
+  void _showCombo(String label, Vector2 at, Color color) {
+    if (_comboNoticeCooldown > 0) return;
+    _comboNoticeCooldown = .8;
+    _world.add(ReturnHomeDamageText(
+        position: at.clone() + Vector2(0, -38), text: label, color: color));
+  }
+
+  void _resolveComboRocks() {
+    for (final rock in _comboRocks.keys.toList()) {
+      final boss = _boss;
+      if (boss != null && boss.hitTest(rock.solidRect)) {
+        _damageBoss(4, rock.position);
+        _destroy(rock);
+        continue;
+      }
+      final hit = _spawner.obstacles
+          .where((o) =>
+              o != rock &&
+              !_hidden(o) &&
+              !_comboRocks.containsKey(o) &&
+              o.hits(rock.solidRect))
+          .firstOrNull;
+      if (hit != null) {
+        _destroy(hit);
+        _destroy(rock);
       }
     }
   }
@@ -650,6 +761,8 @@ class ReturnHomeGame extends FlameGame {
   void _destroy(ReturnHomeObstacle o, {bool icy = false}) {
     _spawner.obstacles.remove(o);
     _contacts.remove(o);
+    _comboRocks.remove(o);
+    o.comboProjectile = false;
     o.removeFromParent();
     _world.add(ReturnHomeBurst(
       position: o.position.clone(),
@@ -988,6 +1101,7 @@ class ReturnHomeGame extends FlameGame {
     for (final obstacle in List<ReturnHomeObstacle>.of(_spawner.obstacles)) {
       if (obstacle.kind == ReturnHomeObstacleKind.log) continue;
       final touching = obstacle.hits(_cat.hitbox);
+      if (_comboRocks.containsKey(obstacle)) continue;
       if (touching && obstacle.frozen > 0) continue;
       if (touching && reflectTime > 0 && !_contacts.contains(obstacle)) {
         _reflect(obstacle);
@@ -1121,6 +1235,13 @@ class ReturnHomeGame extends FlameGame {
       _dragon = null;
     }
     cancelAim();
+    for (final rock in _comboRocks.keys) {
+      rock.comboProjectile = false;
+    }
+    _comboRocks.clear();
+    _decoy?.removeFromParent();
+    _decoy = null;
+    _comboNoticeCooldown = 0;
     _scratchCooldown = 0;
     lives = startingLives;
     _contacts.clear();

@@ -71,6 +71,7 @@ class ReturnHomeObstacle extends PositionComponent {
 
   /// A bird scared off by a roar flies away and can no longer hit.
   bool harmless = false;
+  bool comboProjectile = false;
 
   /// Seconds left encased in ice: a frozen hazard stands still and cannot
   /// hurt the cat (a frozen log is still a wall). The game counts it down.
@@ -317,6 +318,15 @@ class ReturnHomeObstacle extends PositionComponent {
         _paintSpring(canvas);
       case ReturnHomeObstacleKind.crab:
         paintCrab(canvas, walk: _flap, resting: springT > 0);
+    }
+    if (comboProjectile) {
+      canvas.drawCircle(
+          Offset.zero,
+          rockRadius + 5,
+          Paint()
+            ..color = const Color(0xCC8EE6CC)
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = 2.5);
     }
     if (frozen > 0) {
       switch (kind) {

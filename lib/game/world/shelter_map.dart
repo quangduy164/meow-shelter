@@ -9,7 +9,7 @@ class ShelterMap {
     required this.name,
     required this.rule,
     this.obstacles = const [],
-    this.gate,
+    this.sprinkler,
     this.altObstacles = const [],
     this.mud = const [],
   });
@@ -21,8 +21,8 @@ class ShelterMap {
   final String rule;
   final List<Rect> obstacles;
 
-  /// Garden gate: blocks while closed, see [gateClosed].
-  final Rect? gate;
+  /// Water spray area; active for three seconds in each ten-second cycle.
+  final Rect? sprinkler;
 
   /// Warehouse crates swap between [obstacles] and these.
   final List<Rect> altObstacles;
@@ -30,36 +30,34 @@ class ShelterMap {
   /// Shallow mud that slows cats down.
   final List<Rect> mud;
 
-  static const gatePeriod = 10.0, cratePeriod = 8.0, mudSpeed = .5;
+  static const sprinklerPeriod = 10.0, cratePeriod = 8.0, mudSpeed = .5;
 
   static const none =
       ShelterMap(kind: ShelterMapKind.garden, name: '', rule: '');
 
-  bool gateClosed(double t) => gate != null && t % gatePeriod < gatePeriod / 2;
+  bool spraying(double t) => sprinkler != null && t % sprinklerPeriod >= 7;
   bool cratesSwapped(double t) =>
       altObstacles.isNotEmpty && (t ~/ cratePeriod).isOdd;
 
   /// Seconds until the gate or crates change, for warnings.
-  double untilChange(double t) => gate != null
-      ? gatePeriod / 2 - t % (gatePeriod / 2)
+  double untilChange(double t) => sprinkler != null
+      ? (spraying(t) ? sprinklerPeriod : 7) - t % sprinklerPeriod
       : cratePeriod - t % cratePeriod;
 
   List<Rect> blockersAt(double t) => [
         ...(cratesSwapped(t) ? altObstacles : obstacles),
-        if (gateClosed(t)) gate!,
+        if (spraying(t)) sprinkler!,
       ];
 
   static const garden = ShelterMap(
     kind: ShelterMapKind.garden,
     name: 'Vườn hoa',
-    rule: 'Cổng giữa vườn đóng mở liên tục',
+    rule: 'Vòi tưới báo trước rồi phun nước, mèo sẽ né nước',
     obstacles: [
       Rect.fromLTWH(.25, .30, .12, .11),
       Rect.fromLTWH(.63, .30, .12, .11),
-      Rect.fromLTWH(.23, .345, .17, .035),
-      Rect.fromLTWH(.60, .345, .17, .035),
     ],
-    gate: Rect.fromLTWH(.40, .345, .20, .035),
+    sprinkler: Rect.fromLTWH(.43, .32, .14, .17),
   );
 
   static const warehouse = ShelterMap(
