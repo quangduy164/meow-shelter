@@ -15,7 +15,7 @@ const _ink = Color(0xFF5A3214);
 const _cream = Color(0xFFFFF4DA);
 
 /// Home: logo and the main "play" action on the left, every other mode as a
-/// labelled colour tile on the right, coins always visible.
+/// labelled colour tile on the right.
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
@@ -27,8 +27,6 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> _open(Widget screen) async {
     await Navigator.of(context)
         .push(MaterialPageRoute<void>(builder: (_) => screen));
-    // Coins may have changed in the mode we just left.
-    if (mounted) setState(() {});
   }
 
   @override
@@ -68,8 +66,8 @@ class _HomeScreenState extends State<HomeScreen> {
           const GameLogo(),
           const SizedBox(height: 22),
           _Pressable(
-            width: 300,
-            height: 64,
+            width: 240,
+            height: 52,
             color: const Color(0xFFFFB83F),
             shade: const Color(0xFFC0731F),
             // Continue from the first level not yet won.
@@ -78,63 +76,55 @@ class _HomeScreenState extends State<HomeScreen> {
             child: const Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(Icons.play_arrow_rounded, size: 34, color: _ink),
+                Icon(Icons.play_arrow_rounded, size: 28, color: _ink),
                 SizedBox(width: 6),
                 Text('BẮT ĐẦU',
                     style: TextStyle(
                         color: _ink,
-                        fontSize: 24,
+                        fontSize: 20,
                         fontWeight: FontWeight.w900,
                         letterSpacing: 2)),
               ],
             ),
           ),
           const SizedBox(height: 12),
-          Row(mainAxisSize: MainAxisSize.min, children: [
-            _Pressable(
-              width: 172,
-              height: 46,
-              color: _cream,
-              shade: const Color(0xFFB98A55),
-              onPressed: () => _open(const LevelSelectScreen()),
-              child: const _Label(Icons.grid_view_rounded, 'CHỌN MÀN'),
-            ),
-            const SizedBox(width: 12),
-            _CoinChip(coins: CampState.instance.coins),
-          ]),
+          _Pressable(
+            width: 148,
+            height: 42,
+            color: _cream,
+            shade: const Color(0xFFB98A55),
+            onPressed: () => _open(const LevelSelectScreen()),
+            child: const _Label(Icons.grid_view_rounded, 'CHỌN MÀN'),
+          ),
         ],
       );
 
   Widget _modeGrid() => SizedBox(
-        width: 420,
+        width: 348,
         child: Wrap(
           spacing: 12,
           runSpacing: 12,
           children: [
             _ModeTile(
               title: 'CÂU CÁ',
-              subtitle: 'Sưu tập cá hiếm',
               icon: ModeIconKind.fishing,
               color: const Color(0xFF3E9FB0),
               onPressed: () => _open(const FishingScreen()),
             ),
             _ModeTile(
               title: 'MÈO VỀ NHÀ',
-              subtitle: 'Né chướng ngại về nhà',
               icon: ModeIconKind.returnHome,
               color: const Color(0xFF5E9A48),
               onPressed: () => _open(const ReturnHomeScreen()),
             ),
             _ModeTile(
               title: 'CỨU HỘ VÔ HẠN',
-              subtitle: 'Cứu mèo không giới hạn',
               icon: ModeIconKind.rescue,
               color: const Color(0xFFE0703F),
               onPressed: () => _open(const GameScreen(level: infiniteLevel)),
             ),
             _ModeTile(
               title: 'TRẠI MÈO',
-              subtitle: 'Chăm mèo, trang trí sân',
               icon: ModeIconKind.camp,
               color: const Color(0xFFC85A7C),
               onPressed: () => _open(const CampScreen()),
@@ -153,86 +143,55 @@ class _Label extends StatelessWidget {
   Widget build(BuildContext context) => Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(icon, size: 22, color: _ink),
+          Icon(icon, size: 18, color: _ink),
           const SizedBox(width: 6),
           Text(text,
               style: const TextStyle(
                   color: _ink,
-                  fontSize: 16,
+                  fontSize: 14,
                   fontWeight: FontWeight.w900,
                   letterSpacing: 1)),
         ],
       );
 }
 
-class _CoinChip extends StatelessWidget {
-  const _CoinChip({required this.coins});
-  final int coins;
-
-  @override
-  Widget build(BuildContext context) => Container(
-        height: 46,
-        padding: const EdgeInsets.symmetric(horizontal: 14),
-        decoration: BoxDecoration(
-          color: const Color(0xCC5A3214),
-          borderRadius: BorderRadius.circular(23),
-        ),
-        child: Row(mainAxisSize: MainAxisSize.min, children: [
-          const Icon(Icons.monetization_on_rounded,
-              color: Color(0xFFFFC94A), size: 24),
-          const SizedBox(width: 6),
-          Text('$coins',
-              style: const TextStyle(
-                  color: _cream, fontSize: 18, fontWeight: FontWeight.w900)),
-        ]),
-      );
-}
-
-/// Solid colour tile: icon on top, white title and a short description.
+/// Solid colour tile: the icon and title share one centered visual block.
 class _ModeTile extends StatelessWidget {
   const _ModeTile({
     required this.title,
-    required this.subtitle,
     required this.icon,
     required this.color,
     required this.onPressed,
   });
   final String title;
-  final String subtitle;
   final ModeIconKind icon;
   final Color color;
   final VoidCallback onPressed;
 
   @override
   Widget build(BuildContext context) => _Pressable(
-        width: 204,
-        height: 146,
+        width: 168,
+        height: 116,
         color: color,
         shade: Color.lerp(color, Colors.black, .35)!,
         onPressed: onPressed,
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(14, 12, 12, 12),
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              ModeIcon(kind: icon, size: 54, onColor: true),
-              const Spacer(),
+              ModeIcon(kind: icon, size: 44, onColor: true),
+              const SizedBox(height: 8),
               Text(title,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.center,
                   style: const TextStyle(
                       color: Colors.white,
-                      fontSize: 18,
+                      fontSize: 15,
                       fontWeight: FontWeight.w900,
-                      letterSpacing: .5)),
-              const SizedBox(height: 2),
-              Text(subtitle,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                      color: Color(0xE6FFFFFF),
-                      fontSize: 12.5,
-                      fontWeight: FontWeight.w600)),
+                      letterSpacing: .2)),
             ],
           ),
         ),

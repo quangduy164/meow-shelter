@@ -183,58 +183,6 @@ void paintFlowers(Canvas canvas, ReturnHomeRoad road) {
   }
 }
 
-/// The destination at the end of the run, seated on the lane's top edge so it
-/// still reads as "home" now that the road curves.
-void paintHouse(Canvas canvas, ReturnHomeRoad road) {
-  final w = road.worldWidth;
-  final h = road.viewportHeight;
-  canvas.save();
-  canvas.translate(0, road.topEdge(w - 100) - (h * .30 + 62));
-  canvas.drawOval(Rect.fromLTWH(w - 178, h * .30 + 52, 150, 22),
-      Paint()..color = const Color(0x33604432));
-  canvas.drawPath(
-      Path()
-        ..moveTo(w - 168, h * .30)
-        ..lineTo(w - 102, h * .14)
-        ..lineTo(w - 36, h * .30)
-        ..close(),
-      Paint()..color = const Color(0xFFB96D4B));
-  canvas.drawPath(
-      Path()
-        ..moveTo(w - 168, h * .30)
-        ..lineTo(w - 102, h * .14)
-        ..lineTo(w - 82, h * .22)
-        ..lineTo(w - 140, h * .30)
-        ..close(),
-      Paint()..color = const Color(0xFFD98B59));
-  canvas.drawRRect(
-      RRect.fromRectAndRadius(
-          Rect.fromLTWH(w - 155, h * .30, 106, 62), const Radius.circular(5)),
-      Paint()..color = const Color(0xFFFFE5A6));
-  canvas.drawRRect(
-      RRect.fromRectAndRadius(
-          Rect.fromLTWH(w - 112, h * .35, 28, 42), const Radius.circular(10)),
-      Paint()..color = const Color(0xFF9B6248));
-  canvas.drawCircle(
-      Offset(w - 90, h * .43), 3, Paint()..color = const Color(0xFFFFD05A));
-  canvas.drawRRect(
-      RRect.fromRectAndRadius(
-          Rect.fromLTWH(w - 151, h * .34, 22, 18), const Radius.circular(2)),
-      Paint()..color = const Color(0xFF76B8B0));
-  canvas.drawRRect(
-      RRect.fromRectAndRadius(
-          Rect.fromLTWH(w - 77, h * .34, 22, 18), const Radius.circular(2)),
-      Paint()..color = const Color(0xFF76B8B0));
-  final welcome = Paint()
-    ..color = const Color(0xFFF4D78F)
-    ..style = PaintingStyle.stroke
-    ..strokeWidth = 4;
-  canvas.drawLine(Offset(w - 144, h * .29), Offset(w - 60, h * .29), welcome);
-  canvas.drawLine(Offset(w - 137, h * .29), Offset(w - 137, h * .36), welcome);
-  canvas.drawLine(Offset(w - 67, h * .29), Offset(w - 67, h * .36), welcome);
-  canvas.restore();
-}
-
 /// Tall bamboo culms on both sides with a few leaf sprays.
 void paintBamboo(Canvas canvas, ReturnHomeRoad road, double x, int index) {
   final h = road.viewportHeight;

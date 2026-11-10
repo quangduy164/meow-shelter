@@ -11,7 +11,9 @@ import 'package:flutter/painting.dart';
 import 'return_home_background.dart';
 import 'return_home_cat.dart';
 import 'return_home_crossing.dart';
+import 'return_home_dragon.dart';
 import 'return_home_hud.dart';
+import 'return_home_gate.dart';
 import 'return_home_joystick.dart';
 import 'return_home_obstacle.dart';
 import 'return_home_pickup.dart';
@@ -80,6 +82,29 @@ class ReturnHomeGame extends FlameGame {
 
   /// Slot whose button is being held (range preview showing), if any.
   int? aimingSlot;
+
+  /// Boss fight on the final screen (see return_home_dragon.dart).
+  ReturnHomeDragon? _dragon;
+  bool bossDefeated = false;
+  double _scratchCooldown = 0;
+  double _bossCamera = 0;
+  String zoneSubtitle = 'Đã lưu checkpoint';
+  static const int bossBonus = 30;
+
+  bool get bossFight => _dragon != null && !bossDefeated;
+
+  /// Boss health 0..1 for the HUD, null when no fight is on.
+  double? get bossHealth => bossFight ? _dragon!.hpShare : null;
+  int get bossPhase => _dragon?.phase ?? 1;
+  bool get bossTired => (_dragon?.tired ?? 0) > 0;
+
+  /// The dragon when skills can hurt it.
+  ReturnHomeDragon? get _boss {
+    final d = _dragon;
+    return d != null && !bossDefeated && d.vulnerable ? d : null;
+  }
+
+  double get _arenaLeft => road.worldWidth - size.x;
 
   int get stars => 1 + (falls == 0 ? 1 : 0) + (fish >= 10 ? 1 : 0);
 
@@ -160,6 +185,13 @@ class ReturnHomeGame extends FlameGame {
     if (_steered(stick)) return Vector2(stick!.dx, stick.dy).normalized();
     if (attack == HomeAttack.iceBridge) return Vector2(_facing, 0);
     final target = _autoTarget(attack.range);
+    final boss = _boss;
+    if (boss != null &&
+        (target == null ||
+            boss.aimPoint.distanceTo(_castOrigin) <
+                target.position.distanceTo(_castOrigin))) {
+      return (boss.aimPoint - _castOrigin).normalized();
+    }
     if (target == null) return Vector2(_facing, 0);
     return (target.position - _castOrigin).normalized();
   }
@@ -193,6 +225,19 @@ class ReturnHomeGame extends FlameGame {
         // Stand the wall between the cat and the rock.
         point = origin + (point - origin) * .6;
       }
+      final boss = _boss;
+      if (boss != null && target == null) {
+        if (attack == HomeAttack.bolt || attack == HomeAttack.fireBomb) {
+          point = boss.position.clone();
+        } else if (attack == HomeAttack.stoneWall) {
+          // Shield the cat from the dragon's fire.
+          point = origin + (boss.core - origin).normalized() * 110;
+        }
+      }
+    }
+    final reach = point - origin;
+    if (reach.length > attack.range) {
+      point = origin + reach.normalized() * attack.range;
     }
     if (attack == HomeAttack.shadowStep || attack == HomeAttack.decoy) {
       // Feet must land on the road.
@@ -290,6 +335,14 @@ class ReturnHomeGame extends FlameGame {
             o.frozen = attack.duration;
           }
         }
+        final boss = _boss;
+        if (boss != null &&
+            boss.core.distanceTo(center) <= attack.radius + 80) {
+          boss
+            ..frozen = 2.5
+            ..interrupt();
+          _damageBoss(1, boss.core);
+        }
       case HomeAttack.iceBridge:
         final bridge = ReturnHomeIceBridge(
             origin: _catCenter, direction: _aimDirection(attack, stick));
@@ -324,6 +377,11 @@ class ReturnHomeGame extends FlameGame {
         o.scare(center, roarPush);
         _contacts.remove(o);
       }
+    }
+    final boss = _boss;
+    if (boss != null && boss.core.distanceTo(center) <= roarRadius + 80) {
+      boss.interrupt();
+      _damageBoss(1, boss.core);
     }
     _cat.invulnerable = max(_cat.invulnerable, .35);
   }
@@ -416,7 +474,26 @@ class ReturnHomeGame extends FlameGame {
   }
 
   void _resolveAttacks() {
+    final boss = _boss;
     for (final shot in List<ReturnHomeProjectile>.of(_projectiles)) {
+      if (boss != null && !shot.hitBoss && boss.hitTest(shot.hitRect)) {
+        shot.hitBoss = true;
+        if (shot.icy) {
+          boss
+            ..frozen = max(boss.frozen, 1.2)
+            ..interrupt();
+          _damageBoss(1, shot.position);
+        } else {
+          _damageBoss(2, shot.position);
+          _projectiles.remove(shot);
+          shot.removeFromParent();
+          _world.add(ReturnHomeBurst(
+              position: shot.position.clone(),
+              color: const Color(0xFFFF8A3A),
+              fiery: true));
+          continue;
+        }
+      }
       final hits = _spawner.obstacles
           .where((o) =>
               !_hidden(o) && !shot.hit.contains(o) && o.hits(shot.hitRect))
@@ -457,6 +534,10 @@ class ReturnHomeGame extends FlameGame {
       }
       if (breath.blowing) breath.position = _castOrigin;
       if (!breath.tickNow) continue;
+      if (boss != null &&
+          (breath.covers(boss.aimPoint) || breath.covers(boss.core))) {
+        _damageBoss(1, boss.aimPoint);
+      }
       for (final o in List<ReturnHomeObstacle>.of(_spawner.obstacles)) {
         if (!_hidden(o) && breath.covers(o.position)) _hurt(o);
       }
@@ -468,6 +549,12 @@ class ReturnHomeGame extends FlameGame {
         continue;
       }
       if (!bomb.explodeNow && !bomb.tickNow) continue;
+      if (boss != null &&
+          inGroundEllipse(boss.position, bomb.target, bomb.radius,
+              margin: 70)) {
+        // Only the blast hurts the dragon; the burning patch is for hazards.
+        if (bomb.explodeNow) _damageBoss(3, boss.core);
+      }
       for (final o in List<ReturnHomeObstacle>.of(_spawner.obstacles)) {
         if (_hidden(o) || !bomb.covers(o.position)) continue;
         bomb.explodeNow ? _destroy(o) : _hurt(o);
@@ -481,6 +568,10 @@ class ReturnHomeGame extends FlameGame {
       }
       if (!bolt.strikeNow) continue;
       final p = bolt.position;
+      if (boss != null &&
+          inGroundEllipse(boss.position, p, boltRadius, margin: 70)) {
+        _damageBoss(4, boss.core);
+      }
       for (final o in List<ReturnHomeObstacle>.of(_spawner.obstacles)) {
         final inColumn = o.kind == ReturnHomeObstacleKind.bird &&
             (o.position.x - p.x).abs() < 34 &&
@@ -547,6 +638,11 @@ class ReturnHomeGame extends FlameGame {
           o.scare(center, roarPush);
         }
       }
+      final boss = _boss;
+      if (boss != null &&
+          boss.core.distanceTo(center) <= HomeAttack.decoy.radius + 80) {
+        _damageBoss(4, boss.core);
+      }
     }
   }
 
@@ -566,6 +662,135 @@ class ReturnHomeGame extends FlameGame {
               _ => const Color(0xFF8D9690),
             },
     ));
+  }
+
+  // ---- Boss ---------------------------------------------------------------
+
+  void _startBoss(double cameraX) {
+    final x = road.worldWidth - 236;
+    final dragon = ReturnHomeDragon(
+        road: road, feet: Vector2(x, road.centerY(x) + road.halfWidth(x) * .1))
+      ..arenaLeft = _arenaLeft
+      ..target = _catCenter;
+    _dragon = dragon;
+    _world.add(dragon);
+    _bossCamera = cameraX;
+    zoneName = 'RỒNG LỬA XUẤT HIỆN!';
+    zoneSubtitle = 'Đánh bại rồng để về nhà';
+    checkpointMessage = 2.4;
+  }
+
+  void _damageBoss(double amount, Vector2 at) {
+    final dragon = _dragon;
+    if (dragon == null) return;
+    final dealt = dragon.hurt(amount);
+    if (dealt <= 0) return;
+    _world.add(ReturnHomeDamageText(
+        position: at + Vector2(0, -24),
+        text: '-${dealt.round()}',
+        color: dealt > amount
+            ? const Color(0xFFFFE15A)
+            : const Color(0xFFFFF4DA)));
+  }
+
+  void _updateBoss(double dt) {
+    final dragon = _dragon;
+    if (dragon == null) return;
+    if (dragon.gone) {
+      dragon.removeFromParent();
+      _dragon = null;
+      return;
+    }
+    if (dragon.defeated) {
+      if (!bossDefeated) {
+        bossDefeated = true;
+        fish += 10;
+        zoneName = 'ĐÃ ĐÁNH BẠI RỒNG!';
+        zoneSubtitle = '+10 cá · đường về nhà đã mở';
+        checkpointMessage = 2.8;
+      }
+      return;
+    }
+    dragon
+      ..arenaLeft = _arenaLeft
+      ..target = _decoy?.lureCenter ?? _catCenter
+      ..timeScale = timeStopTime > 0
+          ? 0
+          : catEyeTime > 0
+              ? .6
+              : 1;
+    // The dragon blocks the lane: the cat stays in the arena in front of it.
+    final minX = _arenaLeft + 6;
+    final maxX = dragon.bodyRect.left - ReturnHomeCat.hitboxLeft - 80;
+    if (_cat.position.x > maxX) {
+      _cat.position.x = maxX;
+      _cat.velocity.x = min(0, _cat.velocity.x);
+    } else if (_cat.position.x < minX) {
+      _cat.position.x = minX;
+      _cat.velocity.x = max(0, _cat.velocity.x);
+    }
+
+    final walls = _walls.where((w) => w.standing).toList();
+    for (final attack in List<DragonAttack>.of(dragon.attacks)) {
+      if (attack is DragonFlameLane) {
+        double? stop;
+        for (final w in walls) {
+          final inBand = (w.position.y - attack.laneY).abs() <
+              w.length / 2 + DragonFlameLane.halfHeight;
+          if (inBand && w.position.x < attack.right) {
+            final x = w.position.x + ReturnHomeStoneWall.thickness;
+            stop = stop == null ? x : max(stop, x);
+          }
+        }
+        attack.blockedAt = stop;
+      } else if (attack is DragonMeteor && attack.impactNow) {
+        attack.blocked = walls.any(
+            (w) => w.closest(attack.target).distanceTo(attack.target) < 44);
+      }
+      if (attack.hits(_cat.hitbox)) {
+        _bossHitsCat(dragon);
+        if (_dragon != dragon || dragon.defeated) return;
+      }
+    }
+
+    // Tired: the head is down in the lane, claw it!
+    _scratchCooldown = max(0, _scratchCooldown - dt);
+    if (dragon.tired > 0 &&
+        _scratchCooldown <= 0 &&
+        _cat.hitbox.overlaps(dragon.headRect)) {
+      _scratchCooldown = .45;
+      final head = dragon.headRect.center;
+      _world.add(ReturnHomeBurst(
+          position: Vector2(head.dx, head.dy), color: const Color(0xFFFFF4DA)));
+      _damageBoss(2.5, Vector2(head.dx, head.dy));
+    }
+
+    if (dragon.summonNow) {
+      final mouth = dragon.mouth;
+      for (var i = 0; i < 2; i++) {
+        final x = mouth.x - 40;
+        final half = road.halfWidth(x) - 20;
+        _spawner.addRockAt(
+            Vector2(x, road.centerY(x) + (i == 0 ? -half * .6 : half * .6)),
+            speed: 200 + i * 40);
+      }
+      if (dragon.phase == 3) _spawner.addBirdAt(_arenaLeft + size.x + 40);
+    }
+  }
+
+  void _bossHitsCat(ReturnHomeDragon dragon) {
+    if (_cat.dashing || _cat.invulnerable > 0 || _hitCooldown > 0) return;
+    _hitCooldown = hitCooldown;
+    if (reflectTime > 0) {
+      _reflectAura.flash();
+      _damageBoss(2, dragon.core);
+      return;
+    }
+    _cat.bumpAwayFrom(dragon.core);
+    if (_cat.consumeShield()) return;
+    lives -= 1;
+    _cat.invulnerable = hitCooldown;
+    if (lives <= 0) _respawn();
   }
 
   @override
@@ -611,6 +836,7 @@ class ReturnHomeGame extends FlameGame {
     // the cat along the longer world.
     camera.viewfinder.position = Vector2(size.x / 2, size.y / 2);
     world.add(ReturnHomeBackground(road: road));
+    world.add(ReturnHomeGate());
     // One long crossing near the end of the stream stretch; the dry part
     // before it belongs to the crabs.
     for (final f in [.352]) {
@@ -683,6 +909,7 @@ class ReturnHomeGame extends FlameGame {
       return;
     }
     if (finished) return;
+    final fallsBefore = falls;
     elapsed += dt;
     checkpointMessage = max(0, checkpointMessage - dt);
     _updateCheckpoint();
@@ -694,9 +921,20 @@ class ReturnHomeGame extends FlameGame {
     _tickSkillTimers(dt);
     _updateAim();
     final timeScale = timeStopTime > 0 ? 0.0 : 1.0;
-    final cameraX = _cat.position.x
+    var cameraX = _cat.position.x
         .clamp(size.x / 2, road.worldWidth - size.x / 2)
         .toDouble();
+    if (!bossDefeated &&
+        _dragon == null &&
+        _cat.position.x >= road.worldWidth - size.x * .78) {
+      _startBoss(cameraX);
+    }
+    if (bossFight) {
+      // Pan to the arena (the last screen) and hold it there.
+      _bossCamera +=
+          (road.worldWidth - size.x / 2 - _bossCamera) * min(1, dt * 3);
+      cameraX = _bossCamera;
+    }
     final rightEdge = cameraX + size.x / 2;
     _spawner.tick(
       dt: dt * timeScale,
@@ -713,13 +951,19 @@ class ReturnHomeGame extends FlameGame {
     _sinkRocks();
     _checkWater();
     _collectPickups();
+    _updateBoss(dt);
+    if (falls != fallsBefore) {
+      cameraX = _cat.position.x
+          .clamp(size.x / 2, road.worldWidth - size.x / 2)
+          .toDouble();
+    }
     camera.viewfinder.position = Vector2(cameraX, size.y / 2);
     const start = ReturnHomeRoad.startX;
     progress = ((_cat.position.x - start) / max(1.0, road.endX - start))
         .clamp(0.0, 1.0);
-    if (progress >= 1) {
+    if (progress >= 1 && bossDefeated) {
       finished = true;
-      reward = fish * 2 + stars * 10;
+      reward = fish * 2 + stars * 10 + (bossDefeated ? bossBonus : 0);
       unawaited(CampState.instance.addCoins(reward));
     }
   }
@@ -849,6 +1093,7 @@ class ReturnHomeGame extends FlameGame {
         checkpointX = x;
         checkpointMessage = 1.8;
         zoneName = biome.name.toUpperCase();
+        zoneSubtitle = 'Đã lưu checkpoint';
       }
     }
   }
@@ -868,10 +1113,21 @@ class ReturnHomeGame extends FlameGame {
 
   void _respawn() {
     falls += 1;
+    // Release the arena before respawning; the checkpoint may be outside it.
+    if (bossFight) {
+      _dragon!.reset();
+      _dragon!.removeFromParent();
+      _dragon = null;
+    }
+    cancelAim();
+    _scratchCooldown = 0;
     lives = startingLives;
     _contacts.clear();
     _hitCooldown = 1.5;
     _respawnAt(checkpointX);
+    zoneName = 'ĐÃ VỀ CHECKPOINT';
+    zoneSubtitle = 'Hồi đầy mạng · tiếp tục hành trình';
+    checkpointMessage = 1.8;
   }
 
   /// Puts the cat back on a spot that is free of logs, springs and spikes, and
@@ -942,6 +1198,10 @@ class ReturnHomeGame extends FlameGame {
       reward: reward,
       zone: checkpointMessage > 0 ? zoneName : null,
       finished: finished,
+      zoneSubtitle: zoneSubtitle,
+      bossHealth: bossHealth,
+      bossPhase: bossPhase,
+      bossTired: bossTired,
     );
   }
 }

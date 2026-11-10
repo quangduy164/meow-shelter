@@ -209,6 +209,18 @@ class ReturnHomeSpawner {
     _place(bird);
   }
 
+  /// A rock thrown into play by the dragon, rolling left from [at].
+  void addRockAt(Vector2 at, {required double speed}) {
+    final rock = ReturnHomeObstacle(
+        kind: ReturnHomeObstacleKind.rock, road: road, position: at.clone());
+    rock.velocity = Vector2(-speed, (random.nextDouble() * 2 - 1) * 60);
+    rock.angularVelocity = -3.5;
+    _place(rock);
+  }
+
+  /// A bird called in by the dragon.
+  void addBirdAt(double x) => _addBird(x);
+
   double _depth(double reach) => (random.nextDouble() * 2 - 1) * reach;
 
   void _place(ReturnHomeObstacle obstacle) {

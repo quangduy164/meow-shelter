@@ -55,7 +55,6 @@ class ReturnHomeBackground extends PositionComponent {
     paintStream(canvas, road);
     _props(canvas);
     paintFlowers(canvas, road);
-    paintHouse(canvas, road);
     _scene?.dispose();
     _scene = recorder.endRecording();
   }

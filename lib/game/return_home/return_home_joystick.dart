@@ -14,31 +14,43 @@ class ReturnHomeJoystick extends PositionComponent with DragCallbacks {
 
   final Vector2 delta = Vector2.zero();
   static const double _radius = 34.0;
+  final Vector2 _dragOffset = Vector2.zero();
+  int? _pointer;
+
+  // Invisible input area around the fixed joystick; drawing stays 116px.
+  @override
+  bool containsLocalPoint(Vector2 point) => Rect.fromCenter(
+        center: Offset(size.x / 2, size.y / 2),
+        width: 320,
+        height: 280,
+      ).contains(Offset(point.x, point.y));
 
   Vector2 get relativeDelta => delta / _radius;
 
   @override
   void onDragStart(DragStartEvent event) {
+    if (_pointer != null) return;
     super.onDragStart(event);
-    delta.setFrom(event.localPosition - size / 2);
-    _clampDelta();
+    _pointer = event.pointerId;
+    _dragOffset.setZero();
+    delta.setZero();
   }
 
   @override
   void onDragUpdate(DragUpdateEvent event) {
-    delta.add(event.localDelta);
+    if (event.pointerId != _pointer) return;
+    // Canvas deltas remain valid when the finger leaves the input area.
+    _dragOffset.add(event.canvasDelta);
+    delta.setFrom(_dragOffset);
     _clampDelta();
   }
 
   @override
   void onDragEnd(DragEndEvent event) {
+    if (event.pointerId != _pointer) return;
     super.onDragEnd(event);
-    delta.setZero();
-  }
-
-  @override
-  void onDragCancel(DragCancelEvent event) {
-    super.onDragCancel(event);
+    _pointer = null;
+    _dragOffset.setZero();
     delta.setZero();
   }
 

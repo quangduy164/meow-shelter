@@ -115,10 +115,8 @@ class _SkillButtonState extends State<_SkillButton> {
   Widget build(BuildContext context) {
     final game = widget.game;
     if (!game.started) return const SizedBox.shrink();
-    // MOBA-style cluster: the breed skill is the big button in the corner,
-    // the three secondary skills sit on an arc around it (left, diagonal,
-    // top), like the attack + skill layout of mobile action games.
-    const main = 84.0, small = 62.0, arc = 118.0, label = 16.0;
+    // Keep the thumb resting position inboard of the screen edges.
+    const main = 84.0, small = 62.0, arc = 116.0, label = 16.0;
     const box = Size(main / 2 + arc + small / 2 + 20,
         main / 2 + arc + small / 2 + label + 8);
     final mainCenter = Offset(box.width - main / 2, box.height - main / 2 - 4);
@@ -134,48 +132,54 @@ class _SkillButtonState extends State<_SkillButton> {
 
     final aiming = game.aimingSlot != null;
     return SafeArea(
-      child: Stack(children: [
-        Positioned(
-          key: const ValueKey('cluster'),
-          right: 18,
-          bottom: 14,
-          child: SizedBox.fromSize(
-            size: box,
-            child: Stack(clipBehavior: Clip.none, children: [
-              Positioned(
-                left: mainCenter.dx - main / 2,
-                top: mainCenter.dy - main / 2,
-                child: ReturnHomeSkillButton(
-                  catType: game.selectedCat,
-                  size: main,
-                  ready: game.skillReady,
-                  cooldownLeft: game.skillCooldown,
-                  cooldownTotal:
-                      CatBreed.of(game.selectedCat).homeSkill.cooldown,
-                  onPressed: game.activateSkill,
-                ),
-              ),
-              onArc(180, _attackButton(0, small)),
-              onArc(135, _attackButton(1, small)),
-              onArc(90, _attackButton(2, small)),
-            ]),
-          ),
-        ),
-        // Added after the cluster so showing it never rebuilds the buttons
-        // (that used to drop the held finger and need a second press).
-        if (aiming)
+      child: LayoutBuilder(builder: (context, constraints) {
+        // Original corner placement, raised 20px for easier thumb access.
+        const right = 18.0, bottom = 34.0;
+        const mainRight = right + main / 2;
+        return Stack(children: [
           Positioned(
-            key: const ValueKey('cancel'),
-            right: 28,
-            top: 78,
-            child: SizedBox.square(
-              dimension: 76,
-              child: Center(
-                child: ReturnHomeCancelButton(key: _cancelKey, hot: _cancelHot),
-              ),
+            key: const ValueKey('cluster'),
+            right: right,
+            bottom: bottom,
+            child: SizedBox.fromSize(
+              size: box,
+              child: Stack(clipBehavior: Clip.none, children: [
+                Positioned(
+                  left: mainCenter.dx - main / 2,
+                  top: mainCenter.dy - main / 2,
+                  child: ReturnHomeSkillButton(
+                    catType: game.selectedCat,
+                    size: main,
+                    ready: game.skillReady,
+                    cooldownLeft: game.skillCooldown,
+                    cooldownTotal:
+                        CatBreed.of(game.selectedCat).homeSkill.cooldown,
+                    onPressed: game.activateSkill,
+                  ),
+                ),
+                onArc(187, _attackButton(0, small)),
+                onArc(139, _attackButton(1, small)),
+                onArc(91, _attackButton(2, small)),
+              ]),
             ),
           ),
-      ]),
+          // Added after the cluster so showing it never rebuilds the buttons
+          // (that used to drop the held finger and need a second press).
+          if (aiming)
+            Positioned(
+              key: const ValueKey('cancel'),
+              right: mainRight + 80,
+              top: (constraints.maxHeight * .18).clamp(28.0, 80.0),
+              child: SizedBox.square(
+                dimension: 76,
+                child: Center(
+                  child:
+                      ReturnHomeCancelButton(key: _cancelKey, hot: _cancelHot),
+                ),
+              ),
+            ),
+        ]);
+      }),
     );
   }
 }

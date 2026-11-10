@@ -78,6 +78,7 @@ class ReturnHomeProjectile extends PositionComponent {
 
   /// Hazards already hit; a piercing shard hits each one once.
   final hit = <ReturnHomeObstacle>{};
+  bool hitBoss = false;
 
   bool get icy => attack == HomeAttack.iceShard;
   double get radius => attack.radius;

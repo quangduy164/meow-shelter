@@ -363,7 +363,7 @@ class _ReturnHomeAimButtonState extends State<ReturnHomeAimButton> {
         : (widget.cooldownLeft / widget.cooldownTotal).clamp(0.0, 1.0);
     final color = widget.color;
     final held = _pointer != null;
-    final ringReach = widget.size * 1.15;
+    final ringReach = widget.size * .8;
     return Semantics(
       button: true,
       label: widget.label,

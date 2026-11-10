@@ -218,29 +218,14 @@ class _CampScreenState extends State<CampScreen>
               child: SafeArea(
                 child: Padding(
                   padding: const EdgeInsets.all(12),
-                  // Both groups shrink instead of overflowing on narrow
-                  // (4:3) screens.
+                  // Only navigation and panel controls stay in the top bar.
+                  // Progress counters belong inside the panel that uses them.
                   child: Row(children: [
                     RoundButton(
                         glyph: GameGlyph.home,
                         onPressed: () => Navigator.of(context).pop()),
-                    const SizedBox(width: 12),
+                    const Spacer(),
                     Flexible(
-                      child: FittedBox(
-                        fit: BoxFit.scaleDown,
-                        alignment: Alignment.centerLeft,
-                        child: Row(mainAxisSize: MainAxisSize.min, children: [
-                          _Chip(Icons.monetization_on_rounded, '${camp.coins}',
-                              const Color(0xFFE7A72F)),
-                          const SizedBox(width: 8),
-                          _Chip(Icons.pets_rounded, '${_cats.length} bé',
-                              const Color(0xFFD9822B)),
-                        ]),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Flexible(
-                      flex: 2,
                       child: FittedBox(
                         fit: BoxFit.scaleDown,
                         alignment: Alignment.centerRight,
@@ -307,7 +292,8 @@ class _DecorationArt extends StatelessWidget {
 }
 
 /// Compact shop docked at the bottom: one row of category chips and a
-/// horizontal strip of item cards. Coins are shown in the camp top bar.
+/// horizontal strip of item cards. The current coin balance is shown here
+/// while shopping.
 class _ShopBar extends StatefulWidget {
   const _ShopBar({required this.onBought, required this.onClose});
   final VoidCallback onBought;
@@ -351,6 +337,8 @@ class _ShopBarState extends State<_ShopBar> {
                   ],
                 ),
               ),
+              _Chip(Icons.monetization_on_rounded, '${camp.coins}',
+                  const Color(0xFFE7A72F)),
               Padding(
                 padding: const EdgeInsets.fromLTRB(6, 2, 10, 0),
                 child: RoundButton(
