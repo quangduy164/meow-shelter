@@ -58,7 +58,7 @@ class CatBreed {
     color: Color(0xFFF4A34E),
     bedAsset: 'Bed/bed-orange.png',
     catchRule: CatCatchRule('Ham ăn',
-        'Cho ăn 1 con cá. Ăn xong bé ngủ khò rất lâu, cứ thong thả bế vào ổ.'),
+        'Cho ăn 1 con cá. Ăn xong mèo ngủ khò rất lâu, cứ thong thả bế vào ổ.'),
     homeSkill:
         CatHomeSkill('Chạy nhanh', SkillGlyph.sprint, Color(0xFFF08A3A), 5),
     attacks: [HomeAttack.fireball, HomeAttack.flameBreath, HomeAttack.fireBomb],
@@ -80,7 +80,7 @@ class CatBreed {
     color: Color(0xFFDCC7A7),
     bedAsset: 'Bed/bed-himalaya.png',
     catchRule: CatCatchRule(
-        'Nhút nhát', 'Đặt cá cách xa bé. Đặt sát quá bé giật mình bỏ chạy.'),
+        'Nhút nhát', 'Đặt cá cách xa mèo. Đặt sát quá mèo giật mình bỏ chạy.'),
     homeSkill: CatHomeSkill('Lăn né', SkillGlyph.roll, Color(0xFF3E9FB0), 6),
     attacks: [HomeAttack.iceShard, HomeAttack.frostNova, HomeAttack.iceBridge],
   );
@@ -90,7 +90,7 @@ class CatBreed {
     color: Color(0xFFB77E64),
     bedAsset: 'Bed/bed-scottish.png',
     catchRule:
-        CatCatchRule('Kén ăn', 'Phải ăn đủ 2 con cá thì bé mới chịu cho bế.'),
+        CatCatchRule('Kén ăn', 'Phải ăn đủ 2 con cá thì mèo mới chịu cho bế.'),
     homeSkill: CatHomeSkill('Lá chắn', SkillGlyph.shield, Color(0xFF6B9E4E), 8),
     attacks: [HomeAttack.roar, HomeAttack.stoneWall, HomeAttack.reflect],
   );
@@ -100,7 +100,7 @@ class CatBreed {
     color: Color(0xFFE8A86B),
     bedAsset: 'Bed/bed-calico.png',
     catchRule: CatCatchRule('Ham chơi',
-        'Không thèm cá! Chạm vào bé 3 lần liền để chơi cùng, bé mệt là bế được.'),
+        'Không thèm cá! Chạm vào mèo 3 lần liền để chơi cùng, mèo mệt là bế được.'),
     homeSkill: CatHomeSkill('Hồi máu', SkillGlyph.heal, Color(0xFFD9657B), 12),
     attacks: [HomeAttack.magnet, HomeAttack.catEye, HomeAttack.bolt],
   );

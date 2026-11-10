@@ -227,7 +227,7 @@ class MeowShelterGame extends FlameGame {
       _showResult(RoundStatus.lost);
       return;
     }
-    // Mèo chạy ra ngoài được thay bằng một bé cùng loại để màn vẫn có thể thắng.
+    // Mèo chạy ra ngoài được thay bằng một mèo cùng loại để màn vẫn có thể thắng.
     _spawnCat(cat.catType, boss: cat.isBoss);
   }
 

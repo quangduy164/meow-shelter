@@ -57,7 +57,7 @@ const levelChapters = <LevelChapter>[
     LevelConfig(
         id: 204,
         map: ShelterMap.garden,
-        name: 'Bé rụt rè',
+        name: 'Mèo rụt rè',
         catTypes: ['himalaya', 'orange', 'orange'],
         timeLimit: 120,
         speedMultiplier: .65,
@@ -68,7 +68,7 @@ const levelChapters = <LevelChapter>[
     LevelConfig(
         id: 205,
         map: ShelterMap.garden,
-        name: 'Từng bé một',
+        name: 'Từng mèo một',
         catTypes: ['himalaya', 'orange', 'himalaya', 'orange', 'himalaya'],
         timeLimit: 130,
         speedMultiplier: .75,
@@ -130,7 +130,7 @@ const levelChapters = <LevelChapter>[
     LevelConfig(
         id: 210,
         map: ShelterMap.pond,
-        name: 'Bé ham chơi',
+        name: 'Mèo ham chơi',
         catTypes: ['calico', 'orange', 'scottish'],
         timeLimit: 120,
         speedMultiplier: .65,

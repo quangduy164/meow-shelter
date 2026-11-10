@@ -54,6 +54,7 @@ class ReturnHomeGame extends FlameGame {
   double elapsed = 0;
   double checkpointX = ReturnHomeRoad.startX;
   double checkpointMessage = 0;
+  EdgeInsets hudPadding = EdgeInsets.zero;
   String zoneName = '';
   final _pickups = <ReturnHomePickup>[];
 
@@ -1199,6 +1200,8 @@ class ReturnHomeGame extends FlameGame {
       zone: checkpointMessage > 0 ? zoneName : null,
       finished: finished,
       zoneSubtitle: zoneSubtitle,
+      zoneTimeLeft: checkpointMessage,
+      padding: hudPadding,
       bossHealth: bossHealth,
       bossPhase: bossPhase,
       bossTired: bossTired,

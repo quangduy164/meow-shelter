@@ -44,9 +44,9 @@ class CatchTutorialComponent extends PositionComponent {
     var ring = false;
     if (fed) {
       text = type == 'orange'
-          ? 'Mèo cam no bụng ngủ khò rồi! Giữ và kéo bé vào ổ'
+          ? 'Mèo cam no bụng ngủ khò rồi! Giữ và kéo mèo vào ổ'
           : type == 'calico'
-              ? 'Tam thể chơi mệt rồi! Giữ và kéo bé vào ổ'
+              ? 'Tam thể chơi mệt rồi! Giữ và kéo mèo vào ổ'
               : 'Thanh xanh hiện rồi! Giữ và kéo $name vào ổ';
       final bed = shelter();
       from = center;
@@ -56,18 +56,18 @@ class CatchTutorialComponent extends PositionComponent {
     } else {
       switch (type) {
         case 'himalaya':
-          text = 'Himalaya nhút nhát: thả cá NGOÀI vòng tròn, xa bé ra';
+          text = 'Himalaya nhút nhát: thả cá NGOÀI vòng tròn, xa mèo ra';
           _drawShyZone(canvas, center);
           from = bottom;
           to = center + Vector2(-CatCatchRule.shyDistance - 50, 50);
         case 'scottish':
           text = kitten.meals == 0
-              ? 'Scottish kén ăn: cho bé ăn 2 con cá'
+              ? 'Scottish kén ăn: cho mèo ăn 2 con cá'
               : 'Mới ${kitten.meals}/2 thôi! Thả thêm 1 con cá nữa';
           from = bottom;
           to = center;
         case 'calico':
-          text = 'Tam thể không thèm cá! Chạm vào bé 3 lần '
+          text = 'Tam thể không thèm cá! Chạm vào mèo 3 lần '
               '(${kitten.playTaps}/${CatCatchRule.calicoTaps})';
           to = center;
           ring = true;
@@ -76,7 +76,7 @@ class CatchTutorialComponent extends PositionComponent {
           from = bottom;
           to = center + Vector2(0, 40);
         default:
-          text = 'Mèo cam ham ăn: kéo cá ở dưới đến cạnh bé để cho ăn';
+          text = 'Mèo cam ham ăn: kéo cá ở dưới đến cạnh mèo để cho ăn';
           from = bottom;
           to = center;
       }

@@ -687,7 +687,7 @@ class _BondBar extends StatelessWidget {
               const SizedBox(width: 8),
               const Expanded(
                 child: Text(
-                    'Chạm vào bé để vuốt ve · đủ 10 ♥ thì kỹ năng hồi nhanh 1s',
+                    'Chạm vào mèo để vuốt ve · đủ 10 ♥ thì kỹ năng hồi nhanh 1s',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(color: DS.soft, fontSize: 11)),

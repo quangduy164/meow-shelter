@@ -73,10 +73,10 @@ class _RoundResultOverlayState extends State<RoundResultOverlay>
   String get _subtitle {
     final level = _game.level;
     final rescued = _game.rescued;
-    if (level.isInfinite) return 'Cứu được $rescued bé · +${rescued * 5} xu';
-    if (level.isTutorial) return 'Bạn đã biết cách bắt bé này rồi';
-    if (_won) return 'Cứu đủ $rescued bé · +${rescued * 5} xu';
-    return 'Đã cứu $rescued/${level.catTypes.length} bé · thử lại nhé!';
+    if (level.isInfinite) return 'Cứu được $rescued mèo · +${rescued * 5} xu';
+    if (level.isTutorial) return 'Bạn đã biết cách bắt mèo này rồi';
+    if (_won) return 'Cứu đủ $rescued mèo · +${rescued * 5} xu';
+    return 'Đã cứu $rescued/${level.catTypes.length} mèo · thử lại nhé!';
   }
 
   @override

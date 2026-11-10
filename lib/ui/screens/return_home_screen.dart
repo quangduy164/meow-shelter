@@ -28,26 +28,29 @@ class _ReturnHomeScreenState extends State<ReturnHomeScreen> {
   }
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-        body: GameWidget<ReturnHomeGame>(
-          game: _game,
-          overlayBuilderMap: {
-            'chooseCat': (context, game) => _ChooseCatOverlay(game: game),
-            'skill': (context, game) => _SkillButton(game: game),
-            'exit': (context, game) => SafeArea(
-                  child: Align(
-                    alignment: Alignment.topRight,
-                    child: Padding(
-                      padding: const EdgeInsets.all(12),
-                      child: ReturnHomeHomeButton(
-                          onPressed: () => Navigator.of(context).pop()),
-                    ),
+  Widget build(BuildContext context) {
+    _game.hudPadding = MediaQuery.paddingOf(context);
+    return Scaffold(
+      body: GameWidget<ReturnHomeGame>(
+        game: _game,
+        overlayBuilderMap: {
+          'chooseCat': (context, game) => _ChooseCatOverlay(game: game),
+          'skill': (context, game) => _SkillButton(game: game),
+          'exit': (context, game) => SafeArea(
+                child: Align(
+                  alignment: Alignment.topRight,
+                  child: Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: ReturnHomeHomeButton(
+                        onPressed: () => Navigator.of(context).pop()),
                   ),
                 ),
-          },
-          initialActiveOverlays: const ['exit', 'chooseCat'],
-        ),
-      );
+              ),
+        },
+        initialActiveOverlays: const ['exit', 'chooseCat'],
+      ),
+    );
+  }
 }
 
 class _SkillButton extends StatefulWidget {
@@ -130,56 +133,52 @@ class _SkillButtonState extends State<_SkillButton> {
           child: Center(child: child));
     }
 
+    // Original corner placement, raised 20px for easier thumb access.
+    const right = 18.0, bottom = 34.0;
     final aiming = game.aimingSlot != null;
     return SafeArea(
-      child: LayoutBuilder(builder: (context, constraints) {
-        // Original corner placement, raised 20px for easier thumb access.
-        const right = 18.0, bottom = 34.0;
-        const mainRight = right + main / 2;
-        return Stack(children: [
-          Positioned(
-            key: const ValueKey('cluster'),
-            right: right,
-            bottom: bottom,
-            child: SizedBox.fromSize(
-              size: box,
-              child: Stack(clipBehavior: Clip.none, children: [
-                Positioned(
-                  left: mainCenter.dx - main / 2,
-                  top: mainCenter.dy - main / 2,
-                  child: ReturnHomeSkillButton(
-                    catType: game.selectedCat,
-                    size: main,
-                    ready: game.skillReady,
-                    cooldownLeft: game.skillCooldown,
-                    cooldownTotal:
-                        CatBreed.of(game.selectedCat).homeSkill.cooldown,
-                    onPressed: game.activateSkill,
-                  ),
-                ),
-                onArc(187, _attackButton(0, small)),
-                onArc(139, _attackButton(1, small)),
-                onArc(91, _attackButton(2, small)),
-              ]),
-            ),
-          ),
-          // Added after the cluster so showing it never rebuilds the buttons
-          // (that used to drop the held finger and need a second press).
-          if (aiming)
-            Positioned(
-              key: const ValueKey('cancel'),
-              right: mainRight + 80,
-              top: (constraints.maxHeight * .18).clamp(28.0, 80.0),
-              child: SizedBox.square(
-                dimension: 76,
-                child: Center(
-                  child:
-                      ReturnHomeCancelButton(key: _cancelKey, hot: _cancelHot),
+      child: Stack(children: [
+        Positioned(
+          key: const ValueKey('cluster'),
+          right: right,
+          bottom: bottom,
+          child: SizedBox.fromSize(
+            size: box,
+            child: Stack(clipBehavior: Clip.none, children: [
+              Positioned(
+                left: mainCenter.dx - main / 2,
+                top: mainCenter.dy - main / 2,
+                child: ReturnHomeSkillButton(
+                  catType: game.selectedCat,
+                  size: main,
+                  ready: game.skillReady,
+                  cooldownLeft: game.skillCooldown,
+                  cooldownTotal:
+                      CatBreed.of(game.selectedCat).homeSkill.cooldown,
+                  onPressed: game.activateSkill,
                 ),
               ),
+              onArc(187, _attackButton(0, small)),
+              onArc(139, _attackButton(1, small)),
+              onArc(91, _attackButton(2, small)),
+            ]),
+          ),
+        ),
+        // Added after the cluster so showing it never rebuilds the buttons
+        // (that used to drop the held finger and need a second press).
+        if (aiming)
+          Positioned(
+            key: const ValueKey('cancel'),
+            right: 54,
+            top: 66,
+            child: SizedBox.square(
+              dimension: 76,
+              child: Center(
+                child: ReturnHomeCancelButton(key: _cancelKey, hot: _cancelHot),
+              ),
             ),
-        ]);
-      }),
+          ),
+      ]),
     );
   }
 }

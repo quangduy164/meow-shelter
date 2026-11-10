@@ -453,8 +453,8 @@ class ReturnHomeCancelButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) => AnimatedContainer(
         duration: const Duration(milliseconds: 90),
-        width: hot ? 76 : 64,
-        height: hot ? 76 : 64,
+        width: hot ? 60 : 48,
+        height: hot ? 60 : 48,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
           color: hot ? const Color(0xCCE0483F) : const Color(0x88203040),
@@ -462,7 +462,7 @@ class ReturnHomeCancelButton extends StatelessWidget {
               color: hot ? Colors.white : const Color(0xCCDDEEFF), width: 3),
           boxShadow: const [BoxShadow(color: Color(0x55000000), blurRadius: 6)],
         ),
-        child: const Icon(Icons.close_rounded, color: Colors.white, size: 38),
+        child: const Icon(Icons.close_rounded, color: Colors.white, size: 28),
       );
 }
 

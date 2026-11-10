@@ -28,7 +28,7 @@ class LevelGoal {
 
   String get label => switch (kind) {
         GoalKind.timeLeft => 'Còn ít nhất ${value}s',
-        GoalKind.noStartle => 'Không bé nào giật mình',
+        GoalKind.noStartle => 'Không mèo nào giật mình',
         GoalKind.fishMax => 'Dùng tối đa $value cá',
         GoalKind.noWrongBed => 'Không thả nhầm ổ',
       };

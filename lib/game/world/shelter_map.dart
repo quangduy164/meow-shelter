@@ -56,8 +56,10 @@ class ShelterMap {
     obstacles: [
       Rect.fromLTWH(.25, .30, .12, .11),
       Rect.fromLTWH(.63, .30, .12, .11),
+      Rect.fromLTWH(.23, .345, .17, .035),
+      Rect.fromLTWH(.60, .345, .17, .035),
     ],
-    gate: Rect.fromLTWH(.485, .24, .03, .30),
+    gate: Rect.fromLTWH(.40, .345, .20, .035),
   );
 
   static const warehouse = ShelterMap(
