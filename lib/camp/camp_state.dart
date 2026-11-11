@@ -141,7 +141,11 @@ class CampState {
     await _save();
   }
 
-  /// Cat breeds whose catch guide the player has already read.
+  static const _herdTutorialKey = 'mode:herd:tutorial:v1';
+  bool get herdTutorialDone => seenGuides.contains(_herdTutorialKey);
+  Future<void> completeHerdTutorial() => markGuidesSeen([_herdTutorialKey]);
+
+  /// Cat breeds and mode guides already completed/read.
   final seenGuides = <String>{};
 
   Future<void> markGuidesSeen(Iterable<String> types) async {

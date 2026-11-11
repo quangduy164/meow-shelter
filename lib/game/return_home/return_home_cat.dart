@@ -253,6 +253,18 @@ class ReturnHomeCat extends SpriteAnimationGroupComponent<CatState>
     if (away.length > 0) velocity += away.normalized() * bumpImpulse;
   }
 
+  /// The evolution wave clears space without taking a life or consuming shields.
+  void repelFromBoss(double boundaryX, double dt) {
+    invulnerable = max(invulnerable, .3);
+    if (position.x <= boundaryX) return;
+    _rollTimer = 0;
+    _vanishTimer = 0;
+    _bumpTimer = max(_bumpTimer, .15);
+    _facing = -1;
+    velocity.x = min(0, velocity.x);
+    _moveAxis(Vector2(-min(position.x - boundaryX, 600 * dt), 0));
+  }
+
   @override
   void render(Canvas canvas) {
     if (invulnerable > 0 && (invulnerable * 12).floor().isEven) return;

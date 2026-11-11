@@ -10,9 +10,11 @@ import 'round_button.dart';
 
 /// Region cards with previews drawn by the same renderer as the playable map.
 class HerdMapSelect extends StatelessWidget {
-  const HerdMapSelect({super.key, required this.onPlay, required this.onHome});
+  const HerdMapSelect(
+      {super.key, required this.onPlay, required this.onHome, this.onTutorial});
   final ValueChanged<HerdMap> onPlay;
   final VoidCallback onHome;
+  final VoidCallback? onTutorial;
 
   @override
   Widget build(BuildContext context) => Material(
@@ -39,6 +41,12 @@ class HerdMapSelect extends StatelessWidget {
                             fontWeight: FontWeight.w900,
                             letterSpacing: 1)),
                   ),
+                  if (onTutorial != null)
+                    TextButton.icon(
+                        onPressed: onTutorial,
+                        icon: const Icon(Icons.school_rounded, size: 18),
+                        label: const Text('TẬP CHƠI'),
+                        style: TextButton.styleFrom(foregroundColor: DS.cream)),
                 ]),
               ),
               Expanded(
@@ -127,14 +135,16 @@ class _RegionCard extends StatelessWidget {
                               const SizedBox(height: 4),
                               Text(
                                   switch (map.kind) {
+                                    HerdMapKind.tutorial =>
+                                      'Tập di chuyển và đón mèo',
                                     HerdMapKind.nightMarket =>
-                                      '4 cụm mèo · Qua giao lộ đèn xanh',
+                                      'Quầy cá · Xe đẩy · Phố có đèn',
                                     HerdMapKind.dunes =>
-                                      '4 cụm mèo · Khe đá và dốc trượt',
+                                      'Ốc đảo · Khe đá · Cồn cát trượt',
                                     HerdMapKind.playground =>
-                                      '4 cụm mèo · Đường đua xe đồ chơi',
+                                      'Khối gỗ · Xe chạy vòng · Bóng nảy',
                                     HerdMapKind.snow =>
-                                      '4 cụm mèo · Vòng qua hồ băng',
+                                      'Trại củi · Đảo tuyết · Cầu tuyết lăn',
                                   },
                                   maxLines: 2,
                                   overflow: TextOverflow.ellipsis,

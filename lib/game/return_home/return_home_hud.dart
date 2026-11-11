@@ -18,13 +18,17 @@ void paintReturnHomeHud(
   required int reward,
   required String? zone,
   required bool finished,
-  String zoneSubtitle = 'Đã lưu checkpoint',
+  String zoneSubtitle = '',
   double? bossHealth,
   int bossPhase = 1,
   bool bossTired = false,
   EdgeInsets padding = EdgeInsets.zero,
   double zoneTimeLeft = 1,
 }) {
+  if (bossHealth != null && !finished) {
+    _paintBossBar(canvas, size, padding, bossHealth, bossPhase, bossTired);
+    return;
+  }
   final availableWidth = size.width - padding.horizontal - 100;
   if (availableWidth <= 0) return;
   const width = 288.0;
@@ -77,20 +81,20 @@ void paintReturnHomeHud(
       fontSize: 10, align: TextAlign.right);
   if (zone != null && bossHealth == null && !finished && zoneTimeLeft > 0) {
     final fade = (zoneTimeLeft / .35).clamp(0.0, 1.0);
-    final toast = Rect.fromLTWH(panel.left, panel.bottom + 6, width, 42);
+    final toast = Rect.fromLTWH(
+        panel.left, panel.bottom + 6, width, zoneSubtitle.isEmpty ? 28 : 42);
     canvas.drawRRect(RRect.fromRectAndRadius(toast, const Radius.circular(10)),
         Paint()..color = _cream.withAlpha((225 * fade).round()));
     _label(canvas, zone,
         Rect.fromLTWH(toast.left + 10, toast.top + 3, toast.width - 20, 18),
         fontSize: 11.5, color: _ink.withAlpha((255 * fade).round()));
-    _label(canvas, zoneSubtitle,
-        Rect.fromLTWH(toast.left + 10, toast.top + 21, toast.width - 20, 17),
-        fontSize: 11, color: _ink.withAlpha((210 * fade).round()));
+    if (zoneSubtitle.isNotEmpty) {
+      _label(canvas, zoneSubtitle,
+          Rect.fromLTWH(toast.left + 10, toast.top + 21, toast.width - 20, 17),
+          fontSize: 11, color: _ink.withAlpha((210 * fade).round()));
+    }
   }
   canvas.restore();
-  if (bossHealth != null && !finished) {
-    _paintBossBar(canvas, size, padding, bossHealth, bossPhase, bossTired);
-  }
   if (!finished) return;
   final card = Rect.fromCenter(
       center: Offset(size.width / 2, size.height * .32),
@@ -215,8 +219,8 @@ void _paintBossBar(Canvas canvas, Size size, EdgeInsets padding, double health,
   final usableWidth = size.width - padding.horizontal;
   final width = min(440.0, usableWidth * .6);
   final frame = Rect.fromLTWH(
-      padding.left + (usableWidth - width) / 2, padding.top + 78, width, 58);
-  _label(canvas, 'RỒNG LỬA',
+      padding.left + (usableWidth - width) / 2, padding.top + 18, width, 58);
+  _label(canvas, phase == 2 ? 'RỒNG CUỒNG NỘ' : 'RỒNG LỬA',
       Rect.fromLTWH(frame.left + 14, frame.top + 4, width - 152, 24),
       fontSize: 17, color: _ink);
   _label(canvas, tired ? 'MỆT! CÀO ĐI!' : 'GIAI ĐOẠN $phase',
@@ -237,7 +241,7 @@ void _paintBossBar(Canvas canvas, Size size, EdgeInsets padding, double health,
         ..shader = LinearGradient(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
-          colors: phase == 3
+          colors: phase == 2
               ? const [Color(0xFFFF5550), Color(0xFFB8201A)]
               : const [Color(0xFFFF6B68), Color(0xFFD93838)],
         ).createShader(bar));
@@ -246,7 +250,7 @@ void _paintBossBar(Canvas canvas, Size size, EdgeInsets padding, double health,
   final mark = Paint()
     ..color = const Color(0xAAFFE6AF)
     ..strokeWidth = 1.5;
-  for (final f in const [1 / 3, 2 / 3]) {
+  for (final f in const [.5]) {
     canvas.drawLine(Offset(bar.left + bar.width * f, bar.top),
         Offset(bar.left + bar.width * f, bar.bottom), mark);
   }

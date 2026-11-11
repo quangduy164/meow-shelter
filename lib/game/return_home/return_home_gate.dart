@@ -3,10 +3,11 @@ import 'package:flame/components.dart';
 import 'package:flutter/painting.dart';
 import 'return_home_game.dart';
 
-/// The shelter entrance opens when the dragon is defeated.
+/// Gate ground geometry follows the lane; the near half renders over the cat.
 class ReturnHomeGate extends Component with HasGameReference<ReturnHomeGame> {
   ReturnHomeGate() : super(priority: 3);
 
+  late final Component foreground = _GateForeground(this);
   double _open = 0;
   double _time = 0;
   double _celebration = 0;
@@ -20,24 +21,50 @@ class ReturnHomeGate extends Component with HasGameReference<ReturnHomeGame> {
     if (game.finished) _celebration += dt;
   }
 
-  void _wood(Canvas canvas, Rect rect, Color color, {double radius = 4}) {
-    final shape = RRect.fromRectAndRadius(rect, Radius.circular(radius));
-    canvas.drawRRect(shape, Paint()..color = color);
-    canvas.drawRRect(
-        shape,
+  Offset _foot(bool near) {
+    final road = game.road;
+    final x = road.gateCenterX;
+    final y = near ? road.bottomEdge(x) + 6 : road.topEdge(x) - 6;
+    return Offset(road.gateXAt(y), y);
+  }
+
+  void _polygon(Canvas canvas, List<Offset> points, Color color) {
+    final path = Path()..addPolygon(points, true);
+    canvas.drawPath(path, Paint()..color = color);
+    canvas.drawPath(
+        path,
         Paint()
           ..color = _ink
           ..style = PaintingStyle.stroke
-          ..strokeWidth = 2);
+          ..strokeWidth = 1.5
+          ..strokeJoin = StrokeJoin.round);
   }
 
-  void _paw(Canvas canvas, Offset center, double scale, Color color) {
+  void _beam(Canvas canvas, Offset a, Offset b, double width, Color color) {
+    canvas.drawLine(
+        a,
+        b,
+        Paint()
+          ..color = _ink
+          ..strokeWidth = width + 2
+          ..strokeCap = StrokeCap.round);
+    canvas.drawLine(
+        a,
+        b,
+        Paint()
+          ..color = color
+          ..strokeWidth = width
+          ..strokeCap = StrokeCap.round);
+  }
+
+  void _paw(Canvas canvas, Offset c, double r, Color color) {
+    canvas.save();
+    canvas.translate(c.dx, c.dy);
+    canvas.rotate(pi / 2);
     final paint = Paint()..color = color;
     canvas.drawOval(
         Rect.fromCenter(
-            center: center + Offset(0, scale * .3),
-            width: scale * 1.1,
-            height: scale * .85),
+            center: Offset(0, r * .3), width: r * 1.1, height: r * .85),
         paint);
     for (final p in const [
       Offset(-.65, -.35),
@@ -46,168 +73,236 @@ class ReturnHomeGate extends Component with HasGameReference<ReturnHomeGame> {
       Offset(.65, -.35)
     ]) {
       canvas.drawOval(
-          Rect.fromCenter(
-              center: center + p * scale,
-              width: scale * .4,
-              height: scale * .5),
-          paint);
+          Rect.fromCenter(center: p * r, width: r * .4, height: r * .5), paint);
     }
+    canvas.restore();
   }
 
   @override
   void render(Canvas canvas) {
-    final road = game.road;
-    final x = road.endX + 24;
-    final base = road.bottomEdge(x) + 8;
-    final height = road.halfWidth(x) * 2 + 54;
+    final far = _foot(false);
+    final near = _foot(true);
+    // An oblique threshold on the ground, not a front-facing doorway.
+    final paving = Path()
+      ..addPolygon([
+        far + const Offset(-55, 0),
+        far + const Offset(74, 0),
+        near + const Offset(74, 0),
+        near + const Offset(-55, 0),
+      ], true);
+    canvas.drawPath(paving, Paint()..color = const Color(0x45E7D8B4));
     canvas.save();
-    canvas.translate(x, base);
-    canvas.drawOval(
-        Rect.fromCenter(center: const Offset(0, 5), width: 154, height: 24),
-        Paint()..color = const Color(0x33604432));
-    // Fence extensions leave the center of the road open.
-    for (final side in [-1.0, 1.0]) {
-      _wood(canvas, Rect.fromLTWH(side < 0 ? -83 : 59, -51, 24, 7),
-          const Color(0xFFE0BA7D));
-      _wood(canvas, Rect.fromLTWH(side < 0 ? -83 : 59, -27, 24, 7),
-          const Color(0xFFE0BA7D));
-      for (var i = 0; i < 2; i++) {
-        final px = side * (67 + i * 13.0);
-        _wood(
-            canvas, Rect.fromLTWH(px - 3, -62, 7, 68), const Color(0xFFF2D49A));
-      }
+    canvas.clipPath(paving);
+    final joints = Paint()
+      ..color = const Color(0x558F9274)
+      ..strokeWidth = 1;
+    for (var i = -2; i < 4; i++) {
+      final shift = Offset(i * 27.0, 0);
+      canvas.drawLine(far + shift, near + shift, joints);
     }
-    // Warm pavers and a trail that appears after the boss fight.
-    final path = RRect.fromRectAndRadius(
-        const Rect.fromLTWH(-48, -65, 96, 60), const Radius.circular(12));
-    canvas.drawRRect(path, Paint()..color = const Color(0x66E0C087));
+    for (var y = far.dy + 23; y < near.dy; y += 23) {
+      final x = game.road.gateXAt(y);
+      canvas.drawLine(Offset(x - 60, y), Offset(x + 80, y), joints);
+    }
+    canvas.restore();
+    _beam(canvas, far, near, 3, const Color(0xFFD4C092));
     if (_open > .05) {
-      for (var i = 0; i < 4; i++) {
-        final p = Offset(-97 + i * 26.0, -44 + (i.isEven ? -7 : 7));
-        final alpha = (_open * (.55 + .3 * sin(_time * 3 - i))).clamp(0.0, 1.0);
-        _paw(
-            canvas, p, 6, Color.fromARGB((alpha * 255).round(), 255, 246, 184));
+      final road = game.road;
+      for (var i = 0; i < 5; i++) {
+        final x = road.gateCenterX - 86 + i * 25;
+        final y = road.centerY(x) + (i.isEven ? -7 : 7);
+        final alpha = (_open * (.6 + .25 * sin(_time * 3 - i))).clamp(0.0, 1.0);
+        _paw(canvas, Offset(x, y), 6,
+            Color.fromARGB((255 * alpha).round(), 255, 245, 172));
       }
     }
-    for (final side in [-1.0, 1.0]) {
-      _wood(canvas, Rect.fromLTWH(side * 56 - 7, -height + 28, 14, height - 23),
-          const Color(0xFFB67C4E));
-      canvas.drawLine(
-          Offset(side * 56 - 3, -height + 35),
-          Offset(side * 56 - 3, -5),
-          Paint()
-            ..color = const Color(0xFFE5B77B)
-            ..strokeWidth = 2);
-      // Door leaves fold towards the posts as the gate opens.
-      final width = 49 * (1 - _open) + 3;
-      final leafX = side < 0 ? -49.0 : 49 - width;
-      _wood(canvas, Rect.fromLTWH(leafX, -91, width, 77),
-          const Color(0xFF79A878));
-      if (width > 12) {
-        canvas.save();
-        canvas.clipRect(Rect.fromLTWH(leafX, -91, width, 77));
-        for (var i = 1; i < 4; i++) {
-          final sx = leafX + i * width / 4;
-          canvas.drawLine(
-              Offset(sx, -88),
-              Offset(sx, -17),
-              Paint()
-                ..color = const Color(0xFF527F58)
-                ..strokeWidth = 1.5);
-        }
-        canvas.restore();
-      }
-      // Hanging lantern.
-      final lamp = Offset(side * 67, -height + 68);
-      canvas.drawCircle(
-          lamp,
-          17,
-          Paint()
-            ..shader = const RadialGradient(
-                    colors: [Color(0x99FFD764), Color(0x00FFD764)])
-                .createShader(Rect.fromCircle(center: lamp, radius: 17)));
-      canvas.drawLine(
-          lamp - const Offset(0, 20),
-          lamp - const Offset(0, 9),
-          Paint()
-            ..color = _ink
-            ..strokeWidth = 2);
-      _wood(canvas, Rect.fromCenter(center: lamp, width: 11, height: 17),
-          const Color(0xFFFFD974),
-          radius: 2);
-      // Pots at the gate posts.
-      _wood(canvas, Rect.fromLTWH(side * 61 - 9, -12, 18, 17),
-          const Color(0xFFBB7155));
-      for (var i = 0; i < 3; i++) {
-        final flower = Offset(side * 61 + (i - 1) * 6, -19 - (i % 2) * 6);
-        canvas.drawLine(
-            flower,
-            Offset(side * 61, -8),
-            Paint()
-              ..color = const Color(0xFF50864B)
-              ..strokeWidth = 2);
-        for (var petal = 0; petal < 5; petal++) {
-          final a = petal * pi * 2 / 5;
-          canvas.drawCircle(flower + Offset(cos(a), sin(a)) * 3, 3,
-              Paint()..color = const Color(0xFFF6A1A7));
-        }
-        canvas.drawCircle(flower, 2, Paint()..color = const Color(0xFFFFE68A));
-      }
-    }
-    // Broad roof and a readable shelter sign with a paw medallion.
-    final roof = Path()
-      ..moveTo(-78, -height + 25)
-      ..lineTo(-62, -height + 8)
-      ..quadraticBezierTo(0, -height - 17, 62, -height + 8)
-      ..lineTo(78, -height + 25)
-      ..close();
-    canvas.drawPath(roof, Paint()..color = const Color(0xFF5F8F72));
-    canvas.drawPath(
-        roof,
-        Paint()
-          ..color = _ink
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = 2.5);
-    _wood(canvas, Rect.fromLTWH(-70, -height + 22, 140, 31),
-        const Color(0xFFFFE5AD),
-        radius: 7);
-    final title = TextPainter(
-        text: const TextSpan(
-            text: 'MEOW SHELTER',
-            style: TextStyle(
-                color: _ink, fontSize: 12, fontWeight: FontWeight.w900)),
-        textDirection: TextDirection.ltr)
-      ..layout(maxWidth: 132);
-    title.paint(canvas, Offset(-title.width / 2, -height + 30));
-    canvas.drawCircle(
-        Offset(0, -height + 4), 13, Paint()..color = const Color(0xFFFFD478));
-    canvas.drawCircle(
-        Offset(0, -height + 4),
-        13,
-        Paint()
-          ..color = _ink
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = 2);
-    _paw(canvas, Offset(0, -height + 4), 10, _ink);
+    _fence(canvas, far, false);
+    _leaf(canvas, far, near, false);
+    _post(canvas, far, false);
+    _flowers(canvas, far + const Offset(13, -8));
+  }
+
+  void renderForeground(Canvas canvas) {
+    final far = _foot(false), near = _foot(true);
+    _fence(canvas, near, true);
+    _leaf(canvas, far, near, true);
+    _post(canvas, near, true);
+    _flowers(canvas, near + const Offset(-14, 10));
     if (game.finished && _celebration < 3) {
+      final center = Offset(
+          game.road.gateCenterX, game.road.centerY(game.road.gateCenterX));
       for (var i = 0; i < 22; i++) {
         final age = (_celebration + i * .07) % 1.6;
-        final spread = (i % 2 == 0 ? -1 : 1) * (12 + i * 2.0) * age;
-        final c = Offset(spread, -height + 25 - age * 100 + age * age * 80);
+        final c = center +
+            Offset((i % 2 == 0 ? -1 : 1) * (12 + i * 2.0) * age,
+                -30 - age * 100 + age * age * 80);
         canvas.save();
         canvas.translate(c.dx, c.dy);
-        canvas.rotate(age * 4 + i.toDouble());
+        canvas.rotate(age * 4 + i);
         canvas.drawRect(
             const Rect.fromLTWH(-2, -4, 4, 8),
             Paint()
-              ..color = [
-                const Color(0xFFFFC24D),
-                const Color(0xFFF194A6),
-                const Color(0xFF85C8BD)
+              ..color = const [
+                Color(0xFFFFC24D),
+                Color(0xFFF194A6),
+                Color(0xFF85C8BD)
               ][i % 3]);
         canvas.restore();
       }
     }
-    canvas.restore();
   }
+
+  void _leaf(Canvas canvas, Offset far, Offset near, bool front) {
+    final hinge = front ? near : far;
+    final span = (near.dy - far.dy) / 2 - 3;
+    final angle = _open * pi * .48;
+    final dy = (front ? -1 : 1) * cos(angle) * span;
+    final dx = sin(angle) * span * .82 - dy * 28 / (near.dy - far.dy);
+    final end = hinge + Offset(dx, dy);
+    final height = front ? 43.0 : 40.0;
+    final bottom = const Offset(0, -7), top = Offset(0, -height);
+    // Ground shadows swing with the leaves as they open into the camp (+X).
+    canvas.drawPath(
+        Path()
+          ..addPolygon([
+            hinge,
+            end,
+            end + const Offset(16, 9),
+            hinge + const Offset(16, 9)
+          ], true),
+        Paint()..color = const Color(0x253E402A));
+    _polygon(canvas, [hinge + bottom, end + bottom, end + top, hinge + top],
+        front ? const Color(0xFF7EAF87) : const Color(0xFF6C9978));
+    _polygon(
+        canvas,
+        [
+          hinge + top,
+          end + top,
+          end + top + const Offset(3, -3),
+          hinge + top + const Offset(3, -3)
+        ],
+        const Color(0xFFADD0A2));
+    for (var i = 1; i < 6; i++) {
+      final p = Offset.lerp(hinge, end, i / 6)!;
+      canvas.drawLine(
+          p + bottom,
+          p + top,
+          Paint()
+            ..color = const Color(0xAA48714E)
+            ..strokeWidth = 1.5);
+    }
+    _beam(canvas, hinge + const Offset(0, -13), end + Offset(0, -height + 7), 2,
+        const Color(0xFFB5D3A8));
+    final handle = Offset.lerp(hinge, end, .88)! + const Offset(0, -20);
+    canvas.drawCircle(handle, 2.2, Paint()..color = const Color(0xFFFFD37B));
+  }
+
+  void _post(Canvas canvas, Offset foot, bool near) {
+    final h = near ? 65.0 : 59.0;
+    canvas.drawOval(
+        Rect.fromCenter(
+            center: foot + const Offset(9, 5), width: 32, height: 11),
+        Paint()..color = const Color(0x33402D22));
+    _polygon(
+        canvas,
+        [
+          foot + const Offset(-6, 0),
+          foot + const Offset(5, 0),
+          foot + Offset(5, -h),
+          foot + Offset(-6, -h)
+        ],
+        const Color(0xFFC38F5C));
+    _polygon(
+        canvas,
+        [
+          foot + const Offset(5, 0),
+          foot + const Offset(11, -5),
+          foot + Offset(11, -h - 5),
+          foot + Offset(5, -h)
+        ],
+        const Color(0xFF94623F));
+    _polygon(
+        canvas,
+        [
+          foot + Offset(-6, -h),
+          foot + Offset(5, -h),
+          foot + Offset(11, -h - 5),
+          foot + Offset(0, -h - 5)
+        ],
+        const Color(0xFFF1CB87));
+    canvas.drawLine(
+        foot + const Offset(-2, -8),
+        foot + Offset(-2, -h + 6),
+        Paint()
+          ..color = const Color(0xFFE9B77B)
+          ..strokeWidth = 1.5);
+    final lamp = foot + Offset(-2, -h - 14);
+    canvas.drawCircle(
+        lamp,
+        14,
+        Paint()
+          ..shader = const RadialGradient(
+                  colors: [Color(0x88FFD764), Color(0x00FFD764)])
+              .createShader(Rect.fromCircle(center: lamp, radius: 14)));
+    final light = RRect.fromRectAndRadius(
+        Rect.fromCenter(center: lamp, width: 12, height: 16),
+        const Radius.circular(3));
+    canvas.drawRRect(light, Paint()..color = const Color(0xFFFFDD82));
+    canvas.drawRRect(
+        light,
+        Paint()
+          ..color = _ink
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 1.5);
+    _beam(canvas, lamp + const Offset(-7, -9), lamp + const Offset(7, -9), 3,
+        const Color(0xFF5F8F72));
+  }
+
+  void _fence(Canvas canvas, Offset foot, bool near) {
+    final dir = near ? const Offset(-18, 43) : const Offset(18, -43);
+    final end = foot + dir;
+    for (final h in [13.0, 29.0]) {
+      _beam(canvas, foot - Offset(0, h), end - Offset(0, h), 4,
+          const Color(0xFFE0BA7D));
+    }
+    for (var i = 1; i <= 3; i++) {
+      final p = foot + dir * (i / 3);
+      _beam(canvas, p, p - const Offset(0, 38), 5, const Color(0xFFF2D49A));
+    }
+  }
+
+  void _flowers(Canvas canvas, Offset c) {
+    _polygon(
+        canvas,
+        [
+          c + const Offset(-8, -10),
+          c + const Offset(10, -10),
+          c + const Offset(7, 4),
+          c + const Offset(-5, 4)
+        ],
+        const Color(0xFFBD7658));
+    for (var i = 0; i < 3; i++) {
+      final p = c + Offset((i - 1) * 6, -17 - (i % 2) * 6);
+      canvas.drawLine(
+          c,
+          p,
+          Paint()
+            ..color = const Color(0xFF50864B)
+            ..strokeWidth = 2);
+      for (var j = 0; j < 5; j++) {
+        final a = j * pi * 2 / 5;
+        canvas.drawCircle(p + Offset(cos(a), sin(a)) * 3, 3,
+            Paint()..color = const Color(0xFFF6A1A7));
+      }
+      canvas.drawCircle(p, 2, Paint()..color = const Color(0xFFFFE68A));
+    }
+  }
+}
+
+class _GateForeground extends Component {
+  _GateForeground(this.gate) : super(priority: 7);
+  final ReturnHomeGate gate;
+
+  @override
+  void render(Canvas canvas) => gate.renderForeground(canvas);
 }

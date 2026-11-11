@@ -9,6 +9,7 @@ void paintHerdHome(Canvas canvas, Offset center, HerdMapKind kind) {
   canvas.drawOval(const Rect.fromLTWH(-46, 18, 92, 20),
       Paint()..color = const Color(0x33402A14));
   switch (kind) {
+    case HerdMapKind.tutorial:
     case HerdMapKind.playground:
       _playhouse(canvas);
     case HerdMapKind.nightMarket:

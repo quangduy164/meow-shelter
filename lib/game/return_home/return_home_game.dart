@@ -91,7 +91,7 @@ class ReturnHomeGame extends FlameGame {
   bool bossDefeated = false;
   double _scratchCooldown = 0;
   double _bossCamera = 0;
-  String zoneSubtitle = 'Đã lưu checkpoint';
+  String zoneSubtitle = '';
   static const int bossBonus = 30;
 
   bool get bossFight => _dragon != null && !bossDefeated;
@@ -122,10 +122,6 @@ class ReturnHomeGame extends FlameGame {
     started = true;
     overlays.remove('chooseCat');
     overlays.add('skill');
-    final combo = CatBreed.of(type).homeCombo;
-    zoneName = 'COMBO: ${combo.name.toUpperCase()}';
-    zoneSubtitle = combo.hint;
-    checkpointMessage = 4.5;
   }
 
   void activateSkill() {
@@ -799,6 +795,7 @@ class ReturnHomeGame extends FlameGame {
     if (dragon == null) return;
     final dealt = dragon.hurt(amount);
     if (dealt <= 0) return;
+    if (dragon.evolving) _cat.invulnerable = max(_cat.invulnerable, .3);
     _world.add(ReturnHomeDamageText(
         position: at + Vector2(0, -24),
         text: '-${dealt.round()}',
@@ -836,6 +833,11 @@ class ReturnHomeGame extends FlameGame {
     // The dragon blocks the lane: the cat stays in the arena in front of it.
     final minX = _arenaLeft + 6;
     final maxX = dragon.bodyRect.left - ReturnHomeCat.hitboxLeft - 80;
+    if (dragon.evolving) {
+      final boundaryX = max(minX,
+          dragon.position.x - dragon.bodyRect.width * 2.3 - _cat.size.x / 2);
+      _cat.repelFromBoss(boundaryX, dt);
+    }
     if (_cat.position.x > maxX) {
       _cat.position.x = maxX;
       _cat.velocity.x = min(0, _cat.velocity.x);
@@ -878,21 +880,10 @@ class ReturnHomeGame extends FlameGame {
           position: Vector2(head.dx, head.dy), color: const Color(0xFFFFF4DA)));
       _damageBoss(2.5, Vector2(head.dx, head.dy));
     }
-
-    if (dragon.summonNow) {
-      final mouth = dragon.mouth;
-      for (var i = 0; i < 2; i++) {
-        final x = mouth.x - 40;
-        final half = road.halfWidth(x) - 20;
-        _spawner.addRockAt(
-            Vector2(x, road.centerY(x) + (i == 0 ? -half * .6 : half * .6)),
-            speed: 200 + i * 40);
-      }
-      if (dragon.phase == 3) _spawner.addBirdAt(_arenaLeft + size.x + 40);
-    }
   }
 
   void _bossHitsCat(ReturnHomeDragon dragon) {
+    if (dragon.evolving) return;
     if (_cat.dashing || _cat.invulnerable > 0 || _hitCooldown > 0) return;
     _hitCooldown = hitCooldown;
     if (reflectTime > 0) {
@@ -950,7 +941,9 @@ class ReturnHomeGame extends FlameGame {
     // the cat along the longer world.
     camera.viewfinder.position = Vector2(size.x / 2, size.y / 2);
     world.add(ReturnHomeBackground(road: road));
-    world.add(ReturnHomeGate());
+    final gate = ReturnHomeGate();
+    world.add(gate);
+    world.add(gate.foreground);
     // One long crossing near the end of the stream stretch; the dry part
     // before it belongs to the crabs.
     for (final f in [.352]) {
@@ -1075,7 +1068,8 @@ class ReturnHomeGame extends FlameGame {
     const start = ReturnHomeRoad.startX;
     progress = ((_cat.position.x - start) / max(1.0, road.endX - start))
         .clamp(0.0, 1.0);
-    if (progress >= 1 && bossDefeated) {
+    if (road.hasPassedGate(_cat.hitbox) && bossDefeated) {
+      progress = 1;
       finished = true;
       reward = fish * 2 + stars * 10 + (bossDefeated ? bossBonus : 0);
       unawaited(CampState.instance.addCoins(reward));
@@ -1207,8 +1201,8 @@ class ReturnHomeGame extends FlameGame {
       if (_cat.position.x >= x && checkpointX < x) {
         checkpointX = x;
         checkpointMessage = 1.8;
-        zoneName = biome.name.toUpperCase();
-        zoneSubtitle = 'Đã lưu checkpoint';
+        zoneName = 'Đã lưu checkpoint';
+        zoneSubtitle = '';
       }
     }
   }
@@ -1247,9 +1241,9 @@ class ReturnHomeGame extends FlameGame {
     _contacts.clear();
     _hitCooldown = 1.5;
     _respawnAt(checkpointX);
-    zoneName = 'ĐÃ VỀ CHECKPOINT';
-    zoneSubtitle = 'Hồi đầy mạng · tiếp tục hành trình';
-    checkpointMessage = 1.8;
+    zoneName = '';
+    zoneSubtitle = '';
+    checkpointMessage = 0;
   }
 
   /// Puts the cat back on a spot that is free of logs, springs and spikes, and

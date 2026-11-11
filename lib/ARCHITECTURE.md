@@ -38,6 +38,38 @@
     field is open except for the map's visible solid obstacles.
   - `herd_map_painter.dart`: map-specific scenery; reads the same rectangles
     as collision/terrain rules. Never imports rescue-mode maps.
+  - `herd_ball.dart`: bouncing-ball trajectory and visual bounce height. The
+    simulation uses its ground footprint for contact, with a one-second
+    per-cat cooldown; pushes preserve followers and never remove lives.
+  - Playground walls are wooden blocks in `HerdMap.playground`; the first
+    cluster is inside an open U. `HerdPatrol.loop` drives both elliptical track
+    art and car collision, with two cars guarding the second cluster.
+  - Market has four authored collection areas (fish stall, shop alley, opposite
+    pavement and dinner courtyard). Its two scooters have `trafficLight=true`;
+    its two carts have `isCart=true`. `HerdRound.patrolClock` is shared by drawing
+    and collision: green pauses only street scooters, never delivery carts.
+    Spawn validation checks the full swept paths of all four vehicles.
+  - Desert has an oasis, two sandstone obstacles, a soft-sand cluster and
+    a tent cluster. `HerdMap.desert` owns water/rock/tent collision rectangles,
+    soft sand, slopes and landing pads. Each actor gets its own landing wobble;
+    only the soft-sand group is drawn buried before recruitment. Tumbleweeds
+    use two independent swept lines, both excluded from cluster spawns.
+  - `herd_snowball.dart`: snow-only warning/rolling/rest schedule. Two passes
+    are staggered inside a 14-second cycle; the warning footprint never hits.
+    Drawing, spawn exclusion and collision use the same trajectories.
+  - Winter has logs, a dry island within the main ice patch, a snowy hollow
+    and a fishing-hut cluster. `HerdMap.snowPads` overrides ice friction;
+    these pads are walkable, not solid. Snowball collision shares `_hitHazard`
+    with patrols, preserving the same leader-life / tail-scatter rules.
+  - `HerdMap.tutorial` is excluded from the four-region picker. It has no
+    damaging hazards, twelve cats in four clusters, three slalom rocks and a
+    three-step move/recruit/return guide driven by
+    `HerdRound.tutorialStep`. HUD and pulsing targets reflect the current step.
+    `HerdScreen` reads `CampState.herdTutorialDone` at entry; the game reports
+    a win through `onTutorialCompleted`. Only a completed tutorial writes the
+    versioned mode key into the existing saved `seenGuides` set. Aborted runs
+    start the tutorial again; later visits open the region picker directly.
+    The picker also offers Tập chơi for replay without resetting saved progress.
   - `herd_scene.dart`: home and map-specific hazards; no rule mutations.
   - `ui/screens/herd_screen.dart`: result/replay and app lifecycle.
   - `ui/widgets/herd_map_select.dart`: horizontally scrolling region cards.

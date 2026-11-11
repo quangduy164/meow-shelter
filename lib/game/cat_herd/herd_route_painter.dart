@@ -35,20 +35,5 @@ void paintHerdRoute(Canvas canvas, Size size, HerdRound round) {
         Paint()
           ..color =
               left == 0 ? const Color(0x225DAB69) : const Color(0x33FFE29A));
-    final text = TextPainter(
-        text: TextSpan(
-            text: i == 3 ? 'THƯỞNG · $left' : 'CỤM ${i + 1} · $left',
-            style: const TextStyle(
-                fontSize: 10,
-                fontWeight: FontWeight.w900,
-                color: Color(0xFF5A3214))),
-        textDirection: TextDirection.ltr)
-      ..layout();
-    final at = p + Offset(-text.width / 2, -43);
-    canvas.drawRRect(
-        RRect.fromRectAndRadius(
-            (at & text.size).inflate(4), const Radius.circular(5)),
-        Paint()..color = const Color(0xEEFFF0CF));
-    text.paint(canvas, at);
   }
 }

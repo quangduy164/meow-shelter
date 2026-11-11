@@ -294,6 +294,18 @@ class ReturnHomeRoad {
 
   /// The cat's sprite is clamped between these x positions, and the run is
   /// measured from start to end so reaching the house is exactly 100%.
+  /// Ground plane of the entrance: far post is slightly farther right.
+  double get gateCenterX => endX - 20;
+
+  double gateXAt(double y) {
+    final depth =
+        ((y - centerY(gateCenterX)) / halfWidth(gateCenterX)).clamp(-1.0, 1.0);
+    return gateCenterX - depth * 14;
+  }
+
+  bool hasPassedGate(Rect box) =>
+      box.left >= max(gateXAt(box.top), gateXAt(box.bottom)) + 4;
+
   static const double startX = 72;
   static const double endMargin = 104;
   double get endX => _worldWidth - endMargin;

@@ -1,4 +1,5 @@
 import 'dart:math';
+import 'dart:typed_data';
 
 import 'package:flame/components.dart';
 import 'package:flutter/painting.dart';
@@ -14,7 +15,7 @@ import 'return_home_skills.dart';
 /// hurts the dragon, the same split as hazards and skills.
 ///
 /// Fight rhythm: every big move is telegraphed (red zone, ground shadow), and
-/// after a fire breath or a tail sweep the dragon is tired for a moment: its
+/// after a single move or an enraged two-move chain the dragon is tired: its
 /// head drops into the lane, glows, takes extra damage and can be scratched.
 class ReturnHomeDragon extends PositionComponent {
   ReturnHomeDragon({required this.road, required Vector2 feet})
@@ -28,6 +29,8 @@ class ReturnHomeDragon extends PositionComponent {
   static const double tiredBonus = 1.5;
   static const double introTime = 2.0;
   static const double fleeTime = 2.4;
+  static const double evolutionTime = 1.8;
+  static const double evolutionPushTime = .35;
 
   double hp = maxHp;
 
@@ -48,15 +51,17 @@ class ReturnHomeDragon extends PositionComponent {
 
   final attacks = <DragonAttack>[];
 
-  /// True on the frame a summon roar ends: the game spawns rocks/birds.
-  bool summonNow = false;
-
   double _intro = 0;
   double _death = -1;
   double _t = 0;
   double _cooldown = .8;
   _Move _move = _Move.idle;
   _Move _last = _Move.idle;
+  int _lastCount = 0;
+  _Move? _followUp;
+  bool _evolved = false;
+  double _evolutionT = -1;
+  double _closeTime = 0;
   double _moveT = 0;
   int _rainLeft = 0;
   double _rainNext = 0;
@@ -67,27 +72,43 @@ class ReturnHomeDragon extends PositionComponent {
   double _wingPhase = 0;
   double _flightBlend = 0;
   double _bodyBob = 0;
+  double _bodyTurn = 0;
+  double _bodyYaw = 0;
+  double _headPitch = 0;
+  double _castKick = 0;
+  double _castSpread = 0;
+  final Vector2 _bodyOffset = Vector2.zero();
   final Vector2 _head = Vector2(-62, -118);
   static final _random = Random();
 
   bool get intro => _intro < introTime;
   bool get defeated => _death >= 0;
   bool get gone => _death > fleeTime;
-  bool get vulnerable => !intro && !defeated;
-  int get phase => hp > maxHp * 2 / 3
-      ? 1
-      : hp > maxHp / 3
-          ? 2
-          : 3;
+  bool get vulnerable => !intro && !defeated && !evolving;
+  int get phase => _evolved ? 2 : 1;
+  bool get evolving =>
+      _evolutionT >= 0 && _evolutionT < evolutionPushTime + evolutionTime;
+  double get _evolutionProgress =>
+      ((_evolutionT - evolutionPushTime) / evolutionTime).clamp(0.0, 1.0);
+  double get _evolution => _evolved ? _smoothUnit(_evolutionProgress) : 0;
   double get hpShare => (hp / maxHp).clamp(0.0, 1.0);
 
   double get _scale =>
       (road.viewportHeight / 400 * .82).clamp(.68, 1.1).toDouble();
-  Vector2 _world(double x, double y) => position + Vector2(x, y) * _scale;
+  DragonTailSweep? get _tailMove =>
+      attacks.whereType<DragonTailSweep>().firstOrNull;
+
+  Vector2 _world(double x, double y) {
+    final localX = x + _bodyOffset.x - 15;
+    final local = Vector2(cos(_bodyYaw) * localX,
+        y + _bodyOffset.y + 8 + sin(_bodyYaw) * localX * .32)
+      ..rotate(_bodyTurn);
+    return position + (local + Vector2(15, -8)) * _scale;
+  }
 
   /// Head hit area and the point skills aim at.
   Rect get headRect {
-    final c = _world(_head.x - 10, _head.y + 4);
+    final c = _headWorld(-10, 4);
     return Rect.fromCenter(
         center: Offset(c.x, c.y), width: 76 * _scale, height: 56 * _scale);
   }
@@ -101,7 +122,29 @@ class ReturnHomeDragon extends PositionComponent {
   Vector2 get core => _world(10, -60);
   Vector2 get aimPoint =>
       tired > 0 ? Vector2(headRect.center.dx, headRect.center.dy) : core;
-  Vector2 get mouth => _world(_head.x - 44, _head.y + 14);
+  Vector2 get mouth => _headWorld(-44, 14);
+
+  Vector2 _headWorld(double x, double y) => _world(
+      _head.x + cos(_headPitch) * x - sin(_headPitch) * y,
+      _head.y + sin(_headPitch) * x + cos(_headPitch) * y);
+
+  double get _fireCharge {
+    for (final lane in attacks.whereType<DragonFlameLane>()) {
+      if (lane.warning) return _smoothUnit(lane.t / lane.warn);
+    }
+    return 0;
+  }
+
+  double get _firePower {
+    for (final lane in attacks.whereType<DragonFlameLane>()) {
+      if (lane.burning) {
+        final elapsed = lane.t - lane.warn;
+        return _smoothUnit(elapsed / .1) *
+            (1 - _smoothUnit((elapsed - DragonFlameLane.burn + .14) / .14));
+      }
+    }
+    return 0;
+  }
 
   bool hitTest(Rect r) => r.overlaps(bodyRect) || r.overlaps(headRect);
 
@@ -109,7 +152,9 @@ class ReturnHomeDragon extends PositionComponent {
   /// immune). The game shows the number.
   double hurt(double amount) {
     if (!vulnerable || amount <= 0) return 0;
-    final dealt = tired > 0 ? amount * tiredBonus : amount;
+    final damage = tired > 0 ? amount * tiredBonus : amount;
+    // A large hit cannot skip the protected phase transition.
+    final dealt = !_evolved ? min(damage, max(0.0, hp - maxHp * .5)) : damage;
     hp = max(0, hp - dealt);
     _hurtFlash = .1;
     if (hp <= 0) {
@@ -117,6 +162,9 @@ class ReturnHomeDragon extends PositionComponent {
       tired = 0;
       frozen = 0;
       _clearAttacks();
+      _followUp = null;
+    } else if (!_evolved && hp <= maxHp * .5) {
+      _beginEvolution();
     }
     return dealt;
   }
@@ -130,6 +178,7 @@ class ReturnHomeDragon extends PositionComponent {
         a.removeFromParent();
       }
     }
+    _followUp = null;
     if (_move != _Move.idle) {
       _move = _Move.idle;
       _cooldown = 1.2;
@@ -144,8 +193,33 @@ class ReturnHomeDragon extends PositionComponent {
     tired = 0;
     frozen = 0;
     _move = _Move.idle;
+    _last = _Move.idle;
+    _lastCount = 0;
+    _followUp = null;
+    _evolved = false;
+    _evolutionT = -1;
+    _closeTime = 0;
     _cooldown = 2;
     _rainLeft = 0;
+    _bodyTurn = 0;
+    _bodyYaw = 0;
+    _headPitch = 0;
+    _castKick = 0;
+    _castSpread = 0;
+    _bodyOffset.setZero();
+    _clearAttacks();
+  }
+
+  void _beginEvolution() {
+    _evolved = true;
+    _evolutionT = 0;
+    _followUp = null;
+    _move = _Move.idle;
+    _rainLeft = 0;
+    _castKick = 0;
+    frozen = 0;
+    tired = 0;
+    _cooldown = .6;
     _clearAttacks();
   }
 
@@ -159,8 +233,9 @@ class ReturnHomeDragon extends PositionComponent {
   @override
   void update(double dt) {
     super.update(dt);
-    final motionDt =
-        intro || defeated ? dt : (frozen > 0 ? 0.0 : dt * timeScale);
+    final motionDt = intro || defeated || evolving
+        ? dt
+        : (frozen > 0 ? 0.0 : dt * timeScale);
     _t += motionDt;
     _jaw += (_mouth - _jaw) * (1 - exp(-12 * motionDt));
     // Smooth continuous animation channels keep idle motion alive.
@@ -170,7 +245,6 @@ class ReturnHomeDragon extends PositionComponent {
         ((airborne ? 1.0 : 0.0) - _flightBlend) * (1 - exp(-5 * motionDt));
     _wingPhase = (_wingPhase + motionDt * (2.8 + 7 * _flightBlend)) % (2 * pi);
     _bodyBob = sin(_t * 2.1) * 2.2;
-    summonNow = false;
     _hurtFlash = max(0, _hurtFlash - dt);
     if (intro) {
       _intro += dt;
@@ -184,23 +258,69 @@ class ReturnHomeDragon extends PositionComponent {
       return;
     }
     frozen = max(0, frozen - dt);
-    final world = dt * timeScale;
+    final world = evolving ? dt : dt * timeScale;
     for (final a in List<DragonAttack>.of(attacks)) {
-      a.tick(world);
+      a.tick(a is DragonTailSweep && frozen > 0 ? 0 : world);
       if (a.done) {
         attacks.remove(a);
         a.removeFromParent();
       }
     }
-    final ai = frozen > 0 ? 0.0 : world;
+    final ai = evolving ? dt : (frozen > 0 ? 0.0 : world);
+    if (!_evolved && hp <= maxHp * .5) _beginEvolution();
     tired = max(0, tired - ai);
-    _think(ai);
-    final desired = tired > 0
-        ? Vector2(-104, -36)
-        : _move == _Move.breath
-            ? Vector2(-74, _breathHeadY())
-            : Vector2(-62, -118 + sin(_t * 2.2) * 4);
+    _closeTime = target.x > position.x - 230 * _scale ? _closeTime + ai : 0;
+    for (final lane in attacks.whereType<DragonFlameLane>()) {
+      // Leave a fixed dodge window; the head and telegraph share the locked lane.
+      if (ai > 0 && lane.t < lane.warn - .28) {
+        final half = road.halfWidth(target.x) - DragonFlameLane.halfHeight;
+        final center = road.centerY(target.x);
+        lane.laneY = target.y.clamp(center - half, center + half);
+      }
+    }
+    _castKick *= exp(-18 * ai);
+    final launchMeteor = _think(ai);
+    final tail = _tailMove;
+    final charge = _fireCharge;
+    final fire = _firePower;
+    final rain = _move == _Move.rain ? _smoothUnit(_moveT / .45) : 0.0;
+    final roar = evolving ? sin(pi * _smoothUnit(_evolutionProgress)) : 0.0;
+    _bodyYaw = tail?.bodyYaw ?? 0;
+    final blend = 1 - exp(-16 * ai);
+    final castTurn =
+        -.07 * charge + .09 * fire - .1 * rain - .07 * _castKick - .16 * roar;
+    _bodyTurn += ((tail?.bodyTurn ?? castTurn) - _bodyTurn) * blend;
+    final shift = tail?.bodyShift ??
+        Offset(7 * charge + 5 * fire + 4 * _castKick,
+            4 * charge + 7 * fire - 3 * rain + 2 * _castKick - 5 * roar);
+    _bodyOffset.add((Vector2(shift.dx, shift.dy) - _bodyOffset) * blend);
+    _castSpread +=
+        ((charge * .25 + fire * .45 + rain * .65 + roar) - _castSpread) * blend;
+    final pitch = .68 * rain + .13 * _castKick - .12 * charge + .45 * roar;
+    _headPitch += (pitch - _headPitch) * blend;
+    if (tail != null) {
+      tail.root.setFrom(_world(62, -32));
+      tail.restClock = _t;
+      tail.posedCenterline = tail.localCenterline.map((p) {
+        final world = _world(p.dx, p.dy);
+        return Offset(world.x, world.y);
+      }).toList();
+    }
+    final desired = evolving
+        ? Vector2(-62 + 20 * roar, -118 - 22 * roar)
+        : tired > 0
+            ? Vector2(-104, -36)
+            : _move == _Move.breath
+                ? Vector2(-74 + 22 * charge + 6 * fire,
+                    _breathHeadY() - 12 * charge + sin(_t * 32) * fire * 1.5)
+                : _move == _Move.rain
+                    ? Vector2(-62 + 17 * rain + 7 * _castKick,
+                        -118 - 24 * rain + 4 * _castKick)
+                    : tail != null
+                        ? Vector2(-24, -100 + tail.crouch)
+                        : Vector2(-62, -118 + sin(_t * 2.2) * 4);
     _easeHead(desired, ai);
+    if (launchMeteor) _launchMeteor();
     for (final attack in attacks.whereType<DragonFlameLane>()) {
       attack
         ..emitter = mouth
@@ -213,22 +333,44 @@ class ReturnHomeDragon extends PositionComponent {
   }
 
   double _breathHeadY() {
-    final y = (target.y - position.y) / _scale - 14;
+    final lane = attacks.whereType<DragonFlameLane>().firstOrNull;
+    final y = ((lane?.laneY ?? target.y) - position.y) / _scale - 14;
     return y.clamp(-118.0, -12.0);
   }
 
   // ---- AI ------------------------------------------------------------------
 
-  double get _pace => phase == 3 ? .7 : 1;
-
-  void _think(double dt) {
-    if (dt <= 0) return;
+  bool _think(double dt) {
+    if (dt <= 0) return false;
+    if (evolving) {
+      _evolutionT = min(evolutionPushTime + evolutionTime, _evolutionT + dt);
+      _mouth = sin(pi * _smoothUnit(_evolutionProgress));
+      return false;
+    }
+    var launchMeteor = false;
     if (_move == _Move.idle) {
       _mouth = max(0, _mouth - dt * 4);
-      if (tired > 0) return;
+      if (tired > 0) return false;
       _cooldown -= dt;
-      if (_cooldown <= 0) _start(_pick());
-      return;
+      if (_cooldown <= 0) {
+        final queued = _followUp;
+        if (queued != null) {
+          _followUp = null;
+          _start(queued);
+        } else {
+          final first = _pick();
+          if (phase == 2) {
+            _followUp = switch (first) {
+              _Move.rain => _Move.breath,
+              _Move.breath => _Move.tail,
+              _Move.tail => _Move.rain,
+              _Move.idle => null,
+            };
+          }
+          _start(first);
+        }
+      }
+      return false;
     }
     _moveT += dt;
     switch (_move) {
@@ -240,106 +382,90 @@ class ReturnHomeDragon extends PositionComponent {
                 ? .35
                 : 0;
         if (lanes.isEmpty) {
-          _finish(tired: phase == 3 ? 1.5 : 2.0, cooldown: .6);
+          _finish();
         }
       case _Move.rain:
-        _mouth = .6;
+        _mouth = .25 + .5 * _smoothUnit(_moveT / .45) + .25 * _castKick;
         _rainNext -= dt;
         if (_rainLeft > 0 && _rainNext <= 0) {
           _rainNext = .17;
           _rainLeft -= 1;
-          _launchMeteor(first: _rainLeft == _rainCount - 1);
+          _castKick = 1;
+          launchMeteor = true;
         }
-        if (_rainLeft == 0 && _moveT > .4) _finish(cooldown: 1.1 * _pace);
+        if (_rainLeft == 0 &&
+            _rainNext < -.3 &&
+            (_followUp != null || !attacks.any((a) => a is DragonMeteor))) {
+          _finish();
+        }
       case _Move.tail:
         _mouth = .2;
         if (attacks.whereType<DragonTailSweep>().isEmpty) {
-          _finish(tired: phase == 3 ? 1.4 : 1.8, cooldown: .6);
-        }
-      case _Move.summon:
-        _mouth = _moveT < .7 ? 1 : 0;
-        if (_moveT >= .7) {
-          summonNow = true;
-          _finish(cooldown: 1.7 * _pace);
+          _finish();
         }
       case _Move.idle:
         break;
     }
+    return launchMeteor;
   }
 
-  int get _rainCount => switch (phase) { 1 => 3, 2 => 5, _ => 7 };
+  int get _rainCount => phase == 1 ? 3 : 5;
 
   _Move _pick() {
-    final close = target.x > position.x - 380 * _scale;
+    final close = target.x > position.x - 230 * _scale;
+    if (_closeTime > 1.2 && _last != _Move.tail) return _Move.tail;
     final options = <(_Move, int)>[
-      (_Move.breath, 5),
-      (_Move.rain, 4),
-      if (phase >= 2 && close) (_Move.tail, 4),
-      if (phase >= 2) (_Move.summon, 2),
+      if (_last != _Move.breath || _lastCount < 2)
+        (_Move.breath, _last == _Move.breath ? 1 : (close ? 3 : 5)),
+      if (_last != _Move.rain || _lastCount < 2)
+        (_Move.rain, _last == _Move.rain ? 1 : (close ? 2 : 6)),
+      if (close && (_last != _Move.tail || _lastCount < 2))
+        (_Move.tail, _last == _Move.tail ? 1 : 6),
     ];
-    for (var attempt = 0; attempt < 2; attempt++) {
-      final total = options.fold<int>(0, (s, o) => s + o.$2);
-      var roll = _random.nextInt(total);
-      for (final o in options) {
-        roll -= o.$2;
-        if (roll < 0) {
-          if (o.$1 != _last || attempt == 1) return o.$1;
-          break;
-        }
-      }
+    final total = options.fold<int>(0, (s, o) => s + o.$2);
+    var roll = _random.nextInt(total);
+    for (final o in options) {
+      roll -= o.$2;
+      if (roll < 0) return o.$1;
     }
     return _Move.breath;
   }
 
   void _start(_Move move) {
     _move = move;
+    _lastCount = move == _last ? _lastCount + 1 : 1;
     _last = move;
     _moveT = 0;
-    final warn = phase == 3 ? .7 : .9;
+    final warn = phase == 2 ? .85 : 1.0;
     switch (move) {
       case _Move.breath:
-        final half = road.halfWidth(target.x);
-        final ys = [target.y];
-        if (phase == 3) {
-          final center = road.centerY(target.x);
-          ys.add(target.y > center
-              ? target.y - half * .95
-              : target.y + half * .95);
-        }
-        for (final y in ys) {
-          _add(DragonFlameLane(
-              laneY: y, left: arenaLeft, right: mouth.x, warn: warn));
-        }
+        _add(DragonFlameLane(
+            laneY: target.y, left: arenaLeft, right: mouth.x, warn: warn));
       case _Move.rain:
         _rainLeft = _rainCount;
-        _rainNext = 0;
+        _rainNext = .45;
       case _Move.tail:
         _add(DragonTailSweep(
             road: road,
-            left: position.x - 360 * _scale,
-            right: position.x - 96 * _scale,
-            root: _world(40, -36),
+            left: position.x - 200 * _scale,
+            right: position.x - 65 * _scale,
+            root: _world(62, -32),
+            visualScale: _scale,
+            restClock: _t,
             warn: warn + .1));
-      case _Move.summon:
       case _Move.idle:
         break;
     }
   }
 
-  void _launchMeteor({required bool first}) {
-    Vector2 spot;
-    if (first) {
-      spot = target.clone();
-    } else {
-      final x = arenaLeft +
-          40 +
-          _random.nextDouble() * (position.x - 160 * _scale - arenaLeft - 40);
-      final half = road.halfWidth(x) - 12;
-      spot =
-          Vector2(x, road.centerY(x) + (_random.nextDouble() * 2 - 1) * half);
-    }
+  void _launchMeteor() {
+    final spot = target.clone();
+    spot.x = spot.x.clamp(arenaLeft + 20, position.x - 90 * _scale);
+    final half = road.halfWidth(spot.x) - DragonMeteor.radius;
+    final center = road.centerY(spot.x);
+    spot.y = spot.y.clamp(center - half, center + half);
     _add(DragonMeteor(
-        from: mouth, target: spot, flight: phase == 3 ? .85 : 1.1));
+        from: mouth, target: spot, flight: phase == 2 ? 1.0 : 1.1));
   }
 
   void _add(DragonAttack a) {
@@ -347,10 +473,12 @@ class ReturnHomeDragon extends PositionComponent {
     parent?.add(a);
   }
 
-  void _finish({double tired = 0, double cooldown = 1}) {
+  void _finish() {
+    tired = _followUp != null
+        ? 0
+        : (phase == 2 ? 2.0 : (_move == _Move.rain ? .8 : 1.5));
     _move = _Move.idle;
-    this.tired = tired;
-    _cooldown = cooldown;
+    _cooldown = _followUp != null ? .35 : .6;
   }
 
   // ---- Look ------------------------------------------------------------------
@@ -384,18 +512,234 @@ class ReturnHomeDragon extends PositionComponent {
           ..color = Color.fromARGB((70 * shadowK).round(), 0x30, 0x10, 0x08));
     canvas.translate(drift * _scale + shake, lift + _bodyBob * shadowK);
     canvas.scale(_scale * shrink);
+    if (evolving) _paintEvolutionBurst(canvas);
     if (intro && _intro > 1.0 && _intro < 1.5) {
       _landingDust(canvas, (_intro - 1) / .5);
     }
-    _paintBody(canvas);
-    if (tired > 0 && !defeated) _paintDizzy(canvas);
+    final tail = _tailMove;
+    canvas.save();
+    canvas.translate(15, -8);
+    canvas.rotate(_bodyTurn);
+    // Ground-plane yaw keeps the dragon upright while its whole body turns.
+    canvas.transform(Float64List.fromList([
+      cos(_bodyYaw),
+      sin(_bodyYaw) * .32,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      0,
+      1,
+    ]));
+    canvas.translate(-15 + _bodyOffset.x, 8 + _bodyOffset.y);
+    // The tail and hip share this transform. Drawing the root underneath the
+    // torso hides the seam at every angle, including the edge-on spin pose.
+    _paintTail(
+        canvas,
+        tail?.localCenterline ??
+            _dragonTailPoints(const Offset(62, -32), 1, _t));
+    final profile = _smoothUnit((cos(_bodyYaw).abs() - .08) / .42);
+    if (profile > 0) {
+      if (profile < 1) {
+        canvas.saveLayer(
+            null,
+            Paint()
+              ..color = Color.fromARGB((255 * profile).round(), 255, 255, 255));
+      }
+      _paintBody(canvas);
+      if (tired > 0 && !defeated) _paintDizzy(canvas);
+      if (frozen > 0) _paintIce(canvas);
+      if (profile < 1) canvas.restore();
+    }
+    canvas.restore();
+    if (profile < 1) _paintTurnedBody(canvas, 1 - profile);
+    canvas.restore();
+  }
+
+  /// Front/back silhouettes bridge the two profiles, preserving body volume
+  /// at quarter turns instead of squeezing a side-view drawing to a line.
+  void _paintTurnedBody(Canvas canvas, double opacity) {
+    final front = sin(_bodyYaw) > 0;
+    canvas.saveLayer(
+        null,
+        Paint()
+          ..color = Color.fromARGB((255 * opacity).round(), 255, 255, 255));
+    canvas.translate(15, -8);
+    canvas.rotate(_bodyTurn);
+    canvas.translate(-15 + cos(_bodyYaw) * _bodyOffset.x,
+        8 + _bodyOffset.y + sin(_bodyYaw) * _bodyOffset.x * .32);
+    for (final side in [-1.0, 1.0]) {
+      canvas.save();
+      canvas.translate(15, 0);
+      canvas.scale(side * .62, .78);
+      _wing(canvas, const Offset(0, -91), side * .07, 1,
+          const Color(0xFFCD4C38), const Color(0xFFE88B4B));
+      canvas.restore();
+    }
+    final body = Path()
+      ..moveTo(-15, -79)
+      ..quadraticBezierTo(15, -102, 45, -79)
+      ..lineTo(43, -29)
+      ..quadraticBezierTo(15, -5, -13, -29)
+      ..close();
+    _shape(canvas, body,
+        front ? const Color(0xFFE45B40) : const Color(0xFFB94130));
+    if (front) {
+      final belly = Path()
+        ..moveTo(15, -85)
+        ..quadraticBezierTo(38, -62, 32, -32)
+        ..quadraticBezierTo(15, -18, -2, -32)
+        ..quadraticBezierTo(-8, -62, 15, -85)
+        ..close();
+      _shape(canvas, belly, const Color(0xFFFFD98A));
+      for (var i = 0; i < 4; i++) {
+        final y = -68.0 + i * 11;
+        canvas.drawArc(
+            Rect.fromCenter(center: Offset(15, y), width: 30, height: 9),
+            .2,
+            2.7,
+            false,
+            Paint()
+              ..color = _c(const Color(0xFFCC9958))
+              ..style = PaintingStyle.stroke
+              ..strokeWidth = 1.8);
+      }
+    } else {
+      for (var row = 0; row < 4; row++) {
+        final y = -77.0 + row * 12;
+        for (final side in [-1.0, 1.0]) {
+          _shape(
+              canvas,
+              Path()
+                ..addPolygon([
+                  Offset(15 + side * 8, y - 5),
+                  Offset(15 + side * 21, y),
+                  Offset(15 + side * 8, y + 6),
+                ], true),
+              const Color(0xFFE28C48));
+        }
+        _shape(
+            canvas,
+            Path()
+              ..addPolygon([
+                Offset(10, y + 2),
+                Offset(15, y - 12 - 10 * _evolution),
+                Offset(20, y + 2),
+              ], true),
+            const Color(0xFFFFBA47));
+      }
+    }
+    _paintEvolutionArmor(canvas, turned: true);
+    for (final side in [-1.0, 1.0]) {
+      final x = 15 + side * 22;
+      _shape(
+          canvas,
+          Path()
+            ..addPolygon([
+              Offset(x - 8, -29),
+              Offset(x + 8, -29),
+              Offset(x + 11, -2),
+              Offset(x - 11, -2),
+            ], true),
+          const Color(0xFFD25338));
+      for (var i = 0; i < 3; i++) {
+        final c = x - 7 + i * 7.0;
+        _shape(
+            canvas,
+            Path()
+              ..addPolygon([
+                Offset(c - 3, -2),
+                Offset(c, 5),
+                Offset(c + 3, -2),
+              ], true),
+            const Color(0xFFFFEED0));
+      }
+    }
+    final hy = _head.y + sin(_bodyYaw) * (_head.x - 15) * .32;
+    _shape(
+        canvas,
+        Path()
+          ..addRRect(RRect.fromRectAndRadius(
+              Rect.fromCenter(
+                  center: Offset(15, hy + 17), width: 23, height: 34),
+              const Radius.circular(9))),
+        const Color(0xFFD6533C));
+    for (final side in [-1.0, 1.0]) {
+      final x = 15 + side * 18;
+      _shape(
+          canvas,
+          Path()
+            ..addPolygon([
+              Offset(x - 5, hy - 12),
+              Offset(
+                  x + side * (9 + 12 * _evolution), hy - 35 - 18 * _evolution),
+              Offset(x + 5, hy - 9),
+            ], true),
+          const Color(0xFFFFEAC0));
+    }
+    _shape(
+        canvas,
+        Path()
+          ..addPolygon([
+            Offset(-10, hy - 9),
+            Offset(0, hy - 20),
+            Offset(30, hy - 20),
+            Offset(40, hy - 9),
+            Offset(35, hy + 15),
+            Offset(-5, hy + 15),
+          ], true),
+        front ? const Color(0xFFE66B46) : const Color(0xFFC34835));
+    if (front) {
+      for (final side in [-1.0, 1.0]) {
+        final eye = Offset(15 + side * 11, hy - 4);
+        canvas.drawOval(
+            Rect.fromCenter(center: eye, width: 12, height: 15),
+            Paint()
+              ..color = Color.lerp(const Color(0xFFFFF2D2),
+                  const Color(0xFFFF8D32), _evolution)!);
+        canvas.drawOval(Rect.fromCenter(center: eye, width: 4, height: 11),
+            Paint()..color = const Color(0xFF3A1B13));
+      }
+      _shape(
+          canvas,
+          Path()
+            ..addRRect(RRect.fromRectAndRadius(
+                Rect.fromCenter(
+                    center: Offset(15, hy + 11), width: 31, height: 14),
+                const Radius.circular(5))),
+          const Color(0xFFF28D56));
+      for (final side in [-1.0, 1.0]) {
+        canvas.drawCircle(
+            Offset(15 + side * 7, hy + 9), 2, Paint()..color = _ink);
+      }
+    } else {
+      _shape(
+          canvas,
+          Path()
+            ..addPolygon([
+              Offset(10, hy - 10),
+              Offset(15, hy - 28),
+              Offset(20, hy - 10),
+            ], true),
+          const Color(0xFFFFB13A));
+    }
     if (frozen > 0) _paintIce(canvas);
     canvas.restore();
   }
 
   Color _c(Color base) {
     var c = base;
-    if (phase == 3 && !intro) c = Color.lerp(c, const Color(0xFF6E1410), .28)!;
+    if (_evolution > 0 && base.red > base.green * 1.25) {
+      c = Color.lerp(c, const Color(0xFF422735), .8 * _evolution)!;
+    }
     if (frozen > 0) c = Color.lerp(c, const Color(0xFFBFE6FF), .45)!;
     if (_hurtFlash > 0 ||
         (defeated && _death < .7 && (_t * 12).floor().isEven)) {
@@ -417,6 +761,160 @@ class ReturnHomeDragon extends PositionComponent {
     canvas.drawPath(path, _outline);
   }
 
+  void _magma(Canvas canvas, Path path) {
+    if (_evolution <= 0) return;
+    final pulse = .8 + .2 * sin(_t * 6);
+    final color =
+        frozen > 0 ? const Color(0xFF70CDFF) : const Color(0xFFFF492A);
+    for (final layer in [(8.0, .25), (3.0, .95), (1.0, .9)]) {
+      canvas.drawPath(
+          path,
+          Paint()
+            ..color = (layer.$1 == 1 ? const Color(0xFFFFE49A) : color)
+                .withOpacity(layer.$2 * _evolution * pulse)
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = layer.$1
+            ..strokeJoin = StrokeJoin.round
+            ..strokeCap = StrokeCap.round);
+    }
+  }
+
+  void _paintEvolutionArmor(Canvas canvas, {bool turned = false}) {
+    final growth = _evolution;
+    if (growth <= 0) return;
+    for (var i = 0; i < 3; i++) {
+      final y = -80.0 + i * 18;
+      final x = turned ? 15.0 : 48.0 + i * 5;
+      final width = (turned ? 24 : 19) * growth;
+      _shape(
+          canvas,
+          Path()
+            ..addPolygon([
+              Offset(x - width, y),
+              Offset(x, y - 10 * growth),
+              Offset(x + width, y),
+              Offset(x + width * .7, y + 12),
+              Offset(x, y + 5),
+              Offset(x - width * .7, y + 12),
+            ], true),
+          const Color(0xFF3F2938));
+      _magma(
+          canvas,
+          Path()
+            ..moveTo(x - width * .75, y + 2)
+            ..lineTo(x, y + 8)
+            ..lineTo(x + width * .75, y + 2));
+    }
+    if (!turned) {
+      _magma(
+          canvas,
+          Path()
+            ..moveTo(13, -72)
+            ..lineTo(20, -60)
+            ..lineTo(13, -48)
+            ..lineTo(21, -35));
+    }
+  }
+
+  void _paintEvolutionBurst(Canvas canvas) {
+    final progress = _evolutionT / (evolutionPushTime + evolutionTime);
+    final fade = sin(pi * progress);
+    final radius = 40 + progress * 160;
+    canvas.drawOval(
+        Rect.fromCenter(
+            center: const Offset(15, 0),
+            width: radius * 2,
+            height: radius * .6),
+        Paint()
+          ..color = const Color(0xFFFF6C35).withOpacity(fade * .8)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 5 * (1 - progress) + 1);
+    for (var i = 0; i < 12; i++) {
+      final a = i * pi / 6;
+      final p = Offset(15 + cos(a) * radius * .65,
+          -45 + sin(a) * radius * .3 - progress * 55);
+      canvas.drawCircle(p, (2 + i % 3) * fade,
+          Paint()..color = const Color(0xFFFFD371).withOpacity(fade));
+    }
+  }
+
+  void _paintTail(Canvas canvas, List<Offset> points) {
+    Offset tangent(int i) {
+      final d = points[min(i + 1, points.length - 1)] - points[max(0, i - 1)];
+      return d.distance > .001 ? d / d.distance : const Offset(1, 0);
+    }
+
+    Offset normal(int i) {
+      final d = tangent(i);
+      return Offset(-d.dy, d.dx);
+    }
+
+    double width(int i) => 15 * (1 - i / (points.length - 1)) + 2;
+    final shape = Path();
+    for (var i = 0; i < points.length; i++) {
+      final p = points[i] + normal(i) * width(i);
+      if (i == 0) {
+        shape.moveTo(p.dx, p.dy);
+      } else {
+        shape.lineTo(p.dx, p.dy);
+      }
+    }
+    for (var i = points.length - 1; i >= 0; i--) {
+      final p = points[i] - normal(i) * width(i);
+      shape.lineTo(p.dx, p.dy);
+    }
+    shape.close();
+    _shape(canvas, shape, const Color(0xFFE0533D));
+    final ridge = Path();
+    for (var i = 0; i < points.length; i++) {
+      final p = points[i] - normal(i) * width(i) * .55;
+      if (i == 0) {
+        ridge.moveTo(p.dx, p.dy);
+      } else {
+        ridge.lineTo(p.dx, p.dy);
+      }
+    }
+    canvas.drawPath(
+        ridge,
+        Paint()
+          ..color = _c(const Color(0xFFF68B52))
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 3
+          ..strokeCap = StrokeCap.round);
+    _magma(canvas, ridge);
+    for (var i = 3; i < points.length - 2; i += 3) {
+      final p = points[i] - normal(i) * width(i);
+      final n = normal(i), d = tangent(i);
+      _shape(
+          canvas,
+          Path()
+            ..addPolygon([
+              p - d * 4,
+              p - n * (10 + 12 * _evolution) + d * 3,
+              p + d * 7,
+            ], true),
+          const Color(0xFFFFB13A));
+      canvas.drawLine(
+          points[i] - n * width(i) * .4,
+          points[i] + n * width(i) * .8,
+          Paint()
+            ..color = _c(const Color(0xFFAC3E2D))
+            ..strokeWidth = 1.2);
+    }
+    final last = points.length - 1;
+    final tip = points.last, d = tangent(last), n = normal(last);
+    _shape(
+        canvas,
+        Path()
+          ..addPolygon([
+            tip + d * (16 + 14 * _evolution),
+            tip - d * 5 + n * (10 + 5 * _evolution),
+            tip - d * 1,
+            tip - d * 5 - n * (10 + 5 * _evolution),
+          ], true),
+        const Color(0xFFFFB13A));
+  }
+
   void _paintBody(Canvas canvas) {
     const scale = Color(0xFFE0533D);
     const dark = Color(0xFFB23A2C);
@@ -424,65 +922,19 @@ class ReturnHomeDragon extends PositionComponent {
     const spike = Color(0xFFFFB13A);
 
     // Enraged glow.
-    if (phase == 3 && !intro && !defeated) {
+    if (_evolution > 0 && !intro && !defeated) {
       final pulse = .5 + .5 * sin(_t * 5);
       canvas.drawOval(
           Rect.fromCenter(
               center: const Offset(10, -70), width: 230, height: 190),
           Paint()
             ..shader = RadialGradient(colors: [
-              Color.fromARGB((90 * pulse + 40).round(), 0xFF, 0x7A, 0x2A),
+              Color.fromARGB(
+                  ((65 * pulse + 25) * _evolution).round(), 0xFF, 0x4A, 0x2A),
               const Color(0x00FF5A1A),
             ]).createShader(Rect.fromCenter(
                 center: const Offset(10, -70), width: 230, height: 190)));
     }
-
-    // Tapered tail with a delayed wave traveling from root to tip.
-    final points = List.generate(17, (i) {
-      final k = i / 16;
-      return Offset(62 + k * 86,
-          -32 + sin(k * pi) * 18 - k * k * 62 + sin(_t * 2.4 - k * 4) * k * 10);
-    });
-    final tail = Path();
-    for (var i = 0; i < points.length; i++) {
-      final k = i / (points.length - 1);
-      final w = 13 * (1 - k) + 2;
-      final q = points[i] + Offset(0, -w);
-      if (i == 0) {
-        tail.moveTo(q.dx, q.dy);
-      } else {
-        tail.lineTo(q.dx, q.dy);
-      }
-    }
-    for (var i = points.length - 1; i >= 0; i--) {
-      final k = i / (points.length - 1);
-      final q = points[i] + Offset(0, 13 * (1 - k) + 2);
-      tail.lineTo(q.dx, q.dy);
-    }
-    tail.close();
-    _shape(canvas, tail, scale);
-    for (var i = 3; i < 15; i += 3) {
-      final q = points[i];
-      final w = 13 * (1 - i / 16) + 2;
-      _shape(
-          canvas,
-          Path()
-            ..moveTo(q.dx - 5, q.dy - w)
-            ..lineTo(q.dx + 3, q.dy - w - 12)
-            ..lineTo(q.dx + 7, q.dy - w + 2)
-            ..close(),
-          spike);
-    }
-    final tip = points.last;
-    _shape(
-        canvas,
-        Path()
-          ..moveTo(tip.dx - 10, tip.dy + 3)
-          ..lineTo(tip.dx - 7, tip.dy - 21)
-          ..lineTo(tip.dx + 13, tip.dy - 13)
-          ..lineTo(tip.dx + 6, tip.dy + 6)
-          ..close(),
-        spike);
 
     // Back wing (darker, behind the body).
     _wing(
@@ -537,6 +989,7 @@ class ReturnHomeDragon extends PositionComponent {
     canvas.restore();
     canvas.drawPath(body, _outline);
     _paintArmorPlates(canvas, _breath);
+    _paintEvolutionArmor(canvas);
 
     // Back spikes along the top of the body.
     for (var i = 0; i < 6; i++) {
@@ -548,7 +1001,8 @@ class ReturnHomeDragon extends PositionComponent {
           canvas,
           Path()
             ..moveTo(base.dx - side.dx, base.dy - side.dy)
-            ..lineTo(base.dx + out.dx * 15, base.dy + out.dy * 15)
+            ..lineTo(base.dx + out.dx * (15 + 16 * _evolution),
+                base.dy + out.dy * (15 + 16 * _evolution))
             ..lineTo(base.dx + side.dx, base.dy + side.dy)
             ..close(),
           spike);
@@ -556,7 +1010,11 @@ class ReturnHomeDragon extends PositionComponent {
 
     // Bent forelegs taper from shoulder to ankle, feet stay planted.
     for (final x in const [-8.0, 38.0]) {
-      final settle = _breath * 2;
+      final settle = _breath * 2 +
+          (_tailMove?.crouch ?? 0) +
+          _fireCharge * 3 +
+          _firePower * 5 +
+          _castKick * 2;
       final leg = Path()
         ..moveTo(x - 8, -44 - settle)
         ..quadraticBezierTo(x + 15, -40, x + 13, -26)
@@ -702,18 +1160,25 @@ class ReturnHomeDragon extends PositionComponent {
   void _wing(Canvas canvas, Offset root, double phaseOffset, double size,
       Color bone, Color skin) {
     final beat = _wingPhase + phaseOffset;
-    final strength = .1 + .9 * _flightBlend;
     final sweep = sin(beat);
-    final fold = (.5 + .5 * cos(beat - .45)) * strength;
+    final balance = _tailMove?.wingSpread ?? _castSpread;
+    // Grounded wings rest folded; flight opens them for each power stroke.
+    final restingFold = .88 + .04 * cos(beat);
+    final flightFold = .08 + .82 * _smoothUnit(.5 + .5 * cos(beat - .45));
+    final fold = (restingFold + (flightFold - restingFold) * _flightBlend) *
+        (1 - balance * .75);
     Offset link(Offset from, double length, double angle) =>
         from + Offset(cos(angle), sin(angle)) * length;
-    final shoulder = -1.38 + sweep * (.07 + .48 * _flightBlend);
+    final shoulder =
+        -1.38 + fold * .85 + sweep * (.07 + .48 * _flightBlend) - balance * .28;
     final elbow = link(Offset.zero, 39, shoulder);
-    final forearm = shoulder + .57 + fold * .52;
+    // Fold rearward along the outer flank, never back through the shoulder.
+    final forearm = shoulder + .57 + fold * 1.05 - balance * .18;
     final wrist = link(elbow, 47, forearm);
     final lag = sin(beat - .5) * (.025 + .12 * _flightBlend);
-    final spread = 1 - fold * .38;
-    final fingerBase = forearm + .2 + lag;
+    final spread = 1 - fold * .9 + balance * .18;
+    final openFingerBase = forearm + .2 + lag;
+    final fingerBase = openFingerBase + (1.15 - openFingerBase) * fold;
     final tips = [
       link(wrist, 34, fingerBase - .65 * spread),
       link(wrist, 60, fingerBase + .44 * spread),
@@ -721,12 +1186,13 @@ class ReturnHomeDragon extends PositionComponent {
     ];
     // The membrane closes on the flank; this anchor never follows the wrist.
     const anchor = Offset(35, 6);
-    final billow = sin(beat - .85) * (1 + 3 * _flightBlend);
+    final billow = sin(beat - .85) * (1 + 3 * _flightBlend) * (1 - fold);
     Offset scallop(Offset a, Offset b) =>
         (a + b) * .5 + (wrist - (a + b) * .5) * .36 + Offset(0, billow);
     final c01 = scallop(tips[0], tips[1]);
     final c12 = scallop(tips[1], tips[2]);
-    final c2a = (tips[2] + anchor) * .5 + Offset(-12, -9 + billow);
+    final c2a = (tips[2] + anchor) * .5 +
+        Offset(-12 * (1 - fold * .8), -9 * (1 - fold) + billow);
     final membrane = Path()
       ..moveTo(0, 0)
       ..lineTo(elbow.dx, elbow.dy)
@@ -739,7 +1205,7 @@ class ReturnHomeDragon extends PositionComponent {
       ..close();
     canvas.save();
     canvas.translate(root.dx, root.dy);
-    canvas.scale(size);
+    canvas.scale(size * (1 + .1 * _evolution));
     _shape(canvas, membrane, skin);
     canvas.save();
     canvas.clipPath(membrane);
@@ -776,6 +1242,7 @@ class ReturnHomeDragon extends PositionComponent {
             ..color = _c(bone)
             ..style = PaintingStyle.stroke
             ..strokeWidth = 2);
+      _magma(canvas, finger);
     }
     for (var i = 1; i < 3; i++) {
       final ribEnd = (wrist + tips[i]) * .5;
@@ -783,8 +1250,8 @@ class ReturnHomeDragon extends PositionComponent {
           anchor,
           ribEnd,
           Paint()
-            ..color = _c(const Color(0x667F291F))
-            ..strokeWidth = 1);
+            ..color = _c(Color.fromARGB((100 + 70 * fold).round(), 127, 41, 31))
+            ..strokeWidth = 1 + fold);
     }
     // The claw follows the wrist orientation rather than sliding over it.
     canvas.save();
@@ -807,16 +1274,33 @@ class ReturnHomeDragon extends PositionComponent {
     const horn = Color(0xFFFFF0C8);
     canvas.save();
     canvas.translate(h.dx, h.dy);
+    canvas.rotate(_headPitch);
     // Horns.
     for (final o in const [Offset(10, -20), Offset(22, -12)]) {
+      final reach = 1 + .85 * _evolution;
       _shape(
           canvas,
           Path()
             ..moveTo(o.dx - 6, o.dy + 4)
-            ..quadraticBezierTo(o.dx + 10, o.dy - 18, o.dx + 30, o.dy - 26)
+            ..quadraticBezierTo(o.dx + 10, o.dy - 18 * reach, o.dx + 30 * reach,
+                o.dy - 26 * reach)
             ..quadraticBezierTo(o.dx + 16, o.dy - 6, o.dx + 8, o.dy + 6)
             ..close(),
           horn);
+    }
+    if (_evolution > 0) {
+      for (var i = 0; i < 3; i++) {
+        final x = 5.0 + i * 11;
+        _shape(
+            canvas,
+            Path()
+              ..addPolygon([
+                Offset(x - 7, -23),
+                Offset(x + 12 * _evolution, -27 - 24 * _evolution),
+                Offset(x + 7, -17),
+              ], true),
+            const Color(0xFF4B293B));
+      }
     }
     // Ear fin.
     _shape(
@@ -870,6 +1354,15 @@ class ReturnHomeDragon extends PositionComponent {
       ..lineTo(15, 19)
       ..close();
     canvas.drawPath(cheek, Paint()..color = _c(const Color(0xFFB23A2C)));
+    if (_evolution > 0) {
+      _magma(
+          canvas,
+          Path()
+            ..moveTo(17, -14)
+            ..lineTo(6, -8)
+            ..lineTo(12, 2)
+            ..lineTo(1, 12));
+    }
     canvas.drawPath(
         Path()
           ..moveTo(-49, -5)
@@ -913,7 +1406,7 @@ class ReturnHomeDragon extends PositionComponent {
     canvas.drawOval(
         Rect.fromCenter(center: const Offset(-36, 0), width: 6, height: 4),
         nostril);
-    if ((phase == 3 || _mouth > .3) && !defeated) {
+    if ((phase == 2 || _mouth > .3) && !defeated) {
       for (var i = 0; i < 3; i++) {
         final k = (_t * 1.6 + i / 3) % 1;
         canvas.drawCircle(
@@ -947,17 +1440,23 @@ class ReturnHomeDragon extends PositionComponent {
     } else {
       canvas.drawOval(
           Rect.fromCenter(center: const Offset(-6, -7), width: 20, height: 22),
-          Paint()..color = const Color(0xFFFFFFFF));
+          Paint()
+            ..color = Color.lerp(
+                const Color(0xFFFFFFFF), const Color(0xFFFF8D32), _evolution)!);
       canvas.drawOval(
           Rect.fromCenter(center: const Offset(-6, -7), width: 20, height: 22),
           _outline..strokeWidth = 2);
       final look = (target.y - position.y) / _scale < _head.y ? -2.0 : 2.0;
-      canvas.drawCircle(
-          Offset(-9, -6 + look), 6, Paint()..color = const Color(0xFF2A120C));
+      canvas.drawOval(
+          Rect.fromCenter(
+              center: Offset(-9, -6 + look),
+              width: 12 - 7 * _evolution,
+              height: 12 + 3 * _evolution),
+          Paint()..color = const Color(0xFF2A120C));
       canvas.drawCircle(Offset(-11, -9 + look), 2.2,
           Paint()..color = const Color(0xFFFFFFFF));
       // Brow: frowning while attacking or enraged.
-      final angry = phase == 3 || _move != _Move.idle;
+      final angry = phase == 2 || _move != _Move.idle;
       canvas.drawLine(Offset(-18, angry ? -22 : -20),
           Offset(4, angry ? -16 : -22), _outline..strokeWidth = 4);
     }
@@ -1028,7 +1527,61 @@ class ReturnHomeDragon extends PositionComponent {
   }
 }
 
-enum _Move { idle, breath, rain, tail, summon }
+double _smoothUnit(double value) {
+  final k = value.clamp(0.0, 1.0);
+  return k * k * (3 - 2 * k);
+}
+
+/// Fixed-length bones: coil at rest, unwind into the sweep, then recoil from
+/// hip to tip. Rendering and collision both consume these same points.
+List<Offset> _dragonTailPoints(Offset root, double scale, double clock,
+    {double? attackTime, double warn = 1}) {
+  final points = <Offset>[root];
+  const bones = 24;
+  for (var i = 0; i < bones; i++) {
+    final k = i / (bones - 1);
+    final rest = .35 - 2.1 * k + sin(clock * 2.4 - k * 4) * .08 * k;
+    var angle = rest;
+    final t = attackTime;
+    if (t != null) {
+      final engage = t < warn
+          ? _smoothUnit(t / warn)
+          : t < warn + DragonTailSweep.sweep
+              ? 1.0
+              : 1 -
+                  _smoothUnit((t - warn - DragonTailSweep.sweep) /
+                      DragonTailSweep.recovery);
+      final strike = ((t - warn) / DragonTailSweep.sweep).clamp(0.0, 1.0);
+      final flex = sin(strike * pi) * sin(k * pi) * .35;
+      angle += (.15 - .55 * k + flex - rest) * engage;
+    }
+    points.add(
+        points.last + Offset(cos(angle), sin(angle)) * (240 * scale / bones));
+  }
+  return points;
+}
+
+bool _tailSegmentHits(Offset a, Offset b, Rect box) {
+  var low = 0.0, high = 1.0;
+  for (var axis = 0; axis < 2; axis++) {
+    final start = axis == 0 ? a.dx : a.dy;
+    final delta = axis == 0 ? b.dx - a.dx : b.dy - a.dy;
+    final minBound = axis == 0 ? box.left : box.top;
+    final maxBound = axis == 0 ? box.right : box.bottom;
+    if (delta.abs() < .00001) {
+      if (start < minBound || start > maxBound) return false;
+    } else {
+      final t0 = (minBound - start) / delta;
+      final t1 = (maxBound - start) / delta;
+      low = max(low, min(t0, t1));
+      high = min(high, max(t0, t1));
+      if (low > high) return false;
+    }
+  }
+  return true;
+}
+
+enum _Move { idle, breath, rain, tail }
 
 // ===========================================================================
 // Dragon attacks. Each runs on the dragon's clock (tick), so time stop
@@ -1059,7 +1612,8 @@ class DragonFlameLane extends DragonAttack {
       required this.right,
       required this.warn});
 
-  final double laneY, left, warn;
+  double laneY;
+  final double left, warn;
   double right;
   Vector2? emitter;
   static const double halfHeight = 24;
@@ -1348,7 +1902,7 @@ class DragonMeteor extends DragonAttack {
 }
 
 /// The tail swings across the lane in front of the dragon. Warns with a red
-/// zone, then sweeps from the top edge to the bottom edge.
+/// zone, then turns counterclockwise, sweeping down its left side.
 class DragonTailSweep extends DragonAttack {
   DragonTailSweep({
     required this.road,
@@ -1356,18 +1910,61 @@ class DragonTailSweep extends DragonAttack {
     required this.right,
     required this.root,
     required this.warn,
+    this.visualScale = 1,
+    this.restClock = 0,
   });
 
   final ReturnHomeRoad road;
-  final double left, right, warn;
+  final double left, right, warn, visualScale;
   final Vector2 root;
-  static const double sweep = .32;
+  double restClock;
+  static const double sweep = .7;
+  static const double recovery = .55;
 
   @override
   bool get warning => t < warn;
   bool get sweeping => t >= warn && t < warn + sweep;
   @override
-  bool get done => t >= warn + sweep + .25;
+  bool get done => t >= warn + sweep + recovery;
+
+  double get _strike => _smoothUnit((t - warn) / sweep);
+  double get _recover => _smoothUnit((t - warn - sweep) / recovery);
+  double get bodyTurn => warning
+      ? -.22 * _smoothUnit(t / warn)
+      : sweeping
+          ? -.22 + .56 * _strike
+          : .34 * (1 - _recover);
+  Offset get bodyShift => warning
+      ? const Offset(8, 6) * _smoothUnit(t / warn)
+      : sweeping
+          ? Offset(8 - 20 * _strike, 6 - 6 * _strike)
+          : const Offset(-12, 0) * (1 - _recover);
+  double get crouch => warning
+      ? 6 * _smoothUnit(t / warn)
+      : sweeping
+          ? 6 * (1 - _strike)
+          : 0;
+  double get wingSpread => warning
+      ? .7 * _smoothUnit(t / warn)
+      : sweeping
+          ? .7 + .3 * sin(_strike * pi)
+          : .7 * (1 - _recover);
+
+  /// One complete turn: left-facing, right-facing, then left-facing again.
+  double get bodyYaw => warning
+      ? -.28 * _smoothUnit(t / warn)
+      : sweeping
+          ? -.28 - 2 * pi * _strike
+          : -2 * pi - .28 * (1 - _recover);
+
+  List<Offset>? posedCenterline;
+  List<Offset> get localCenterline =>
+      _dragonTailPoints(const Offset(62, -32), 1, restClock,
+          attackTime: t, warn: warn);
+  List<Offset> get centerline =>
+      posedCenterline ??
+      _dragonTailPoints(Offset(root.x, root.y), visualScale, restClock,
+          attackTime: t, warn: warn);
 
   Rect get _zone {
     final mid = (left + right) / 2;
@@ -1377,7 +1974,17 @@ class DragonTailSweep extends DragonAttack {
   }
 
   @override
-  bool hits(Rect box) => sweeping && box.overlaps(_zone);
+  bool hits(Rect box) {
+    if (!sweeping || !box.overlaps(_zone)) return false;
+    final points = centerline;
+    for (var i = 0; i < points.length - 1; i++) {
+      final radius = (15 * (1 - i / (points.length - 1)) + 2) * visualScale;
+      if (_tailSegmentHits(points[i], points[i + 1], box.inflate(radius))) {
+        return true;
+      }
+    }
+    return false;
+  }
 
   @override
   void render(Canvas canvas) {
@@ -1398,70 +2005,64 @@ class DragonTailSweep extends DragonAttack {
                 Color.fromARGB((170 + 80 * pulse).round(), 0xFF, 0x5A, 0x3A)
             ..style = PaintingStyle.stroke
             ..strokeWidth = 3);
-      // Curved arrow showing the swing.
+      // Follow the counterclockwise turn down the dragon's left side.
       final arrow = Paint()
         ..color = const Color(0xCCFFF4DA)
         ..style = PaintingStyle.stroke
         ..strokeWidth = 4
         ..strokeCap = StrokeCap.round;
       final c = zone.center;
+      const startAngle = -pi * .55;
+      const sweepAngle = -pi * .9;
+      const endAngle = startAngle + sweepAngle;
       canvas.drawArc(
           Rect.fromCenter(
               center: c, width: zone.width * .7, height: zone.height * .8),
-          -pi * .45,
-          pi * .9,
+          startAngle,
+          sweepAngle,
           false,
           arrow);
       final end = c +
-          Offset(cos(pi * .45) * zone.width * .35,
-              sin(pi * .45) * zone.height * .4);
-      canvas.drawLine(end, end + const Offset(-10, -4), arrow);
-      canvas.drawLine(end, end + const Offset(4, -11), arrow);
+          Offset(cos(endAngle) * zone.width * .35,
+              sin(endAngle) * zone.height * .4);
+      final tangent = Vector2(
+          sin(endAngle) * zone.width * .35, -cos(endAngle) * zone.height * .4)
+        ..normalize();
+      final back = Offset(tangent.x, tangent.y) * -12;
+      final side = Offset(-tangent.y, tangent.x) * 6;
+      canvas.drawLine(end, end + back + side, arrow);
+      canvas.drawLine(end, end + back - side, arrow);
       return;
     }
-    final k = ((t - warn) / sweep).clamp(0.0, 1.0);
-    final fade =
-        t < warn + sweep ? 1.0 : max(0.0, 1 - (t - warn - sweep) / .25);
-    final tipY = zone.top + zone.height * k;
-    final tip = Offset(left + 20, tipY);
-    final r = Offset(root.x, root.y);
-    final path = Path()
-      ..moveTo(r.dx, r.dy)
-      ..quadraticBezierTo(
-          (r.dx + tip.dx) / 2, tipY + (r.dy - tipY) * .2 - 30, tip.dx, tip.dy);
-    canvas.drawPath(
-        path,
-        Paint()
-          ..color = Color.fromARGB((255 * fade).round(), 0x4A, 0x1E, 0x14)
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = 26
-          ..strokeCap = StrokeCap.round);
-    canvas.drawPath(
-        path,
-        Paint()
-          ..color = Color.fromARGB((255 * fade).round(), 0xE0, 0x53, 0x3D)
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = 20
-          ..strokeCap = StrokeCap.round);
-    // Motion blur behind the tip.
-    for (var i = 1; i < 4; i++) {
-      final y = tipY - i * 16 * (k < 1 ? 1 : 0);
-      canvas.drawCircle(
-          Offset(tip.dx, y),
-          12 - i * 2.5,
+    // Only wind streaks and ground dust live here. The dragon draws its own
+    // attached, tapered tail from this same centerline and attack clock.
+    if (done) return;
+    final fade = sweeping ? 1.0 : 1 - _recover;
+    if (sweeping) {
+      final points = centerline;
+      final streak = Path();
+      for (var i = 12; i < points.length; i++) {
+        final p = points[i] + const Offset(8, -6);
+        if (i == 12) {
+          streak.moveTo(p.dx, p.dy);
+        } else {
+          streak.lineTo(p.dx, p.dy);
+        }
+      }
+      canvas.drawPath(
+          streak,
           Paint()
-            ..color =
-                Color.fromARGB((120 * fade / i).round(), 0xFF, 0xF4, 0xDA));
+            ..color = const Color(0x88FFF4DA)
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = 5 * visualScale
+            ..strokeCap = StrokeCap.round);
     }
-    canvas.drawPath(
-        Path()
-          ..moveTo(tip.dx - 18, tip.dy)
-          ..lineTo(tip.dx, tip.dy - 14)
-          ..lineTo(tip.dx + 10, tip.dy)
-          ..lineTo(tip.dx, tip.dy + 12)
-          ..close(),
-        Paint()
-          ..color = Color.fromARGB((255 * fade).round(), 0xFF, 0xB1, 0x3A));
+    final tip = centerline.last;
+    for (var i = 0; i < 5; i++) {
+      final p = tip + Offset((i - 2) * 7.0, 12 + sin(i * 2 + t * 7) * 4);
+      canvas.drawCircle(p, (3 + i % 3) * visualScale,
+          Paint()..color = Color.fromARGB((90 * fade).round(), 216, 200, 164));
+    }
   }
 }
 

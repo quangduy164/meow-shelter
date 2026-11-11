@@ -4,6 +4,8 @@ import '../../game/cat_herd/herd_game.dart';
 import '../../game/cat_herd/herd_round.dart';
 import '../widgets/herd_map_select.dart';
 import '../design.dart';
+import '../../camp/camp_state.dart';
+import '../../game/cat_herd/herd_map.dart';
 
 class HerdScreen extends StatefulWidget {
   const HerdScreen({super.key});
@@ -12,10 +14,13 @@ class HerdScreen extends StatefulWidget {
 }
 
 class _HerdScreenState extends State<HerdScreen> with WidgetsBindingObserver {
-  final _game = HerdGame();
+  late final HerdGame _game;
   @override
   void initState() {
     super.initState();
+    _game = HerdGame(
+        needsTutorial: !CampState.instance.herdTutorialDone,
+        onTutorialCompleted: CampState.instance.completeHerdTutorial);
     WidgetsBinding.instance.addObserver(this);
   }
 
@@ -91,14 +96,24 @@ class _HerdScreenState extends State<HerdScreen> with WidgetsBindingObserver {
                           backgroundColor: DS.cream, foregroundColor: DS.ink),
                       icon: const Icon(Icons.home_rounded)))),
           'maps': (context, game) => HerdMapSelect(
-              onPlay: game.chooseMap, onHome: () => Navigator.pop(context)),
-          'result': (context, game) => _card(
-              title: game.round.won ? 'CẢ ĐÀN VỀ NHÀ!' : 'MÈO MỆT RỒI!',
-              body:
-                  'Đã đưa về ${game.round.delivered}/${HerdRound.target} bạn\nĐiểm: ${game.round.score}\n${game.round.won ? 'Đàn đã về an toàn! Gom đủ 12 bé ở lượt sau để lấy điểm cao nhất.' : 'Ghé các cụm gom đủ 8 bé, rồi dẫn đàn về nhà nhé!'}',
-              action: 'CHƠI LẠI',
-              onPressed: game.restart,
-              onMap: game.showMaps),
+              onPlay: game.chooseMap,
+              onHome: () => Navigator.pop(context),
+              onTutorial: () => game.chooseMap(HerdMap.tutorial)),
+          'result': (context, game) => game.round.isTutorial
+              ? _card(
+                  title: 'BẠN ĐÃ BIẾT DẪN ĐÀN!',
+                  body:
+                      'Bạn đã né đá, đón đủ 12 bé và đưa cả đàn về nhà.\nỞ các map chính, hãy gom ít nhất 8 bé, né nguy hiểm và dẫn đàn về nhé!',
+                  action: 'CHỌN BẢN ĐỒ',
+                  onPressed: game.showMaps,
+                )
+              : _card(
+                  title: game.round.won ? 'CẢ ĐÀN VỀ NHÀ!' : 'MÈO MỆT RỒI!',
+                  body:
+                      'Đã đưa về ${game.round.delivered}/${HerdRound.target} bạn\nĐiểm: ${game.round.score}\n${game.round.won ? 'Đàn đã về an toàn! Gom đủ 12 bé ở lượt sau để lấy điểm cao nhất.' : 'Ghé các cụm gom đủ 8 bé, rồi dẫn đàn về nhà nhé!'}',
+                  action: 'CHƠI LẠI',
+                  onPressed: game.restart,
+                  onMap: game.showMaps),
         },
       ));
 }

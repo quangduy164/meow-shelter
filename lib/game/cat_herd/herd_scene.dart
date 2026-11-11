@@ -10,32 +10,91 @@ import 'herd_home_painter.dart';
 void paintHerdField(Canvas canvas, Size size, HerdRound round) {
   paintHerdMap(canvas, size, round);
   for (final patrol in round.patrols) {
-    final p = patrol.position(round.map.patrolTime(round.time) * .7).toOffset();
-    if (round.map.kind == HerdMapKind.nightMarket ||
-        round.map.kind == HerdMapKind.playground) {
-      _toyCar(canvas, p,
-          facingLeft:
-              math.cos(round.map.patrolTime(round.time) * .7 + patrol.phase) <
-                  0,
-          wheelAngle: round.map.patrolTime(round.time) * 5);
+    final p = patrol.position(round.patrolClock(patrol) * .7).toOffset();
+    if (round.map.kind == HerdMapKind.nightMarket) {
+      final direction = patrol.tangent(round.patrolClock(patrol) * .7);
+      if (patrol.isCart) {
+        canvas.save();
+        canvas.translate(p.dx, p.dy);
+        if (direction.x.abs() < .01) {
+          canvas.rotate(direction.y < 0 ? -math.pi / 2 : math.pi / 2);
+        }
+        _marketCart(canvas, Offset.zero, direction.x < 0);
+        canvas.restore();
+      } else {
+        _scooter(canvas, p, direction.x < 0, round.patrolClock(patrol));
+      }
+    } else if (round.map.kind == HerdMapKind.playground) {
+      final direction = patrol.tangent(round.patrolClock(patrol) * .7);
+      if (patrol.loops) {
+        canvas.save();
+        canvas.translate(p.dx, p.dy);
+        final left = direction.x < 0;
+        canvas.rotate(left
+            ? math.atan2(-direction.y, -direction.x)
+            : math.atan2(direction.y, direction.x));
+        _toyCar(canvas, Offset.zero,
+            facingLeft: left, wheelAngle: round.time * 5);
+        canvas.restore();
+      } else {
+        _toyCar(canvas, p,
+            facingLeft: direction.x < 0,
+            wheelAngle: round.patrolClock(patrol) * 5);
+      }
     } else {
       _rollingHazard(canvas, p, round.time, round.map.kind == HerdMapKind.snow);
     }
   }
+  for (final ball in round.snowballs) {
+    if (ball.warning(round.time)) {
+      final p = ball.warningPosition(round.time).toOffset();
+      canvas.drawOval(Rect.fromCenter(center: p, width: 34, height: 16),
+          Paint()..color = const Color(0x66546E81));
+      canvas.drawOval(
+          Rect.fromCenter(center: p, width: 43, height: 23),
+          Paint()
+            ..color = const Color(0x667B9BAA)
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = 2);
+    } else if (ball.active(round.time)) {
+      final p = ball.position(round.time).toOffset();
+      _rollingHazard(canvas, p, round.time, true);
+      final backward = (ball.from - ball.to).normalized();
+      for (var i = 0; i < 3; i++) {
+        final offset = backward * (23 + i * 8.0);
+        canvas.drawCircle(p + offset.toOffset() + Offset(0, (i % 2) * 5.0),
+            3 - i * .6, Paint()..color = const Color(0x99F4FCFB));
+      }
+    }
+  }
+  for (var i = 0; i < round.balls.length; i++) {
+    final ball = round.balls[i], p = ball.position(round.time).toOffset();
+    final height = ball.height(round.time);
+    canvas.drawOval(
+        Rect.fromCenter(
+            center: p + const Offset(0, 5),
+            width: 24 - height * .35,
+            height: 8 - height * .08),
+        Paint()..color = const Color(0x44402A14));
+    canvas.save();
+    canvas.translate(p.dx, p.dy - height);
+    canvas.rotate(round.time * 2 + i);
+    const colors = [Color(0xFFE394AA), Color(0xFF8AAED4)];
+    canvas.drawCircle(Offset.zero, 13, Paint()..color = colors[i % 2]);
+    canvas.drawArc(
+        const Rect.fromLTWH(-11, -11, 22, 22),
+        -.5,
+        math.pi,
+        false,
+        Paint()
+          ..color = const Color(0xFFFFE7A8)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 4);
+    canvas.drawCircle(
+        const Offset(-4, -5), 3, Paint()..color = const Color(0x88FFFFFF));
+    canvas.restore();
+  }
   paintHerdHome(canvas, round.home.toOffset(), round.map.kind);
-  final sign = round.home.toOffset() + const Offset(-41, 33);
-  canvas.drawRRect(
-      RRect.fromRectAndRadius(
-          sign & const Size(82, 19), const Radius.circular(6)),
-      Paint()
-        ..color = round.homeUnlocked
-            ? const Color(0xFFDBEDB4)
-            : const Color(0xFFFFEBC5));
-  herdText(
-      canvas,
-      round.homeUnlocked ? 'NHÀ ĐÃ MỞ' : 'CẦN ${HerdRound.requiredCats} BÉ',
-      sign + const Offset(7, 3),
-      11);
 }
 
 void herdText(Canvas canvas, String value, Offset at, double fontSize) {
@@ -178,4 +237,95 @@ void _rollingHazard(Canvas canvas, Offset p, double time, bool snow) {
     }
   }
   canvas.restore();
+}
+
+void _marketCart(Canvas c, Offset p, bool left) {
+  c.save();
+  c.translate(p.dx, p.dy);
+  if (left) c.scale(-1, 1);
+  c.drawOval(const Rect.fromLTWH(-21, 9, 42, 10),
+      Paint()..color = const Color(0x44402A14));
+  for (final x in [-12.0, 12.0]) {
+    c.drawCircle(Offset(x, 11), 5, Paint()..color = const Color(0xFF394452));
+    c.drawCircle(Offset(x, 11), 2, Paint()..color = const Color(0xFFC0BCAC));
+  }
+  c.drawRRect(
+      RRect.fromRectAndRadius(
+          const Rect.fromLTWH(-18, -9, 36, 18), const Radius.circular(3)),
+      Paint()..color = const Color(0xFF8DAAA0));
+  c.drawRect(const Rect.fromLTWH(-18, -7, 36, 4),
+      Paint()..color = const Color(0xFFD9C9A0));
+  c.drawRect(const Rect.fromLTWH(-13, -18, 13, 10),
+      Paint()..color = const Color(0xFFCFAB77));
+  c.drawRect(const Rect.fromLTWH(2, -15, 12, 7),
+      Paint()..color = const Color(0xFFE6CA96));
+  c.drawLine(
+      const Offset(-19, -5),
+      const Offset(-25, -14),
+      Paint()
+        ..color = const Color(0xFF56675E)
+        ..strokeWidth = 3
+        ..strokeCap = StrokeCap.round);
+  c.restore();
+}
+
+void _scooter(Canvas c, Offset p, bool left, double time) {
+  c.save();
+  c.translate(p.dx, p.dy);
+  if (left) c.scale(-1, 1);
+  c.drawOval(const Rect.fromLTWH(-24, 10, 48, 9),
+      Paint()..color = const Color(0x44402A14));
+  for (final x in [-15.0, 16.0]) {
+    c.drawCircle(Offset(x, 10), 7, Paint()..color = const Color(0xFF343C49));
+    c.drawCircle(Offset(x, 10), 4, Paint()..color = const Color(0xFFC6C6BB));
+    final spoke = Offset(math.cos(time * 5) * 3, math.sin(time * 5) * 3);
+    c.drawLine(
+        Offset(x, 10) - spoke,
+        Offset(x, 10) + spoke,
+        Paint()
+          ..color = const Color(0xFF687684)
+          ..strokeWidth = 1);
+  }
+  c.drawPath(
+      Path()
+        ..moveTo(-21, 4)
+        ..quadraticBezierTo(-22, -4, -12, -5)
+        ..lineTo(-1, -5)
+        ..lineTo(7, 3)
+        ..lineTo(12, -13)
+        ..lineTo(18, -12)
+        ..lineTo(20, 5)
+        ..close(),
+      Paint()..color = const Color(0xFFD69A68));
+  c.drawRRect(
+      RRect.fromRectAndRadius(
+          const Rect.fromLTWH(-16, -8, 20, 5), const Radius.circular(2)),
+      Paint()..color = const Color(0xFF4B4849));
+  c.drawLine(
+      const Offset(14, -13),
+      const Offset(9, -17),
+      Paint()
+        ..color = const Color(0xFF5B6470)
+        ..strokeWidth = 2.5);
+  c.drawCircle(
+      const Offset(19, -6), 3, Paint()..color = const Color(0xFFFFE4A0));
+  // Helmeted rider keeps the moving traffic distinct from the toy cars.
+  c.drawLine(
+      const Offset(-6, -8),
+      const Offset(-7, -20),
+      Paint()
+        ..color = const Color(0xFF7C9CB6)
+        ..strokeWidth = 9
+        ..strokeCap = StrokeCap.round);
+  c.drawLine(
+      const Offset(-4, -18),
+      const Offset(9, -16),
+      Paint()
+        ..color = const Color(0xFF7C9CB6)
+        ..strokeWidth = 4);
+  c.drawCircle(
+      const Offset(-7, -27), 7, Paint()..color = const Color(0xFFF3CCA3));
+  c.drawArc(const Rect.fromLTWH(-15, -35, 16, 16), math.pi, math.pi, true,
+      Paint()..color = const Color(0xFFB6C49B));
+  c.restore();
 }

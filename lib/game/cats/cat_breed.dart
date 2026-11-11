@@ -105,24 +105,97 @@ class CatBreed {
     attacks: [HomeAttack.magnet, HomeAttack.catEye, HomeAttack.bolt],
   );
 
-  ({String name, String hint}) get homeCombo => switch (id) {
+  ({
+    String name,
+    String hint,
+    String effect,
+    List<({HomeAttack attack, String instruction})> steps
+  }) get homeCombo => switch (id) {
         'black' => (
             name: 'Ảnh nổ',
-            hint: 'Đặt phân thân gần mình rồi dịch chuyển'
+            hint: 'Đặt phân thân gần mình rồi dịch chuyển',
+            steps: [
+              (
+                attack: HomeAttack.decoy,
+                instruction: 'Đặt phân thân gần mèo và mục tiêu.'
+              ),
+              (
+                attack: HomeAttack.shadowStep,
+                instruction:
+                    'Khi vẫn ở gần phân thân, dịch chuyển để kích nổ ngay.'
+              ),
+            ],
+            effect:
+                'Phân thân ở trong phạm vi 110px sẽ nổ ngay. Sát thương lên rồng tăng từ 4 lên 6.'
           ),
         'himalaya' => (
             name: 'Phá băng',
-            hint: 'Đóng băng mục tiêu rồi bắn Mũi băng'
+            hint: 'Đóng băng mục tiêu rồi bắn Mũi băng',
+            steps: [
+              (
+                attack: HomeAttack.frostNova,
+                instruction:
+                    'Đến gần mục tiêu rồi dùng Vùng băng giá để đóng băng.'
+              ),
+              (
+                attack: HomeAttack.iceShard,
+                instruction: 'Bắn Mũi băng trúng mục tiêu trước khi băng tan.'
+              ),
+            ],
+            effect:
+                'Phá vỡ chướng ngại đã đóng băng. Với rồng, phá băng gây 3 sát thương thay vì 1 và kết thúc đóng băng.'
           ),
         'scottish' => (
             name: 'Gầm phản chấn',
-            hint: 'Bật Phản đòn rồi Gầm đẩy đá vào địch'
+            hint: 'Bật Phản đòn rồi Gầm đẩy đá vào địch',
+            steps: [
+              (
+                attack: HomeAttack.reflect,
+                instruction: 'Bật Phản đòn khi có đá ở gần.'
+              ),
+              (
+                attack: HomeAttack.roar,
+                instruction:
+                    'Đứng phía sau đá, dùng Tiếng gầm đẩy đá về phía địch.'
+              ),
+            ],
+            effect:
+                'Đá được đẩy có thể phá chướng ngại và gây 4 sát thương lên rồng trong 2,5 giây. Đá này không làm mèo mất máu.'
           ),
         'calico' => (
             name: 'Sét tinh anh',
-            hint: 'Bật Mắt mèo rồi Sét trúng địch ở gần'
+            hint: 'Bật Mắt mèo rồi Sét trúng địch ở gần',
+            steps: [
+              (
+                attack: HomeAttack.catEye,
+                instruction: 'Bật Mắt mèo và giữ mục tiêu trong vùng quanh mèo.'
+              ),
+              (
+                attack: HomeAttack.bolt,
+                instruction:
+                    'Thả Sấm sét trúng mục tiêu khi Mắt mèo còn hiệu lực.'
+              ),
+            ],
+            effect:
+                'Sét trúng mục tiêu trong vùng Mắt mèo giảm 2 giây hồi chiêu. Sát thương lên rồng tăng từ 4 lên 6.'
           ),
-        _ => (name: 'Bùng cháy', hint: 'Bom rơi rồi bắn Cầu lửa vào vùng cháy'),
+        _ => (
+            name: 'Bùng cháy',
+            hint: 'Bom rơi rồi bắn Cầu lửa vào vùng cháy',
+            steps: [
+              (
+                attack: HomeAttack.fireBomb,
+                instruction:
+                    'Thả Bom lửa vào mục tiêu, chờ bom nổ tạo vùng cháy.'
+              ),
+              (
+                attack: HomeAttack.fireball,
+                instruction: 'Bắn Cầu lửa vào vùng cháy khi vùng này vẫn còn.'
+              ),
+            ],
+            effect:
+                'Bom nổ thêm một lần, gây 6 sát thương lên rồng. Mỗi bom chỉ kích hoạt combo một lần.'
+          ),
       };
 
   static const all = [orange, black, himalaya, scottish, calico];

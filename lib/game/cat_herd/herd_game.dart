@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' as math;
 import 'package:flame/components.dart';
 import 'package:flame/game.dart';
@@ -9,6 +10,9 @@ import 'herd_map.dart';
 
 /// Coordinates simulation, input and sprite rendering. Rules live in HerdRound.
 class HerdGame extends FlameGame {
+  HerdGame({this.needsTutorial = false, this.onTutorialCompleted});
+  final bool needsTutorial;
+  final Future<void> Function()? onTutorialCompleted;
   final round = HerdRound();
   late ReturnHomeJoystick _joystick;
   final _walk = <String, SpriteAnimation>{};
@@ -37,7 +41,11 @@ class HerdGame extends FlameGame {
     add(_joystick);
     _ready = true;
     round.reset(size);
-    overlays.add('maps');
+    if (needsTutorial) {
+      chooseMap(HerdMap.tutorial);
+    } else {
+      overlays.add('maps');
+    }
   }
 
   void chooseMap(HerdMap map) {
@@ -45,8 +53,10 @@ class HerdGame extends FlameGame {
     round.reset(size);
     overlays.remove('maps');
     round.started = true;
-    round.message(
-        'Gom ít nhất ${HerdRound.requiredCats} bé để mở nhà. Theo dấu chân tới các cụm!');
+    if (!round.isTutorial) {
+      round.message(
+          'Gom ít nhất ${HerdRound.requiredCats} bé để mở nhà. Theo dấu chân tới các cụm!');
+    }
   }
 
   void showMaps() {
@@ -86,13 +96,19 @@ class HerdGame extends FlameGame {
       round.update(step, _joystick.relativeDelta);
       remaining -= step;
     }
-    if (round.ended && !overlays.isActive('result')) overlays.add('result');
+    if (round.ended && !overlays.isActive('result')) {
+      if (round.isTutorial && round.won && onTutorialCompleted != null) {
+        unawaited(onTutorialCompleted!());
+      }
+      overlays.add('result');
+    }
   }
 
   @override
   void render(Canvas canvas) {
     if (!_ready) return;
     paintHerdField(canvas, Size(size.x, size.y), round);
+    if (round.isTutorial && !round.ended) _tutorialGuide(canvas);
     for (final cat in round.cats.where((c) => !c.home)) {
       if (!cat.following) {
         canvas.drawCircle(
@@ -108,41 +124,17 @@ class HerdGame extends FlameGame {
           leader: false,
           facingLeft: cat.facingLeft,
           hop: cat.hop,
+          tumble: cat.tumble,
           scared: cat.scared,
-          resting: !cat.following);
-      if (!cat.following &&
-          cat.scared == 0 &&
-          cat.id % 3 == 0 &&
-          round.map.kind != HerdMapKind.snow) {
-        final line = switch (round.map.kind) {
-          HerdMapKind.nightMarket => 'Cá đâu?',
-          HerdMapKind.dunes => 'Nóng quá!',
-          HerdMapKind.playground => 'Brừm brừm!',
-          HerdMapKind.snow => '',
-        };
-        final bubble = TextPainter(
-            text: TextSpan(
-                text: line,
-                style: const TextStyle(
-                    fontSize: 10,
-                    color: Color(0xFF5A3214),
-                    fontWeight: FontWeight.bold)),
-            textDirection: TextDirection.ltr)
-          ..layout();
-        final at =
-            Offset(cat.position.x - bubble.width / 2, cat.position.y + 18);
-        canvas.drawRRect(
-            RRect.fromRectAndRadius(
-                (at & bubble.size).inflate(3), const Radius.circular(6)),
-            Paint()..color = const Color(0xEEFFF4DA));
-        bubble.paint(canvas, at);
-      }
+          resting: !cat.following,
+          buried: round.map.kind == HerdMapKind.dunes && cat.group == 2);
     }
     if (round.immune == 0 || (round.time * 10).floor().isEven) {
       _cat(canvas, 'orange', round.leader,
           moving: round.velocity.length > 2,
           leader: true,
-          facingLeft: round.leaderFacingLeft);
+          facingLeft: round.leaderFacingLeft,
+          tumble: round.landingTime);
     }
     super.render(canvas);
     final panel = RRect.fromRectAndRadius(
@@ -150,12 +142,16 @@ class HerdGame extends FlameGame {
     canvas.drawRRect(panel, Paint()..color = const Color(0xEEFFF4DA));
     herdText(
         canvas,
-        'ĐÀN ${round.chain.length}/${HerdRound.target} · MỞ NHÀ ${HerdRound.requiredCats} BÉ · MẠNG ${round.lives}',
+        round.isTutorial
+            ? 'TẬP DẪN ĐÀN · ĐÃ ĐÓN ${round.chain.length}/${round.catCount} BÉ'
+            : 'ĐÀN ${round.chain.length}/${HerdRound.target} · MỞ NHÀ ${HerdRound.requiredCats} BÉ · MẠNG ${round.lives}',
         const Offset(78, 19),
         12);
     herdText(
         canvas,
-        '${round.map.name}${round.map.kind == HerdMapKind.nightMarket ? (round.map.green(round.time) ? " · XE DỪNG ${(5 - round.time % 5).ceil()}s" : " · XE CHẠY ${(5 - round.time % 5).ceil()}s") : ""}',
+        round.isTutorial
+            ? round.tutorialInstruction
+            : '${round.map.name}${round.map.kind == HerdMapKind.nightMarket ? (round.map.green(round.time) ? " · XE DỪNG ${(5 - round.time % 5).ceil()}s" : " · XE CHẠY ${(5 - round.time % 5).ceil()}s") : ""}',
         const Offset(78, 49),
         11);
     if (round.noticeTime > 0) {
@@ -177,13 +173,33 @@ class HerdGame extends FlameGame {
     }
   }
 
+  void _tutorialGuide(Canvas canvas) {
+    final radius = 4 * math.sin(round.time * 4);
+    final guide = Paint()
+      ..color = const Color(0xCCDF9F3E)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 3;
+    switch (round.tutorialStep) {
+      case 1:
+        canvas.drawCircle(Offset(85, size.y - 75), 65 + radius, guide);
+      case 2:
+        for (final cat in round.cats.where((c) => !c.following)) {
+          canvas.drawCircle(cat.position.toOffset(), 25 + radius, guide);
+        }
+      case 3:
+        canvas.drawCircle(round.home.toOffset(), 43 + radius, guide);
+    }
+  }
+
   void _cat(Canvas canvas, String type, Vector2 at,
       {required bool moving,
       required bool leader,
       required bool facingLeft,
       double hop = 0,
+      double tumble = 0,
       double scared = 0,
-      bool resting = false}) {
+      bool resting = false,
+      bool buried = false}) {
     final animation = (moving ? _walk : _idle)[type]!;
     final frame =
         animation.frames[(round.time / .12).floor() % animation.frames.length];
@@ -194,10 +210,11 @@ class HerdGame extends FlameGame {
     canvas.save();
     final bounce = hop > 0 ? math.sin((.65 - hop) / .65 * math.pi) : 0.0;
     canvas.translate(at.x, at.y - bounce * 16);
+    if (tumble > 0) canvas.rotate(math.sin((.65 - tumble) * 14) * tumble * .8);
     if (scared > 1.1) canvas.rotate((2 - scared) * math.pi * 5);
     if (resting && scared == 0) {
       canvas.rotate(math.sin(round.time * 1.3 + at.x) * .10);
-      if (round.map.kind == HerdMapKind.dunes) {
+      if (buried) {
         canvas.translate(0, 9);
         canvas.clipRect(const Rect.fromLTWH(-30, -30, 60, 30));
       }
@@ -207,6 +224,17 @@ class HerdGame extends FlameGame {
     frame.sprite
         .render(canvas, position: Vector2.all(-25), size: Vector2.all(50));
     canvas.restore();
+    if (round.map.kind == HerdMapKind.snow && hop > 0) {
+      final progress = (.65 - hop) / .65;
+      for (var i = 0; i < 4; i++) {
+        final angle = i * math.pi / 2;
+        canvas.drawCircle(
+            Offset(at.x + math.cos(angle) * (10 + progress * 15),
+                at.y + 8 + math.sin(angle) * 6),
+            3 * (1 - progress),
+            Paint()..color = const Color(0xBBFFFFFF));
+      }
+    }
     if (scared > 0) {
       for (var i = 0; i < 3; i++) {
         final angle = round.time * 6 + i * math.pi * 2 / 3;
