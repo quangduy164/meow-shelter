@@ -110,23 +110,28 @@ class ReturnHomeDragon extends PositionComponent {
   Rect get headRect {
     final c = _headWorld(-10, 4);
     return Rect.fromCenter(
-        center: Offset(c.x, c.y), width: 76 * _scale, height: 56 * _scale);
+        center: Offset(c.x, c.y),
+        width: 76 * _scale * _headSize,
+        height: 56 * _scale * _headSize);
   }
 
   Rect get bodyRect {
-    final c = _world(22, -56);
+    final c = _world(22, -56 - 28 * _evolution);
     return Rect.fromCenter(
-        center: Offset(c.x, c.y), width: 130 * _scale, height: 100 * _scale);
+        center: Offset(c.x, c.y),
+        width: (130 + 25 * _evolution) * _scale,
+        height: (100 + 65 * _evolution) * _scale);
   }
 
-  Vector2 get core => _world(10, -60);
+  Vector2 get core => _world(10, -60 - 35 * _evolution);
   Vector2 get aimPoint =>
       tired > 0 ? Vector2(headRect.center.dx, headRect.center.dy) : core;
-  Vector2 get mouth => _headWorld(-44, 14);
+  Vector2 get mouth => _headWorld(-44 - 12 * _evolution, 14);
 
+  double get _headSize => 1 + .12 * _evolution;
   Vector2 _headWorld(double x, double y) => _world(
-      _head.x + cos(_headPitch) * x - sin(_headPitch) * y,
-      _head.y + sin(_headPitch) * x + cos(_headPitch) * y);
+      _head.x + (cos(_headPitch) * x - sin(_headPitch) * y) * _headSize,
+      _head.y + (sin(_headPitch) * x + cos(_headPitch) * y) * _headSize);
 
   double get _fireCharge {
     for (final lane in attacks.whereType<DragonFlameLane>()) {
@@ -299,6 +304,7 @@ class ReturnHomeDragon extends PositionComponent {
     final pitch = .68 * rain + .13 * _castKick - .12 * charge + .45 * roar;
     _headPitch += (pitch - _headPitch) * blend;
     if (tail != null) {
+      tail.bulk = _evolution;
       tail.root.setFrom(_world(62, -32));
       tail.restClock = _t;
       tail.posedCenterline = tail.localCenterline.map((p) {
@@ -307,7 +313,8 @@ class ReturnHomeDragon extends PositionComponent {
       }).toList();
     }
     final desired = evolving
-        ? Vector2(-62 + 20 * roar, -118 - 22 * roar)
+        ? Vector2(-62 + 20 * roar - 12 * _evolution,
+            -118 - 52 * _evolution - 22 * roar)
         : tired > 0
             ? Vector2(-104, -36)
             : _move == _Move.breath
@@ -315,10 +322,12 @@ class ReturnHomeDragon extends PositionComponent {
                     _breathHeadY() - 12 * charge + sin(_t * 32) * fire * 1.5)
                 : _move == _Move.rain
                     ? Vector2(-62 + 17 * rain + 7 * _castKick,
-                        -118 - 24 * rain + 4 * _castKick)
+                        -118 - 52 * _evolution - 24 * rain + 4 * _castKick)
                     : tail != null
-                        ? Vector2(-24, -100 + tail.crouch)
-                        : Vector2(-62, -118 + sin(_t * 2.2) * 4);
+                        ? Vector2(-24 - 25 * _evolution,
+                            -100 - 60 * _evolution + tail.crouch)
+                        : Vector2(-62 - 12 * _evolution,
+                            -118 - 52 * _evolution + sin(_t * 2.2) * 4);
     _easeHead(desired, ai);
     if (launchMeteor) _launchMeteor();
     for (final attack in attacks.whereType<DragonFlameLane>()) {
@@ -567,6 +576,10 @@ class ReturnHomeDragon extends PositionComponent {
   /// Front/back silhouettes bridge the two profiles, preserving body volume
   /// at quarter turns instead of squeezing a side-view drawing to a line.
   void _paintTurnedBody(Canvas canvas, double opacity) {
+    if (_evolution >= .5) {
+      _paintAscendedTurnedBody(canvas, opacity);
+      return;
+    }
     final front = sin(_bodyYaw) > 0;
     canvas.saveLayer(
         null,
@@ -585,8 +598,8 @@ class ReturnHomeDragon extends PositionComponent {
       canvas.restore();
     }
     final body = Path()
-      ..moveTo(-15, -79)
-      ..quadraticBezierTo(15, -102, 45, -79)
+      ..moveTo(-15 - 12 * _evolution, -79)
+      ..quadraticBezierTo(15, -102 - 16 * _evolution, 45 + 12 * _evolution, -79)
       ..lineTo(43, -29)
       ..quadraticBezierTo(15, -5, -13, -29)
       ..close();
@@ -735,10 +748,140 @@ class ReturnHomeDragon extends PositionComponent {
     canvas.restore();
   }
 
+  void _paintAscendedTurnedBody(Canvas canvas, double opacity) {
+    final front = sin(_bodyYaw) > 0;
+    canvas.saveLayer(
+        null, Paint()..color = const Color(0xFFFFFFFF).withOpacity(opacity));
+    canvas.translate(15, -8);
+    canvas.rotate(_bodyTurn);
+    canvas.translate(-15 + cos(_bodyYaw) * _bodyOffset.x,
+        8 + _bodyOffset.y + sin(_bodyYaw) * _bodyOffset.x * .32);
+    for (final side in [-1.0, 1.0]) {
+      canvas.save();
+      canvas.translate(15, 0);
+      canvas.scale(side * .7, .9);
+      _wing(canvas, const Offset(0, -132), side * .07, 1.4,
+          const Color(0xFFD36677), const Color(0xFF96364F));
+      canvas.restore();
+    }
+    _shape(
+        canvas,
+        Path()
+          ..moveTo(-11, -123)
+          ..quadraticBezierTo(15, -144, 41, -123)
+          ..lineTo(49, -55)
+          ..quadraticBezierTo(15, -21, -19, -55)
+          ..close(),
+        const Color(0xFF37334F));
+    final hy = _head.y + sin(_bodyYaw) * (_head.x - 15) * .32;
+    _shape(
+        canvas,
+        Path()
+          ..moveTo(4, hy + 8)
+          ..lineTo(26, hy + 8)
+          ..lineTo(33, -68)
+          ..quadraticBezierTo(15, -39, -3, -68)
+          ..close(),
+        front ? const Color(0xFFFFDB8B) : const Color(0xFFBB4D63));
+    for (final side in [-1.0, 1.0]) {
+      final x = 15 + side * 26;
+      _shape(
+          canvas,
+          Path()
+            ..addPolygon([
+              Offset(x - 12, -62),
+              Offset(x + 13, -62),
+              Offset(x + 15, -35),
+              Offset(x + 8, -15),
+              Offset(x + 17, 3),
+              Offset(x - 16, 3),
+              Offset(x - 13, -17),
+            ], true),
+          const Color(0xFF37334F));
+      _shape(
+          canvas,
+          Path()
+            ..addOval(
+                Rect.fromCenter(center: Offset(x, -50), width: 23, height: 30)),
+          const Color(0xFFBB4D63));
+      for (var i = 0; i < 3; i++) {
+        final c = x - 9 + i * 8;
+        _shape(
+            canvas,
+            Path()
+              ..addPolygon([
+                Offset(c - 3, 0),
+                Offset(c + 3, 0),
+                Offset(c + 2, 8),
+                Offset(c - 5, 6)
+              ], true),
+            const Color(0xFFBFC0D3));
+      }
+      _shape(
+          canvas,
+          Path()
+            ..addPolygon([
+              Offset(15 + side * 29, -116),
+              Offset(15 + side * 40, -105),
+              Offset(15 + side * 44, -78),
+              Offset(15 + side * 30, -75),
+            ], true),
+          const Color(0xFF37334F));
+      _shape(
+          canvas,
+          Path()
+            ..addPolygon([
+              Offset(15 + side * 16, hy - 12),
+              Offset(15 + side * 32, hy - 49),
+              Offset(15 + side * 7, hy - 14),
+            ], true),
+          const Color(0xFFBB4D63));
+    }
+    _shape(
+        canvas,
+        Path()
+          ..addPolygon([
+            Offset(-10, hy - 15),
+            Offset(1, hy - 27),
+            Offset(29, hy - 27),
+            Offset(40, hy - 15),
+            Offset(33, hy + 15),
+            Offset(-3, hy + 15),
+          ], true),
+        const Color(0xFFC7586A));
+    if (front) {
+      for (final side in [-1.0, 1.0]) {
+        _shape(
+            canvas,
+            Path()
+              ..addPolygon([
+                Offset(15 + side * 5, hy - 5),
+                Offset(15 + side * 20, hy - 11),
+                Offset(15 + side * 15, hy + 1),
+              ], true),
+            const Color(0xFFFFEBC2));
+      }
+      _shape(
+          canvas,
+          Path()
+            ..addPolygon([
+              Offset(0, hy + 6),
+              Offset(30, hy + 6),
+              Offset(27, hy + 16),
+              Offset(3, hy + 16),
+            ], true),
+          const Color(0xFF38324F));
+    }
+    if (frozen > 0) _paintIce(canvas);
+    canvas.restore();
+  }
+
   Color _c(Color base) {
     var c = base;
     if (_evolution > 0 && base.red > base.green * 1.25) {
-      c = Color.lerp(c, const Color(0xFF422735), .8 * _evolution)!;
+      final evolved =
+          base.green > 120 ? const Color(0xFFD36B3E) : const Color(0xFFA64157);
+      c = Color.lerp(c, evolved, .65 * _evolution)!;
     }
     if (frozen > 0) c = Color.lerp(c, const Color(0xFFBFE6FF), .45)!;
     if (_hurtFlash > 0 ||
@@ -757,8 +900,61 @@ class ReturnHomeDragon extends PositionComponent {
     ..strokeCap = StrokeCap.round;
 
   void _shape(Canvas canvas, Path path, Color color) {
-    canvas.drawPath(path, Paint()..color = _c(color));
+    final paint = Paint()..color = _c(color);
+    final bounds = path.getBounds();
+    if (_evolution > 0 && bounds.width > 8 && bounds.height > 8) {
+      final base = _c(color);
+      paint.shader = LinearGradient(
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+        stops: const [0, .35, .7, 1],
+        colors: [
+          Color.lerp(base, const Color(0xFFFFBC9C), .22 * _evolution)!,
+          base,
+          Color.lerp(base, const Color(0xFF261B37), .18 * _evolution)!,
+          Color.lerp(base, const Color(0xFF1D1730), .45 * _evolution)!,
+        ],
+      ).createShader(bounds);
+    }
+    canvas.drawPath(path, paint);
     canvas.drawPath(path, _outline);
+  }
+
+  /// Small overlapping plates are clipped to their moving anatomical surface.
+  void _scaleDetail(Canvas canvas, Path surface, {double spacing = 9}) {
+    final bounds = surface.getBounds();
+    canvas.save();
+    canvas.clipPath(surface);
+    var row = 0;
+    for (var y = bounds.top + spacing * .5;
+        y < bounds.bottom;
+        y += spacing * .72) {
+      for (var x = bounds.left + (row.isEven ? 0 : spacing * .5);
+          x < bounds.right;
+          x += spacing) {
+        final plate = Path()
+          ..moveTo(x - spacing * .42, y)
+          ..lineTo(x, y - spacing * .25)
+          ..lineTo(x + spacing * .42, y)
+          ..lineTo(x + spacing * .25, y + spacing * .36)
+          ..lineTo(x, y + spacing * .55)
+          ..lineTo(x - spacing * .25, y + spacing * .36);
+        canvas.drawPath(
+            plate,
+            Paint()
+              ..color = const Color(0x55201732)
+              ..style = PaintingStyle.stroke
+              ..strokeWidth = .8);
+        canvas.drawLine(
+            Offset(x - spacing * .3, y),
+            Offset(x, y - spacing * .18),
+            Paint()
+              ..color = const Color(0x66EEA2A3)
+              ..strokeWidth = .9);
+      }
+      row++;
+    }
+    canvas.restore();
   }
 
   void _magma(Canvas canvas, Path path) {
@@ -785,19 +981,28 @@ class ReturnHomeDragon extends PositionComponent {
     for (var i = 0; i < 3; i++) {
       final y = -80.0 + i * 18;
       final x = turned ? 15.0 : 48.0 + i * 5;
-      final width = (turned ? 24 : 19) * growth;
+      final width = (turned ? 21 : 16) * growth;
       _shape(
           canvas,
           Path()
             ..addPolygon([
               Offset(x - width, y),
-              Offset(x, y - 10 * growth),
+              Offset(x, y - 6 * growth),
               Offset(x + width, y),
-              Offset(x + width * .7, y + 12),
+              Offset(x + width * .7, y + 9),
               Offset(x, y + 5),
-              Offset(x - width * .7, y + 12),
+              Offset(x - width * .7, y + 9),
             ], true),
-          const Color(0xFF3F2938));
+          const Color(0xFFB95635));
+      canvas.drawPath(
+          Path()
+            ..moveTo(x - width, y)
+            ..lineTo(x, y - 6 * growth)
+            ..lineTo(x + width, y),
+          Paint()
+            ..color = const Color(0xFFFFBC70).withOpacity(growth * .8)
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = 1.5);
       _magma(
           canvas,
           Path()
@@ -849,7 +1054,8 @@ class ReturnHomeDragon extends PositionComponent {
       return Offset(-d.dy, d.dx);
     }
 
-    double width(int i) => 15 * (1 - i / (points.length - 1)) + 2;
+    double width(int i) =>
+        (15 + 6 * _evolution) * (1 - i / (points.length - 1)) + 2;
     final shape = Path();
     for (var i = 0; i < points.length; i++) {
       final p = points[i] + normal(i) * width(i);
@@ -864,7 +1070,11 @@ class ReturnHomeDragon extends PositionComponent {
       shape.lineTo(p.dx, p.dy);
     }
     shape.close();
-    _shape(canvas, shape, const Color(0xFFE0533D));
+    _shape(
+        canvas,
+        shape,
+        Color.lerp(
+            const Color(0xFFE0533D), const Color(0xFF33304E), _evolution)!);
     final ridge = Path();
     for (var i = 0; i < points.length; i++) {
       final p = points[i] - normal(i) * width(i) * .55;
@@ -881,7 +1091,29 @@ class ReturnHomeDragon extends PositionComponent {
           ..style = PaintingStyle.stroke
           ..strokeWidth = 3
           ..strokeCap = StrokeCap.round);
-    _magma(canvas, ridge);
+    if (_evolution > 0) {
+      for (var i = 1; i < points.length - 1; i++) {
+        final p = points[i];
+        final n = normal(i);
+        final d = tangent(i);
+        final w = width(i);
+        canvas.drawPath(
+            Path()
+              ..moveTo(p.dx - n.dx * w * .7, p.dy - n.dy * w * .7)
+              ..quadraticBezierTo(p.dx - d.dx * 4, p.dy - d.dy * 4,
+                  p.dx + n.dx * w * .8, p.dy + n.dy * w * .8),
+            Paint()
+              ..color = const Color(0xFF83687D)
+              ..style = PaintingStyle.stroke
+              ..strokeWidth = 1);
+        canvas.drawLine(
+            p + n * w * .75 - d * 3,
+            p + n * w * .75 + d * 3,
+            Paint()
+              ..color = const Color(0xFFDDAC79)
+              ..strokeWidth = 2);
+      }
+    }
     for (var i = 3; i < points.length - 2; i += 3) {
       final p = points[i] - normal(i) * width(i);
       final n = normal(i), d = tangent(i);
@@ -890,7 +1122,7 @@ class ReturnHomeDragon extends PositionComponent {
           Path()
             ..addPolygon([
               p - d * 4,
-              p - n * (10 + 12 * _evolution) + d * 3,
+              p - n * (10 + 2 * _evolution) + d * 3,
               p + d * 7,
             ], true),
           const Color(0xFFFFB13A));
@@ -907,7 +1139,7 @@ class ReturnHomeDragon extends PositionComponent {
         canvas,
         Path()
           ..addPolygon([
-            tip + d * (16 + 14 * _evolution),
+            tip + d * (16 + 4 * _evolution),
             tip - d * 5 + n * (10 + 5 * _evolution),
             tip - d * 1,
             tip - d * 5 - n * (10 + 5 * _evolution),
@@ -915,7 +1147,380 @@ class ReturnHomeDragon extends PositionComponent {
         const Color(0xFFFFB13A));
   }
 
+  /// Upright, two-legged silhouette based on the user's red/violet reference.
+  void _paintAscendedBody(Canvas canvas) {
+    const hide = Color(0xFF37334F);
+    const red = Color(0xFFBB4D63);
+    const gold = Color(0xFFFFDB8B);
+    final h = Offset(_head.x, _head.y);
+    _wing(canvas, const Offset(35, -133), .09, 1.25, const Color(0xFFAC445B),
+        const Color(0xFF742940));
+    // Far leg, then pelvis: both feet remain planted throughout each cast.
+    _shape(
+        canvas,
+        Path()
+          ..addPolygon(const [
+            Offset(22, -62),
+            Offset(48, -52),
+            Offset(43, -25),
+            Offset(22, -14),
+            Offset(31, -3),
+            Offset(12, 3),
+            Offset(-7, 2),
+            Offset(-9, -6),
+            Offset(8, -21),
+          ], true),
+        hide);
+    final body = Path()
+      ..moveTo(-24, -128)
+      ..quadraticBezierTo(12, -150, 43, -121)
+      ..quadraticBezierTo(79, -94, 76, -52)
+      ..lineTo(55, -25)
+      ..quadraticBezierTo(16, -13, -16, -44)
+      ..quadraticBezierTo(-39, -82, -24, -128)
+      ..close();
+    _shape(canvas, body, hide);
+    _scaleDetail(canvas, body, spacing: 9);
+    final neck = Path()
+      ..moveTo(3, -89)
+      ..cubicTo(-30, -112, h.dx + 36, h.dy + 20, h.dx + 13, h.dy + 9);
+    canvas.drawPath(neck, _outline..strokeWidth = 47);
+    canvas.drawPath(
+        neck,
+        Paint()
+          ..color = _c(hide)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 41
+          ..strokeCap = StrokeCap.round);
+    canvas.drawPath(
+        neck.shift(const Offset(-8, 0)),
+        Paint()
+          ..color = _c(red)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 18
+          ..strokeCap = StrokeCap.round);
+    // Neck ridges follow the same curve used by the throat and the head.
+    for (var i = 1; i < 8; i++) {
+      final t = i / 8;
+      final p = Offset.lerp(h + const Offset(20, 16), const Offset(5, -94), t)!;
+      canvas.drawPath(
+          Path()
+            ..moveTo(p.dx + 3, p.dy - 4)
+            ..lineTo(p.dx + 11, p.dy)
+            ..lineTo(p.dx + 5, p.dy + 6),
+          Paint()
+            ..color = const Color(0xFF92536A)
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = 2);
+    }
+    // A continuous pale throat joins the belly; rib plates follow the neck.
+    final throat = Path()
+      ..moveTo(h.dx + 3, h.dy + 19)
+      ..cubicTo(h.dx + 7, h.dy + 54, -38, -113, -20, -70)
+      ..quadraticBezierTo(-7, -39, 18, -30)
+      ..lineTo(33, -51)
+      ..quadraticBezierTo(10, -76, 2, -109)
+      ..quadraticBezierTo(h.dx + 35, h.dy + 30, h.dx + 23, h.dy + 17)
+      ..close();
+    _shape(canvas, throat, gold);
+    canvas.save();
+    canvas.clipPath(throat);
+    for (var i = 0; i < 8; i++) {
+      final t = i / 7;
+      final p = Offset.lerp(h + const Offset(8, 25), const Offset(7, -42), t)!;
+      canvas.drawPath(
+          Path()
+            ..moveTo(p.dx - 23, p.dy)
+            ..quadraticBezierTo(p.dx, p.dy + 8, p.dx + 23, p.dy + 2),
+          Paint()
+            ..color = const Color(0xFFC58C62)
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = 2);
+      canvas.drawLine(
+          p + const Offset(-16, -3),
+          p + const Offset(4, -1),
+          Paint()
+            ..color = const Color(0xFFFFF1B2)
+            ..strokeWidth = 4);
+    }
+    canvas.restore();
+    // Raised red plates only on shoulders and thighs, leaving the throat clear.
+    for (final p in const [Offset(22, -119), Offset(53, -55)]) {
+      final plate = Path()
+        ..moveTo(p.dx - 14, p.dy - 19)
+        ..lineTo(p.dx + 7, p.dy - 23)
+        ..lineTo(p.dx + 18, p.dy - 9)
+        ..lineTo(p.dx + 15, p.dy + 15)
+        ..lineTo(p.dx - 2, p.dy + 23)
+        ..lineTo(p.dx - 17, p.dy + 7)
+        ..close();
+      _shape(canvas, plate, red);
+      _scaleDetail(canvas, plate, spacing: 8);
+      canvas.drawPath(
+          Path()
+            ..moveTo(p.dx - 9, p.dy - 12)
+            ..lineTo(p.dx + 4, p.dy - 16)
+            ..lineTo(p.dx + 11, p.dy - 6),
+          Paint()
+            ..color = const Color(0xFFF08C86)
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = 3);
+      canvas.drawLine(
+          p + const Offset(-12, 1),
+          p + const Offset(14, 4),
+          Paint()
+            ..color = const Color(0xFF78364E)
+            ..strokeWidth = 2);
+    }
+    // Front shin and broad taloned foot.
+    _shape(
+        canvas,
+        Path()
+          ..addPolygon(const [
+            Offset(49, -43),
+            Offset(70, -39),
+            Offset(71, -17),
+            Offset(82, -3),
+            Offset(75, 5),
+            Offset(35, 6),
+            Offset(27, -1),
+            Offset(45, -15),
+          ], true),
+        hide);
+    for (final foot in const [Offset(1, -1), Offset(43, 3)]) {
+      for (var i = 0; i < 3; i++) {
+        final x = foot.dx + i * 11;
+        _shape(
+            canvas,
+            Path()
+              ..addPolygon([
+                Offset(x, foot.dy - 4),
+                Offset(x + 7, foot.dy - 3),
+                Offset(x + 4, foot.dy + 7),
+                Offset(x - 6, foot.dy + 7),
+              ], true),
+            const Color(0xFFBFC0D3));
+      }
+    }
+    // The small forearms hang in front of the torso, rather than bearing weight.
+    for (final p in const [Offset(-24, -103), Offset(20, -96)]) {
+      final reach = sin(_t * 2) * 1.5 + _castKick * 3;
+      _shape(
+          canvas,
+          Path()
+            ..addPolygon([
+              p,
+              p + const Offset(12, 7),
+              p + Offset(3, 30 + reach),
+              p + Offset(-10, 39 + reach),
+              p + Offset(-20, 33 + reach),
+              p + const Offset(-10, 18),
+            ], true),
+          hide);
+      for (var i = 0; i < 3; i++) {
+        final claw = p + Offset(-18 + i * 7, 31 + reach);
+        _shape(
+            canvas,
+            Path()
+              ..addPolygon([
+                claw,
+                claw + const Offset(5, 0),
+                claw + const Offset(3, 10),
+                claw + const Offset(-2, 7),
+              ], true),
+            const Color(0xFFC7C2D7));
+      }
+    }
+    // Low dorsal spines join the neck to the original attached tail.
+    for (var i = 0; i < 5; i++) {
+      final p = Offset(43 + i * 6, -123 + i * 16);
+      _shape(
+          canvas,
+          Path()
+            ..addPolygon([
+              p,
+              p + const Offset(20, 0),
+              p + const Offset(4, 10),
+            ], true),
+          red);
+    }
+    _paintHead(canvas, h);
+    // The near wing attaches behind the shoulder, away from the head and horns.
+    _wing(canvas, const Offset(39, -132), 0, 1.55, const Color(0xFFD36677),
+        const Color(0xFF96364F));
+  }
+
+  void _paintAscendedHead(Canvas canvas, Offset h) {
+    const red = Color(0xFFC7586A);
+    const dark = Color(0xFF38324F);
+    canvas.save();
+    canvas.translate(h.dx, h.dy);
+    canvas.rotate(_headPitch);
+    canvas.scale(_headSize);
+    for (final horn in const [(24.0, -15.0, 30.0), (5.0, -26.0, 42.0)]) {
+      _shape(
+          canvas,
+          Path()
+            ..addPolygon([
+              Offset(horn.$1 - 7, horn.$2 + 6),
+              Offset(horn.$1 + 2, horn.$2 - 16),
+              Offset(horn.$1 + horn.$3, horn.$2 - 34),
+              Offset(horn.$1 + 21, horn.$2 - 8),
+              Offset(horn.$1 + 7, horn.$2 + 9),
+            ], true),
+          red);
+      canvas.drawLine(
+          Offset(horn.$1 + 2, horn.$2 - 8),
+          Offset(horn.$1 + horn.$3 - 5, horn.$2 - 29),
+          Paint()
+            ..color = const Color(0xFFFFA193)
+            ..strokeWidth = 2.5);
+    }
+    for (var i = 0; i < 3; i++) {
+      final p = Offset(26, -10 + i * 9);
+      _shape(
+          canvas,
+          Path()
+            ..addPolygon([
+              p,
+              p + const Offset(24, -2),
+              p + const Offset(9, 9),
+            ], true),
+          red);
+    }
+    canvas.save();
+    canvas.translate(-9, 12);
+    canvas.rotate(-.42 * _jaw);
+    _shape(
+        canvas,
+        Path()
+          ..addPolygon(const [
+            Offset(-49, -2),
+            Offset(-5, -3),
+            Offset(12, 7),
+            Offset(-1, 17),
+            Offset(-43, 12),
+            Offset(-52, 6)
+          ], true),
+        dark);
+    canvas.restore();
+    final skull = Path()
+      ..addPolygon(const [
+        Offset(25, 10),
+        Offset(27, -13),
+        Offset(11, -30),
+        Offset(-7, -32),
+        Offset(-28, -18),
+        Offset(-42, -7),
+        Offset(-59, 5),
+        Offset(-57, 15),
+        Offset(-43, 19),
+        Offset(-23, 13),
+        Offset(-6, 18),
+      ], true);
+    _shape(canvas, skull, red);
+    _scaleDetail(canvas, skull, spacing: 7);
+    _shape(
+        canvas,
+        Path()
+          ..addPolygon(const [
+            Offset(3, -2),
+            Offset(17, -11),
+            Offset(23, 0),
+            Offset(13, 12),
+            Offset(-2, 16),
+          ], true),
+        const Color(0xFFAF4D66));
+    canvas.drawPath(
+        Path()
+          ..moveTo(6, -1)
+          ..lineTo(16, -7)
+          ..lineTo(19, 0),
+        Paint()
+          ..color = const Color(0xFFFFA19A)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 2);
+    canvas.drawPath(
+        Path()
+          ..moveTo(-54, 5)
+          ..lineTo(-40, 1)
+          ..lineTo(-27, -6),
+        Paint()
+          ..color = const Color(0xFFE68A8F)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 1.8);
+    _shape(
+        canvas,
+        Path()
+          ..addPolygon(const [
+            Offset(-53, 15),
+            Offset(-27, 8),
+            Offset(-4, 3),
+            Offset(14, 9),
+            Offset(-6, 20),
+            Offset(-43, 23)
+          ], true),
+        dark);
+    canvas.drawPath(
+        Path()
+          ..moveTo(-45, -3)
+          ..lineTo(-25, -14)
+          ..lineTo(-6, -23)
+          ..lineTo(10, -23),
+        Paint()
+          ..color = const Color(0xFFF18B8B)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 3);
+    _shape(
+        canvas,
+        Path()
+          ..addPolygon(const [
+            Offset(-18, -8),
+            Offset(-3, -17),
+            Offset(5, -15),
+            Offset(-2, -5),
+            Offset(-13, -2)
+          ], true),
+        const Color(0xFFFFEBC2));
+    canvas.drawLine(
+        const Offset(-6, -12),
+        const Offset(-8, -5),
+        Paint()
+          ..color = const Color(0xFF211F35)
+          ..strokeWidth = 3);
+    canvas.drawLine(const Offset(-21, -11), const Offset(4, -20),
+        _outline..strokeWidth = 3.5);
+    canvas.drawOval(
+        Rect.fromCenter(center: const Offset(-46, 5), width: 5, height: 3),
+        Paint()..color = dark);
+    if (_jaw > .2) {
+      for (final x in [-41.0, -24.0]) {
+        _shape(
+            canvas,
+            Path()
+              ..addPolygon(
+                  [Offset(x, 15), Offset(x + 5, 14), Offset(x + 2, 21)], true),
+            const Color(0xFFFFEBC2));
+      }
+    }
+    canvas.restore();
+  }
+
   void _paintBody(Canvas canvas) {
+    if (_evolution > 0) {
+      canvas.saveLayer(null,
+          Paint()..color = const Color(0xFFFFFFFF).withOpacity(_evolution));
+      _paintAscendedBody(canvas);
+      canvas.restore();
+    }
+    if (_evolution >= 1) return;
+    canvas.saveLayer(null,
+        Paint()..color = const Color(0xFFFFFFFF).withOpacity(1 - _evolution));
+    _paintOriginalBody(canvas);
+    canvas.restore();
+  }
+
+  void _paintOriginalBody(Canvas canvas) {
     const scale = Color(0xFFE0533D);
     const dark = Color(0xFFB23A2C);
     const belly = Color(0xFFFFD98A);
@@ -950,12 +1555,13 @@ class ReturnHomeDragon extends PositionComponent {
     // Body and belly.
     // Angular pear-shaped torso: wide shoulders, tucked waist, plated chest.
     final body = Path()
-      ..moveTo(-38, -66)
-      ..quadraticBezierTo(-16, -101, 27, -98)
-      ..quadraticBezierTo(70, -95, 83, -61)
+      ..moveTo(-38 - 12 * _evolution, -66)
+      ..quadraticBezierTo(-16 - 14 * _evolution, -101 - 18 * _evolution, 27,
+          -98 - 14 * _evolution)
+      ..quadraticBezierTo(70 + 8 * _evolution, -95, 83 + 5 * _evolution, -61)
       ..lineTo(76, -23)
       ..quadraticBezierTo(57, -5, 24, -4)
-      ..quadraticBezierTo(-11, -6, -38, -30)
+      ..quadraticBezierTo(-11 - 8 * _evolution, -6, -38 - 12 * _evolution, -30)
       ..close();
     canvas.drawPath(body, Paint()..color = _c(scale));
     canvas.save();
@@ -988,8 +1594,38 @@ class ReturnHomeDragon extends PositionComponent {
     }
     canvas.restore();
     canvas.drawPath(body, _outline);
-    _paintArmorPlates(canvas, _breath);
+    if (_evolution < 1) {
+      canvas.saveLayer(null,
+          Paint()..color = const Color(0xFFFFFFFF).withOpacity(1 - _evolution));
+      _paintArmorPlates(canvas, _breath);
+      canvas.restore();
+    }
     _paintEvolutionArmor(canvas);
+    if (_evolution > 0) {
+      canvas.save();
+      canvas.translate(-20, -76);
+      canvas.scale(_evolution);
+      _shape(
+          canvas,
+          Path()
+            ..addPolygon(const [
+              Offset(-28, -2),
+              Offset(-14, -27),
+              Offset(12, -32),
+              Offset(32, -13),
+              Offset(25, 8),
+              Offset(2, 20),
+              Offset(-23, 12),
+            ], true),
+          const Color(0xFFB65333));
+      _magma(
+          canvas,
+          Path()
+            ..moveTo(-20, -4)
+            ..lineTo(-3, -12)
+            ..lineTo(16, -8));
+      canvas.restore();
+    }
 
     // Back spikes along the top of the body.
     for (var i = 0; i < 6; i++) {
@@ -1067,14 +1703,14 @@ class ReturnHomeDragon extends PositionComponent {
         Paint()
           ..color = _ink
           ..style = PaintingStyle.stroke
-          ..strokeWidth = 37
+          ..strokeWidth = 37 + 15 * _evolution
           ..strokeCap = StrokeCap.round);
     canvas.drawPath(
         neck,
         Paint()
           ..color = _c(scale)
           ..style = PaintingStyle.stroke
-          ..strokeWidth = 32
+          ..strokeWidth = 32 + 15 * _evolution
           ..strokeCap = StrokeCap.round);
     canvas.drawPath(
         neck.shift(const Offset(-8, 6)),
@@ -1163,14 +1799,17 @@ class ReturnHomeDragon extends PositionComponent {
     final sweep = sin(beat);
     final balance = _tailMove?.wingSpread ?? _castSpread;
     // Grounded wings rest folded; flight opens them for each power stroke.
-    final restingFold = .88 + .04 * cos(beat);
+    final restingFold = .88 - .35 * _evolution + .04 * cos(beat);
     final flightFold = .08 + .82 * _smoothUnit(.5 + .5 * cos(beat - .45));
     final fold = (restingFold + (flightFold - restingFold) * _flightBlend) *
         (1 - balance * .75);
     Offset link(Offset from, double length, double angle) =>
         from + Offset(cos(angle), sin(angle)) * length;
-    final shoulder =
-        -1.38 + fold * .85 + sweep * (.07 + .48 * _flightBlend) - balance * .28;
+    final shoulder = -1.38 -
+        .55 * _evolution +
+        fold * .85 +
+        sweep * (.07 + .48 * _flightBlend) -
+        balance * .28;
     final elbow = link(Offset.zero, 39, shoulder);
     // Fold rearward along the outer flank, never back through the shoulder.
     final forearm = shoulder + .57 + fold * 1.05 - balance * .18;
@@ -1193,22 +1832,89 @@ class ReturnHomeDragon extends PositionComponent {
     final c12 = scallop(tips[1], tips[2]);
     final c2a = (tips[2] + anchor) * .5 +
         Offset(-12 * (1 - fold * .8), -9 * (1 - fold) + billow);
+    final notch = Offset.lerp(c12, wrist, .22 * _evolution)!;
     final membrane = Path()
       ..moveTo(0, 0)
       ..lineTo(elbow.dx, elbow.dy)
       ..lineTo(wrist.dx, wrist.dy)
       ..lineTo(tips[0].dx, tips[0].dy)
       ..quadraticBezierTo(c01.dx, c01.dy, tips[1].dx, tips[1].dy)
+      ..quadraticBezierTo(c12.dx, c12.dy, notch.dx, notch.dy)
+      ..lineTo(notch.dx + 4 * _evolution, notch.dy + 10 * _evolution)
+      ..lineTo(notch.dx + 10 * _evolution, notch.dy + 3 * _evolution)
       ..quadraticBezierTo(c12.dx, c12.dy, tips[2].dx, tips[2].dy)
       ..quadraticBezierTo(c2a.dx, c2a.dy, anchor.dx, anchor.dy)
       ..quadraticBezierTo(18, -4, 0, 0)
       ..close();
     canvas.save();
     canvas.translate(root.dx, root.dy);
-    canvas.scale(size * (1 + .1 * _evolution));
-    _shape(canvas, membrane, skin);
+    canvas.scale(size * (1 + .18 * _evolution));
+    _shape(canvas, membrane,
+        Color.lerp(skin, const Color(0xFFAC3D30), _evolution * .65)!);
     canvas.save();
     canvas.clipPath(membrane);
+    if (_evolution > 0) {
+      for (var panel = 0; panel < 3; panel++) {
+        final end = panel < 2
+            ? (tips[panel] + tips[panel + 1]) * .5
+            : (tips[2] + anchor) * .5;
+        final next = panel < 2 ? tips[panel + 1] : anchor;
+        final section = Path()
+          ..moveTo(wrist.dx, wrist.dy)
+          ..lineTo(tips[panel].dx, tips[panel].dy)
+          ..quadraticBezierTo(end.dx - 4, end.dy - 5, next.dx, next.dy)
+          ..close();
+        canvas.drawPath(
+            section,
+            Paint()
+              ..shader = const LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  Color(0xBBE27B83),
+                  Color(0x226F243F),
+                  Color(0xAA421E35)
+                ],
+                stops: [0, .45, 1],
+              ).createShader(section.getBounds()));
+        canvas.drawPath(
+            Path()
+              ..moveTo(wrist.dx, wrist.dy)
+              ..quadraticBezierTo((wrist.dx + next.dx) * .5 + 4,
+                  (wrist.dy + next.dy) * .5, next.dx, next.dy),
+            Paint()
+              ..color = const Color(0xAA652A41)
+              ..style = PaintingStyle.stroke
+              ..strokeWidth = 3);
+        for (var v = 1; v < 5; v++) {
+          final t = v / 5;
+          final start = Offset.lerp(wrist, end, t)!;
+          final finish =
+              Offset.lerp(wrist, tips[panel], (t + .13).clamp(0.0, 1.0))!;
+          final vein = Path()
+            ..moveTo(start.dx, start.dy)
+            ..quadraticBezierTo((start.dx + finish.dx) * .5 + 3,
+                (start.dy + finish.dy) * .5 + 2, finish.dx, finish.dy);
+          canvas.drawPath(
+              vein,
+              Paint()
+                ..color = const Color(0x44602C43)
+                ..style = PaintingStyle.stroke
+                ..strokeWidth = .8);
+        }
+        final a = Offset.lerp(wrist, tips[panel], .14)!;
+        final b = Offset.lerp(wrist, end, .85)!;
+        canvas.drawPath(
+            Path()
+              ..moveTo(a.dx, a.dy)
+              ..quadraticBezierTo(b.dx - 5, b.dy - 8, b.dx, b.dy),
+            Paint()
+              ..color = const Color(0x33FFA8A0)
+              ..style = PaintingStyle.stroke
+              ..strokeWidth = 2);
+      }
+    }
+
     canvas.drawPath(
         Path()
           ..moveTo(wrist.dx, wrist.dy)
@@ -1270,36 +1976,80 @@ class ReturnHomeDragon extends PositionComponent {
   }
 
   void _paintHead(Canvas canvas, Offset h) {
+    if (_evolution >= .5) {
+      _paintAscendedHead(canvas, h);
+      return;
+    }
+
     const scale = Color(0xFFE0533D);
     const horn = Color(0xFFFFF0C8);
     canvas.save();
     canvas.translate(h.dx, h.dy);
     canvas.rotate(_headPitch);
-    // Horns.
-    for (final o in const [Offset(10, -20), Offset(22, -12)]) {
-      final reach = 1 + .85 * _evolution;
-      _shape(
-          canvas,
-          Path()
-            ..moveTo(o.dx - 6, o.dy + 4)
-            ..quadraticBezierTo(o.dx + 10, o.dy - 18 * reach, o.dx + 30 * reach,
-                o.dy - 26 * reach)
-            ..quadraticBezierTo(o.dx + 16, o.dy - 6, o.dx + 8, o.dy + 6)
-            ..close(),
-          horn);
-    }
+    canvas.scale(_headSize);
+    // Low nape spines sit behind the ivory horns, leaving their roots visible.
     if (_evolution > 0) {
       for (var i = 0; i < 3; i++) {
-        final x = 5.0 + i * 11;
+        final x = 28.0 + i * 8;
+        final y = -3.0 + i * 9;
         _shape(
             canvas,
             Path()
               ..addPolygon([
-                Offset(x - 7, -23),
-                Offset(x + 12 * _evolution, -27 - 24 * _evolution),
-                Offset(x + 7, -17),
+                Offset(x - 5, y),
+                Offset(x + 11 * _evolution, y - 10 * _evolution),
+                Offset(x + 5, y + 7),
               ], true),
-            const Color(0xFF4B293B));
+            const Color(0xFFECA653));
+      }
+    }
+    // Swept, faceted horns stay low behind the skull instead of reading as ears.
+    for (final o in const [Offset(27, -9), Offset(9, -24)]) {
+      final g = _evolution;
+      final length = o.dx > 20 ? 46.0 : 54.0;
+      final points = [
+        o + Offset(-6 - 2 * g, 5),
+        o + Offset(2 + 5 * g, -17 - 4 * g),
+        o + Offset(19 + 7 * g, -26 - 3 * g),
+        o + Offset(30 + (length - 30) * g, -26 - 4 * g),
+        o + Offset(18 + 14 * g, -11 - 2 * g),
+        o + Offset(8 + 3 * g, 6),
+      ];
+      _shape(canvas, Path()..addPolygon(points, true),
+          Color.lerp(horn, const Color(0xFFE6BD7C), g)!);
+      canvas.drawPath(
+          Path()
+            ..addPolygon([
+              points[0],
+              points[1],
+              points[2],
+              points[3],
+              o + const Offset(9, -7),
+            ], true),
+          Paint()..color = const Color(0xFFFFEAC0).withOpacity(.65));
+      for (var i = 0; i < 3; i++) {
+        final t = .2 + i * .2;
+        final top = Offset.lerp(points[1], points[3], t)!;
+        final bottom = Offset.lerp(points[5], points[3], t)!;
+        canvas.drawLine(
+            top,
+            bottom,
+            Paint()
+              ..color = const Color(0xFF98623A).withOpacity(.7)
+              ..strokeWidth = 1.3);
+      }
+      if (g > 0) {
+        _shape(
+            canvas,
+            Path()
+              ..addPolygon([
+                o + const Offset(-9, 5),
+                o + const Offset(-3, -10),
+                o + const Offset(9, -8),
+                o + const Offset(14, 5),
+                o + const Offset(3, 10),
+              ], true),
+            const Color(0xFFB55437));
       }
     }
     // Ear fin.
@@ -1345,6 +2095,30 @@ class ReturnHomeDragon extends PositionComponent {
       ..lineTo(15, 20)
       ..close();
     _shape(canvas, head, scale);
+    if (_evolution > 0) {
+      _shape(
+          canvas,
+          Path()
+            ..addPolygon([
+              const Offset(-24, -19),
+              Offset(-53 - 6 * _evolution, -14),
+              Offset(-60 - 4 * _evolution, -1),
+              const Offset(-51, 13),
+              const Offset(-28, 10),
+            ], true),
+          scale);
+      for (final x in [-43.0, -25.0]) {
+        _shape(
+            canvas,
+            Path()
+              ..addPolygon([
+                Offset(x - 3, 10),
+                Offset(x - 1, 10 + 17 * _evolution),
+                Offset(x + 5, 11),
+              ], true),
+            horn);
+      }
+    }
     final cheek = Path()
       ..moveTo(22, -10)
       ..lineTo(5, -16)
@@ -1439,22 +2213,42 @@ class ReturnHomeDragon extends PositionComponent {
           Paint()..color = const Color(0xFFFF7F9A));
     } else {
       canvas.drawOval(
-          Rect.fromCenter(center: const Offset(-6, -7), width: 20, height: 22),
+          Rect.fromCenter(
+              center: const Offset(-6, -7),
+              width: 20 - 3 * _evolution,
+              height: 22 - 7 * _evolution),
           Paint()
             ..color = Color.lerp(
                 const Color(0xFFFFFFFF), const Color(0xFFFF8D32), _evolution)!);
       canvas.drawOval(
-          Rect.fromCenter(center: const Offset(-6, -7), width: 20, height: 22),
+          Rect.fromCenter(
+              center: const Offset(-6, -7),
+              width: 20 - 3 * _evolution,
+              height: 22 - 7 * _evolution),
           _outline..strokeWidth = 2);
       final look = (target.y - position.y) / _scale < _head.y ? -2.0 : 2.0;
       canvas.drawOval(
           Rect.fromCenter(
               center: Offset(-9, -6 + look),
               width: 12 - 7 * _evolution,
-              height: 12 + 3 * _evolution),
+              height: 12 - 2 * _evolution),
           Paint()..color = const Color(0xFF2A120C));
       canvas.drawCircle(Offset(-11, -9 + look), 2.2,
           Paint()..color = const Color(0xFFFFFFFF));
+      if (_evolution > 0) {
+        _shape(
+            canvas,
+            Path()
+              ..addPolygon([
+                const Offset(-20, -23),
+                const Offset(7, -18),
+                Offset(5, -6 - 3 * (1 - _evolution)),
+                const Offset(-19, -13),
+              ], true),
+            const Color(0xFFBD4932));
+        canvas.drawLine(const Offset(-18, -13), const Offset(4, -6),
+            _outline..strokeWidth = 3);
+      }
       // Brow: frowning while attacking or enraged.
       final angry = phase == 2 || _move != _Move.idle;
       canvas.drawLine(Offset(-18, angry ? -22 : -20),
@@ -1918,6 +2712,7 @@ class DragonTailSweep extends DragonAttack {
   final double left, right, warn, visualScale;
   final Vector2 root;
   double restClock;
+  double bulk = 0;
   static const double sweep = .7;
   static const double recovery = .55;
 
@@ -1978,7 +2773,8 @@ class DragonTailSweep extends DragonAttack {
     if (!sweeping || !box.overlaps(_zone)) return false;
     final points = centerline;
     for (var i = 0; i < points.length - 1; i++) {
-      final radius = (15 * (1 - i / (points.length - 1)) + 2) * visualScale;
+      final radius =
+          ((15 + 6 * bulk) * (1 - i / (points.length - 1)) + 2) * visualScale;
       if (_tailSegmentHits(points[i], points[i + 1], box.inflate(radius))) {
         return true;
       }

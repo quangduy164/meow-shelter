@@ -113,20 +113,20 @@ class CatBreed {
   }) get homeCombo => switch (id) {
         'black' => (
             name: 'Ảnh nổ',
-            hint: 'Đặt phân thân gần mình rồi dịch chuyển',
+            hint: 'Đặt phân thân rồi dịch chuyển vào vùng phân thân',
             steps: [
               (
                 attack: HomeAttack.decoy,
-                instruction: 'Đặt phân thân gần mèo và mục tiêu.'
+                instruction: 'Đặt phân thân gần mục tiêu muốn gây nổ.'
               ),
               (
                 attack: HomeAttack.shadowStep,
                 instruction:
-                    'Khi vẫn ở gần phân thân, dịch chuyển để kích nổ ngay.'
+                    'Dịch chuyển bóng vào vùng quanh phân thân để kích nổ ngay.'
               ),
             ],
             effect:
-                'Phân thân ở trong phạm vi 110px sẽ nổ ngay. Sát thương lên rồng tăng từ 4 lên 6.'
+                'Khi mèo đáp xuống trong vùng phân thân, phân thân nổ ngay. Sát thương lên rồng tăng từ 4 lên 6.'
           ),
         'himalaya' => (
             name: 'Phá băng',

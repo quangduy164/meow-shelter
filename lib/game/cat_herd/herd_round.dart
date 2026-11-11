@@ -3,6 +3,7 @@ import 'package:flame/components.dart';
 import 'herd_map.dart';
 import 'herd_ball.dart';
 import 'herd_snowball.dart';
+import 'herd_navigation.dart';
 
 /// Simulation only: no rendering, input events or persistence.
 class HerdCat {
@@ -48,6 +49,7 @@ class HerdRound {
   static const requiredCats = 8;
   static const spacing = 25.0;
   final Random random;
+  final _navigation = HerdNavigation();
   final cats = <HerdCat>[];
   final chain = <HerdCat>[];
   final trail = <Vector2>[];
@@ -76,9 +78,9 @@ class HerdRound {
   int get tutorialStep =>
       !tutorialMoved ? 1 : (chain.length < minimumToHome ? 2 : 3);
   String get tutorialInstruction => switch (tutorialStep) {
-        1 => '1/3 · Kéo joystick góc trái để di chuyển mèo có dấu vàng',
-        2 => '2/3 · Ghé các vòng sáng, né đá và đón đủ $minimumToHome bé',
-        _ => '3/3 · Dẫn cả đàn vào vòng sáng trước ngôi nhà',
+        1 => 'Kéo joystick để di chuyển mèo có dấu vàng.',
+        2 => 'Đến gần mèo để rủ vào đàn. Đi vòng qua đá nhé!',
+        _ => 'Dẫn cả đàn vào vòng sáng trước nhà.',
       };
   bool get homeUnlocked =>
       chain.length >= minimumToHome && (!isTutorial || tutorialMoved);
@@ -142,6 +144,44 @@ class HerdRound {
     }
     _spawnClusters();
     trail.add(leader.clone());
+  }
+
+  /// Layout notifications must not start a new run or erase a result.
+  void resize(Vector2 size) {
+    if (size.x <= 0 ||
+        size.y <= 0 ||
+        field.x <= 0 ||
+        field.y <= 0 ||
+        field == size) return;
+    final sx = size.x / field.x, sy = size.y / field.y;
+    void scale(Vector2 point) {
+      point.x *= sx;
+      point.y *= sy;
+    }
+
+    scale(leader);
+    scale(home);
+    scale(velocity);
+    for (final cat in cats) {
+      scale(cat.position);
+      scale(cat.velocity);
+    }
+    for (final point in trail) {
+      scale(point);
+    }
+    for (final patrol in patrols) {
+      scale(patrol.from);
+      scale(patrol.to);
+    }
+    for (final ball in balls) {
+      scale(ball.from);
+      scale(ball.to);
+    }
+    for (final ball in snowballs) {
+      scale(ball.from);
+      scale(ball.to);
+    }
+    field.setFrom(size);
   }
 
   double patrolClock(HerdPatrol patrol) => patrol.trafficLight
@@ -415,33 +455,13 @@ class HerdRound {
     }
   }
 
-  // Follow the recorded route around corners instead of cutting across stalls.
-  Vector2 _followTarget(Vector2 at, double distance) {
-    final target = _trailPoint(distance);
-    if (_clearLine(at, target)) return target;
-    var nearest = -1;
-    var best = double.infinity;
-    for (var i = 0; i < trail.length; i++) {
-      final d = at.distanceToSquared(trail[i]);
-      if (d < best && _clearLine(at, trail[i])) {
-        nearest = i;
-        best = d;
-      }
-    }
-    if (nearest < 0) return at.clone();
-    for (var i = max(0, nearest - 6); i < nearest; i++) {
-      if (_clearLine(at, trail[i])) return trail[i];
-    }
-    return trail[nearest];
-  }
+  // Reach the assigned trail point through real obstacle corners, even if the
+  // leader's older trail has been trimmed or the cat was pushed off the route.
+  Vector2 _followTarget(Vector2 at, double distance) =>
+      _navigation.nextWaypoint(map, field, at, _trailPoint(distance));
 
-  bool _clearLine(Vector2 from, Vector2 to) {
-    final steps = max(1, (from.distanceTo(to) / 6).ceil());
-    for (var i = 1; i <= steps; i++) {
-      if (map.blocked(from + (to - from) * (i / steps), field)) return false;
-    }
-    return true;
-  }
+  bool _clearLine(Vector2 from, Vector2 to) =>
+      _navigation.clearLine(map, field, from, to);
 
   Vector2 _trailPoint(double distance) {
     for (var i = 1; i < trail.length; i++) {

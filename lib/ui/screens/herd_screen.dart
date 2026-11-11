@@ -4,6 +4,8 @@ import '../../game/cat_herd/herd_game.dart';
 import '../../game/cat_herd/herd_round.dart';
 import '../widgets/herd_map_select.dart';
 import '../design.dart';
+import '../widgets/round_button.dart';
+import '../widgets/game_glyphs.dart';
 import '../../camp/camp_state.dart';
 import '../../game/cat_herd/herd_map.dart';
 
@@ -87,14 +89,15 @@ class _HerdScreenState extends State<HerdScreen> with WidgetsBindingObserver {
         initialActiveOverlays: const ['exit'],
         overlayBuilderMap: {
           'exit': (context, game) => SafeArea(
-              child: Align(
-                  alignment: Alignment.topLeft,
-                  child: IconButton(
-                      tooltip: 'Trang chủ',
-                      onPressed: () => Navigator.pop(context),
-                      style: IconButton.styleFrom(
-                          backgroundColor: DS.cream, foregroundColor: DS.ink),
-                      icon: const Icon(Icons.home_rounded)))),
+                child: Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: Align(
+                        alignment: Alignment.topLeft,
+                        child: RoundButton(
+                            glyph: GameGlyph.home,
+                            tooltip: 'Về Trang chủ',
+                            onPressed: () => Navigator.pop(context)))),
+              ),
           'maps': (context, game) => HerdMapSelect(
               onPlay: game.chooseMap,
               onHome: () => Navigator.pop(context),

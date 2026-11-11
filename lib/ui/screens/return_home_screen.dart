@@ -58,6 +58,7 @@ class _ReturnHomeScreenState extends State<ReturnHomeScreen> {
           'chooseCat': (context, game) => _ChooseCatOverlay(
               game: game, onHelp: () => _showComboHelp(context)),
           'skill': (context, game) => _SkillButton(game: game),
+          'victory': (context, game) => _VictoryOverlay(game: game),
           'exit': (context, game) => SafeArea(
                 child: Align(
                   alignment: Alignment.topRight,
@@ -78,6 +79,107 @@ class _ReturnHomeScreenState extends State<ReturnHomeScreen> {
       ),
     );
   }
+}
+
+class _VictoryOverlay extends StatelessWidget {
+  const _VictoryOverlay({required this.game});
+  final ReturnHomeGame game;
+
+  @override
+  Widget build(BuildContext context) {
+    final seconds = game.elapsed.floor();
+    final time = '${(seconds ~/ 60).toString().padLeft(2, '0')}:'
+        '${(seconds % 60).toString().padLeft(2, '0')}';
+    return Material(
+      color: DS.scrim,
+      child: SafeArea(
+          child: Center(
+              child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Container(
+              width: 440,
+              padding: const EdgeInsets.fromLTRB(22, 16, 22, 18),
+              decoration: DS.card,
+              child: Column(mainAxisSize: MainAxisSize.min, children: [
+                const Text('CHIẾN THẮNG!', style: DS.title),
+                const SizedBox(height: 4),
+                const Text('Mèo đã về nhà an toàn',
+                    style: TextStyle(color: DS.soft, fontSize: 14)),
+                const SizedBox(height: 8),
+                Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                  CatSprite(type: game.selectedCat, size: 70),
+                  const SizedBox(width: 10),
+                  Row(mainAxisSize: MainAxisSize.min, children: [
+                    for (var i = 0; i < 3; i++)
+                      Icon(
+                          i < game.stars
+                              ? Icons.star_rounded
+                              : Icons.star_outline_rounded,
+                          size: 38,
+                          color: i < game.stars ? DS.goldEdge : DS.mutedBorder),
+                  ]),
+                ]),
+                const SizedBox(height: 8),
+                Row(children: [
+                  Expanded(
+                      child: _stat(Icons.timer_outlined, 'Thời gian', time)),
+                  const SizedBox(width: 10),
+                  Expanded(
+                      child: _stat(Icons.set_meal_rounded, 'Cá thu thập',
+                          '${game.fish}')),
+                ]),
+                const SizedBox(height: 12),
+                Row(children: [
+                  Expanded(
+                      child: ElevatedButton.icon(
+                    style: DS.secondary,
+                    onPressed: () => Navigator.of(context).pushReplacement(
+                        MaterialPageRoute<void>(
+                            builder: (_) => const ReturnHomeScreen())),
+                    icon: const Icon(Icons.replay_rounded, size: 20),
+                    label: const Text('Chơi lại',
+                        style: TextStyle(fontFamily: 'Roboto')),
+                  )),
+                  const SizedBox(width: 10),
+                  Expanded(
+                      child: ElevatedButton.icon(
+                    style: DS.primary,
+                    onPressed: () => Navigator.of(context).pop(),
+                    icon: const GameGlyphView(GameGlyph.home, size: 20),
+                    label: const Text('Về nhà',
+                        style: TextStyle(fontFamily: 'Roboto')),
+                  )),
+                ]),
+              ]),
+            )),
+      ))),
+    );
+  }
+
+  Widget _stat(IconData icon, String label, String value) => Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
+        decoration: BoxDecoration(
+            color: Colors.white.withOpacity(.65),
+            borderRadius: BorderRadius.circular(12)),
+        child: Row(children: [
+          Icon(icon, color: DS.label, size: 22),
+          const SizedBox(width: 8),
+          Expanded(
+              child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                Text(label,
+                    style: const TextStyle(color: DS.soft, fontSize: 11)),
+                Text(value,
+                    style: const TextStyle(
+                        color: DS.ink,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w900)),
+              ])),
+        ]),
+      );
 }
 
 class _SkillButton extends StatefulWidget {
@@ -295,223 +397,239 @@ class _ComboHelpDialog extends StatefulWidget {
 
 class _ComboHelpDialogState extends State<_ComboHelpDialog> {
   late int _selected;
-  late final ScrollController _tabs;
-  final _content = ScrollController();
 
   @override
   void initState() {
     super.initState();
     _selected =
         max(0, CatBreed.all.indexWhere((b) => b.id == widget.selectedCat));
-    _tabs =
-        ScrollController(initialScrollOffset: max(0, _selected - 2) * 100.0);
-  }
-
-  @override
-  void dispose() {
-    _tabs.dispose();
-    _content.dispose();
-    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) => Dialog(
         backgroundColor: DS.cream,
         shape: DS.dialogShape,
-        insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+        insetPadding: const EdgeInsets.all(12),
         child: SizedBox(
-          width: 700,
+          width: 860,
           height: min(
-              440,
+              540,
               MediaQuery.sizeOf(context).height -
                   MediaQuery.paddingOf(context).vertical -
                   24),
           child: Padding(
-            padding: const EdgeInsets.all(12),
-            child: Column(children: [
-              Row(children: [
-                const Expanded(child: Text('THẺ COMBO', style: DS.title)),
-                IconButton(
-                  constraints:
-                      const BoxConstraints(minWidth: 40, minHeight: 40),
-                  tooltip: 'Đóng hướng dẫn',
-                  onPressed: () => Navigator.of(context).pop(),
-                  icon: const GameGlyphView(GameGlyph.close),
-                ),
-              ]),
-              SizedBox(
-                height: 44,
-                child: ListView.separated(
-                  controller: _tabs,
-                  scrollDirection: Axis.horizontal,
-                  itemCount: CatBreed.all.length,
-                  separatorBuilder: (_, __) => const SizedBox(width: 8),
-                  itemBuilder: (_, index) {
-                    final breed = CatBreed.all[index];
-                    return Center(
-                        child: ChoiceChip(
-                      avatar: CatFace(breed.id, size: 28),
-                      label: Text(breed.name),
-                      selected: index == _selected,
-                      showCheckmark: false,
-                      selectedColor: DS.gold.withOpacity(.45),
-                      backgroundColor: Colors.white.withOpacity(.6),
-                      side: BorderSide(
-                          color: index == _selected
-                              ? DS.goldEdge
-                              : DS.mutedBorder),
-                      labelStyle: const TextStyle(
-                          color: DS.ink,
-                          fontSize: 13,
-                          fontWeight: FontWeight.w800),
-                      onSelected: (_) {
-                        _content.jumpTo(0);
-                        setState(() => _selected = index);
-                      },
-                    ));
-                  },
-                ),
-              ),
-              const SizedBox(height: 8),
-              Expanded(
-                  child: Scrollbar(
-                controller: _content,
-                thumbVisibility: true,
-                child: SingleChildScrollView(
-                  controller: _content,
-                  padding: const EdgeInsets.only(right: 8),
-                  child: _comboCard(CatBreed.all[_selected]),
-                ),
-              )),
-              const SizedBox(height: 8),
-              const Text('Chọn mèo để xem combo · Trò chơi đang tạm dừng',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(color: DS.soft, fontSize: 12)),
-            ]),
+            padding: const EdgeInsets.all(10),
+            child: LayoutBuilder(builder: (_, constraints) {
+              final wide = constraints.maxWidth >= 480;
+              return Column(children: [
+                Row(children: [
+                  const Expanded(
+                      child: Text('THẺ COMBO',
+                          style: TextStyle(
+                              color: DS.ink,
+                              fontSize: 19,
+                              fontWeight: FontWeight.w900))),
+                  IconButton(
+                    constraints:
+                        const BoxConstraints(minWidth: 36, minHeight: 36),
+                    padding: const EdgeInsets.all(6),
+                    tooltip: 'Đóng hướng dẫn',
+                    onPressed: () => Navigator.of(context).pop(),
+                    icon: const GameGlyphView(GameGlyph.close, size: 24),
+                  ),
+                ]),
+                SizedBox(
+                    height: 48,
+                    child: Row(children: [
+                      for (var index = 0; index < CatBreed.all.length; index++)
+                        Expanded(
+                            child: Padding(
+                          padding: EdgeInsets.only(
+                              right: index == CatBreed.all.length - 1 ? 0 : 6),
+                          child: _catTab(index, wide),
+                        )),
+                    ])),
+                const SizedBox(height: 6),
+                Expanded(child: _comboCard(CatBreed.all[_selected], wide)),
+                const SizedBox(height: 6),
+                const Text('Chọn mèo để xem combo · Trò chơi đang tạm dừng',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: DS.soft, fontSize: 11)),
+              ]);
+            }),
           ),
         ),
       );
 
-  Widget _comboCard(CatBreed breed) {
-    final combo = breed.homeCombo;
-    final selected = breed.id == widget.selectedCat;
-    return Container(
-      padding: const EdgeInsets.all(10),
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(.75),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: DS.wood, width: 2),
+  Widget _catTab(int index, bool wide) {
+    final breed = CatBreed.all[index];
+    final selected = index == _selected;
+    final name = FittedBox(
+        fit: BoxFit.scaleDown,
+        child: Text(breed.name,
+            style: TextStyle(
+                color: DS.ink,
+                fontSize: wide ? 12 : 10.5,
+                fontWeight: FontWeight.w800)));
+    return Semantics(
+      selected: selected,
+      child: Material(
+        color:
+            selected ? DS.gold.withOpacity(.45) : Colors.white.withOpacity(.6),
+        shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+            side: BorderSide(
+                color: selected ? DS.goldEdge : DS.mutedBorder,
+                width: selected ? 2 : 1)),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: () => setState(() => _selected = index),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 3),
+            child: wide
+                ? Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                    CatFace(breed.id, size: 25),
+                    const SizedBox(width: 4),
+                    Flexible(child: name),
+                  ])
+                : Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                        CatFace(breed.id, size: 22),
+                        name,
+                      ]),
+          ),
+        ),
       ),
+    );
+  }
+
+  Widget _comboCard(CatBreed breed, bool wide) {
+    final combo = breed.homeCombo;
+    return Container(
+      padding: const EdgeInsets.all(8),
+      decoration: BoxDecoration(
+          color: Colors.white.withOpacity(.75),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: DS.wood, width: 2)),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
-          CatFace(breed.id, size: 34),
-          const SizedBox(width: 10),
+          CatFace(breed.id, size: 26),
+          const SizedBox(width: 6),
           Expanded(
-              child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(breed.name,
-                  style: const TextStyle(color: DS.soft, fontSize: 12)),
-              Text(combo.name,
+              child: Text(combo.name,
                   style: const TextStyle(
                       color: DS.ink,
-                      fontSize: 19,
-                      fontWeight: FontWeight.w900)),
-            ],
-          )),
-          if (selected)
+                      fontSize: 17,
+                      fontWeight: FontWeight.w900))),
+          if (breed.id == widget.selectedCat)
             const Text('ĐANG CHƠI',
                 style: TextStyle(
                     color: DS.label,
-                    fontSize: 11,
+                    fontSize: 10,
                     fontWeight: FontWeight.w800)),
         ]),
-        const SizedBox(height: 8),
-        LayoutBuilder(builder: (_, constraints) {
-          final steps = Column(children: [
-            for (var i = 0; i < combo.steps.length; i++) ...[
-              if (i > 0)
-                const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 2),
-                  child: Icon(Icons.keyboard_arrow_down_rounded,
-                      color: DS.label, size: 20),
-                ),
-              Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: combo.steps[i].attack.color.withOpacity(.09),
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(
-                      color: combo.steps[i].attack.color.withOpacity(.4)),
-                ),
-                child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Container(
-                        width: 40,
-                        height: 40,
-                        decoration: BoxDecoration(
-                          color: combo.steps[i].attack.color.withOpacity(.2),
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: Center(
-                            child: SkillGlyphView(combo.steps[i].attack.glyph,
-                                size: 30)),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                          child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text('Bước ${i + 1} · ${combo.steps[i].attack.label}',
-                              style: const TextStyle(
-                                  color: DS.ink,
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w900)),
-                          const SizedBox(height: 4),
-                          Text(combo.steps[i].instruction,
-                              style: const TextStyle(
-                                  color: DS.ink, fontSize: 13, height: 1.35)),
-                        ],
-                      )),
+        const SizedBox(height: 6),
+        Expanded(child: LayoutBuilder(builder: (_, constraints) {
+          final panels = [
+            for (var i = 0; i < combo.steps.length; i++) _stepPanel(breed, i),
+            _effectPanel(breed),
+          ];
+          // Scale only when a small viewport or larger text needs extra room.
+          return FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.topCenter,
+            child: SizedBox(
+              width: constraints.maxWidth,
+              child: wide
+                  ? Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                          for (var i = 0; i < panels.length; i++) ...[
+                            if (i > 0)
+                              const Padding(
+                                  padding: EdgeInsets.symmetric(horizontal: 2),
+                                  child: Icon(Icons.chevron_right_rounded,
+                                      color: DS.label, size: 18)),
+                            Expanded(flex: i == 2 ? 6 : 5, child: panels[i]),
+                          ],
+                        ])
+                  : Column(children: [
+                      for (var i = 0; i < panels.length; i++) ...[
+                        if (i > 0) const SizedBox(height: 6),
+                        panels[i],
+                      ],
                     ]),
-              ),
-            ],
-          ]);
-          final effect = Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-                color: DS.gold.withOpacity(.2),
-                borderRadius: BorderRadius.circular(10)),
-            child:
-                Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              const Row(children: [
-                Icon(Icons.auto_awesome_rounded, color: DS.goldEdge, size: 18),
-                SizedBox(width: 6),
-                Expanded(
-                    child: Text('HIỆU ỨNG COMBO',
-                        style: TextStyle(
-                            color: DS.ink,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w900))),
-              ]),
-              const SizedBox(height: 8),
-              Text(combo.effect,
-                  style: const TextStyle(
-                      color: DS.ink, fontSize: 13, height: 1.45)),
-            ]),
+            ),
           );
-          if (constraints.maxWidth >= 480) {
-            return Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Expanded(flex: 3, child: steps),
-              const SizedBox(width: 12),
-              Expanded(flex: 2, child: effect),
-            ]);
-          }
-          return Column(children: [steps, const SizedBox(height: 12), effect]);
-        }),
+        })),
       ]),
     );
   }
+
+  Widget _stepPanel(CatBreed breed, int index) {
+    final step = breed.homeCombo.steps[index];
+    return Container(
+      padding: const EdgeInsets.all(8),
+      decoration: BoxDecoration(
+          color: step.attack.color.withOpacity(.09),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: step.attack.color.withOpacity(.4))),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Row(children: [
+          Container(
+              width: 32,
+              height: 32,
+              decoration: BoxDecoration(
+                  color: step.attack.color.withOpacity(.2),
+                  borderRadius: BorderRadius.circular(8)),
+              child:
+                  Center(child: SkillGlyphView(step.attack.glyph, size: 25))),
+          const SizedBox(width: 6),
+          Expanded(
+              child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                Text('BƯỚC ${index + 1}',
+                    style: const TextStyle(
+                        color: DS.soft,
+                        fontSize: 10,
+                        fontWeight: FontWeight.w800)),
+                Text(step.attack.label,
+                    style: const TextStyle(
+                        color: DS.ink,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w900)),
+              ])),
+        ]),
+        const SizedBox(height: 6),
+        Text(step.instruction,
+            style: const TextStyle(color: DS.ink, fontSize: 12.5, height: 1.3)),
+      ]),
+    );
+  }
+
+  Widget _effectPanel(CatBreed breed) => Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(8),
+        decoration: BoxDecoration(
+            color: DS.gold.withOpacity(.2),
+            borderRadius: BorderRadius.circular(10)),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          const Row(children: [
+            Icon(Icons.auto_awesome_rounded, color: DS.goldEdge, size: 16),
+            SizedBox(width: 4),
+            Expanded(
+                child: Text('HIỆU ỨNG COMBO',
+                    style: TextStyle(
+                        color: DS.ink,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w900))),
+          ]),
+          const SizedBox(height: 6),
+          Text(breed.homeCombo.effect,
+              style:
+                  const TextStyle(color: DS.ink, fontSize: 12.5, height: 1.3)),
+        ]),
+      );
 }

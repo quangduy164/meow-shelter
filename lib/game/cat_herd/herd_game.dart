@@ -7,6 +7,7 @@ import '../return_home/return_home_joystick.dart';
 import 'herd_round.dart';
 import 'herd_scene.dart';
 import 'herd_map.dart';
+import 'herd_hud.dart';
 
 /// Coordinates simulation, input and sprite rendering. Rules live in HerdRound.
 class HerdGame extends FlameGame {
@@ -76,11 +77,9 @@ class HerdGame extends FlameGame {
     super.onGameResize(size);
     if (_ready) {
       _joystick.position.setValues(85, size.y - 75);
-      // Scene coordinates depend on the viewport; restart after a resize.
-      final running = round.started;
-      round.reset(size);
-      round.started = running;
-      overlays.remove('result');
+      // Overlay/layout rebuilds can report the same size again after a win.
+      // Preserve the run and its result even when the viewport really changes.
+      round.resize(size);
     }
   }
 
@@ -108,7 +107,9 @@ class HerdGame extends FlameGame {
   void render(Canvas canvas) {
     if (!_ready) return;
     paintHerdField(canvas, Size(size.x, size.y), round);
-    if (round.isTutorial && !round.ended) _tutorialGuide(canvas);
+    if (round.isTutorial && !round.ended && round.tutorialStep > 1) {
+      _tutorialGuide(canvas);
+    }
     for (final cat in round.cats.where((c) => !c.home)) {
       if (!cat.following) {
         canvas.drawCircle(
@@ -137,24 +138,11 @@ class HerdGame extends FlameGame {
           tumble: round.landingTime);
     }
     super.render(canvas);
-    final panel = RRect.fromRectAndRadius(
-        Rect.fromLTWH(65, 9, size.x - 130, 36), const Radius.circular(12));
-    canvas.drawRRect(panel, Paint()..color = const Color(0xEEFFF4DA));
-    herdText(
-        canvas,
-        round.isTutorial
-            ? 'TẬP DẪN ĐÀN · ĐÃ ĐÓN ${round.chain.length}/${round.catCount} BÉ'
-            : 'ĐÀN ${round.chain.length}/${HerdRound.target} · MỞ NHÀ ${HerdRound.requiredCats} BÉ · MẠNG ${round.lives}',
-        const Offset(78, 19),
-        12);
-    herdText(
-        canvas,
-        round.isTutorial
-            ? round.tutorialInstruction
-            : '${round.map.name}${round.map.kind == HerdMapKind.nightMarket ? (round.map.green(round.time) ? " · XE DỪNG ${(5 - round.time % 5).ceil()}s" : " · XE CHẠY ${(5 - round.time % 5).ceil()}s") : ""}',
-        const Offset(78, 49),
-        11);
-    if (round.noticeTime > 0) {
+    if (round.isTutorial && !round.ended && round.tutorialStep == 1) {
+      _tutorialGuide(canvas);
+    }
+    paintHerdHud(canvas, Size(size.x, size.y), round);
+    if (round.noticeTime > 0 && !round.isTutorial) {
       final text = TextPainter(
           text: TextSpan(
               text: round.notice,

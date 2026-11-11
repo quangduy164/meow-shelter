@@ -328,6 +328,8 @@ class ReturnHomeGame extends FlameGame {
       case HomeAttack.shadowStep:
         final target = _aimPoint(attack, stick);
         if (!_blinkValid(target)) return false;
+        _world.add(ReturnHomeShadowStep(from: _catCenter, to: target));
+        _cat.blinkTo(target);
         final decoy = _decoy;
         if (decoy != null &&
             !decoy.expired &&
@@ -337,8 +339,6 @@ class ReturnHomeGame extends FlameGame {
           decoy.timeLeft = 0;
           _showCombo('ẢNH NỔ!', decoy.lureCenter, const Color(0xFFB799F2));
         }
-        _world.add(ReturnHomeShadowStep(from: _catCenter, to: target));
-        _cat.blinkTo(target);
         _contacts.clear();
       case HomeAttack.decoy:
         _decoy?.removeFromParent();
@@ -816,8 +816,8 @@ class ReturnHomeGame extends FlameGame {
       if (!bossDefeated) {
         bossDefeated = true;
         fish += 10;
-        zoneName = 'ĐÃ ĐÁNH BẠI RỒNG!';
-        zoneSubtitle = '+10 cá · đường về nhà đã mở';
+        zoneName = 'Đã lưu checkpoint';
+        zoneSubtitle = '';
         checkpointMessage = 2.8;
       }
       return;
@@ -1073,6 +1073,12 @@ class ReturnHomeGame extends FlameGame {
       finished = true;
       reward = fish * 2 + stars * 10 + (bossDefeated ? bossBonus : 0);
       unawaited(CampState.instance.addCoins(reward));
+      cancelAim();
+      joystick.delta.setZero();
+      overlays.remove('skill');
+      overlays.remove('exit');
+      overlays.add('victory');
+      pauseEngine();
     }
   }
 
@@ -1310,8 +1316,6 @@ class ReturnHomeGame extends FlameGame {
       lives: lives,
       fish: fish,
       elapsed: elapsed,
-      stars: stars,
-      reward: reward,
       zone: checkpointMessage > 0 ? zoneName : null,
       finished: finished,
       zoneSubtitle: zoneSubtitle,

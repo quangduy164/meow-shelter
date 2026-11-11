@@ -14,8 +14,6 @@ void paintReturnHomeHud(
   required int lives,
   required int fish,
   required double elapsed,
-  required int stars,
-  required int reward,
   required String? zone,
   required bool finished,
   String zoneSubtitle = '',
@@ -25,6 +23,7 @@ void paintReturnHomeHud(
   EdgeInsets padding = EdgeInsets.zero,
   double zoneTimeLeft = 1,
 }) {
+  if (finished) return;
   if (bossHealth != null && !finished) {
     _paintBossBar(canvas, size, padding, bossHealth, bossPhase, bossTired);
     return;
@@ -95,32 +94,6 @@ void paintReturnHomeHud(
     }
   }
   canvas.restore();
-  if (!finished) return;
-  final card = Rect.fromCenter(
-      center: Offset(size.width / 2, size.height * .32),
-      width: 330,
-      height: 128);
-  canvas.drawRRect(RRect.fromRectAndRadius(card, const Radius.circular(18)),
-      Paint()..color = const Color(0xF2FFF4DA));
-  canvas.drawRRect(
-      RRect.fromRectAndRadius(card, const Radius.circular(18)),
-      Paint()
-        ..color = const Color(0xFFB27A3E)
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 3);
-  _center(canvas, size, 'MÈO ĐÃ VỀ AN TOÀN!', card.top + 18, 24);
-  _center(
-      canvas,
-      size,
-      List.generate(3, (i) => i < stars ? '★' : '☆').join(' '),
-      card.top + 58,
-      30);
-  _center(
-      canvas,
-      size,
-      '${elapsed.toStringAsFixed(1)} giây · $fish cá · +$reward xu',
-      card.top + 96,
-      16);
 }
 
 void _label(
@@ -307,17 +280,4 @@ void _paintRouteMap(Canvas canvas, Rect bar, double progress,
   canvas.drawLine(gate + const Offset(-3, 4), gate + const Offset(-3, -3), pen);
   canvas.drawLine(gate + const Offset(3, 4), gate + const Offset(3, -3), pen);
   canvas.drawLine(gate + const Offset(-4, -3), gate + const Offset(4, -3), pen);
-}
-
-void _center(Canvas canvas, Size size, String text, double y, double fontSize) {
-  final painter = TextPainter(
-    text: TextSpan(
-        text: text,
-        style: TextStyle(
-            color: const Color(0xFF5A3214),
-            fontSize: fontSize,
-            fontWeight: FontWeight.w900)),
-    textDirection: TextDirection.ltr,
-  )..layout(maxWidth: size.width - 40);
-  painter.paint(canvas, Offset((size.width - painter.width) / 2, y));
 }

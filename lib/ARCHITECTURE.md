@@ -30,6 +30,11 @@
     consumes a normalized direction and a small time step.
   - `herd_game.dart`: Flame lifecycle, shared joystick adapter, sprite cache,
     fixed substeps and overlays. It does not write camp progress.
+  - `herd_navigation.dart`: cached visibility graph at expanded obstacle corners.
+    Followers take a shortest clear detour to their assigned leader-trail point,
+    even after older trail samples expire or hazards push them aside. Exact
+    segment/rectangle checks share the same 15-unit clearance as collision;
+    the graph rebuilds when the map or viewport changes.
   - `herd_map.dart`: the four exclusive maps (market/desert/snow/playground), normalized
     walls and terrain patches, traffic clock and player-facing rule text.
   - `herd_route.dart`: suggested paths, optional branch and four group
@@ -65,6 +70,8 @@
     damaging hazards, twelve cats in four clusters, three slalom rocks and a
     three-step move/recruit/return guide driven by
     `HerdRound.tutorialStep`. HUD and pulsing targets reflect the current step.
+    `herd_hud.dart` draws only lives at the top and a transparent top-centred tutorial
+    caption without step labels or progress counters; Home uses the shared RoundButton.
     `HerdScreen` reads `CampState.herdTutorialDone` at entry; the game reports
     a win through `onTutorialCompleted`. Only a completed tutorial writes the
     versioned mode key into the existing saved `seenGuides` set. Aborted runs
@@ -78,8 +85,8 @@
     `requiredCats` (8 to open the home), movement speed, pickup/hit radii and
     the score formula. Spawns use four authored anchors with a jittered
     three-cat formation, rejecting walls, overlap and traffic lanes; keep all
-    anchors reachable and off traffic when adding a route. Resize restarts
-    the round because its positions belong to the current viewport.
+    anchors reachable and off traffic when adding a route. Viewport resize scales positions in place through `HerdRound.resize`; repeated
+    layout notifications preserve the run, score and result overlay.
 - `fishing/`: fishing controller (rules, timing, saving catches).
 - `camp/`: the cat camp.
   - `camp_state.dart`: coins, bought cats (`cat:<breed>` in owned), rescue counts, affection, owned and placed
