@@ -487,6 +487,7 @@ class ReturnHomeDecoy extends SpriteAnimationGroupComponent<CatState> {
 
   final bool flip;
   double timeLeft = HomeAttack.decoy.duration;
+  bool recalled = false;
   bool empowered = false;
   double _t = 0;
 
@@ -653,12 +654,12 @@ void paintIceBlock(Canvas canvas, double timeLeft,
 
 /// Ring of ice spikes bursting out to [HomeAttack.frostNova] radius.
 class ReturnHomeFrostWave extends PositionComponent {
-  ReturnHomeFrostWave({required Vector2 position})
+  ReturnHomeFrostWave({required Vector2 position, this.radius = 140})
       : super(position: position, anchor: Anchor.center, priority: 3);
 
   double _t = 0;
   static const double _life = .8;
-  double get radius => HomeAttack.frostNova.radius;
+  final double radius;
 
   @override
   void update(double dt) {

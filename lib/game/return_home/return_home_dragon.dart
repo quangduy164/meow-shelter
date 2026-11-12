@@ -29,7 +29,7 @@ class ReturnHomeDragon extends PositionComponent {
   static const double tiredBonus = 1.5;
   static const double introTime = 2.0;
   static const double fleeTime = 2.4;
-  static const double evolutionTime = 1.8;
+  static const double evolutionTime = 4.0;
   static const double evolutionPushTime = .35;
 
   double hp = maxHp;
@@ -90,7 +90,8 @@ class ReturnHomeDragon extends PositionComponent {
       _evolutionT >= 0 && _evolutionT < evolutionPushTime + evolutionTime;
   double get _evolutionProgress =>
       ((_evolutionT - evolutionPushTime) / evolutionTime).clamp(0.0, 1.0);
-  double get _evolution => _evolved ? _smoothUnit(_evolutionProgress) : 0;
+  double get _evolution =>
+      _evolved ? _smoothUnit((_evolutionProgress - .18) / .62) : 0;
   double get hpShare => (hp / maxHp).clamp(0.0, 1.0);
 
   double get _scale =>
@@ -570,6 +571,19 @@ class ReturnHomeDragon extends PositionComponent {
     }
     canvas.restore();
     if (profile < 1) _paintTurnedBody(canvas, 1 - profile);
+    if (evolving) {
+      final flash =
+          (1 - ((_evolutionProgress - .69) / .09).abs()).clamp(0.0, 1.0);
+      final halo = Rect.fromCenter(
+          center: const Offset(5, -95), width: 260, height: 290);
+      canvas.drawOval(
+          halo,
+          Paint()
+            ..shader = RadialGradient(colors: [
+              const Color(0xFFFFEBD2).withOpacity(flash * .45),
+              const Color(0x00FFEBD2),
+            ]).createShader(halo));
+    }
     canvas.restore();
   }
 
@@ -1022,24 +1036,69 @@ class ReturnHomeDragon extends PositionComponent {
   }
 
   void _paintEvolutionBurst(Canvas canvas) {
-    final progress = _evolutionT / (evolutionPushTime + evolutionTime);
-    final fade = sin(pi * progress);
-    final radius = 40 + progress * 160;
+    final p = _evolutionProgress;
+    final charge = _smoothUnit(p / .58);
+    final release = _smoothUnit((p - .58) / .18);
+    final fade = 1 - _smoothUnit((p - .84) / .16);
+    final pulse = .8 + .2 * sin(_evolutionT * 17);
+    final aura = Rect.fromCenter(
+        center: const Offset(5, -100),
+        width: 150 + charge * 90,
+        height: 190 + charge * 110);
     canvas.drawOval(
-        Rect.fromCenter(
-            center: const Offset(15, 0),
-            width: radius * 2,
-            height: radius * .6),
+        aura,
         Paint()
-          ..color = const Color(0xFFFF6C35).withOpacity(fade * .8)
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = 5 * (1 - progress) + 1);
-    for (var i = 0; i < 12; i++) {
-      final a = i * pi / 6;
-      final p = Offset(15 + cos(a) * radius * .65,
-          -45 + sin(a) * radius * .3 - progress * 55);
-      canvas.drawCircle(p, (2 + i % 3) * fade,
-          Paint()..color = const Color(0xFFFFD371).withOpacity(fade));
+          ..shader = RadialGradient(colors: [
+            Color.fromRGBO(255, 164, 96, .3 * charge * fade * pulse),
+            Color.fromRGBO(182, 72, 145, .2 * charge * fade),
+            const Color(0x00B64891),
+          ]).createShader(aura));
+    // Ground waves push out first, then tighten as energy gathers.
+    for (var i = 0; i < 3; i++) {
+      final cycle = ((_evolutionT * .65 + i / 3) % 1);
+      final radius = 35 + cycle * (90 + release * 100);
+      canvas.drawOval(
+          Rect.fromCenter(
+              center: const Offset(15, 0),
+              width: radius * 2,
+              height: radius * .55),
+          Paint()
+            ..color =
+                const Color(0xFFFFAC78).withOpacity((1 - cycle) * fade * .65)
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = 2 + charge);
+    }
+    // Embers spiral up around the silhouette throughout the longer windup.
+    for (var i = 0; i < 26; i++) {
+      final life = ((_evolutionT * .48 + i / 26) % 1);
+      final a = i * 2.4 + _evolutionT * 2;
+      final x = 10 + cos(a) * (70 + charge * 24) * (1 - life * .3);
+      final y = -life * (200 + charge * 70);
+      canvas.drawLine(
+          Offset(x, y + 8),
+          Offset(x + sin(a) * 3, y),
+          Paint()
+            ..color =
+                (i.isEven ? const Color(0xFFFFD99B) : const Color(0xFFF994C4))
+                    .withOpacity((1 - life) * fade * (.35 + .65 * charge))
+            ..strokeWidth = 1.5 + i % 3
+            ..strokeCap = StrokeCap.round);
+    }
+    final burst = (1 - ((p - .7) / .15).abs()).clamp(0.0, 1.0);
+    if (burst > 0) {
+      for (var i = 0; i < 12; i++) {
+        final a = i * pi / 6 + .15;
+        final from = Offset(5 + cos(a) * 35, -90 + sin(a) * 45);
+        final to = Offset(5 + cos(a) * (95 + release * 70),
+            -90 + sin(a) * (115 + release * 60));
+        canvas.drawLine(
+            from,
+            to,
+            Paint()
+              ..color = const Color(0xFFFFE5AD).withOpacity(burst * .65)
+              ..strokeWidth = 2 + burst * 2
+              ..strokeCap = StrokeCap.round);
+      }
     }
   }
 

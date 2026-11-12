@@ -10,7 +10,7 @@ import 'return_home_game.dart';
 import 'return_home_road.dart';
 
 /// The player: joystick steering, a knockback that costs progress, the black
-/// cat's vanish, and the clamp that keeps its paws on the curving lane.
+/// cat's shadow form, and the clamp that keeps its paws on the curving lane.
 class ReturnHomeCat extends SpriteAnimationGroupComponent<CatState>
     with HasGameReference<ReturnHomeGame> {
   ReturnHomeCat()
@@ -31,9 +31,10 @@ class ReturnHomeCat extends SpriteAnimationGroupComponent<CatState>
   static const double bumpImpulse = 300;
   static const double bumpDuration = .5;
 
-  /// Distance the vanish teleports, and how long the trick takes.
-  static const double vanishLeap = 120;
-  static const double vanishDuration = .75;
+  static const double shadowDuration = 1.5;
+  static const double shadowSpeed = 1.35;
+  bool get phasing => _shadowTimer > 0;
+  bool get ignoresObstacles => dashing || phasing;
 
   /// Himalaya dash: a fixed-speed burst that phases through logs, springs and
   /// water and ignores damage; ~200 px, enough to clear a stream crossing.
@@ -64,10 +65,14 @@ class ReturnHomeCat extends SpriteAnimationGroupComponent<CatState>
   double get facing => _facing;
 
   double _bumpTimer = 0;
-  double _vanishTimer = 0;
-  bool _vanished = false;
+  double _shadowTimer = 0;
+  double _shadowClock = 0;
+  double _trailClock = 0;
+  final _shadowTrail = <Vector2>[];
   double invulnerable = 0;
   double _sprintTimer = 0;
+  bool get sprinting => _sprintTimer > 0;
+  double _blessingShieldTimer = 0;
   double _rollTimer = 0;
   bool shield = false;
 
@@ -80,7 +85,7 @@ class ReturnHomeCat extends SpriteAnimationGroupComponent<CatState>
   /// Pushes the cat vertically (wind) through the normal move, so the lane
   /// clamp and logs still apply.
   void nudge(double dy) {
-    if (dy == 0 || _vanishTimer > 0) return;
+    if (dy == 0 || phasing) return;
     _moveAxis(Vector2(0, dy));
   }
 
@@ -105,8 +110,20 @@ class ReturnHomeCat extends SpriteAnimationGroupComponent<CatState>
   void update(double dt) {
     super.update(dt);
     if (game.finished) return;
+    _shadowClock += dt;
+    if (phasing) {
+      _shadowTimer = max(0, _shadowTimer - dt);
+      _trailClock += dt;
+      if (_trailClock >= .045) {
+        _trailClock = 0;
+        _shadowTrail.add(position.clone());
+        if (_shadowTrail.length > 9) _shadowTrail.removeAt(0);
+      }
+      if (!phasing) _shadowTrail.clear();
+    }
     final input = _shaped(game.joystick.relativeDelta);
-    final speed = maxSpeed * (_sprintTimer > 0 ? 1.75 : 1);
+    final speed =
+        maxSpeed * (phasing ? shadowSpeed : (_sprintTimer > 0 ? 1.75 : 1));
     final target = Vector2(input.x * speed, input.y * speed);
     if (!dashing) {
       velocity += (target - velocity) *
@@ -116,27 +133,21 @@ class ReturnHomeCat extends SpriteAnimationGroupComponent<CatState>
     if (_bumpTimer > 0) _bumpTimer -= dt;
     if (invulnerable > 0) invulnerable = max(0, invulnerable - dt);
     if (_sprintTimer > 0) _sprintTimer = max(0, _sprintTimer - dt);
+    final landing = _rollTimer > 0 && _rollTimer <= dt;
     if (_rollTimer > 0) _rollTimer = max(0, _rollTimer - dt);
-    if (_vanishTimer > 0) {
-      _vanishTimer -= dt;
-      if (!_vanished && _vanishTimer < .35) {
-        _vanished = true;
-        final previous = position.clone();
-        position.x = (position.x + facing * vanishLeap)
-            .clamp(ReturnHomeRoad.startX, game.road.endX);
-        _clampToLane();
-        if (game.blockedByLog(hitbox)) position.setFrom(previous);
-      }
-      if (_vanishTimer > 0) return;
+    if (_blessingShieldTimer > 0) {
+      _blessingShieldTimer = max(0, _blessingShieldTimer - dt);
+      if (_blessingShieldTimer == 0) shield = false;
     }
     _moveAxis(Vector2(velocity.x * dt, 0));
     _moveAxis(Vector2(0, velocity.y * dt));
+    if (landing) game.freezeOnLanding();
     current = _rollTimer > 0
         ? CatState.dashEscape
         : _bumpTimer > 0
             ? CatState.panic
             : velocity.length > idleSpeed
-                ? CatState.walk
+                ? (phasing ? CatState.run : CatState.walk)
                 : CatState.idle;
   }
 
@@ -154,7 +165,7 @@ class ReturnHomeCat extends SpriteAnimationGroupComponent<CatState>
   void _moveAxis(Vector2 delta) {
     // Already overlapping a log (e.g. after a respawn): let the cat walk out
     // instead of freezing it in place.
-    final wasBlocked = dashing || game.blockedByLog(hitbox);
+    final wasBlocked = ignoresObstacles || game.blockedByLog(hitbox);
     final previous = position.clone();
     position += delta;
     position.x = position.x.clamp(ReturnHomeRoad.startX, game.road.endX);
@@ -179,7 +190,7 @@ class ReturnHomeCat extends SpriteAnimationGroupComponent<CatState>
       case 'orange':
         _sprintTimer = 2;
       case 'black':
-        activateVanish();
+        activateShadow();
       case 'himalaya':
         _rollTimer = dashDuration;
         invulnerable = dashDuration + .4;
@@ -189,7 +200,13 @@ class ReturnHomeCat extends SpriteAnimationGroupComponent<CatState>
         if (dir.x.abs() > .01) _facing = dir.x.sign;
       case 'calico':
         // Patches up one heart, never above the starting count.
-        game.lives = min(ReturnHomeGame.startingLives, game.lives + 1);
+        if (game.lives < ReturnHomeGame.startingLives) {
+          game.lives += 1;
+        } else {
+          shield = true;
+          _blessingShieldTimer = 3;
+        }
+        game.extendCatEye();
       case 'scottish':
         shield = true;
     }
@@ -209,7 +226,6 @@ class ReturnHomeCat extends SpriteAnimationGroupComponent<CatState>
     }
     velocity.scale(.3);
     _bumpTimer = 0;
-    _vanishTimer = 0;
     _rollTimer = 0;
     invulnerable = max(invulnerable, .35);
   }
@@ -217,22 +233,26 @@ class ReturnHomeCat extends SpriteAnimationGroupComponent<CatState>
   bool consumeShield() {
     if (!shield) return false;
     shield = false;
+    _blessingShieldTimer = 0;
     invulnerable = .6;
+    if (game.selectedCat == 'scottish') game.shieldRecoil();
     return true;
   }
 
-  void activateVanish() {
-    if (_vanishTimer > 0) return;
-    _vanishTimer = vanishDuration;
-    _vanished = false;
-    current = CatState.vanish;
+  void activateShadow() {
+    _shadowTimer = shadowDuration;
+    _bumpTimer = 0;
+    _trailClock = 0;
+    _shadowTrail.clear();
   }
 
   void respawn(double x, {double? y}) {
+    _shadowTimer = 0;
+    _shadowTrail.clear();
     velocity.setZero();
     _bumpTimer = 0;
-    _vanishTimer = 0;
     _sprintTimer = 0;
+    _blessingShieldTimer = 0;
     _rollTimer = 0;
     shield = false;
     invulnerable = 1.5;
@@ -258,7 +278,6 @@ class ReturnHomeCat extends SpriteAnimationGroupComponent<CatState>
     invulnerable = max(invulnerable, .3);
     if (position.x <= boundaryX) return;
     _rollTimer = 0;
-    _vanishTimer = 0;
     _bumpTimer = max(_bumpTimer, .15);
     _facing = -1;
     velocity.x = min(0, velocity.x);
@@ -267,7 +286,45 @@ class ReturnHomeCat extends SpriteAnimationGroupComponent<CatState>
 
   @override
   void render(Canvas canvas) {
-    if (invulnerable > 0 && (invulnerable * 12).floor().isEven) return;
+    if (!phasing && invulnerable > 0 && (invulnerable * 12).floor().isEven) {
+      return;
+    }
+    if (sprinting) {
+      for (var i = 0; i < 5; i++) {
+        final t = (_shadowClock * 2 + i / 5) % 1;
+        canvas.drawCircle(
+            Offset(size.x / 2 - facing * (8 + t * 24), 58 - t * 18),
+            2 + 3 * (1 - t),
+            Paint()..color = const Color(0xFFFFA447).withOpacity((1 - t) * .7));
+      }
+    }
+    if (phasing) {
+      for (var i = 0; i < _shadowTrail.length; i++) {
+        final p = _shadowTrail[i] - position;
+        final fade = (i + 1) / _shadowTrail.length;
+        canvas.drawOval(
+            Rect.fromCenter(
+                center: Offset(
+                    p.x + size.x / 2, p.y + 51 - sin(_shadowClock * 5 + i) * 3),
+                width: 12 + fade * 17,
+                height: 8 + fade * 13),
+            Paint()..color = const Color(0xFF9E78DF).withOpacity(fade * .3));
+      }
+      canvas.drawOval(
+          Rect.fromCenter(
+              center: Offset(size.x / 2, 60), width: 52, height: 16),
+          Paint()
+            ..shader = const RadialGradient(
+                    colors: [Color(0x887A4DC3), Color(0x007A4DC3)])
+                .createShader(Rect.fromCenter(
+                    center: Offset(size.x / 2, 60), width: 52, height: 16)));
+      canvas.saveLayer(
+          Offset.zero & Size(size.x, size.y),
+          Paint()
+            ..color = const Color(0xBFFFFFFF)
+            ..colorFilter =
+                const ColorFilter.mode(Color(0xFFAA7DE1), BlendMode.srcATop));
+    }
     canvas.save();
     if (facing < 0) {
       // Flip around the sprite's own right edge; position stays unchanged.
@@ -276,14 +333,29 @@ class ReturnHomeCat extends SpriteAnimationGroupComponent<CatState>
     }
     super.render(canvas);
     canvas.restore();
+    if (phasing) canvas.restore();
     if (shield) {
       canvas.drawCircle(
           Offset(size.x / 2, size.y * .58),
           31,
           Paint()
-            ..color = const Color(0xAA75D6FF)
+            ..color = _blessingShieldTimer > 0
+                ? const Color(0xFFDCA0D5)
+                : const Color(0xAA75D6FF)
             ..style = PaintingStyle.stroke
             ..strokeWidth = 3);
+      if (_blessingShieldTimer > 0) {
+        canvas.drawArc(
+            Rect.fromCircle(
+                center: Offset(size.x / 2, size.y * .58), radius: 34),
+            -pi / 2,
+            2 * pi * _blessingShieldTimer / 3,
+            false,
+            Paint()
+              ..color = const Color(0xFFFFDB8A)
+              ..style = PaintingStyle.stroke
+              ..strokeWidth = 2);
+      }
     }
   }
 }

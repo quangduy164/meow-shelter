@@ -2,7 +2,7 @@ import 'dart:math' as math;
 import 'package:flutter/painting.dart';
 import 'herd_round.dart';
 
-/// Lives at the top-left and one transparent tutorial caption at the top-centre.
+/// Lives and the translucent tutorial caption share one top row.
 void paintHerdHud(Canvas canvas, Size size, HerdRound round) {
   final lives = RRect.fromRectAndRadius(
       const Rect.fromLTWH(72, 17, 112, 38), const Radius.circular(14));
@@ -34,8 +34,8 @@ void paintHerdHud(Canvas canvas, Size size, HerdRound round) {
     canvas.restore();
   }
   if (!round.isTutorial || round.ended) return;
-  // Same top-centred caption placement as the rescue tutorial.
-  final width = math.min(560.0, size.width * .68);
+  // Leave a clear gap after Home and the life pill, even on narrow tablets.
+  final width = math.min(560.0, size.width - 208);
   final caption = TextPainter(
       text: TextSpan(
           text: round.tutorialInstruction,
@@ -48,5 +48,11 @@ void paintHerdHud(Canvas canvas, Size size, HerdRound round) {
       textDirection: TextDirection.ltr,
       textAlign: TextAlign.center)
     ..layout(maxWidth: width - 24);
-  caption.paint(canvas, Offset((size.width - caption.width) / 2, 66));
+  final centerX = (196 + size.width - 12) / 2;
+  final box = Rect.fromCenter(
+      center: Offset(centerX, 36), width: width, height: caption.height + 14);
+  canvas.drawRRect(RRect.fromRectAndRadius(box, const Radius.circular(10)),
+      Paint()..color = const Color(0xCCF1F8E7));
+  caption.paint(
+      canvas, Offset(centerX - caption.width / 2, 36 - caption.height / 2));
 }

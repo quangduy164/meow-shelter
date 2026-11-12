@@ -130,6 +130,32 @@ class _VictoryOverlay extends StatelessWidget {
                       child: _stat(Icons.set_meal_rounded, 'Cá thu thập',
                           '${game.fish}')),
                 ]),
+                const SizedBox(height: 8),
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+                  decoration: BoxDecoration(
+                    color: DS.gold.withOpacity(.4),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: DS.goldEdge),
+                  ),
+                  child: Row(children: [
+                    const Icon(Icons.monetization_on_rounded,
+                        color: DS.goldEdge, size: 26),
+                    const SizedBox(width: 8),
+                    const Expanded(
+                        child: Text('Xu nhận được',
+                            style: TextStyle(
+                                color: DS.ink,
+                                fontSize: 14,
+                                fontWeight: FontWeight.w800))),
+                    Text('+${game.reward} xu',
+                        style: const TextStyle(
+                            color: DS.ink,
+                            fontSize: 22,
+                            fontWeight: FontWeight.w900)),
+                  ]),
+                ),
                 const SizedBox(height: 12),
                 Row(children: [
                   Expanded(
@@ -212,16 +238,19 @@ class _SkillButtonState extends State<_SkillButton> {
   Widget _attackButton(int slot, double size) {
     final game = widget.game;
     final attack = game.attacks[slot];
+    final recall = game.canRecallDecoy(slot);
+    final label = recall ? 'Đến phân thân' : attack.label;
     return Column(mainAxisSize: MainAxisSize.min, children: [
       ReturnHomeAimButton(
         key: ValueKey(attack),
-        label: attack.label,
-        glyph: attack.glyph,
+        label: label,
+        glyph: recall ? CatBreed.black.attacks[0].glyph : attack.glyph,
         color: attack.color,
         size: size,
-        aimable: attack.aimable,
+        aimable: !recall && attack.aimable,
         activeLeft: game.attackActive(slot),
-        cooldownLeft: game.attackCooldown[slot],
+        activeTotal: recall ? attack.duration : 0,
+        cooldownLeft: recall ? 0 : game.attackCooldown[slot],
         cooldownTotal: attack.cooldown,
         cancelKey: _cancelKey,
         onCancelHover: (hot) => setState(() => _cancelHot = hot),
@@ -234,7 +263,7 @@ class _SkillButtonState extends State<_SkillButton> {
         onCancel: () => setState(game.cancelAim),
       ),
       const SizedBox(height: 2),
-      Text(attack.label,
+      Text(label,
           style: const TextStyle(
               fontSize: 11,
               fontWeight: FontWeight.w800,
@@ -461,6 +490,9 @@ class _ComboHelpDialogState extends State<_ComboHelpDialog> {
         ),
       );
 
+  Color _comboColor(CatBreed breed) =>
+      Color.lerp(breed.attacks.first.color, Colors.black, .25)!;
+
   Widget _catTab(int index, bool wide) {
     final breed = CatBreed.all[index];
     final selected = index == _selected;
@@ -468,19 +500,19 @@ class _ComboHelpDialogState extends State<_ComboHelpDialog> {
         fit: BoxFit.scaleDown,
         child: Text(breed.name,
             style: TextStyle(
-                color: DS.ink,
+                color: selected ? Colors.white : _comboColor(breed),
                 fontSize: wide ? 12 : 10.5,
                 fontWeight: FontWeight.w800)));
     return Semantics(
       selected: selected,
       child: Material(
-        color:
-            selected ? DS.gold.withOpacity(.45) : Colors.white.withOpacity(.6),
+        color: selected
+            ? _comboColor(breed)
+            : Color.lerp(Colors.white, _comboColor(breed), .18)!,
         shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(10),
-            side: BorderSide(
-                color: selected ? DS.goldEdge : DS.mutedBorder,
-                width: selected ? 2 : 1)),
+            side:
+                BorderSide(color: _comboColor(breed), width: selected ? 2 : 1)),
         clipBehavior: Clip.antiAlias,
         child: InkWell(
           onTap: () => setState(() => _selected = index),
@@ -509,17 +541,17 @@ class _ComboHelpDialogState extends State<_ComboHelpDialog> {
     return Container(
       padding: const EdgeInsets.all(8),
       decoration: BoxDecoration(
-          color: Colors.white.withOpacity(.75),
+          color: Color.lerp(DS.cream, _comboColor(breed), .1),
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: DS.wood, width: 2)),
+          border: Border.all(color: _comboColor(breed), width: 2)),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
           CatFace(breed.id, size: 26),
           const SizedBox(width: 6),
           Expanded(
               child: Text(combo.name,
-                  style: const TextStyle(
-                      color: DS.ink,
+                  style: TextStyle(
+                      color: _comboColor(breed),
                       fontSize: 17,
                       fontWeight: FontWeight.w900))),
           if (breed.id == widget.selectedCat)
@@ -572,16 +604,23 @@ class _ComboHelpDialogState extends State<_ComboHelpDialog> {
     return Container(
       padding: const EdgeInsets.all(8),
       decoration: BoxDecoration(
-          color: step.attack.color.withOpacity(.09),
+          gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                Color.lerp(step.attack.color, Colors.black, .32)!,
+                Color.lerp(step.attack.color, Colors.black, .5)!
+              ]),
           borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: step.attack.color.withOpacity(.4))),
+          border: Border.all(
+              color: Color.lerp(step.attack.color, Colors.black, .55)!)),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
           Container(
               width: 32,
               height: 32,
               decoration: BoxDecoration(
-                  color: step.attack.color.withOpacity(.2),
+                  color: Colors.white.withOpacity(.18),
                   borderRadius: BorderRadius.circular(8)),
               child:
                   Center(child: SkillGlyphView(step.attack.glyph, size: 25))),
@@ -592,19 +631,20 @@ class _ComboHelpDialogState extends State<_ComboHelpDialog> {
                   children: [
                 Text('BƯỚC ${index + 1}',
                     style: const TextStyle(
-                        color: DS.soft,
+                        color: Color(0xFFFFE5AE),
                         fontSize: 10,
                         fontWeight: FontWeight.w800)),
                 Text(step.attack.label,
                     style: const TextStyle(
-                        color: DS.ink,
+                        color: Colors.white,
                         fontSize: 13,
                         fontWeight: FontWeight.w900)),
               ])),
         ]),
         const SizedBox(height: 6),
         Text(step.instruction,
-            style: const TextStyle(color: DS.ink, fontSize: 12.5, height: 1.3)),
+            style: const TextStyle(
+                color: Colors.white, fontSize: 12.5, height: 1.3)),
       ]),
     );
   }
@@ -613,7 +653,11 @@ class _ComboHelpDialogState extends State<_ComboHelpDialog> {
         width: double.infinity,
         padding: const EdgeInsets.all(8),
         decoration: BoxDecoration(
-            color: DS.gold.withOpacity(.2),
+            gradient: const LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [Color(0xFFFFDE79), Color(0xFFFFB64D)]),
+            border: Border.all(color: DS.goldEdge, width: 1.2),
             borderRadius: BorderRadius.circular(10)),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           const Row(children: [

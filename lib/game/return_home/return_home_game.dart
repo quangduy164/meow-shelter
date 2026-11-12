@@ -65,6 +65,7 @@ class ReturnHomeGame extends FlameGame {
   double timeStopTime = 0;
   double reflectTime = 0;
   double catEyeTime = 0;
+  bool _catEyeExtended = false;
   final _magnet = ReturnHomeMagnetAura();
   final _reflectAura = ReturnHomeReflectAura();
   final _timeAura = ReturnHomeTimeStopAura();
@@ -148,6 +149,12 @@ class ReturnHomeGame extends FlameGame {
   }
 
   /// Seconds left on a slot's lasting effect; the button glows meanwhile.
+  bool canRecallDecoy(int slot) =>
+      attacks[slot] == HomeAttack.decoy &&
+      _decoy != null &&
+      !_decoy!.expired &&
+      !_decoy!.recalled;
+
   double attackActive(int slot) => switch (attacks[slot]) {
         HomeAttack.magnet => magnetTime,
         HomeAttack.timeStop => timeStopTime,
@@ -294,9 +301,38 @@ class ReturnHomeGame extends FlameGame {
   /// Release of a skill button: [stick] null or short means auto-aim.
   void castAttack(int slot, [Offset? stick]) {
     cancelAim();
-    if (!_canAttack || attackCooldown[slot] > 0) return;
+    if (!_canAttack) return;
+    // The second press shares the placement cooldown instead of restarting it.
+    if (canRecallDecoy(slot)) {
+      final decoy = _decoy!;
+      if (_blinkWithDecoy(decoy.lureCenter.clone(), triggerCombo: false)) {
+        decoy.recalled = true;
+      }
+      return;
+    }
+    if (attackCooldown[slot] > 0) return;
     final attack = attacks[slot];
     if (_cast(attack, stick)) attackCooldown[slot] = attack.cooldown;
+  }
+
+  bool _blinkWithDecoy(Vector2 target, {bool triggerCombo = true}) {
+    if (!_blinkValid(target)) return false;
+    final from = _catCenter;
+    _cat.blinkTo(target);
+    _world.add(ReturnHomeShadowStep(from: from, to: _catCenter));
+    final decoy = _decoy;
+    if (triggerCombo &&
+        decoy != null &&
+        !decoy.expired &&
+        (decoy.lureCenter.distanceTo(from) <= HomeAttack.decoy.radius ||
+            decoy.lureCenter.distanceTo(_catCenter) <=
+                HomeAttack.decoy.radius)) {
+      decoy.empowered = true;
+      decoy.timeLeft = 0;
+      _showCombo('ẢNH NỔ!', decoy.lureCenter, const Color(0xFFB799F2));
+    }
+    _contacts.clear();
+    return true;
   }
 
   /// Fires [attack]; false if it could not be cast (no cooldown spent).
@@ -327,19 +363,7 @@ class ReturnHomeGame extends FlameGame {
         _world.add(bolt);
       case HomeAttack.shadowStep:
         final target = _aimPoint(attack, stick);
-        if (!_blinkValid(target)) return false;
-        _world.add(ReturnHomeShadowStep(from: _catCenter, to: target));
-        _cat.blinkTo(target);
-        final decoy = _decoy;
-        if (decoy != null &&
-            !decoy.expired &&
-            decoy.lureCenter.distanceTo(_catCenter) <=
-                HomeAttack.decoy.radius) {
-          decoy.empowered = true;
-          decoy.timeLeft = 0;
-          _showCombo('ẢNH NỔ!', decoy.lureCenter, const Color(0xFFB799F2));
-        }
-        _contacts.clear();
+        return _blinkWithDecoy(target);
       case HomeAttack.decoy:
         _decoy?.removeFromParent();
         final decoy = ReturnHomeDecoy(
@@ -388,8 +412,37 @@ class ReturnHomeGame extends FlameGame {
         magnetTime = attack.duration;
       case HomeAttack.catEye:
         catEyeTime = attack.duration;
+        _catEyeExtended = false;
     }
     return true;
+  }
+
+  void freezeOnLanding() {
+    final center = _catCenter;
+    const radius = 80.0;
+    _world.add(ReturnHomeFrostWave(position: center, radius: radius));
+    for (final o in _spawner.obstacles) {
+      if (!_hidden(o) && o.position.distanceTo(center) <= radius) {
+        o.frozen = max(o.frozen, 1.2);
+        _contacts.remove(o);
+      }
+    }
+    final boss = _boss;
+    if (boss != null && boss.core.distanceTo(center) <= radius + 35) {
+      boss.interrupt();
+      boss.frozen = max(boss.frozen, 1.0);
+    }
+  }
+
+  void shieldRecoil() => _roar();
+
+  void extendCatEye() {
+    _world.add(
+        ReturnHomeBurst(position: _catCenter, color: const Color(0xFFFFC782)));
+    if (catEyeTime <= 0 || _catEyeExtended) return;
+    _catEyeExtended = true;
+    catEyeTime += 2;
+    _showCombo('PHÚC LÀNH!', _catCenter, const Color(0xFFFFCD76));
   }
 
   /// Shockwave around the cat: pushes hazards in [roarRadius] away and gives
@@ -599,6 +652,13 @@ class ReturnHomeGame extends FlameGame {
         continue;
       }
       if (breath.blowing) breath.position = _castOrigin;
+      if (breath.blowing && _cat.sprinting) {
+        for (final bomb in _bombs) {
+          if (breath.covers(bomb.target) && bomb.ignite()) {
+            _showCombo('BÙNG CHÁY!', bomb.target, const Color(0xFFFFCA67));
+          }
+        }
+      }
       if (!breath.tickNow) continue;
       if (boss != null &&
           (breath.covers(boss.aimPoint) || breath.covers(boss.core))) {
@@ -884,15 +944,17 @@ class ReturnHomeGame extends FlameGame {
 
   void _bossHitsCat(ReturnHomeDragon dragon) {
     if (dragon.evolving) return;
-    if (_cat.dashing || _cat.invulnerable > 0 || _hitCooldown > 0) return;
+    if (_cat.ignoresObstacles || _cat.invulnerable > 0 || _hitCooldown > 0) {
+      return;
+    }
     _hitCooldown = hitCooldown;
-    if (reflectTime > 0) {
+    if (reflectTime > 0 && !(selectedCat == 'scottish' && _cat.shield)) {
       _reflectAura.flash();
       _damageBoss(2, dragon.core);
       return;
     }
-    _cat.bumpAwayFrom(dragon.core);
     if (_cat.consumeShield()) return;
+    _cat.bumpAwayFrom(dragon.core);
     lives -= 1;
     _cat.invulnerable = hitCooldown;
     if (lives <= 0) _respawn();
@@ -1103,7 +1165,10 @@ class ReturnHomeGame extends FlameGame {
       final touching = obstacle.hits(_cat.hitbox);
       if (_comboRocks.containsKey(obstacle)) continue;
       if (touching && obstacle.frozen > 0) continue;
-      if (touching && reflectTime > 0 && !_contacts.contains(obstacle)) {
+      if (touching &&
+          reflectTime > 0 &&
+          !_contacts.contains(obstacle) &&
+          !(selectedCat == 'scottish' && _cat.shield)) {
         _reflect(obstacle);
         continue;
       }
@@ -1111,7 +1176,7 @@ class ReturnHomeGame extends FlameGame {
         if (!touching) {
           _contacts.remove(obstacle);
         } else if (obstacle.springT <= 0 &&
-            !_cat.dashing &&
+            !_cat.ignoresObstacles &&
             !_contacts.contains(obstacle)) {
           _contacts.add(obstacle);
           obstacle.springT = springShowTime;
@@ -1123,11 +1188,12 @@ class ReturnHomeGame extends FlameGame {
         _contacts.remove(obstacle);
       } else if (_hitCooldown <= 0 &&
           _cat.invulnerable <= 0 &&
+          !_cat.phasing &&
           !_contacts.contains(obstacle)) {
         _hitCooldown = hitCooldown;
         _contacts.add(obstacle);
         if (_cat.consumeShield()) {
-          _cat.bumpAwayFrom(obstacle.position);
+          if (selectedCat != 'scottish') _cat.bumpAwayFrom(obstacle.position);
           continue;
         }
         lives -= 1;
@@ -1176,7 +1242,7 @@ class ReturnHomeGame extends FlameGame {
 
   /// A cat standing on a drifting stone drifts with it.
   void _rideStones() {
-    if (_cat.dashing) return;
+    if (_cat.ignoresObstacles) return;
     for (final crossing in _crossings) {
       final dy = crossing.carryDy(_cat.hitbox);
       if (dy != 0) {
@@ -1187,7 +1253,7 @@ class ReturnHomeGame extends FlameGame {
   }
 
   void _checkWater() {
-    if (_hitCooldown > 0 || _cat.dashing) return;
+    if (_hitCooldown > 0 || _cat.ignoresObstacles) return;
     final crossing = _crossings
         .where((c) => c.inWater(_cat.hitbox, dry: _onIce))
         .firstOrNull;

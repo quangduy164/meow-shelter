@@ -60,7 +60,7 @@ class CatBreed {
     catchRule: CatCatchRule('Ham ăn',
         'Cho ăn 1 con cá. Ăn xong mèo ngủ khò rất lâu, cứ thong thả bế vào ổ.'),
     homeSkill:
-        CatHomeSkill('Chạy nhanh', SkillGlyph.sprint, Color(0xFFF08A3A), 5),
+        CatHomeSkill('Bứt tốc lửa', SkillGlyph.sprint, Color(0xFFF08A3A), 5),
     attacks: [HomeAttack.fireball, HomeAttack.flameBreath, HomeAttack.fireBomb],
   );
   static const black = CatBreed(
@@ -71,7 +71,7 @@ class CatBreed {
     catchRule: CatCatchRule(
         'Cô độc', 'Chỉ ăn cá ở chỗ vắng: quanh con cá không được có mèo khác.'),
     homeSkill:
-        CatHomeSkill('Biến mất', SkillGlyph.vanish, Color(0xFF6D5BA8), 4),
+        CatHomeSkill('Hóa bóng', SkillGlyph.vanish, Color(0xFF6D5BA8), 9),
     attacks: [HomeAttack.shadowStep, HomeAttack.decoy, HomeAttack.timeStop],
   );
   static const himalaya = CatBreed(
@@ -81,7 +81,7 @@ class CatBreed {
     bedAsset: 'Bed/bed-himalaya.png',
     catchRule: CatCatchRule(
         'Nhút nhát', 'Đặt cá cách xa mèo. Đặt sát quá mèo giật mình bỏ chạy.'),
-    homeSkill: CatHomeSkill('Lăn né', SkillGlyph.roll, Color(0xFF3E9FB0), 6),
+    homeSkill: CatHomeSkill('Lăn băng', SkillGlyph.roll, Color(0xFF3E9FB0), 6),
     attacks: [HomeAttack.iceShard, HomeAttack.frostNova, HomeAttack.iceBridge],
   );
   static const scottish = CatBreed(
@@ -91,7 +91,8 @@ class CatBreed {
     bedAsset: 'Bed/bed-scottish.png',
     catchRule:
         CatCatchRule('Kén ăn', 'Phải ăn đủ 2 con cá thì mèo mới chịu cho bế.'),
-    homeSkill: CatHomeSkill('Lá chắn', SkillGlyph.shield, Color(0xFF6B9E4E), 8),
+    homeSkill: CatHomeSkill(
+        'Khiên phản chấn', SkillGlyph.shield, Color(0xFF6B9E4E), 8),
     attacks: [HomeAttack.roar, HomeAttack.stoneWall, HomeAttack.reflect],
   );
   static const calico = CatBreed(
@@ -101,7 +102,8 @@ class CatBreed {
     bedAsset: 'Bed/bed-calico.png',
     catchRule: CatCatchRule('Ham chơi',
         'Không thèm cá! Chạm vào mèo 3 lần liền để chơi cùng, mèo mệt là bế được.'),
-    homeSkill: CatHomeSkill('Hồi máu', SkillGlyph.heal, Color(0xFFD9657B), 12),
+    homeSkill:
+        CatHomeSkill('Phúc lành', SkillGlyph.heal, Color(0xFFD9657B), 12),
     attacks: [HomeAttack.magnet, HomeAttack.catEye, HomeAttack.bolt],
   );
 
@@ -113,20 +115,21 @@ class CatBreed {
   }) get homeCombo => switch (id) {
         'black' => (
             name: 'Ảnh nổ',
-            hint: 'Đặt phân thân rồi dịch chuyển vào vùng phân thân',
+            hint: 'Đặt phân thân rồi dịch chuyển từ hoặc vào vùng phân thân',
             steps: [
               (
                 attack: HomeAttack.decoy,
-                instruction: 'Đặt phân thân gần mục tiêu muốn gây nổ.'
+                instruction:
+                    'Đặt phân thân. Trong 4 giây, bấm lại chiêu 2 để đến phân thân một lần.'
               ),
               (
                 attack: HomeAttack.shadowStep,
                 instruction:
-                    'Dịch chuyển bóng vào vùng quanh phân thân để kích nổ ngay.'
+                    'Dùng chiêu 1 từ trong vùng hoặc đáp vào vùng phân thân để kích nổ.'
               ),
             ],
             effect:
-                'Khi mèo đáp xuống trong vùng phân thân, phân thân nổ ngay. Sát thương lên rồng tăng từ 4 lên 6.'
+                'Dịch chuyển từ hoặc vào vùng phân thân đều kích nổ. Chiêu 2 chỉ dịch chuyển, không kích nổ. Combo gây 6 sát thương lên rồng.'
           ),
         'himalaya' => (
             name: 'Phá băng',
@@ -135,7 +138,7 @@ class CatBreed {
               (
                 attack: HomeAttack.frostNova,
                 instruction:
-                    'Đến gần mục tiêu rồi dùng Vùng băng giá để đóng băng.'
+                    'Dùng Vùng băng giá hoặc Lăn băng đến gần mục tiêu để đóng băng.'
               ),
               (
                 attack: HomeAttack.iceShard,
@@ -143,7 +146,7 @@ class CatBreed {
               ),
             ],
             effect:
-                'Phá vỡ chướng ngại đã đóng băng. Với rồng, phá băng gây 3 sát thương thay vì 1 và kết thúc đóng băng.'
+                'Lăn tạo vùng băng nhỏ tại điểm đáp. Mũi băng phá địch đóng băng, gây 3 sát thương lên rồng rồi làm tan băng.'
           ),
         'scottish' => (
             name: 'Gầm phản chấn',
@@ -151,16 +154,16 @@ class CatBreed {
             steps: [
               (
                 attack: HomeAttack.reflect,
-                instruction: 'Bật Phản đòn khi có đá ở gần.'
+                instruction:
+                    'Bật Phản đòn; có thể bật thêm Khiên phản chấn để đỡ đòn.'
               ),
               (
                 attack: HomeAttack.roar,
-                instruction:
-                    'Đứng phía sau đá, dùng Tiếng gầm đẩy đá về phía địch.'
+                instruction: 'Dùng Tiếng gầm hoặc để khiên vỡ, đẩy đá vào địch.'
               ),
             ],
             effect:
-                'Đá được đẩy có thể phá chướng ngại và gây 4 sát thương lên rồng trong 2,5 giây. Đá này không làm mèo mất máu.'
+                'Khiên đỡ một đòn rồi đẩy đá. Có Phản đòn, đá gây 4 sát thương lên rồng trong 2,5 giây và không hại mèo.'
           ),
         'calico' => (
             name: 'Sét tinh anh',
@@ -168,7 +171,8 @@ class CatBreed {
             steps: [
               (
                 attack: HomeAttack.catEye,
-                instruction: 'Bật Mắt mèo và giữ mục tiêu trong vùng quanh mèo.'
+                instruction:
+                    'Bật Mắt mèo. Dùng Phúc lành để kéo dài thêm 2 giây một lần.'
               ),
               (
                 attack: HomeAttack.bolt,
@@ -177,7 +181,7 @@ class CatBreed {
               ),
             ],
             effect:
-                'Sét trúng mục tiêu trong vùng Mắt mèo giảm 2 giây hồi chiêu. Sát thương lên rồng tăng từ 4 lên 6.'
+                'Sét gây 6 sát thương lên rồng, giảm 2 giây hồi chiêu. Phúc lành hồi 1 tim; đầy máu nhận khiên 3 giây.'
           ),
         _ => (
             name: 'Bùng cháy',
@@ -190,11 +194,12 @@ class CatBreed {
               ),
               (
                 attack: HomeAttack.fireball,
-                instruction: 'Bắn Cầu lửa vào vùng cháy khi vùng này vẫn còn.'
+                instruction:
+                    'Bắn Cầu lửa, hoặc bật Bứt tốc lửa rồi Phun lửa vào vùng cháy.'
               ),
             ],
             effect:
-                'Bom nổ thêm một lần, gây 6 sát thương lên rồng. Mỗi bom chỉ kích hoạt combo một lần.'
+                'Bom nổ thêm một lần, gây 6 sát thương lên rồng. Khi đang bứt tốc, Phun lửa cũng kích nổ được bom.'
           ),
       };
 

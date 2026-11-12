@@ -3,6 +3,8 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
 import '../../game/world/nature_art.dart';
+import '../home_theme.dart';
+import 'home_christmas_art.dart';
 
 /// Home background: a soft dusk sky, layered hills and a winding path that
 /// leads to the shelter on the far right. Details stay near the edges so the
@@ -11,7 +13,9 @@ import '../../game/world/nature_art.dart';
 /// Drawn in a 600-high space; width follows the screen ratio so shapes keep
 /// their proportions on every device.
 class HomeBackgroundPainter extends CustomPainter {
-  const HomeBackgroundPainter();
+  const HomeBackgroundPainter({this.christmas = christmasEnabled});
+
+  final bool christmas;
 
   static const _h = 600.0;
 
@@ -30,18 +34,29 @@ class HomeBackgroundPainter extends CustomPainter {
         seed: 2, palette: CloudPalette.dusk, opacity: .75);
     paintPuffyCloud(canvas, Offset(w * .9, 122), 160,
         seed: 3, palette: CloudPalette.dusk, opacity: .82);
-    _hills(canvas, w, 360, 70, const Color(0xFFB59BC8), 0);
-    _hills(canvas, w, 410, 50, const Color(0xFF9DB98F), 1.4);
-    _hills(canvas, w, 460, 34, const Color(0xFF7FAA6E), 2.7);
-    _hills(canvas, w, 520, 14, const Color(0xFF6A9A5C), 4.1);
-    _shelter(canvas, Offset(w - 90, 440));
-    paintLeafyTree(canvas, const Offset(104, 482), 104,
-        seed: 5, palette: TreePalette.dusk);
-    paintLeafyTree(canvas, const Offset(40, 476), 160,
-        seed: 4, palette: TreePalette.dusk);
+    _hills(canvas, w, 360, 70,
+        christmas ? const Color(0xFF8EAEC8) : const Color(0xFFB59BC8), 0);
+    _hills(canvas, w, 410, 50,
+        christmas ? const Color(0xFFBCD4DF) : const Color(0xFF9DB98F), 1.4);
+    _hills(canvas, w, 460, 34,
+        christmas ? const Color(0xFFDBEAF0) : const Color(0xFF7FAA6E), 2.7);
+    _hills(canvas, w, 520, 14,
+        christmas ? const Color(0xFFF0F7F6) : const Color(0xFF6A9A5C), 4.1);
+    if (!christmas) {
+      paintLeafyTree(canvas, const Offset(104, 482), 104,
+          seed: 5, palette: TreePalette.dusk);
+      paintLeafyTree(canvas, const Offset(40, 476), 160,
+          seed: 4, palette: TreePalette.dusk);
+    }
     _path(canvas, w);
-    _flowers(canvas, w);
+    if (christmas) {
+      paintWinterShelter(canvas, Offset(w - 95, 486));
+    } else {
+      _shelter(canvas, Offset(w - 90, 440));
+    }
+    if (!christmas) _flowers(canvas, w);
     _vignette(canvas, w);
+    if (christmas) paintHomeChristmas(canvas, w);
     canvas.restore();
   }
 
@@ -50,16 +65,23 @@ class HomeBackgroundPainter extends CustomPainter {
     canvas.drawRect(
         rect,
         Paint()
-          ..shader = const LinearGradient(
+          ..shader = LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [
-              Color(0xFF6E6BB0),
-              Color(0xFFB08DC4),
-              Color(0xFFF2B6A0),
-              Color(0xFFFFD9A0),
-            ],
-            stops: [0, .32, .55, .7],
+            colors: christmas
+                ? const [
+                    Color(0xFF254C73),
+                    Color(0xFF588BA9),
+                    Color(0xFFB1CCD9),
+                    Color(0xFFECDCC2),
+                  ]
+                : const [
+                    Color(0xFF6E6BB0),
+                    Color(0xFFB08DC4),
+                    Color(0xFFF2B6A0),
+                    Color(0xFFFFD9A0),
+                  ],
+            stops: const [0, .32, .55, .7],
           ).createShader(rect));
   }
 
@@ -101,6 +123,10 @@ class HomeBackgroundPainter extends CustomPainter {
   }
 
   void _path(Canvas canvas, double w) {
+    if (christmas) {
+      paintWinterPath(canvas, w);
+      return;
+    }
     final path = Path()
       ..moveTo(w * .05, _h)
       ..cubicTo(w * .3, 540, w * .55, 600, w * .75, 520)
@@ -108,7 +134,8 @@ class HomeBackgroundPainter extends CustomPainter {
     canvas.drawPath(
         path,
         Paint()
-          ..color = const Color(0xFFE9CF9E)
+          ..color =
+              christmas ? const Color(0xFFD1DFE5) : const Color(0xFFE9CF9E)
           ..style = PaintingStyle.stroke
           ..strokeWidth = 34
           ..strokeCap = StrokeCap.round);
@@ -139,6 +166,19 @@ class HomeBackgroundPainter extends CustomPainter {
           ..lineTo(68, -6)
           ..close(),
         Paint()..color = const Color(0xFFC0564A));
+    // Snow on the roof, with soft overhanging edges.
+    if (christmas) {
+      canvas.drawPath(
+          Path()
+            ..moveTo(-68, -8)
+            ..lineTo(0, -60)
+            ..lineTo(68, -8)
+            ..lineTo(48, -12)
+            ..lineTo(0, -48)
+            ..lineTo(-48, -12)
+            ..close(),
+          Paint()..color = const Color(0xFFFFFCF2));
+    }
     canvas.drawRRect(
         RRect.fromRectAndRadius(
             const Rect.fromLTWH(-14, 14, 28, 32), const Radius.circular(14)),
@@ -181,5 +221,6 @@ class HomeBackgroundPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(covariant HomeBackgroundPainter oldDelegate) => false;
+  bool shouldRepaint(covariant HomeBackgroundPainter oldDelegate) =>
+      christmas != oldDelegate.christmas;
 }

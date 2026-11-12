@@ -50,6 +50,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           Expanded(child: _hero()),
                           const SizedBox(width: 24),
                           _modeGrid(),
+                          const SizedBox(width: 24),
                         ],
                       ),
                     ),

@@ -208,6 +208,7 @@ class ReturnHomeAimButton extends StatefulWidget {
     this.size = 62,
     this.aimable = true,
     this.activeLeft = 0,
+    this.activeTotal = 0,
     this.cancelKey,
     this.onCancelHover,
   });
@@ -229,6 +230,7 @@ class ReturnHomeAimButton extends StatefulWidget {
 
   /// Seconds left on an active effect; shown as a bright halo while > 0.
   final double activeLeft;
+  final double activeTotal;
 
   final GlobalKey? cancelKey;
   final ValueChanged<bool>? onCancelHover;
@@ -364,6 +366,7 @@ class _ReturnHomeAimButtonState extends State<ReturnHomeAimButton> {
     final color = widget.color;
     final held = _pointer != null;
     final ringReach = widget.size * .8;
+    final countingActive = widget.activeLeft > 0 && widget.activeTotal > 0;
     return Semantics(
       button: true,
       label: widget.label,
@@ -419,6 +422,17 @@ class _ReturnHomeAimButtonState extends State<ReturnHomeAimButton> {
                             ]))),
                   if (ready)
                     SkillGlyphView(widget.glyph, size: widget.size * .66),
+                  if (ready && countingActive) ...[
+                    SizedBox.square(
+                      dimension: widget.size - 10,
+                      child: CustomPaint(
+                          painter: _CooldownPainter(
+                              1 -
+                                  (widget.activeLeft / widget.activeTotal)
+                                      .clamp(0.0, 1.0),
+                              const Color(0xFFFFE6A0))),
+                    ),
+                  ],
                   if (!ready) ...[
                     Opacity(
                         opacity: .35,

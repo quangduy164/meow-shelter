@@ -26,6 +26,23 @@ void paintReturnHomeHud(
   if (finished) return;
   if (bossHealth != null && !finished) {
     _paintBossBar(canvas, size, padding, bossHealth, bossPhase, bossTired);
+    // Keep the player's three hearts visible without restoring the full HUD.
+    final usableWidth = size.width - padding.horizontal;
+    final bossLeft = (usableWidth - min(440.0, usableWidth * .6)) / 2;
+    final panel = Rect.fromLTWH(
+        padding.left + 12, padding.top + (bossLeft < 108 ? 82 : 18), 88, 36);
+    canvas.drawRRect(RRect.fromRectAndRadius(panel, const Radius.circular(12)),
+        Paint()..color = const Color(0xE6FFF4DA));
+    canvas.drawRRect(
+        RRect.fromRectAndRadius(panel, const Radius.circular(12)),
+        Paint()
+          ..color = const Color(0x779A6A3A)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 1);
+    for (var i = 0; i < 3; i++) {
+      _heart(
+          canvas, Offset(panel.left + 21 + i * 23, panel.center.dy), i < lives);
+    }
     return;
   }
   final availableWidth = size.width - padding.horizontal - 100;

@@ -1,19 +1,40 @@
 import 'package:flutter/material.dart';
 
+import '../home_theme.dart';
+import 'santa_hat_painter.dart';
+
 const _ink = Color(0xFF5A3214);
 const _cream = Color(0xFFFFF4DA);
 const _orange = Color(0xFFF08A3A);
 
 /// Simple home logo: the app's cat-head badge next to the game name.
 class GameLogo extends StatelessWidget {
-  const GameLogo({super.key});
+  const GameLogo({super.key, this.christmas = christmasEnabled});
+
+  final bool christmas;
 
   @override
   Widget build(BuildContext context) => Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const SizedBox.square(
-              dimension: 96, child: CustomPaint(painter: CatBadgePainter())),
+          SizedBox.square(
+            dimension: 96,
+            child: Stack(
+              clipBehavior: Clip.none,
+              children: [
+                const Positioned.fill(
+                    child: CustomPaint(painter: CatBadgePainter())),
+                if (christmas)
+                  const Positioned(
+                    left: -25,
+                    top: -43,
+                    width: 118,
+                    height: 90,
+                    child: CustomPaint(painter: SantaHatPainter()),
+                  ),
+              ],
+            ),
+          ),
           const SizedBox(width: 14),
           Column(
             mainAxisSize: MainAxisSize.min,
@@ -34,7 +55,8 @@ class GameLogo extends StatelessWidget {
                 padding:
                     const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
                 decoration: BoxDecoration(
-                    color: _ink, borderRadius: BorderRadius.circular(8)),
+                    color: christmas ? const Color(0xFF226A52) : _ink,
+                    borderRadius: BorderRadius.circular(8)),
                 child: const Text('SHELTER',
                     style: TextStyle(
                         color: _cream,
