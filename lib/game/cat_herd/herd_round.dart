@@ -2,7 +2,6 @@ import 'dart:math';
 import 'package:flame/components.dart';
 import 'herd_map.dart';
 import 'herd_ball.dart';
-import 'herd_snowball.dart';
 import 'herd_navigation.dart';
 
 /// Simulation only: no rendering, input events or persistence.
@@ -15,20 +14,24 @@ class HerdCat {
   final velocity = Vector2.zero();
   bool following = false, home = false;
   double scared = 0, hop = 0, ballCooldown = 0, tumble = 0;
+
+  /// Desert heat 0..1 and the remaining rest after overheating.
+  double heat = 0, overheat = 0;
+
+  /// Seconds left shivering after falling through thin ice.
+  double chill = 0;
   bool facingLeft = false;
 }
 
 class HerdPatrol {
-  HerdPatrol(this.from, this.to, this.phase,
-      {this.trafficLight = false, this.isCart = false})
+  HerdPatrol(this.from, this.to, this.phase, {this.trafficLight = false})
       : loops = false;
   HerdPatrol.loop(this.from, this.to, this.phase)
       : loops = true,
-        trafficLight = false,
-        isCart = false;
+        trafficLight = false;
   final Vector2 from, to;
   final double phase;
-  final bool loops, trafficLight, isCart;
+  final bool loops, trafficLight;
   Vector2 position(double time) {
     if (!loops) return from + (to - from) * (.5 + .5 * sin(time + phase));
     final center = (from + to) / 2;
@@ -55,9 +58,15 @@ class HerdRound {
   final trail = <Vector2>[];
   final patrols = <HerdPatrol>[];
   final balls = <HerdBall>[];
-  final snowballs = <HerdSnowball>[];
+  final iceCrack = <double>[];
+  final splashes = <HerdSplash>[];
   double _leaderBallCooldown = 0;
   double landingTime = 0;
+
+  /// Market stealth state: global shout cooldown and the vendor shouting.
+  double vendorCooldown = 0, shoutTime = 0;
+  int? shoutingVendor;
+  int _stormAnnounced = -1;
   HerdMap map = HerdMap.market;
   final leader = Vector2.zero();
   final velocity = Vector2.zero();
@@ -98,9 +107,16 @@ class HerdRound {
     trail.clear();
     patrols.clear();
     balls.clear();
-    snowballs.clear();
+    iceCrack
+      ..clear()
+      ..addAll(List.filled(map.thinIce.length, 0.0));
+    splashes.clear();
     _leaderBallCooldown = 0;
     landingTime = 0;
+    vendorCooldown = 0;
+    shoutTime = 0;
+    shoutingVendor = null;
+    _stormAnnounced = -1;
     lives = 3;
     delivered = 0;
     score = 0;
@@ -125,22 +141,8 @@ class HerdRound {
             Vector2(size.x * .92, size.y * .53), phase,
             trafficLight: true));
       }
-      patrols.add(HerdPatrol(Vector2(size.x * .51, size.y * .42),
-          Vector2(size.x * .69, size.y * .42), .5,
-          isCart: true));
-      patrols.add(HerdPatrol(Vector2(size.x * .93, size.y * .67),
-          Vector2(size.x * .93, size.y * .85), 2,
-          isCart: true));
     } else if (map.kind == HerdMapKind.dunes) {
-      patrols.add(HerdPatrol(Vector2(size.x * .11, size.y * .49),
-          Vector2(size.x * .53, size.y * .49), 0));
-      patrols.add(HerdPatrol(Vector2(size.x * .52, size.y * .47),
-          Vector2(size.x * .91, size.y * .47), 2));
-    } else if (map.kind == HerdMapKind.snow) {
-      snowballs.add(HerdSnowball(Vector2(size.x * .08, size.y * .57),
-          Vector2(size.x * .88, size.y * .57), 0));
-      snowballs.add(HerdSnowball(Vector2(size.x * .94, size.y * .49),
-          Vector2(size.x * .44, size.y * .49), 2));
+      // Heat and sandstorms replace moving hazards here.
     }
     _spawnClusters();
     trail.add(leader.clone());
@@ -177,26 +179,26 @@ class HerdRound {
       scale(ball.from);
       scale(ball.to);
     }
-    for (final ball in snowballs) {
-      scale(ball.from);
-      scale(ball.to);
+    for (final splash in splashes) {
+      scale(splash.at);
     }
     field.setFrom(size);
   }
 
-  double patrolClock(HerdPatrol patrol) => patrol.trafficLight
-      ? map.patrolTime(time)
-      : (patrol.isCart ? time * .55 : time);
+  double patrolClock(HerdPatrol patrol) =>
+      patrol.trafficLight ? map.patrolTime(time) : time;
 
-  void message(String text) {
+  void message(String text, [double seconds = 2.5]) {
     notice = text;
-    noticeTime = 2.5;
+    noticeTime = seconds;
   }
 
   void update(double dt, Vector2 input) {
     if (!started || ended) return;
     time += dt;
     immune = max(0, immune - dt);
+    vendorCooldown = max(0, vendorCooldown - dt);
+    shoutTime = max(0, shoutTime - dt);
     noticeTime = max(0, noticeTime - dt);
     _leaderBallCooldown = max(0, _leaderBallCooldown - dt);
     final direction = input.clone();
@@ -231,6 +233,8 @@ class HerdRound {
       if (!cat.home &&
           !cat.following &&
           cat.scared == 0 &&
+          cat.overheat == 0 &&
+          cat.chill == 0 &&
           cat.position.distanceTo(leader) < 29 &&
           _clearLine(cat.position, leader)) {
         cat.following = true;
@@ -270,11 +274,11 @@ class HerdRound {
         final p = patrol.position(patrolClock(patrol) * .7);
         if (_hitHazard(p)) break;
       }
-      for (final snowball in snowballs) {
-        if (snowball.active(time) && _hitHazard(snowball.position(time))) break;
-      }
     }
     if (!ended) _bounceBalls();
+    if (!ended) _watchVendors();
+    if (!ended && map.kind == HerdMapKind.dunes) _updateDesert(dt);
+    if (!ended && map.thinIce.isNotEmpty) _updateIce(dt);
     final nearHome = leader.distanceTo(home) < 38;
     if (!nearHome) _homeHintShown = false;
     if (!ended && nearHome && !homeUnlocked && !_homeHintShown) {
@@ -296,6 +300,133 @@ class HerdRound {
     }
     assert(delivered + cats.where((c) => !c.home).length == catCount);
     assert(chain.toSet().length == chain.length);
+  }
+
+  bool shaded(Vector2 at) => map.contains(map.shade, at, field);
+
+  /// Downwind of a rock, the oasis or the tent, the storm cannot push.
+  bool sheltered(Vector2 at) {
+    final dir = HerdSandstorm.direction(time);
+    for (final wall in map.walls) {
+      final r = map.pixels(wall, field);
+      if (at.y < r.top - 12 || at.y > r.bottom + 12) continue;
+      final gap = dir > 0 ? at.x - r.right : r.left - at.x;
+      if (gap >= 0 && gap <= HerdSandstorm.shelterReach) return true;
+    }
+    return false;
+  }
+
+  void _updateDesert(double dt) {
+    final storm = HerdSandstorm.number(time);
+    if (HerdSandstorm.warning(time) && _stormAnnounced != storm) {
+      _stormAnnounced = storm;
+      message(HerdSandstorm.direction(time) > 0
+          ? 'Bão cát từ bên trái! Nấp sau đá hoặc lều'
+          : 'Bão cát từ bên phải! Nấp sau đá hoặc lều');
+    }
+    for (var i = 0; i < chain.length; i++) {
+      final cat = chain[i];
+      cat.heat = shaded(cat.position)
+          ? max(0, cat.heat - HerdHeat.coolRate * dt)
+          : cat.heat + HerdHeat.sunRate * (1 + i * HerdHeat.tailBonus) * dt;
+    }
+    final fainted = chain.where((cat) => cat.heat >= 1).toList();
+    for (final cat in fainted) {
+      chain.remove(cat);
+      cat.following = false;
+      cat.velocity.setZero();
+      cat.heat = 1;
+      cat.overheat = HerdHeat.faintSeconds;
+    }
+    if (fainted.isNotEmpty) {
+      message('Có bé nóng quá phải ngồi nghỉ! Quay lại đón khi bé hết mệt');
+    }
+    for (final cat in cats) {
+      if (cat.following) continue;
+      if (cat.overheat > 0) {
+        cat.overheat = max(0, cat.overheat - dt);
+        cat.heat = cat.overheat / HerdHeat.faintSeconds;
+      } else {
+        cat.heat = max(0, cat.heat - HerdHeat.coolRate * dt);
+      }
+    }
+  }
+
+  bool onThinIce(Vector2 at) =>
+      map.contains(map.thinIce, at, field) &&
+      !map.contains(map.snowPads, at, field);
+
+  /// Followers on one sheet beyond the safe load crack it; when it breaks,
+  /// every follower on it falls in, leaves the herd and shivers on shore.
+  void _updateIce(double dt) {
+    for (final splash in splashes) {
+      splash.age += dt;
+    }
+    splashes.removeWhere((s) => s.age > HerdThinIce.splashSeconds);
+    for (final cat in cats) {
+      if (!cat.following) cat.chill = max(0, cat.chill - dt);
+    }
+    for (var z = 0; z < map.thinIce.length; z++) {
+      final sheet = map.pixels(map.thinIce[z], field);
+      final riders = chain
+          .where((cat) =>
+              sheet.contains(cat.position.toOffset()) &&
+              onThinIce(cat.position))
+          .toList();
+      final extra = riders.length - HerdThinIce.safeLoad;
+      iceCrack[z] = extra > 0
+          ? iceCrack[z] + extra * HerdThinIce.crackRate * dt
+          : max(0, iceCrack[z] - HerdThinIce.healRate * dt);
+      if (iceCrack[z] < 1) continue;
+      iceCrack[z] = 0;
+      for (final cat in riders) {
+        chain.remove(cat);
+        cat.following = false;
+        cat.velocity.setZero();
+        cat.chill = HerdThinIce.chillSeconds;
+        cat.hop = .65;
+        splashes.add(HerdSplash(cat.position.clone()));
+        cat.position.setFrom(_safeSpot(cat.position, avoidThinIce: true));
+      }
+      message('Băng vỡ! ${riders.length} bé rơi xuống nước, đang run cầm cập');
+    }
+  }
+
+  /// Vision radius shared by drawing and detection.
+  double get vendorRange => min(130.0, field.y * .36);
+
+  /// Vendor i only watches lantern zone i, so darkness always means cover.
+  bool vendorSees(HerdVendor vendor, Vector2 at) {
+    final zone = map.vendors.indexOf(vendor);
+    if (!vendor.watching(time) ||
+        map.lanternZoneAt(at, field) != zone ||
+        !HerdLanterns.lit(zone, time)) {
+      return false;
+    }
+    final origin = Vector2(vendor.at.dx * field.x, vendor.at.dy * field.y);
+    final delta = at - origin;
+    if (delta.length > vendorRange) return false;
+    var diff = atan2(delta.y, delta.x) - vendor.angle(time);
+    diff = atan2(sin(diff), cos(diff));
+    return diff.abs() <= HerdVendor.halfAngle;
+  }
+
+  // Being spotted scares cats away but never costs a life.
+  void _watchVendors() {
+    if (vendorCooldown > 0 || map.vendors.isEmpty) return;
+    for (var v = 0; v < map.vendors.length; v++) {
+      final vendor = map.vendors[v];
+      final from = vendorSees(vendor, leader)
+          ? 0
+          : chain.indexWhere((cat) => vendorSees(vendor, cat.position));
+      if (from < 0 || (from == 0 && chain.isEmpty)) continue;
+      _scatter(from);
+      vendorCooldown = 2.5;
+      shoutingVendor = v;
+      shoutTime = 1.2;
+      message('Bị bác bán hàng xua! Chờ bác quay đi hoặc đèn tắt nhé');
+      return;
+    }
   }
 
   bool _hitHazard(Vector2 p) {
@@ -357,7 +488,9 @@ class HerdRound {
   bool _onHazardLane(Vector2 at) {
     if (isTutorial) return false;
     if (map.kind == HerdMapKind.snow) {
-      return snowballs.any((ball) => ball.distanceToPath(at) < 32);
+      return onThinIce(at) ||
+          map.chutes.any((c) =>
+              map.pixels(c.area, field).inflate(14).contains(at.toOffset()));
     }
     if (map.kind == HerdMapKind.nightMarket || map.kind == HerdMapKind.dunes) {
       for (final patrol in patrols) {
@@ -415,7 +548,7 @@ class HerdRound {
   }
 
   // Scared cats land on a nearby walkable spot, never across the whole map.
-  Vector2 _safeSpot(Vector2 near) {
+  Vector2 _safeSpot(Vector2 near, {bool avoidThinIce = false}) {
     for (var radius = 0.0; radius <= 140; radius += 8) {
       for (var i = 0; i < 24; i++) {
         final at = near + Vector2(cos(i * pi / 12), sin(i * pi / 12)) * radius;
@@ -423,13 +556,22 @@ class HerdRound {
             at.x > field.x - 24 ||
             at.y < 72 ||
             at.y > field.y - 30) continue;
-        if (!map.blocked(at, field)) return at;
+        if (!map.blocked(at, field) && !(avoidThinIce && onThinIce(at))) {
+          return at;
+        }
       }
     }
     return map.route.point(map.route.main.first, field);
   }
 
   Vector2 _groundStep(Vector2 at, Vector2 speed, Vector2 desired, double dt) {
+    final chute = map.chuteAt(at, field);
+    if (chute != null) {
+      // No steering inside a chute: everyone rides it to the end.
+      speed.setValues(chute.direction.dx * HerdChute.speed,
+          chute.direction.dy * HerdChute.speed);
+      return speed * dt;
+    }
     final onIce = map.contains(map.ice, at, field) &&
         !map.contains(map.snowPads, at, field);
     final factor = 1 - exp(-(onIce ? 1.5 : 18) * dt);
@@ -437,6 +579,13 @@ class HerdRound {
     var multiplier = map.contains(map.softSand, at, field) ? .45 : 1.0;
     final step = speed * dt * multiplier;
     if (map.contains(map.landings, at, field)) step.scale(.7);
+    if (map.kind == HerdMapKind.dunes &&
+        HerdSandstorm.blowing(time) &&
+        !sheltered(at)) {
+      step.add(
+          Vector2(HerdSandstorm.direction(time) * HerdSandstorm.windSpeed, 12) *
+              dt);
+    }
     if (map.contains(map.slopes, at, field)) {
       step.add(Vector2(40, 75) * dt);
     }

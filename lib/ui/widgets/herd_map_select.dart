@@ -138,13 +138,13 @@ class _RegionCard extends StatelessWidget {
                                     HerdMapKind.tutorial =>
                                       'Tập di chuyển và đón mèo',
                                     HerdMapKind.nightMarket =>
-                                      'Quầy cá · Xe đẩy · Phố có đèn',
+                                      'Bác bán hàng · Đèn lồng · Lẻn qua chợ',
                                     HerdMapKind.dunes =>
-                                      'Ốc đảo · Khe đá · Cồn cát trượt',
+                                      'Bóng râm · Nắng nóng · Bão cát',
                                     HerdMapKind.playground =>
                                       'Khối gỗ · Xe chạy vòng · Bóng nảy',
                                     HerdMapKind.snow =>
-                                      'Trại củi · Đảo tuyết · Cầu tuyết lăn',
+                                      'Băng mỏng · Làn trượt · Đảo tuyết',
                                   },
                                   maxLines: 2,
                                   overflow: TextOverflow.ellipsis,

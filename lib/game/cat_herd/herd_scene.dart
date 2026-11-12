@@ -5,25 +5,18 @@ import 'herd_round.dart';
 import 'herd_map.dart';
 import 'herd_map_painter.dart';
 import 'herd_home_painter.dart';
+import 'herd_market_painter.dart';
+import 'herd_snow_painter.dart';
 
 /// Scenery and hazards only; cat sprites are owned by HerdGame.
 void paintHerdField(Canvas canvas, Size size, HerdRound round) {
   paintHerdMap(canvas, size, round);
+  paintSnowHazards(canvas, round);
   for (final patrol in round.patrols) {
     final p = patrol.position(round.patrolClock(patrol) * .7).toOffset();
     if (round.map.kind == HerdMapKind.nightMarket) {
       final direction = patrol.tangent(round.patrolClock(patrol) * .7);
-      if (patrol.isCart) {
-        canvas.save();
-        canvas.translate(p.dx, p.dy);
-        if (direction.x.abs() < .01) {
-          canvas.rotate(direction.y < 0 ? -math.pi / 2 : math.pi / 2);
-        }
-        _marketCart(canvas, Offset.zero, direction.x < 0);
-        canvas.restore();
-      } else {
-        _scooter(canvas, p, direction.x < 0, round.patrolClock(patrol));
-      }
+      _scooter(canvas, p, direction.x < 0, round.patrolClock(patrol));
     } else if (round.map.kind == HerdMapKind.playground) {
       final direction = patrol.tangent(round.patrolClock(patrol) * .7);
       if (patrol.loops) {
@@ -43,28 +36,6 @@ void paintHerdField(Canvas canvas, Size size, HerdRound round) {
       }
     } else {
       _rollingHazard(canvas, p, round.time, round.map.kind == HerdMapKind.snow);
-    }
-  }
-  for (final ball in round.snowballs) {
-    if (ball.warning(round.time)) {
-      final p = ball.warningPosition(round.time).toOffset();
-      canvas.drawOval(Rect.fromCenter(center: p, width: 34, height: 16),
-          Paint()..color = const Color(0x66546E81));
-      canvas.drawOval(
-          Rect.fromCenter(center: p, width: 43, height: 23),
-          Paint()
-            ..color = const Color(0x667B9BAA)
-            ..style = PaintingStyle.stroke
-            ..strokeWidth = 2);
-    } else if (ball.active(round.time)) {
-      final p = ball.position(round.time).toOffset();
-      _rollingHazard(canvas, p, round.time, true);
-      final backward = (ball.from - ball.to).normalized();
-      for (var i = 0; i < 3; i++) {
-        final offset = backward * (23 + i * 8.0);
-        canvas.drawCircle(p + offset.toOffset() + Offset(0, (i % 2) * 5.0),
-            3 - i * .6, Paint()..color = const Color(0x99F4FCFB));
-      }
     }
   }
   for (var i = 0; i < round.balls.length; i++) {
@@ -95,6 +66,7 @@ void paintHerdField(Canvas canvas, Size size, HerdRound round) {
     canvas.restore();
   }
   paintHerdHome(canvas, round.home.toOffset(), round.map.kind);
+  paintMarketVendors(canvas, round);
 }
 
 void herdText(Canvas canvas, String value, Offset at, double fontSize) {
@@ -237,36 +209,6 @@ void _rollingHazard(Canvas canvas, Offset p, double time, bool snow) {
     }
   }
   canvas.restore();
-}
-
-void _marketCart(Canvas c, Offset p, bool left) {
-  c.save();
-  c.translate(p.dx, p.dy);
-  if (left) c.scale(-1, 1);
-  c.drawOval(const Rect.fromLTWH(-21, 9, 42, 10),
-      Paint()..color = const Color(0x44402A14));
-  for (final x in [-12.0, 12.0]) {
-    c.drawCircle(Offset(x, 11), 5, Paint()..color = const Color(0xFF394452));
-    c.drawCircle(Offset(x, 11), 2, Paint()..color = const Color(0xFFC0BCAC));
-  }
-  c.drawRRect(
-      RRect.fromRectAndRadius(
-          const Rect.fromLTWH(-18, -9, 36, 18), const Radius.circular(3)),
-      Paint()..color = const Color(0xFF8DAAA0));
-  c.drawRect(const Rect.fromLTWH(-18, -7, 36, 4),
-      Paint()..color = const Color(0xFFD9C9A0));
-  c.drawRect(const Rect.fromLTWH(-13, -18, 13, 10),
-      Paint()..color = const Color(0xFFCFAB77));
-  c.drawRect(const Rect.fromLTWH(2, -15, 12, 7),
-      Paint()..color = const Color(0xFFE6CA96));
-  c.drawLine(
-      const Offset(-19, -5),
-      const Offset(-25, -14),
-      Paint()
-        ..color = const Color(0xFF56675E)
-        ..strokeWidth = 3
-        ..strokeCap = StrokeCap.round);
-  c.restore();
 }
 
 void _scooter(Canvas c, Offset p, bool left, double time) {

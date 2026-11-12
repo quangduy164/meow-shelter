@@ -15,9 +15,11 @@ class HerdNavigation {
     if (identical(map, _map) && size == _size) return;
     _map = map;
     _size.setFrom(size);
+    // Slightly under the 15-unit collision radius: points exactly on the
+    // collision boundary are walkable, so they must also be reachable.
     _walls
       ..clear()
-      ..addAll(map.walls.map((r) => map.pixels(r, size).inflate(15)));
+      ..addAll(map.walls.map((r) => map.pixels(r, size).inflate(14.99)));
     _corners.clear();
     _edges.clear();
     for (final r in _walls) {

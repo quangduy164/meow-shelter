@@ -1,4 +1,5 @@
 import 'dart:async';
+import '../../audio/game_audio.dart';
 import 'dart:math' as math;
 import 'package:flame/components.dart';
 import 'package:flame/game.dart';
@@ -8,6 +9,9 @@ import 'herd_round.dart';
 import 'herd_scene.dart';
 import 'herd_map.dart';
 import 'herd_hud.dart';
+import 'herd_market_painter.dart';
+import 'herd_desert_painter.dart';
+import 'herd_snow_painter.dart';
 
 /// Coordinates simulation, input and sprite rendering. Rules live in HerdRound.
 class HerdGame extends FlameGame {
@@ -55,8 +59,7 @@ class HerdGame extends FlameGame {
     overlays.remove('maps');
     round.started = true;
     if (!round.isTutorial) {
-      round.message(
-          'Gom ít nhất ${HerdRound.requiredCats} bé để mở nhà. Theo dấu chân tới các cụm!');
+      round.message(map.hint, 5);
     }
   }
 
@@ -96,6 +99,7 @@ class HerdGame extends FlameGame {
       remaining -= step;
     }
     if (round.ended && !overlays.isActive('result')) {
+      GameAudio.instance.play(round.won ? GameSound.win : GameSound.lose);
       if (round.isTutorial && round.won && onTutorialCompleted != null) {
         unawaited(onTutorialCompleted!());
       }
@@ -128,7 +132,10 @@ class HerdGame extends FlameGame {
           tumble: cat.tumble,
           scared: cat.scared,
           resting: !cat.following,
+          shiver: cat.chill > 0,
           buried: round.map.kind == HerdMapKind.dunes && cat.group == 2);
+      if (round.map.kind == HerdMapKind.dunes) paintCatHeat(canvas, cat);
+      paintCatChill(canvas, cat, round.time);
     }
     if (round.immune == 0 || (round.time * 10).floor().isEven) {
       _cat(canvas, 'orange', round.leader,
@@ -136,6 +143,10 @@ class HerdGame extends FlameGame {
           leader: true,
           facingLeft: round.leaderFacingLeft,
           tumble: round.landingTime);
+    }
+    paintMarketDarkness(canvas, round);
+    if (round.map.kind == HerdMapKind.dunes && round.started) {
+      paintDesertStorm(canvas, Size(size.x, size.y), round);
     }
     super.render(canvas);
     if (round.isTutorial && !round.ended && round.tutorialStep == 1) {
@@ -187,7 +198,8 @@ class HerdGame extends FlameGame {
       double tumble = 0,
       double scared = 0,
       bool resting = false,
-      bool buried = false}) {
+      bool buried = false,
+      bool shiver = false}) {
     final animation = (moving ? _walk : _idle)[type]!;
     final frame =
         animation.frames[(round.time / .12).floor() % animation.frames.length];
@@ -197,7 +209,8 @@ class HerdGame extends FlameGame {
         Paint()..color = const Color(0x33402A14));
     canvas.save();
     final bounce = hop > 0 ? math.sin((.65 - hop) / .65 * math.pi) : 0.0;
-    canvas.translate(at.x, at.y - bounce * 16);
+    canvas.translate(at.x + (shiver ? math.sin(round.time * 45) * 1.5 : 0),
+        at.y - bounce * 16);
     if (tumble > 0) canvas.rotate(math.sin((.65 - tumble) * 14) * tumble * .8);
     if (scared > 1.1) canvas.rotate((2 - scared) * math.pi * 5);
     if (resting && scared == 0) {
@@ -232,7 +245,7 @@ class HerdGame extends FlameGame {
             2.5,
             Paint()..color = const Color(0xFFFFD258));
       }
-    } else if (resting && round.map.kind == HerdMapKind.snow) {
+    } else if (resting && !shiver && round.map.kind == HerdMapKind.snow) {
       herdText(canvas, 'zZ', Offset(at.x + 10, at.y - 28), 11);
     }
     if (leader) {

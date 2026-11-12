@@ -265,6 +265,42 @@ void _desert(Canvas c, HerdRound r) {
           const Color(0xFFBB8652), 2);
     }
   }
+  // Cool shade patches: same rectangles as the heat rule.
+  for (final patch in r.map.shade) {
+    final box = _rect(patch);
+    c.drawOval(
+        box,
+        Paint()
+          ..color = const Color(0x557A5634)
+          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 5));
+    c.drawOval(
+        box.deflate(4),
+        Paint()
+          ..color = const Color(0x55FFF3D2)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 1.5);
+  }
+  // A lone palm marks the shade stop between the oasis and the home.
+  for (final i in [1, 5]) {
+    final box = _rect(r.map.shade[i]);
+    final root = Offset(box.center.dx - 4, box.center.dy + 6);
+    final crown = root + const Offset(6, -40);
+    _line(c, root, crown, const Color(0xFF957047), 4);
+    for (var leaf = 0; leaf < 5; leaf++) {
+      final end = crown +
+          Offset(-22 + leaf * 11.0, -8 + ((leaf - 2) * (leaf - 2)) * 3.5);
+      c.drawPath(
+          Path()
+            ..moveTo(crown.dx, crown.dy)
+            ..quadraticBezierTo(
+                (crown.dx + end.dx) / 2, end.dy - 9, end.dx, end.dy),
+          Paint()
+            ..color = const Color(0xFF71975B)
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = 4
+            ..strokeCap = StrokeCap.round);
+    }
+  }
   for (final patch in r.map.landings) {
     final box = _rect(patch);
     _fill(c, box, const Color(0xFFE9C891), 18);
@@ -352,18 +388,6 @@ void _desert(Canvas c, HerdRound r) {
         _line(c, Offset(box.left + 4, y), Offset(box.right - 3, y - 2),
             const Color(0x66956B47), 1.5);
       }
-    }
-  }
-  // Wind streaks follow the two exposed tumbleweed crossings.
-  for (final hazard in r.patrols) {
-    final from = Offset(
-        hazard.from.x / r.field.x * 800, hazard.from.y / r.field.y * 375);
-    final to =
-        Offset(hazard.to.x / r.field.x * 800, hazard.to.y / r.field.y * 375);
-    for (var i = 0; i < 5; i++) {
-      final t = (r.time * .18 + i / 5) % 1;
-      final p = Offset.lerp(from, to, t)! + Offset(0, i.isEven ? -9 : 9);
-      _line(c, p, p + const Offset(17, 0), const Color(0x66FFF0C7), 1.5);
     }
   }
   for (final x in [20.0, 760.0]) {
@@ -454,9 +478,9 @@ void _snow(Canvas c, HerdRound r) {
     }
   }
   // The snow hollow is open ground, with solid outcrops at its sides.
-  c.drawOval(const Rect.fromLTWH(220, 218, 200, 48),
+  c.drawOval(const Rect.fromLTWH(262, 255, 150, 44),
       Paint()..color = const Color(0xFFCDDFDF));
-  c.drawOval(const Rect.fromLTWH(225, 213, 190, 42),
+  c.drawOval(const Rect.fromLTWH(266, 250, 142, 38),
       Paint()..color = const Color(0xFFF6FAF1));
   for (var index = 0; index < r.map.walls.length; index++) {
     final box = _rect(r.map.walls[index]);

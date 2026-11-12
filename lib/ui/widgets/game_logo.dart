@@ -25,12 +25,15 @@ class GameLogo extends StatelessWidget {
                 const Positioned.fill(
                     child: CustomPaint(painter: CatBadgePainter())),
                 if (christmas)
-                  const Positioned(
-                    left: -25,
-                    top: -43,
-                    width: 118,
-                    height: 90,
-                    child: CustomPaint(painter: SantaHatPainter()),
+                  Positioned(
+                    left: -15,
+                    top: -20,
+                    width: 74,
+                    height: 56.4,
+                    child: Transform.rotate(
+                      angle: -.22,
+                      child: const CustomPaint(painter: SantaHatPainter()),
+                    ),
                   ),
               ],
             ),

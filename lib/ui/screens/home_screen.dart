@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import '../../audio/game_audio.dart';
+import '../widgets/audio_settings_button.dart';
 
 import '../../camp/camp_state.dart';
 import '../../levels/levels.dart';
@@ -15,6 +17,8 @@ import '../widgets/mode_icon.dart';
 const _ink = Color(0xFF5A3214);
 const _cream = Color(0xFFFFF4DA);
 
+final homeRouteObserver = RouteObserver<PageRoute<dynamic>>();
+
 /// Home: logo and the main "play" action on the left, every other mode as a
 /// labelled colour tile on the right.
 class HomeScreen extends StatefulWidget {
@@ -24,7 +28,33 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
+class _HomeScreenState extends State<HomeScreen> with RouteAware {
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final route = ModalRoute.of(context);
+    if (route is PageRoute<dynamic>) homeRouteObserver.subscribe(this, route);
+  }
+
+  @override
+  void didPush() => GameAudio.instance.setHomeActive(true);
+
+  @override
+  void didPopNext() => GameAudio.instance.setHomeActive(true);
+
+  @override
+  void didPushNext() => GameAudio.instance.setHomeActive(false);
+
+  @override
+  void didPop() => GameAudio.instance.setHomeActive(false);
+
+  @override
+  void dispose() {
+    homeRouteObserver.unsubscribe(this);
+    GameAudio.instance.setHomeActive(false);
+    super.dispose();
+  }
+
   Future<void> _open(Widget screen) async {
     await Navigator.of(context)
         .push(MaterialPageRoute<void>(builder: (_) => screen));
@@ -57,6 +87,11 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 ),
               ),
+            ),
+            const Positioned(
+              left: 12,
+              bottom: 10,
+              child: SafeArea(child: AudioSettingsButton()),
             ),
           ],
         ),
@@ -245,7 +280,10 @@ class _PressableState extends State<_Pressable> {
         onTapDown: (_) => _set(true),
         onTapCancel: () => _set(false),
         onTapUp: (_) => _set(false),
-        onTap: widget.onPressed,
+        onTap: () {
+          GameAudio.instance.play(GameSound.click);
+          widget.onPressed();
+        },
         child: SizedBox(
           width: widget.width,
           height: widget.height + _depth,

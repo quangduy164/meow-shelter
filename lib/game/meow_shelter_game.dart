@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:math';
+import '../audio/game_audio.dart';
 
 import 'package:flame/effects.dart';
 import 'package:flame/game.dart';
@@ -202,6 +203,7 @@ class MeowShelterGame extends FlameGame {
   void _handleDelivered(CatComponent cat) {
     if (_hud.status != RoundStatus.playing) return;
     _hud.delivered += 1;
+    GameAudio.instance.play(GameSound.meow);
     // Practice rounds are replayable, so they do not pay out coins.
     if (!level.isTutorial) unawaited(CampState.instance.rescue(cat.catType));
     if (level.isInfinite) {
@@ -264,6 +266,9 @@ class MeowShelterGame extends FlameGame {
   int get rescued => _hud.delivered;
 
   void _showResult(RoundStatus status) {
+    if (_hud.status != RoundStatus.playing) return;
+    GameAudio.instance
+        .play(status == RoundStatus.won ? GameSound.win : GameSound.lose);
     _hud.status = status;
     if (status == RoundStatus.won && !level.isInfinite) {
       stats.secondsLeft = _hud.secondsLeft;
@@ -289,6 +294,7 @@ class MeowShelterGame extends FlameGame {
       return;
     }
     if (_bait.place(point, size, children.whereType<CatComponent>())) {
+      GameAudio.instance.play(GameSound.splash);
       stats.fishUsed += 1;
       if (_bait.limited) _hud.fishLeft = _bait.fishCount;
     }

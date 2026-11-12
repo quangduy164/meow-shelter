@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import '../../audio/game_audio.dart';
 
 import '../../game/cats/cat_breed.dart';
 import '../../game/skill_glyph.dart';
@@ -55,7 +56,12 @@ class _RoundGameButtonState extends State<RoundGameButton> {
           onTapDown: enabled ? (_) => _set(true) : null,
           onTapUp: (_) => _set(false),
           onTapCancel: () => _set(false),
-          onTap: widget.onPressed,
+          onTap: enabled
+              ? () {
+                  GameAudio.instance.play(GameSound.click);
+                  widget.onPressed!();
+                }
+              : null,
           child: SizedBox(
             width: widget.size,
             height: widget.size + _depth,

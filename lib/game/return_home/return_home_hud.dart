@@ -66,7 +66,7 @@ void paintReturnHomeHud(
   for (var i = 0; i < 3; i++) {
     _heart(canvas, Offset(panel.left + 19 + i * 21, rowY), i < lives);
   }
-  _fish(canvas, Offset(panel.left + 105, rowY));
+  paintReturnHomeFishIcon(canvas, Offset(panel.left + 105, rowY));
   _label(
       canvas,
       fish.toString(),
@@ -167,7 +167,8 @@ void _heart(Canvas canvas, Offset c, bool full) {
   }
 }
 
-void _fish(Canvas canvas, Offset c) {
+/// Shared by the in-game HUD and the victory card.
+void paintReturnHomeFishIcon(Canvas canvas, Offset c) {
   final paint = Paint()..color = const Color(0xFF579FA0);
   canvas.drawPath(
       Path()

@@ -55,16 +55,22 @@ class HerdRoute {
   static const snow = HerdRoute(
     [
       Offset(.08, .32),
+      Offset(.33, .44),
+      Offset(.555, .355),
+      Offset(.33, .44),
       Offset(.27, .34),
-      Offset(.37, .39),
-      Offset(.56, .35),
-      Offset(.74, .49),
-      Offset(.40, .74),
+      Offset(.20, .58),
+      Offset(.42, .72),
+      Offset(.19, .78),
+      Offset(.21, .885),
+      Offset(.62, .885),
       Offset(.82, .79),
+      Offset(.905, .70),
+      Offset(.905, .33),
       Offset(.90, .28)
     ],
-    [Offset(.62, .88), Offset(.94, .88), Offset(.94, .56)],
-    [Offset(.27, .34), Offset(.56, .35), Offset(.40, .74), Offset(.82, .79)],
+    [],
+    [Offset(.27, .34), Offset(.555, .355), Offset(.42, .72), Offset(.82, .79)],
   );
   static const playground = HerdRoute(
     [

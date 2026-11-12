@@ -4,13 +4,14 @@ import 'dart:async';
 import 'dart:math';
 
 import '../../game/return_home/return_home_game.dart';
+import '../../game/return_home/return_home_hud.dart';
 import '../../game/cats/cat_breed.dart';
 import '../design.dart';
 import '../widgets/cat_sprite.dart';
 import '../widgets/return_home_buttons.dart';
 import '../widgets/game_glyphs.dart';
-import '../widgets/round_button.dart';
 import '../widgets/skill_glyphs.dart';
+import '../widgets/return_home_cat_picker.dart';
 
 class ReturnHomeScreen extends StatefulWidget {
   const ReturnHomeScreen({super.key});
@@ -29,7 +30,8 @@ class _ReturnHomeScreenState extends State<ReturnHomeScreen> {
     _game = ReturnHomeGame();
   }
 
-  Future<void> _showComboHelp(BuildContext context) async {
+  Future<void> _showComboHelp(BuildContext context,
+      {String? selectedCat}) async {
     if (_showingComboHelp) return;
     _showingComboHelp = true;
     final resumeAfter = !_game.paused;
@@ -40,7 +42,8 @@ class _ReturnHomeScreenState extends State<ReturnHomeScreen> {
       await showDialog<void>(
         context: context,
         builder: (_) => _ComboHelpDialog(
-            selectedCat: _game.started ? _game.selectedCat : null),
+            selectedCat:
+                selectedCat ?? (_game.started ? _game.selectedCat : null)),
       );
     } finally {
       _showingComboHelp = false;
@@ -55,8 +58,11 @@ class _ReturnHomeScreenState extends State<ReturnHomeScreen> {
       body: GameWidget<ReturnHomeGame>(
         game: _game,
         overlayBuilderMap: {
-          'chooseCat': (context, game) => _ChooseCatOverlay(
-              game: game, onHelp: () => _showComboHelp(context)),
+          'chooseCat': (context, game) => ReturnHomeCatPicker(
+              initialCat: game.selectedCat,
+              onStart: game.chooseCat,
+              onHome: () => Navigator.of(context).pop(),
+              onHelp: (type) => _showComboHelp(context, selectedCat: type)),
           'skill': (context, game) => _SkillButton(game: game),
           'victory': (context, game) => _VictoryOverlay(game: game),
           'exit': (context, game) => SafeArea(
@@ -103,10 +109,15 @@ class _VictoryOverlay extends StatelessWidget {
               padding: const EdgeInsets.fromLTRB(22, 16, 22, 18),
               decoration: DS.card,
               child: Column(mainAxisSize: MainAxisSize.min, children: [
-                const Text('CHIẾN THẮNG!', style: DS.title),
+                const Text('CHIẾN THẮNG!',
+                    style: TextStyle(
+                        color: DS.ink,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: .6)),
                 const SizedBox(height: 4),
                 const Text('Mèo đã về nhà an toàn',
-                    style: TextStyle(color: DS.soft, fontSize: 14)),
+                    style: TextStyle(color: DS.soft, fontSize: 12)),
                 const SizedBox(height: 8),
                 Row(mainAxisAlignment: MainAxisAlignment.center, children: [
                   CatSprite(type: game.selectedCat, size: 70),
@@ -124,10 +135,19 @@ class _VictoryOverlay extends StatelessWidget {
                 const SizedBox(height: 8),
                 Row(children: [
                   Expanded(
-                      child: _stat(Icons.timer_outlined, 'Thời gian', time)),
+                      child: _stat(
+                          const Icon(Icons.timer_outlined,
+                              color: DS.label, size: 20),
+                          'Thời gian',
+                          time)),
                   const SizedBox(width: 10),
                   Expanded(
-                      child: _stat(Icons.set_meal_rounded, 'Cá thu thập',
+                      child: _stat(
+                          const SizedBox.square(
+                              dimension: 24,
+                              child:
+                                  CustomPaint(painter: _VictoryFishPainter())),
+                          'Cá thu thập',
                           '${game.fish}')),
                 ]),
                 const SizedBox(height: 8),
@@ -141,18 +161,18 @@ class _VictoryOverlay extends StatelessWidget {
                   ),
                   child: Row(children: [
                     const Icon(Icons.monetization_on_rounded,
-                        color: DS.goldEdge, size: 26),
+                        color: DS.goldEdge, size: 22),
                     const SizedBox(width: 8),
                     const Expanded(
                         child: Text('Xu nhận được',
                             style: TextStyle(
                                 color: DS.ink,
-                                fontSize: 14,
+                                fontSize: 12,
                                 fontWeight: FontWeight.w800))),
                     Text('+${game.reward} xu',
                         style: const TextStyle(
                             color: DS.ink,
-                            fontSize: 22,
+                            fontSize: 18,
                             fontWeight: FontWeight.w900)),
                   ]),
                 ),
@@ -166,7 +186,7 @@ class _VictoryOverlay extends StatelessWidget {
                             builder: (_) => const ReturnHomeScreen())),
                     icon: const Icon(Icons.replay_rounded, size: 20),
                     label: const Text('Chơi lại',
-                        style: TextStyle(fontFamily: 'Roboto')),
+                        style: TextStyle(fontFamily: 'Roboto', fontSize: 12)),
                   )),
                   const SizedBox(width: 10),
                   Expanded(
@@ -174,8 +194,8 @@ class _VictoryOverlay extends StatelessWidget {
                     style: DS.primary,
                     onPressed: () => Navigator.of(context).pop(),
                     icon: const GameGlyphView(GameGlyph.home, size: 20),
-                    label: const Text('Về nhà',
-                        style: TextStyle(fontFamily: 'Roboto')),
+                    label: const Text('Trang chủ',
+                        style: TextStyle(fontFamily: 'Roboto', fontSize: 12)),
                   )),
                 ]),
               ]),
@@ -184,28 +204,39 @@ class _VictoryOverlay extends StatelessWidget {
     );
   }
 
-  Widget _stat(IconData icon, String label, String value) => Container(
+  Widget _stat(Widget icon, String label, String value) => Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
         decoration: BoxDecoration(
             color: Colors.white.withOpacity(.65),
             borderRadius: BorderRadius.circular(12)),
         child: Row(children: [
-          Icon(icon, color: DS.label, size: 22),
+          icon,
           const SizedBox(width: 8),
           Expanded(
               child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                 Text(label,
-                    style: const TextStyle(color: DS.soft, fontSize: 11)),
+                    style: const TextStyle(color: DS.soft, fontSize: 10)),
                 Text(value,
                     style: const TextStyle(
                         color: DS.ink,
-                        fontSize: 18,
+                        fontSize: 15,
                         fontWeight: FontWeight.w900)),
               ])),
         ]),
       );
+}
+
+class _VictoryFishPainter extends CustomPainter {
+  const _VictoryFishPainter();
+
+  @override
+  void paint(Canvas canvas, Size size) =>
+      paintReturnHomeFishIcon(canvas, size.center(Offset.zero));
+
+  @override
+  bool shouldRepaint(covariant _VictoryFishPainter oldDelegate) => false;
 }
 
 class _SkillButton extends StatefulWidget {
@@ -339,66 +370,6 @@ class _SkillButtonState extends State<_SkillButton> {
       ]),
     );
   }
-}
-
-class _ChooseCatOverlay extends StatelessWidget {
-  const _ChooseCatOverlay({required this.game, required this.onHelp});
-  final ReturnHomeGame game;
-  final VoidCallback onHelp;
-
-  @override
-  Widget build(BuildContext context) => Material(
-        color: DS.scrim,
-        child: Stack(children: [
-          // The picker covers the in-game exit button, so it has its own.
-          SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.all(12),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  RoundButton(
-                      glyph: GameGlyph.home,
-                      tooltip: 'Về Trang chủ',
-                      onPressed: () => Navigator.of(context).pop()),
-                  _ComboHelpButton(onPressed: onHelp),
-                ],
-              ),
-            ),
-          ),
-          Center(
-            child: Container(
-              constraints: const BoxConstraints(maxWidth: 420),
-              margin: const EdgeInsets.all(24),
-              padding: const EdgeInsets.fromLTRB(20, 18, 20, 20),
-              decoration: DS.card,
-              child: Column(mainAxisSize: MainAxisSize.min, children: [
-                const Text('CHỌN MÈO', style: DS.title),
-                const SizedBox(height: 16),
-                Wrap(
-                    spacing: 9,
-                    runSpacing: 9,
-                    alignment: WrapAlignment.center,
-                    children: [
-                      for (final breed in CatBreed.all)
-                        _catButton(context, breed),
-                    ])
-              ]),
-            ),
-          ),
-        ]),
-      );
-
-  Widget _catButton(BuildContext context, CatBreed breed) => SizedBox(
-        width: 165,
-        height: 52,
-        child: ElevatedButton.icon(
-          onPressed: () => game.chooseCat(breed.id),
-          icon: CatFace(breed.id, size: 34),
-          label: Text(breed.name),
-          style: DS.primary,
-        ),
-      );
 }
 
 class _ComboHelpButton extends StatelessWidget {

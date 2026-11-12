@@ -49,23 +49,30 @@
   - Playground walls are wooden blocks in `HerdMap.playground`; the first
     cluster is inside an open U. `HerdPatrol.loop` drives both elliptical track
     art and car collision, with two cars guarding the second cluster.
-  - Market has four authored collection areas (fish stall, shop alley, opposite
-    pavement and dinner courtyard). Its two scooters have `trafficLight=true`;
-    its two carts have `isCart=true`. `HerdRound.patrolClock` is shared by drawing
-    and collision: green pauses only street scooters, never delivery carts.
-    Spawn validation checks the full swept paths of all four vehicles.
-  - Desert has an oasis, two sandstone obstacles, a soft-sand cluster and
-    a tent cluster. `HerdMap.desert` owns water/rock/tent collision rectangles,
-    soft sand, slopes and landing pads. Each actor gets its own landing wobble;
-    only the soft-sand group is drawn buried before recruitment. Tumbleweeds
-    use two independent swept lines, both excluded from cluster spawns.
-  - `herd_snowball.dart`: snow-only warning/rolling/rest schedule. Two passes
-    are staggered inside a 14-second cycle; the warning footprint never hits.
-    Drawing, spawn exclusion and collision use the same trajectories.
-  - Winter has logs, a dry island within the main ice patch, a snowy hollow
-    and a fishing-hut cluster. `HerdMap.snowPads` overrides ice friction;
-    these pads are walkable, not solid. Snowball collision shares `_hitHazard`
-    with patrols, preserving the same leader-life / tail-scatter rules.
+  - Market is a stealth map. Its two scooters keep `trafficLight=true`; there
+    are no delivery carts. `herd_market.dart` holds the vendor watch/rest cycle
+    (`HerdVendor`) and lantern on/off cycle (`HerdLanterns`). Vendor i watches
+    only lantern zone i: a leader or follower inside a lit zone, inside the cone,
+    while that vendor watches, is scattered from that point. No life is lost; a
+    2.5 s cooldown prevents repeated shouts. `herd_market_painter.dart` draws the
+    zone-clipped cones and vendors under cats, and dark zones over cats.
+  - Desert is a heat-and-wind map; it has no moving hazards. `herd_desert.dart`
+    holds `HerdHeat` (followers heat in sun, tail cats slightly faster, cool in
+    `HerdMap.shade`) and `HerdSandstorm` (2 s warning, 4.5 s gust every 16 s,
+    alternating direction). An overheated follower leaves the chain alone and
+    rests for 3 s before it can rejoin. The gust is added in `_groundStep` unless
+    the cat is within `shelterReach` downwind of a wall. No lives are lost here.
+    Soft sand, slopes and landing wobble remain. `herd_desert_painter.dart`
+    draws heat bars, steam and the storm over the cats.
+  - `herd_snow.dart` / `herd_snow_painter.dart`: winter has no moving hazards
+    and never costs lives. `HerdMap.thinIce` sheets crack while more than
+    `HerdThinIce.safeLoad` followers stand on them (snowPads inside are safe,
+    including the island cluster) and heal when the load is light. On break,
+    those followers leave the chain, land on the nearest solid shore and shiver
+    (`HerdCat.chill`, 3 s) before they can rejoin. `HerdMap.chutes` are one-way
+    lanes: `_groundStep` overrides steering with the lane direction, so they
+    are shortcuts that cannot be entered backwards. Spawns avoid thin ice and
+    chutes via `_onHazardLane`. Dry `snowPads` still override ice friction.
   - `HerdMap.tutorial` is excluded from the four-region picker. It has no
     damaging hazards, twelve cats in four clusters, three slalom rocks and a
     three-step move/recruit/return guide driven by

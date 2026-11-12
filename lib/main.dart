@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'audio/game_audio.dart';
 
 import 'ui/responsive.dart';
 import 'ui/screens/home_screen.dart';
@@ -12,6 +13,7 @@ Future<void> main() async {
   final preferences = await SharedPreferences.getInstance();
   FishCollection.instance = FishCollection(preferences);
   CampState.instance = CampState(preferences);
+  GameAudio.instance.initialize(preferences);
   // Khóa màn hình ngang
   SystemChrome.setPreferredOrientations([
     DeviceOrientation.landscapeLeft,
@@ -22,6 +24,7 @@ Future<void> main() async {
 
   runApp(MaterialApp(
     debugShowCheckedModeBanner: false,
+    navigatorObservers: [homeRouteObserver],
     // Every route, dialog and game canvas is laid out in design units and
     // scaled to the real screen; see lib/ui/responsive.dart.
     builder: (context, child) => UiScaleBox(child: child!),

@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import '../../collection/fish_collection.dart';
 import '../../collection/fish_species.dart';
@@ -16,14 +17,235 @@ class FishCollectionDialog extends StatefulWidget {
   State<FishCollectionDialog> createState() => _FishCollectionDialogState();
 }
 
-Color _rarityColor(FishSpecies fish) => switch (fish.rarity) {
-      'Ít gặp' => const Color(0xFF4F8A4B),
-      'Hiếm' => const Color(0xFF3A79A8),
-      'Rất hiếm' => const Color(0xFF9150B0),
-      'Huyền thoại' => const Color(0xFFD9932B),
-      'Đồ thất lạc' => DS.mutedText,
-      _ => DS.soft,
+int _rarityLevel(FishSpecies fish) => switch (fish.rarity) {
+      'Elite' => 1,
+      'Special' => 2,
+      'Epic' => 3,
+      'Legend' => 4,
+      _ => 0,
     };
+
+Color _rarityTone(FishSpecies fish) => switch (_rarityLevel(fish)) {
+      1 => const Color(0xFF21754D),
+      2 => const Color(0xFF2568A8),
+      3 => const Color(0xFF823DB4),
+      4 => const Color(0xFFAE5A12),
+      _ => const Color(0xFF665F59),
+    };
+
+List<Color> _rarityFill(FishSpecies fish) => switch (_rarityLevel(fish)) {
+      1 => const [Color(0xFFD5ECCC), Color(0xFF8EC39F)],
+      2 => const [Color(0xFFCAE5FF), Color(0xFF85B5DE)],
+      3 => const [Color(0xFFDDC1F2), Color(0xFFB07BD1)],
+      4 => const [Color(0xFFFFDF85), Color(0xFFDFAC43)],
+      _ => const [Color(0xFFFFFBEF), Color(0xFFF3E4C8)],
+    };
+
+/// Paint-only animation: the grid and text do not rebuild for each sparkle.
+class _RarityAura extends StatefulWidget {
+  const _RarityAura(this.fish);
+  final FishSpecies fish;
+  @override
+  State<_RarityAura> createState() => _RarityAuraState();
+}
+
+class _RarityAuraState extends State<_RarityAura>
+    with SingleTickerProviderStateMixin {
+  late final _motion =
+      AnimationController(vsync: this, duration: const Duration(seconds: 4));
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _syncMotion();
+  }
+
+  @override
+  void didUpdateWidget(covariant _RarityAura oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    _syncMotion();
+  }
+
+  void _syncMotion() {
+    if (MediaQuery.disableAnimationsOf(context) ||
+        _rarityLevel(widget.fish) < 3) {
+      _motion.stop();
+    } else if (!_motion.isAnimating) {
+      _motion.repeat();
+    }
+  }
+
+  @override
+  void dispose() {
+    _motion.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => RepaintBoundary(
+          child: CustomPaint(
+        painter: _RarityOrnament(
+            _rarityTone(widget.fish), _rarityLevel(widget.fish), _motion),
+      ));
+}
+
+class _RarityOrnament extends CustomPainter {
+  _RarityOrnament(this.color, this.level, this.motion) : super(repaint: motion);
+  final Color color;
+  final int level;
+  final Animation<double> motion;
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (level == 0 || size.isEmpty) return;
+    final rect = (Offset.zero & size).deflate(4);
+    canvas.save();
+    canvas.clipRRect(RRect.fromRectAndRadius(rect, const Radius.circular(8)));
+    final light =
+        Color.lerp(color, const Color(0xFFFFE7AA), level == 4 ? .85 : .35)!;
+    final center = Offset(size.width * .5, size.height * .35);
+    final halo = Rect.fromCircle(center: center, radius: size.width * .48);
+    canvas.drawOval(
+        halo,
+        Paint()
+          ..shader = RadialGradient(colors: [
+            light.withOpacity(.16 + level * .025),
+            light.withOpacity(0),
+          ]).createShader(halo));
+    final pen = Paint()
+      ..color = light.withOpacity(.9)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = level >= 3 ? 1.5 : 1;
+    if (level >= 3) {
+      canvas.drawRRect(
+          RRect.fromRectAndRadius(rect.deflate(3), const Radius.circular(6)),
+          pen..color = light.withOpacity(.55));
+    }
+    // Corner filigree grows more elaborate with rarity.
+    for (final dx in [-1.0, 1.0]) {
+      for (final dy in [-1.0, 1.0]) {
+        final c = Offset(dx < 0 ? rect.left + 4 : rect.right - 4,
+            dy < 0 ? rect.top + 4 : rect.bottom - 4);
+        final length = 8.0 + level * 3;
+        canvas.drawPath(
+            Path()
+              ..moveTo(c.dx - dx * length, c.dy)
+              ..lineTo(c.dx, c.dy)
+              ..lineTo(c.dx, c.dy - dy * length),
+            pen..color = light);
+        if (level >= 2) {
+          final gem = c - Offset(dx * 3, dy * 3);
+          canvas.drawPath(
+              Path()
+                ..addPolygon([
+                  gem + const Offset(0, -3),
+                  gem + const Offset(2.5, 0),
+                  gem + const Offset(0, 3),
+                  gem + const Offset(-2.5, 0),
+                ], true),
+              Paint()..color = light);
+        }
+      }
+    }
+    if (level >= 3) {
+      final sweep = (motion.value * 2.8 - .9) * size.width;
+      canvas.drawPath(
+          Path()
+            ..moveTo(sweep - 22, 0)
+            ..lineTo(sweep + 4, 0)
+            ..lineTo(sweep - size.height * .4 + 4, size.height)
+            ..lineTo(sweep - size.height * .4 - 22, size.height)
+            ..close(),
+          Paint()..color = Colors.white.withOpacity(level == 4 ? .08 : .05));
+      for (var i = 0; i < level + 1; i++) {
+        final a = i * 2.4;
+        final p = Offset(size.width * (.12 + .76 * (.5 + .5 * math.sin(a))),
+            size.height * (.16 + .64 * (.5 + .5 * math.cos(a))));
+        final pulse =
+            .35 + .65 * (.5 + .5 * math.sin(motion.value * math.pi * 2 + i));
+        final r = (level == 4 ? 4.0 : 3.0) * pulse;
+        canvas.drawPath(
+            Path()
+              ..moveTo(p.dx, p.dy - r)
+              ..quadraticBezierTo(p.dx + 1, p.dy - 1, p.dx + r, p.dy)
+              ..quadraticBezierTo(p.dx + 1, p.dy + 1, p.dx, p.dy + r)
+              ..quadraticBezierTo(p.dx - 1, p.dy + 1, p.dx - r, p.dy)
+              ..quadraticBezierTo(p.dx - 1, p.dy - 1, p.dx, p.dy - r)
+              ..close(),
+            Paint()..color = light.withOpacity(.8 * pulse));
+      }
+    }
+    if (level == 4) {
+      final x = size.width * .5;
+      canvas.drawPath(
+          Path()
+            ..addPolygon([
+              Offset(x - 10, 8),
+              Offset(x - 5, 12),
+              Offset(x, 5),
+              Offset(x + 5, 12),
+              Offset(x + 10, 8),
+              Offset(x + 7, 17),
+              Offset(x - 7, 17),
+            ], true),
+          Paint()..color = const Color(0xFFE8AA38));
+    }
+    canvas.restore();
+  }
+
+  @override
+  bool shouldRepaint(covariant _RarityOrnament old) =>
+      color != old.color || level != old.level || motion != old.motion;
+}
+
+class _RarityTag extends StatelessWidget {
+  const _RarityTag(this.fish);
+  final FishSpecies fish;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = _rarityTone(fish);
+    final level = _rarityLevel(fish);
+    final icon = switch (level) {
+      1 => Icons.shield_outlined,
+      2 => Icons.diamond_outlined,
+      3 => Icons.auto_awesome_rounded,
+      4 => Icons.workspace_premium_rounded,
+      _ => Icons.label_outline_rounded
+    };
+    final foreground = level == 0
+        ? color
+        : (level == 4 ? const Color(0xFF69350C) : Colors.white);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+      decoration: BoxDecoration(
+          gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: level == 0
+                  ? [const Color(0xFFF2EFEB), const Color(0xFFE7E1DB)]
+                  : level == 4
+                      ? [const Color(0xFFFFE5A1), const Color(0xFFECAF35)]
+                      : [
+                          Color.lerp(color, Colors.white, .1)!,
+                          Color.lerp(color, Colors.black, .2)!
+                        ]),
+          boxShadow: level >= 3
+              ? [BoxShadow(color: color.withOpacity(.25), blurRadius: 5)]
+              : null,
+          borderRadius: BorderRadius.circular(7),
+          border: Border.all(color: color)),
+      child: Row(mainAxisSize: MainAxisSize.min, children: [
+        Icon(icon, size: 12, color: foreground),
+        const SizedBox(width: 4),
+        Text(fish.rarity,
+            style: TextStyle(
+                color: foreground,
+                fontSize: 10,
+                height: 1.1,
+                fontWeight: FontWeight.w900)),
+      ]),
+    );
+  }
+}
 
 class _FishCollectionDialogState extends State<FishCollectionDialog> {
   bool _junkTab = false;
@@ -48,10 +270,6 @@ class _FishCollectionDialogState extends State<FishCollectionDialog> {
   @override
   Widget build(BuildContext context) {
     final screen = MediaQuery.sizeOf(context);
-    final found = FishSpecies.values
-        .where((fish) => widget.collection.countOf(fish) > 0)
-        .length;
-    final total = FishSpecies.values.length;
     final width = (screen.width - 48).clamp(320.0, 780.0);
     // Detail column takes a share of the card so narrow (4:3) screens still
     // leave room for the grid.
@@ -65,7 +283,7 @@ class _FishCollectionDialogState extends State<FishCollectionDialog> {
         decoration: DS.card.copyWith(color: DS.cream),
         padding: const EdgeInsets.fromLTRB(14, 10, 14, 12),
         child: Column(children: [
-          _Header(found: found, total: total),
+          const _Header(),
           const SizedBox(height: 8),
           Expanded(
             child:
@@ -95,8 +313,8 @@ class _FishCollectionDialogState extends State<FishCollectionDialog> {
                       padding: EdgeInsets.zero,
                       gridDelegate:
                           const SliverGridDelegateWithMaxCrossAxisExtent(
-                              maxCrossAxisExtent: 128,
-                              mainAxisExtent: 112,
+                              maxCrossAxisExtent: 170,
+                              mainAxisExtent: 132,
                               crossAxisSpacing: 8,
                               mainAxisSpacing: 8),
                       itemCount: _entries.length,
@@ -128,45 +346,13 @@ class _FishCollectionDialogState extends State<FishCollectionDialog> {
 }
 
 class _Header extends StatelessWidget {
-  const _Header({required this.found, required this.total});
-  final int found, total;
+  const _Header();
 
   @override
   Widget build(BuildContext context) => Row(children: [
         const Icon(Icons.menu_book_rounded, color: DS.wood, size: 26),
         const SizedBox(width: 8),
-        const Text('BỘ SƯU TẬP', style: DS.title),
-        const SizedBox(width: 16),
-        Expanded(
-          child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text('ĐÃ KHÁM PHÁ $found/$total',
-                    style: const TextStyle(
-                        color: DS.label,
-                        fontSize: 11,
-                        fontWeight: FontWeight.w900,
-                        letterSpacing: 1.2)),
-                const SizedBox(height: 3),
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(6),
-                  child: Container(
-                    height: 10,
-                    decoration: BoxDecoration(
-                        color: DS.mutedFill,
-                        border: Border.all(color: DS.mutedBorder),
-                        borderRadius: BorderRadius.circular(6)),
-                    child: FractionallySizedBox(
-                      alignment: Alignment.centerLeft,
-                      widthFactor: total == 0 ? 0 : found / total,
-                      child: const ColoredBox(color: DS.gold),
-                    ),
-                  ),
-                ),
-              ]),
-        ),
-        const SizedBox(width: 12),
+        const Expanded(child: Text('BỘ SƯU TẬP', style: DS.title)),
         _CloseButton(onTap: () => Navigator.pop(context)),
       ]);
 }
@@ -236,39 +422,49 @@ class _FishTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final locked = count == 0;
-    final accent = locked ? _mysteryEdge : _rarityColor(fish);
+    final level = _rarityLevel(fish);
+    final tone = _rarityTone(fish);
     return GestureDetector(
       onTap: onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 160),
         decoration: BoxDecoration(
-          color: locked ? null : Colors.white,
-          gradient: locked ? _mysteryGradient : null,
+          gradient: locked
+              ? _mysteryGradient
+              : LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: _rarityFill(fish)),
           borderRadius: BorderRadius.circular(14),
           border: Border.all(
-              color: selected ? DS.goldEdge : (locked ? _mysteryEdge : DS.wood),
-              width: selected ? 3 : 2),
-          boxShadow: selected
-              ? const [BoxShadow(color: Color(0x66FFC24D), blurRadius: 8)]
+              color: level > 0
+                  ? tone
+                  : (selected
+                      ? DS.goldEdge
+                      : (locked ? _mysteryEdge : DS.wood)),
+              width: level > 0 ? (selected ? 5 : 4) : (selected ? 3 : 2)),
+          boxShadow: level > 0
+              ? [
+                  BoxShadow(
+                      color: tone.withOpacity(selected ? .3 : .15),
+                      blurRadius: 4.0 + level * 2,
+                      spreadRadius: selected ? 1 : 0)
+                ]
               : null,
         ),
         child: ClipRRect(
           borderRadius: BorderRadius.circular(11),
           child: Stack(children: [
-            Positioned(
-                left: 0,
-                right: 0,
-                top: 0,
-                height: 5,
-                child: ColoredBox(color: accent)),
+            if (level > 0)
+              Positioned.fill(child: IgnorePointer(child: _RarityAura(fish))),
             Positioned.fill(
-              top: 5,
+              top: 8,
               child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     SizedBox(
-                        width: 82,
-                        height: 50,
+                        width: 100,
+                        height: 62,
                         child: locked
                             ? _MysteryArt(fish: fish, mark: 26)
                             : CustomPaint(painter: FishingFishArt(fish))),
@@ -280,17 +476,12 @@ class _FishTile extends StatelessWidget {
                         child: Text(locked ? '???' : fish.label,
                             style: TextStyle(
                                 color: locked ? DS.gold : DS.ink,
-                                fontSize: 13,
+                                fontSize: 14,
                                 fontWeight: FontWeight.w900)),
                       ),
                     ),
-                    Text(locked ? 'Chưa khám phá' : fish.rarity,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                            color: locked ? _mysteryText : accent,
-                            fontSize: 10,
-                            fontWeight: FontWeight.w700)),
+                    const SizedBox(height: 5),
+                    _RarityTag(fish),
                   ]),
             ),
             if (!locked)
@@ -301,7 +492,7 @@ class _FishTile extends StatelessWidget {
                   padding:
                       const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
                   decoration: BoxDecoration(
-                      color: DS.gold,
+                      color: DS.cream,
                       borderRadius: BorderRadius.circular(8),
                       border: Border.all(color: DS.goldEdge, width: 1.5)),
                   child: Text('×$count',
@@ -345,13 +536,21 @@ class _DetailPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final locked = count == 0;
-    final accent = locked ? _mysteryEdge : _rarityColor(fish);
+    final level = _rarityLevel(fish);
+    final tone = _rarityTone(fish);
     return Container(
       padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
-          color: const Color(0xFFFFFBEF),
+          gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: _rarityFill(fish)),
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: DS.wood, width: 2)),
+          border: Border.all(
+              color: level > 0 ? tone : DS.wood, width: level > 0 ? 4 : 2),
+          boxShadow: level > 0
+              ? [BoxShadow(color: tone.withOpacity(.2), blurRadius: 10)]
+              : null),
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         Expanded(
           flex: 5,
@@ -363,9 +562,13 @@ class _DetailPanel extends StatelessWidget {
                   end: Alignment.bottomCenter,
                   colors: locked
                       ? const [Color(0xFF4A3B6B), Color(0xFF241B38)]
-                      : const [Color(0xFF9ED8D2), Color(0xFF4E9A9A)]),
+                      : level > 0
+                          ? _rarityFill(fish)
+                          : const [Color(0xFF9ED8D2), Color(0xFF4E9A9A)]),
             ),
             child: Stack(children: [
+              if (level > 0)
+                Positioned.fill(child: IgnorePointer(child: _RarityAura(fish))),
               for (final b in const [
                 Offset(.15, .7),
                 Offset(.82, .25),
@@ -406,17 +609,9 @@ class _DetailPanel extends StatelessWidget {
                       fontWeight: FontWeight.w900)),
             ),
           ),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-            decoration: BoxDecoration(
-                color: accent, borderRadius: BorderRadius.circular(8)),
-            child: Text(fish.rarity,
-                style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 10,
-                    fontWeight: FontWeight.w900)),
-          ),
         ]),
+        const SizedBox(height: 6),
+        Align(alignment: Alignment.centerLeft, child: _RarityTag(fish)),
         const SizedBox(height: 2),
         Text(locked ? 'Chưa câu được' : 'Đã câu: $count lần',
             style: TextStyle(
@@ -483,7 +678,6 @@ const _mysteryGradient = LinearGradient(
     end: Alignment.bottomCenter,
     colors: [Color(0xFF4A3B6B), Color(0xFF2A2040)]);
 const _mysteryEdge = Color(0xFF6E5A96);
-const _mysteryText = Color(0xFFB9A8D6);
 
 /// Undiscovered entry: dark silhouette of the real shape with a glowing "?".
 class _MysteryArt extends StatelessWidget {

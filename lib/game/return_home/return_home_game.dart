@@ -1,4 +1,5 @@
 import 'dart:async';
+import '../../audio/game_audio.dart';
 import '../../camp/camp_state.dart';
 import '../cats/cat_breed.dart';
 import '../cats/home_attack.dart';
@@ -118,11 +119,15 @@ class ReturnHomeGame extends FlameGame {
   Future<void> chooseCat(String type) async {
     if (started || _choosing) return;
     _choosing = true;
-    selectedCat = type;
-    await _cat.changeType(type);
-    started = true;
-    overlays.remove('chooseCat');
-    overlays.add('skill');
+    try {
+      await _cat.changeType(type);
+      selectedCat = type;
+      started = true;
+      overlays.remove('chooseCat');
+      overlays.add('skill');
+    } finally {
+      _choosing = false;
+    }
   }
 
   void activateSkill() {
@@ -131,6 +136,7 @@ class ReturnHomeGame extends FlameGame {
     skillCooldown = CatBreed.of(selectedCat).homeSkill.cooldown -
         (CampState.instance.bonded(selectedCat) ? 1 : 0);
     _cat.activateSkill();
+    GameAudio.instance.play(GameSound.meow);
   }
 
   // ---- Secondary skills -------------------------------------------------
@@ -1133,6 +1139,7 @@ class ReturnHomeGame extends FlameGame {
     if (road.hasPassedGate(_cat.hitbox) && bossDefeated) {
       progress = 1;
       finished = true;
+      GameAudio.instance.play(GameSound.win);
       reward = fish * 2 + stars * 10 + (bossDefeated ? bossBonus : 0);
       unawaited(CampState.instance.addCoins(reward));
       cancelAim();
@@ -1288,11 +1295,13 @@ class ReturnHomeGame extends FlameGame {
         lives = min(startingLives, lives + 1);
       }
       _pickups.remove(pickup);
+      GameAudio.instance.play(GameSound.pickup);
       pickup.removeFromParent();
     }
   }
 
   void _respawn() {
+    GameAudio.instance.play(GameSound.lose);
     falls += 1;
     // Release the arena before respawning; the checkpoint may be outside it.
     if (bossFight) {

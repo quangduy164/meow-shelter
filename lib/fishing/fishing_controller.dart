@@ -1,4 +1,5 @@
 import '../camp/camp_state.dart';
+import '../audio/game_audio.dart';
 import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart';
@@ -81,6 +82,10 @@ class FishingController extends ChangeNotifier {
 
   void setWorldHour(double hour) => _worldHour = hour;
 
+  void _vibrate(Future<void> Function() feedback) {
+    if (!_disposed && GameAudio.instance.vibrationEnabled.value) feedback();
+  }
+
   /// Horizontal swipe while reeling; push against the fish direction.
   void addSteer(double delta) {
     if (_phase != FishingPhase.reeling) return;
@@ -101,6 +106,14 @@ class FishingController extends ChangeNotifier {
       };
 
   void _setPhase(FishingPhase phase) {
+    final sound = switch (phase) {
+      FishingPhase.casting => GameSound.splash,
+      FishingPhase.bite => GameSound.bite,
+      FishingPhase.caught => GameSound.win,
+      FishingPhase.lost => GameSound.lose,
+      _ => null,
+    };
+    if (sound != null) GameAudio.instance.play(sound);
     _phase = phase;
     _elapsed = 0;
     _pulling = false;
@@ -138,7 +151,7 @@ class FishingController extends ChangeNotifier {
       case FishingPhase.waiting:
         if (_elapsed >= _wait) {
           _setPhase(FishingPhase.bite);
-          HapticFeedback.mediumImpact();
+          _vibrate(HapticFeedback.mediumImpact);
         }
       case FishingPhase.bite:
         if (_elapsed > 1.5) _lose('Cá đã nhả mồi');
@@ -158,7 +171,7 @@ class FishingController extends ChangeNotifier {
           if (_comboTime >= .8) {
             _comboTime = 0;
             _combo++;
-            HapticFeedback.selectionClick();
+            _vibrate(HapticFeedback.selectionClick);
           }
         } else if (_pulling) {
           _comboTime = 0;
@@ -191,7 +204,7 @@ class FishingController extends ChangeNotifier {
   void _lose(String message) {
     _error = message;
     _setPhase(FishingPhase.lost);
-    HapticFeedback.heavyImpact();
+    _vibrate(HapticFeedback.heavyImpact);
   }
 
   void cast(Offset position) {
@@ -203,7 +216,7 @@ class FishingController extends ChangeNotifier {
     _fight = _random.nextDouble() * math.pi * 2;
     _error = null;
     _setPhase(FishingPhase.casting);
-    HapticFeedback.selectionClick();
+    _vibrate(HapticFeedback.selectionClick);
     notifyListeners();
   }
 
@@ -219,7 +232,7 @@ class FishingController extends ChangeNotifier {
       _tension = .32;
       _progress = .12;
       _setPhase(FishingPhase.reeling);
-      HapticFeedback.mediumImpact();
+      _vibrate(HapticFeedback.mediumImpact);
     } else if (_phase == FishingPhase.waiting) {
       _lose('Giật cần quá sớm');
     }
@@ -249,7 +262,7 @@ class FishingController extends ChangeNotifier {
       await CampState.instance.addCoins(2);
       if (_disposed) return;
       _setPhase(FishingPhase.caught);
-      HapticFeedback.heavyImpact();
+      _vibrate(HapticFeedback.heavyImpact);
     } catch (_) {
       if (_disposed) return;
       _error = 'Chưa lưu được cá';

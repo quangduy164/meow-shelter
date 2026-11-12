@@ -52,7 +52,7 @@ class HomeBackgroundPainter extends CustomPainter {
     if (christmas) {
       paintWinterShelter(canvas, Offset(w - 95, 486));
     } else {
-      _shelter(canvas, Offset(w - 90, 440));
+      _shelter(canvas, Offset(w - 95, 486));
     }
     if (!christmas) _flowers(canvas, w);
     _vignette(canvas, w);
@@ -127,72 +127,296 @@ class HomeBackgroundPainter extends CustomPainter {
       paintWinterPath(canvas, w);
       return;
     }
+    final door = Offset(w - 95, 486);
     final path = Path()
-      ..moveTo(w * .05, _h)
-      ..cubicTo(w * .3, 540, w * .55, 600, w * .75, 520)
-      ..quadraticBezierTo(w * .85, 490, w - 90, 486);
+      ..moveTo(w * .08, 610)
+      ..cubicTo(w * .26, 523, w * .57, 594, w * .76, 531)
+      ..quadraticBezierTo(w * .87, 494, door.dx - 13, door.dy)
+      ..lineTo(door.dx + 13, door.dy)
+      ..quadraticBezierTo(w * .88, 510, w * .78, 550)
+      ..cubicTo(w * .60, 623, w * .35, 568, w * .23, 610)
+      ..close();
+    canvas.drawPath(path.shift(const Offset(0, 5)),
+        Paint()..color = const Color(0x44516F43));
     canvas.drawPath(
         path,
         Paint()
-          ..color =
-              christmas ? const Color(0xFFD1DFE5) : const Color(0xFFE9CF9E)
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = 34
-          ..strokeCap = StrokeCap.round);
-    final paw = Paint()..color = const Color(0x55A07A4A);
-    for (final metric in path.computeMetrics()) {
-      for (var d = 30.0; d < metric.length - 40; d += 46) {
+          ..shader = const LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [Color(0xFFCCAA76), Color(0xFFF0D9AF)])
+              .createShader(const Rect.fromLTWH(0, 480, 100, 130)));
+    final center = Path()
+      ..moveTo(w * .155, 610)
+      ..cubicTo(w * .31, 545, w * .59, 610, w * .77, 541)
+      ..quadraticBezierTo(w * .88, 502, door.dx, door.dy);
+    canvas.save();
+    canvas.clipPath(path);
+    final random = math.Random(38);
+    for (var i = 0; i < 140; i++) {
+      final p =
+          Offset(random.nextDouble() * w, 490 + random.nextDouble() * 120);
+      canvas.drawOval(
+          Rect.fromCenter(
+              center: p, width: 1.5 + random.nextDouble() * 3, height: 1.4),
+          Paint()..color = const Color(0x448F7550));
+    }
+    final paw = Paint()..color = const Color(0x668B7050);
+    for (final metric in center.computeMetrics()) {
+      for (var d = 24.0; d < metric.length - 25; d += 30) {
         final t = metric.getTangentForOffset(d)!;
-        final side = (d ~/ 46).isEven ? 6.0 : -6.0;
-        final n = Offset(-t.vector.dy, t.vector.dx) * side;
-        canvas.drawCircle(t.position + n, 4, paw);
+        final side = (d ~/ 30).isEven ? 4.5 : -4.5;
+        canvas.save();
+        canvas.translate(t.position.dx - t.vector.dy * side,
+            t.position.dy + t.vector.dx * side);
+        canvas.rotate(math.atan2(t.vector.dy, t.vector.dx));
+        canvas.drawOval(const Rect.fromLTWH(-3, -2, 6, 4), paw);
+        for (var toe = 0; toe < 3; toe++) {
+          canvas.drawCircle(Offset(3, -2.4 + toe * 2.4), 1.1, paw);
+        }
+        canvas.restore();
+      }
+    }
+    canvas.restore();
+    // Small stones and tufts break up the edges of the cleared dirt trail.
+    for (final metric in path.computeMetrics()) {
+      for (var d = 18.0; d < metric.length; d += 38) {
+        final t = metric.getTangentForOffset(d)!;
+        if (t.position.dy > 598) continue;
+        canvas.drawOval(
+            Rect.fromCenter(
+                center: t.position + const Offset(0, 2), width: 7, height: 4),
+            Paint()..color = const Color(0xFF8B9A75));
+        canvas.drawLine(
+            t.position - const Offset(6, 0),
+            t.position - const Offset(9, 6),
+            Paint()
+              ..color = const Color(0xFF73935A)
+              ..strokeWidth = 1.4
+              ..strokeCap = StrokeCap.round);
       }
     }
   }
 
-  /// The shelter the path leads to: a small barn with a paw sign and a lit
-  /// window.
+  /// A timber cottage with a tiled roof and a porch at the end of the trail.
   void _shelter(Canvas canvas, Offset base) {
     canvas.save();
     canvas.translate(base.dx, base.dy);
-    canvas.drawOval(const Rect.fromLTWH(-70, 36, 140, 18),
-        Paint()..color = const Color(0x33402A1A));
-    canvas.drawRect(const Rect.fromLTWH(-56, -10, 112, 56),
-        Paint()..color = const Color(0xFFF2D7B4));
+    const wood = Color(0xFF79543F);
+    const cream = Color(0xFFFFE9BB);
+    canvas.drawOval(const Rect.fromLTWH(-88, -5, 180, 24),
+        Paint()..color = const Color(0x44516A42));
+    // Side wall and shaded eaves give the cottage depth.
     canvas.drawPath(
         Path()
-          ..moveTo(-68, -6)
-          ..lineTo(0, -58)
-          ..lineTo(68, -6)
+          ..moveTo(61, -72)
+          ..lineTo(80, -60)
+          ..lineTo(80, 0)
+          ..lineTo(61, 6)
           ..close(),
-        Paint()..color = const Color(0xFFC0564A));
-    // Snow on the roof, with soft overhanging edges.
-    if (christmas) {
-      canvas.drawPath(
-          Path()
-            ..moveTo(-68, -8)
-            ..lineTo(0, -60)
-            ..lineTo(68, -8)
-            ..lineTo(48, -12)
-            ..lineTo(0, -48)
-            ..lineTo(-48, -12)
-            ..close(),
-          Paint()..color = const Color(0xFFFFFCF2));
+        Paint()..color = const Color(0xFFB38D68));
+    const wall = Rect.fromLTWH(-62, -75, 124, 78);
+    canvas.drawRect(
+        wall,
+        Paint()
+          ..shader = const LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [Color(0xFFFFEAC1), Color(0xFFE6C293)])
+              .createShader(wall));
+    final plank = Paint()
+      ..color = const Color(0x33835B3D)
+      ..strokeWidth = 1;
+    for (var y = -65.0; y < 0; y += 12) {
+      canvas.drawLine(Offset(-60, y), Offset(60, y), plank);
     }
+    for (final x in [-60.0, 59.0]) {
+      canvas.drawRect(Rect.fromLTWH(x, -70, 3, 73),
+          Paint()..color = const Color(0xFFB18960));
+    }
+    final roof = Path()
+      ..moveTo(-80, -71)
+      ..quadraticBezierTo(-43, -91, -4, -128)
+      ..quadraticBezierTo(0, -131, 5, -128)
+      ..quadraticBezierTo(44, -93, 81, -71)
+      ..quadraticBezierTo(48, -68, 0, -73)
+      ..quadraticBezierTo(-48, -68, -80, -71)
+      ..close();
+    canvas.drawPath(roof.shift(const Offset(0, 5)),
+        Paint()..color = const Color(0x775C4136));
+    canvas.drawPath(
+        roof,
+        Paint()
+          ..shader = const LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                Color(0xFFDB8965),
+                Color(0xFFB65C4F),
+                Color(0xFF8C4546)
+              ]).createShader(const Rect.fromLTWH(-80, -130, 160, 60)));
+    canvas.save();
+    canvas.clipPath(roof);
+    final tile = Paint()
+      ..color = const Color(0x557A3D38)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1;
+    for (var row = 0; row < 5; row++) {
+      final y = -122.0 + row * 12;
+      for (var col = 0; col < 10; col++) {
+        final x = -90.0 + col * 19 + (row.isEven ? 0 : 9);
+        canvas.drawPath(
+            Path()
+              ..moveTo(x, y)
+              ..quadraticBezierTo(x + 9, y + 6, x + 19, y)
+              ..lineTo(x + 19, y - 9),
+            tile);
+      }
+    }
+    canvas.restore();
+    canvas.drawPath(
+        Path()
+          ..moveTo(-79, -71)
+          ..quadraticBezierTo(-44, -93, -2, -129)
+          ..quadraticBezierTo(0, -131, 3, -129)
+          ..quadraticBezierTo(44, -93, 80, -71),
+        Paint()
+          ..color = const Color(0xFFF0AF7B)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 3
+          ..strokeCap = StrokeCap.round);
+    // Paw plaque at the centre of the roof.
+    canvas.drawCircle(const Offset(0, -94), 12.5, Paint()..color = wood);
+    canvas.drawCircle(const Offset(0, -95), 10.5, Paint()..color = cream);
+    final pad = Paint()..color = const Color(0xFFAC5B4A);
+    canvas.drawOval(const Rect.fromLTWH(-4.5, -96, 9, 7), pad);
+    for (final d in const [
+      Offset(-5, -100),
+      Offset(0, -103),
+      Offset(5, -100)
+    ]) {
+      canvas.drawCircle(d, 2.1, pad);
+    }
+    // Lit windows, green shutters and flower boxes.
+    for (final x in [-39.0, 39.0]) {
+      final light = Rect.fromCircle(center: Offset(x, -37), radius: 28);
+      canvas.drawCircle(
+          Offset(x, -37),
+          28,
+          Paint()
+            ..shader = const RadialGradient(
+                    colors: [Color(0x44FFE1A0), Color(0x00FFE1A0)])
+                .createShader(light));
+      final window = RRect.fromRectAndRadius(
+          Rect.fromLTWH(x - 12, -55, 24, 29), const Radius.circular(4));
+      canvas.drawRRect(window.inflate(2.5), Paint()..color = wood);
+      canvas.drawRRect(
+          window,
+          Paint()
+            ..shader = const LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [Color(0xFFFFEDB6), Color(0xFFEAB96D)])
+                .createShader(window.outerRect));
+      final frame = Paint()
+        ..color = wood
+        ..strokeWidth = 1.6;
+      canvas.drawLine(Offset(x, -55), Offset(x, -26), frame);
+      canvas.drawLine(Offset(x - 12, -41), Offset(x + 12, -41), frame);
+      for (final side in [-1.0, 1.0]) {
+        final sx = x + side * 17;
+        canvas.drawRRect(
+            RRect.fromRectAndRadius(
+                Rect.fromCenter(center: Offset(sx, -40), width: 6, height: 29),
+                const Radius.circular(1)),
+            Paint()..color = const Color(0xFF5B8068));
+        for (var y = -49.0; y < -28; y += 6) {
+          canvas.drawLine(
+              Offset(sx - 2, y),
+              Offset(sx + 2, y),
+              Paint()
+                ..color = const Color(0xFF85A083)
+                ..strokeWidth = 1);
+        }
+      }
+      final leaves = Paint()..color = const Color(0xFF648457);
+      for (var i = 0; i < 5; i++) {
+        final p = Offset(x - 12 + i * 6, -21.0 - (i.isEven ? 3 : 0));
+        canvas.drawOval(
+            Rect.fromCenter(center: p, width: 8, height: 6), leaves);
+        canvas.drawCircle(p - const Offset(0, 3), 2.4,
+            Paint()..color = i.isEven ? const Color(0xFFEBA5A1) : cream);
+      }
+      canvas.drawRRect(
+          RRect.fromRectAndRadius(
+              Rect.fromLTWH(x - 16, -21, 32, 9), const Radius.circular(2)),
+          Paint()..color = const Color(0xFFAC7153));
+      canvas.drawLine(
+          Offset(x - 16, -21),
+          Offset(x + 16, -21),
+          Paint()
+            ..color = const Color(0xFFD69E70)
+            ..strokeWidth = 2);
+    }
+    final entry = RRect.fromRectAndCorners(
+        const Rect.fromLTWH(-14, -43, 28, 46),
+        topLeft: const Radius.circular(14),
+        topRight: const Radius.circular(14));
+    canvas.drawRRect(
+        entry.inflate(3), Paint()..color = const Color(0xFFB3875A));
+    canvas.drawRRect(
+        entry,
+        Paint()
+          ..shader = const LinearGradient(
+                  colors: [Color(0xFF98724F), Color(0xFF684B3C)])
+              .createShader(entry.outerRect));
+    for (final x in [-6.0, 2.0]) {
+      canvas.drawLine(
+          Offset(x, -32),
+          Offset(x, 1),
+          Paint()
+            ..color = const Color(0x44714A34)
+            ..strokeWidth = 1);
+    }
+    canvas.drawCircle(
+        const Offset(8, -14), 1.8, Paint()..color = const Color(0xFFF2CE7F));
+    // A low awning and porch step connect the doorway to the path.
+    canvas.drawPath(
+        Path()
+          ..moveTo(-22, -44)
+          ..lineTo(-16, -51)
+          ..lineTo(16, -51)
+          ..lineTo(22, -44)
+          ..close(),
+        Paint()..color = const Color(0xFFB96F50));
+    canvas.drawLine(
+        const Offset(-22, -44),
+        const Offset(22, -44),
+        Paint()
+          ..color = const Color(0xFFE2A174)
+          ..strokeWidth = 2);
     canvas.drawRRect(
         RRect.fromRectAndRadius(
-            const Rect.fromLTWH(-14, 14, 28, 32), const Radius.circular(14)),
-        Paint()..color = const Color(0xFF7A4A33));
-    canvas.drawRect(const Rect.fromLTWH(-46, 4, 20, 18),
-        Paint()..color = const Color(0xFFFFE08A));
-    canvas.drawRect(const Rect.fromLTWH(26, 4, 20, 18),
-        Paint()..color = const Color(0xFFFFE08A));
-    canvas.drawCircle(
-        const Offset(0, -24), 12, Paint()..color = const Color(0xFFFFF4DA));
-    final pad = Paint()..color = const Color(0xFFC0564A);
-    canvas.drawCircle(const Offset(0, -21), 4.5, pad);
-    for (final d in const [Offset(-6, -28), Offset(0, -31), Offset(6, -28)]) {
-      canvas.drawCircle(d, 2, pad);
+            const Rect.fromLTWH(-23, 1, 46, 8), const Radius.circular(3)),
+        Paint()..color = const Color(0xFFAB9477));
+    canvas.drawLine(
+        const Offset(-22, 1),
+        const Offset(22, 1),
+        Paint()
+          ..color = const Color(0xFFDDCAA4)
+          ..strokeWidth = 2);
+    for (final side in [-1.0, 1.0]) {
+      final x = side * 70;
+      canvas.drawOval(
+          Rect.fromCenter(center: Offset(x, 0), width: 28, height: 16),
+          Paint()..color = const Color(0xFF648653));
+      canvas.drawOval(
+          Rect.fromCenter(center: Offset(x - 3, -4), width: 20, height: 14),
+          Paint()..color = const Color(0xFF829F61));
+      for (var i = 0; i < 3; i++) {
+        canvas.drawCircle(Offset(x - 7 + i * 6, -5 + (i.isEven ? 2 : -2)), 2,
+            Paint()..color = const Color(0xFFE6B1A2));
+      }
     }
     canvas.restore();
   }
