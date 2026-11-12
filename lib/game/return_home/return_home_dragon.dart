@@ -1,4 +1,5 @@
 import '../../ui/design.dart';
+import '../../audio/game_audio.dart';
 import 'dart:math';
 import 'dart:typed_data';
 
@@ -20,10 +21,12 @@ import 'return_home_skills.dart';
 /// after a single move or an enraged two-move chain the dragon is tired: its
 /// head drops into the lane, glows, takes extra damage and can be scratched.
 class ReturnHomeDragon extends PositionComponent {
-  ReturnHomeDragon({required this.road, required Vector2 feet})
+  ReturnHomeDragon(
+      {required this.road, required Vector2 feet, required this.onSound})
       : super(position: feet, priority: 6);
 
   final ReturnHomeRoad road;
+  final void Function(GameSound sound) onSound;
 
   static const double maxHp = 50;
 
@@ -233,6 +236,7 @@ class ReturnHomeDragon extends PositionComponent {
   }
 
   void _beginEvolution() {
+    onSound(GameSound.bossPhase);
     _evolved = true;
     _evolutionT = 0;
     _followUp = null;
@@ -314,8 +318,16 @@ class ReturnHomeDragon extends PositionComponent {
     final world = evolving ? dt : dt * timeScale;
     for (final a in List<DragonAttack>.of(attacks)) {
       if (a is DragonDive) a.follow(target);
+      final wasWarning = a.warning;
       a.tick(
           (a is DragonTailSweep || a is DragonDive) && frozen > 0 ? 0 : world);
+      if (a is DragonFlameLane && wasWarning && !a.warning) {
+        onSound(GameSound.homeFire);
+      }
+      if ((a is DragonMeteor && a.impactNow) ||
+          (a is DragonDive && a.impactNow)) {
+        onSound(GameSound.homeImpact);
+      }
       if (a.done) {
         attacks.remove(a);
         a.removeFromParent();
@@ -515,6 +527,7 @@ class ReturnHomeDragon extends PositionComponent {
   }
 
   void _start(_Move move) {
+    if (move != _Move.idle) onSound(GameSound.bossWarning);
     _move = move;
     _lastCount = move == _last ? _lastCount + 1 : 1;
     _last = move;

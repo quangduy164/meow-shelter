@@ -137,7 +137,15 @@ class ReturnHomeGame extends FlameGame {
     skillCooldown = CatBreed.of(selectedCat).homeSkill.cooldown -
         (CampState.instance.bonded(selectedCat) ? 1 : 0);
     _cat.activateSkill();
-    GameAudio.instance.play(GameSound.meow);
+    GameAudio.instance.playGameplay(
+        switch (selectedCat) {
+          'orange' => GameSound.homeFire,
+          'himalaya' => GameSound.homeIce,
+          'black' => GameSound.homeShadow,
+          'scottish' => GameSound.homeShield,
+          _ => GameSound.homeHeal,
+        },
+        priority: 1);
   }
 
   // ---- Secondary skills -------------------------------------------------
@@ -314,12 +322,39 @@ class ReturnHomeGame extends FlameGame {
       final decoy = _decoy!;
       if (_blinkWithDecoy(decoy.lureCenter.clone(), triggerCombo: false)) {
         decoy.recalled = true;
+        GameAudio.instance.playGameplay(GameSound.homeShadow, priority: 1);
       }
       return;
     }
     if (attackCooldown[slot] > 0) return;
     final attack = attacks[slot];
-    if (_cast(attack, stick)) attackCooldown[slot] = attack.cooldown;
+    if (_cast(attack, stick)) {
+      attackCooldown[slot] = attack.cooldown;
+      GameAudio.instance.playGameplay(
+          switch (attack) {
+            HomeAttack.fireball ||
+            HomeAttack.flameBreath ||
+            HomeAttack.fireBomb =>
+              GameSound.homeFire,
+            HomeAttack.iceShard ||
+            HomeAttack.frostNova ||
+            HomeAttack.iceBridge =>
+              GameSound.homeIce,
+            HomeAttack.shadowStep ||
+            HomeAttack.decoy ||
+            HomeAttack.timeStop =>
+              GameSound.homeShadow,
+            HomeAttack.roar ||
+            HomeAttack.stoneWall ||
+            HomeAttack.reflect =>
+              GameSound.homeShield,
+            HomeAttack.magnet ||
+            HomeAttack.catEye ||
+            HomeAttack.bolt =>
+              GameSound.homeSupport,
+          },
+          priority: 1);
+    }
   }
 
   bool _blinkWithDecoy(Vector2 target, {bool triggerCombo = true}) {
@@ -572,6 +607,7 @@ class ReturnHomeGame extends FlameGame {
 
   /// One point of damage; logs need two, everything else breaks at once.
   void _hurt(ReturnHomeObstacle o) {
+    GameAudio.instance.playGameplay(GameSound.homeImpact);
     o.damage += 1;
     if (o is DragonBrood) {
       if (o.damage >= 2) _destroy(o);
@@ -830,6 +866,8 @@ class ReturnHomeGame extends FlameGame {
   }
 
   void _destroy(ReturnHomeObstacle o, {bool icy = false}) {
+    GameAudio.instance
+        .playGameplay(icy ? GameSound.homeIce : GameSound.homeImpact);
     if (o is DragonBrood) o.dismiss();
     _spawner.obstacles.remove(o);
     _contacts.remove(o);
@@ -853,9 +891,17 @@ class ReturnHomeGame extends FlameGame {
   // ---- Boss ---------------------------------------------------------------
 
   void _startBoss(double cameraX) {
+    GameAudio.instance.playGameplay(GameSound.bossRoar, priority: 2);
     final x = road.worldWidth - 236;
     final dragon = ReturnHomeDragon(
-        road: road, feet: Vector2(x, road.centerY(x) + road.halfWidth(x) * .1))
+        road: road,
+        feet: Vector2(x, road.centerY(x) + road.halfWidth(x) * .1),
+        onSound: (sound) => GameAudio.instance.playGameplay(sound,
+            priority: sound == GameSound.bossPhase
+                ? 2
+                : sound == GameSound.bossWarning
+                    ? 1
+                    : 0))
       ..arenaLeft = _arenaLeft
       ..target = _catCenter;
     _dragon = dragon;
@@ -871,6 +917,7 @@ class ReturnHomeGame extends FlameGame {
     if (dragon == null) return;
     final dealt = dragon.hurt(amount);
     if (dealt <= 0) return;
+    GameAudio.instance.playGameplay(GameSound.homeImpact);
     if (dragon.evolving) _cat.invulnerable = max(_cat.invulnerable, .3);
     _world.add(ReturnHomeDamageText(
         position: at + Vector2(0, -24),
@@ -898,6 +945,7 @@ class ReturnHomeGame extends FlameGame {
     if (dragon.defeated) {
       if (!bossDefeated) {
         bossDefeated = true;
+        GameAudio.instance.playGameplay(GameSound.bossWin, priority: 3);
         fish += 10;
         zoneName = 'Đã lưu checkpoint';
         zoneSubtitle = '';
@@ -975,6 +1023,7 @@ class ReturnHomeGame extends FlameGame {
     }
     _hitCooldown = hitCooldown;
     if (reflectTime > 0 && !(selectedCat == 'scottish' && _cat.shield)) {
+      GameAudio.instance.playGameplay(GameSound.homeShield, priority: 1);
       _reflectAura.flash();
       _damageBoss(2, dragon.core);
       return;
@@ -982,6 +1031,7 @@ class ReturnHomeGame extends FlameGame {
     if (_cat.consumeShield()) return;
     _cat.bumpAwayFrom(dragon.core);
     lives -= 1;
+    GameAudio.instance.playGameplay(GameSound.homeHit, priority: 2);
     _cat.invulnerable = hitCooldown;
     if (lives <= 0) _respawn();
   }
@@ -1159,7 +1209,7 @@ class ReturnHomeGame extends FlameGame {
     if (road.hasPassedGate(_cat.hitbox) && bossDefeated) {
       progress = 1;
       finished = true;
-      GameAudio.instance.play(GameSound.win);
+      GameAudio.instance.playGameplay(GameSound.homeWin, priority: 3);
       reward = fish * 2 + stars * 10 + (bossDefeated ? bossBonus : 0);
       unawaited(CampState.instance.addCoins(reward));
       cancelAim();
@@ -1213,6 +1263,7 @@ class ReturnHomeGame extends FlameGame {
             !_contacts.contains(obstacle)) {
           _contacts.add(obstacle);
           obstacle.springT = springShowTime;
+          GameAudio.instance.playGameplay(GameSound.homeShadow, priority: 1);
           _cat.launchBack();
         }
         continue;
@@ -1230,6 +1281,7 @@ class ReturnHomeGame extends FlameGame {
           continue;
         }
         lives -= 1;
+        GameAudio.instance.playGameplay(GameSound.homeHit, priority: 2);
         _cat.bumpAwayFrom(obstacle.position);
         _cat.invulnerable = hitCooldown;
         if (lives <= 0) {
@@ -1242,6 +1294,7 @@ class ReturnHomeGame extends FlameGame {
 
   /// Phản đòn: whatever touches the cat bounces off or breaks, no damage.
   void _reflect(ReturnHomeObstacle o) {
+    GameAudio.instance.playGameplay(GameSound.homeShield, priority: 1);
     _contacts.add(o);
     _reflectAura.flash();
     if (o.kind == ReturnHomeObstacleKind.rock) {
@@ -1291,6 +1344,7 @@ class ReturnHomeGame extends FlameGame {
         .where((c) => c.inWater(_cat.hitbox, dry: _onIce))
         .firstOrNull;
     if (crossing == null) return;
+    GameAudio.instance.playGameplay(GameSound.homeSplash, priority: 2);
     _hitCooldown = hitCooldown;
     if (_cat.invulnerable <= 0 && !_cat.consumeShield()) lives -= 1;
     if (lives <= 0) {
@@ -1305,6 +1359,7 @@ class ReturnHomeGame extends FlameGame {
       final x = biome.from * road.worldWidth;
       if (_cat.position.x >= x && checkpointX < x) {
         checkpointX = x;
+        GameAudio.instance.playGameplay(GameSound.homeCheckpoint, priority: 2);
         checkpointMessage = 1.8;
         zoneName = 'Đã lưu checkpoint';
         zoneSubtitle = '';
@@ -1317,17 +1372,18 @@ class ReturnHomeGame extends FlameGame {
       if (!pickup.hits(_cat.hitbox)) continue;
       if (pickup.kind == ReturnHomePickupKind.fish) {
         fish += 1;
+        GameAudio.instance.playGameplay(GameSound.homeFish);
       } else {
         lives = min(startingLives, lives + 1);
+        GameAudio.instance.playGameplay(GameSound.homeHeal, priority: 1);
       }
       _pickups.remove(pickup);
-      GameAudio.instance.play(GameSound.pickup);
       pickup.removeFromParent();
     }
   }
 
   void _respawn() {
-    GameAudio.instance.play(GameSound.lose);
+    GameAudio.instance.playGameplay(GameSound.homeRespawn, priority: 3);
     falls += 1;
     // Release the arena before respawning; the checkpoint may be outside it.
     if (bossFight) {

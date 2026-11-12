@@ -2,6 +2,7 @@ import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
+import '../../audio/game_audio.dart';
 
 import '../../camp/camp_state.dart';
 import '../../camp/camp_room_painter.dart';
@@ -73,8 +74,14 @@ class _CampScreenState extends State<CampScreen>
 
   Future<void> _pet(CampResident cat) async {
     cat.pet();
+    final reachesBond =
+        (camp.affection[cat.type] ?? 0) == CampState.bondedAffection - 1;
     await camp.pet(cat.type);
-    if (mounted) setState(() {});
+    if (!mounted) return;
+    GameAudio.instance.playGameplay(
+        reachesBond ? GameSound.campBond : GameSound.campPet,
+        priority: reachesBond ? 3 : 2);
+    setState(() {});
   }
 
   @override
@@ -112,6 +119,8 @@ class _CampScreenState extends State<CampScreen>
                           onPanEnd: (_) {
                             final (nx, ny) = camp.positionOf(item);
                             camp.place(item.id, nx, ny);
+                            GameAudio.instance
+                                .playGameplay(GameSound.campPlace, priority: 1);
                             setState(() => _dragging = null);
                           },
                           child: AnimatedScale(
@@ -145,6 +154,8 @@ class _CampScreenState extends State<CampScreen>
                       _carried = cat;
                       cat.pickUp();
                     });
+                    GameAudio.instance
+                        .playGameplay(GameSound.campLift, priority: 1);
                   },
                   onPanUpdate: (d) => _carried != cat
                       ? null
@@ -158,6 +169,8 @@ class _CampScreenState extends State<CampScreen>
                       _carried = null;
                       cat.drop();
                     });
+                    GameAudio.instance
+                        .playGameplay(GameSound.campDrop, priority: 1);
                   },
                   onPanCancel: () {
                     if (_carried != cat) return;
@@ -254,8 +267,10 @@ class _CampScreenState extends State<CampScreen>
         }),
       );
 
-  void _toggle(_Panel p) =>
-      setState(() => _panel = _panel == p ? _Panel.none : p);
+  void _toggle(_Panel p) {
+    GameAudio.instance.play(GameSound.click);
+    setState(() => _panel = _panel == p ? _Panel.none : p);
+  }
 }
 
 class _Chip extends StatelessWidget {
@@ -375,7 +390,10 @@ class _ShopBarState extends State<_ShopBar> {
       padding: const EdgeInsets.only(right: DS.spaceXs),
       child: ChoiceChip(
         selected: on,
-        onSelected: (_) => setState(() => _tab = c),
+        onSelected: (_) {
+          GameAudio.instance.play(GameSound.click);
+          setState(() => _tab = c);
+        },
         avatar: Icon(c == null ? Icons.pets_rounded : _categoryIcons[c],
             size: 16, color: DS.ink),
         label: Text(c?.label ?? 'Mèo'),
@@ -458,7 +476,11 @@ class _ShopBarState extends State<_ShopBar> {
                                 fontWeight: FontWeight.w900))),
                         onPressed: afford
                             ? () async {
-                                await camp.buyCat(breed.id);
+                                final bought = await camp.buyCat(breed.id);
+                                if (!mounted || !bought) return;
+                                GameAudio.instance.playGameplay(
+                                    GameSound.campWelcome,
+                                    priority: 3);
                                 setState(() {});
                                 widget.onBought();
                               }
@@ -524,7 +546,11 @@ class _ShopBarState extends State<_ShopBar> {
                                 fontWeight: FontWeight.w900))),
                         onPressed: afford
                             ? () async {
-                                await camp.buy(item);
+                                final bought = await camp.buy(item);
+                                if (!mounted || !bought) return;
+                                GameAudio.instance.playGameplay(
+                                    GameSound.campBuy,
+                                    priority: 3);
                                 setState(() {});
                                 widget.onBought();
                               }

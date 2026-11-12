@@ -131,12 +131,14 @@ extension CatCatchBehaviour on CatComponent {
   void _eat() {
     _meals += 1;
     if (_meals < _mealsNeeded) {
+      GameAudio.instance.playRescue(GameSound.catEat);
       _dialogue
           .say(isBoss ? 'Bụng to lắm, thêm cá!' : 'Chưa no! Thêm cá nữa đi!');
       _pickNextAction();
       return;
     }
     hasEaten = true;
+    GameAudio.instance.playRescue(GameSound.catFed, important: true);
     _setState(CatState.idle);
     if (catType == 'orange') {
       catchWindow.open(CatCatchRule.orangeNap);
@@ -155,11 +157,13 @@ extension CatCatchBehaviour on CatComponent {
     _setState(CatState.idle);
     _currentActionDuration = .8;
     if (_playTaps < _tapsNeeded) {
+      GameAudio.instance.playRescue(GameSound.catGrab);
       _dialogue.say('Chơi nữa đi!');
       return;
     }
     _playTaps = 0;
     hasEaten = true;
+    GameAudio.instance.playRescue(GameSound.catReady, important: true);
     catchWindow.open();
     _dialogue.say('Mệt rồi, bế em đi…');
   }

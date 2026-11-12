@@ -1,4 +1,5 @@
 import 'dart:math';
+import '../../audio/game_audio.dart';
 
 import 'package:flame/components.dart';
 import 'package:flutter/painting.dart';
@@ -232,6 +233,7 @@ class ReturnHomeCat extends SpriteAnimationGroupComponent<CatState>
 
   bool consumeShield() {
     if (!shield) return false;
+    GameAudio.instance.playGameplay(GameSound.homeShield, priority: 2);
     shield = false;
     _blessingShieldTimer = 0;
     invulnerable = .6;

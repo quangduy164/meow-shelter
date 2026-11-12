@@ -46,8 +46,23 @@ class HerdPatrol {
       : Vector2(cos(time + phase), 0);
 }
 
+enum HerdSound {
+  joined,
+  ready,
+  locked,
+  hit,
+  scattered,
+  bounced,
+  vendor,
+  storm,
+  overheated,
+  iceWarning,
+  iceBreak,
+}
+
 class HerdRound {
-  HerdRound({int? seed}) : random = Random(seed);
+  HerdRound({int? seed, this.onSound}) : random = Random(seed);
+  final void Function(HerdSound sound)? onSound;
   static const target = 12;
   static const requiredCats = 8;
   static const spacing = 25.0;
@@ -239,7 +254,10 @@ class HerdRound {
           _clearLine(cat.position, leader)) {
         cat.following = true;
         cat.hop = .65;
+        final wasUnlocked = homeUnlocked;
         chain.add(cat);
+        onSound?.call(
+            !wasUnlocked && homeUnlocked ? HerdSound.ready : HerdSound.joined);
         if (!isTutorial) {
           message(homeUnlocked
               ? 'Đủ bạn rồi! Về nhà hoặc ghé cụm thưởng'
@@ -283,6 +301,7 @@ class HerdRound {
     if (!nearHome) _homeHintShown = false;
     if (!ended && nearHome && !homeUnlocked && !_homeHintShown) {
       _homeHintShown = true;
+      onSound?.call(HerdSound.locked);
       message('Nhà chưa mở! Đón thêm ${minimumToHome - chain.length} bạn nữa');
     }
     if (!ended && nearHome && homeUnlocked) {
@@ -320,6 +339,7 @@ class HerdRound {
     final storm = HerdSandstorm.number(time);
     if (HerdSandstorm.warning(time) && _stormAnnounced != storm) {
       _stormAnnounced = storm;
+      onSound?.call(HerdSound.storm);
       message(HerdSandstorm.direction(time) > 0
           ? 'Bão cát từ bên trái! Nấp sau đá hoặc lều'
           : 'Bão cát từ bên phải! Nấp sau đá hoặc lều');
@@ -339,6 +359,7 @@ class HerdRound {
       cat.overheat = HerdHeat.faintSeconds;
     }
     if (fainted.isNotEmpty) {
+      onSound?.call(HerdSound.overheated);
       message('Có bé nóng quá phải ngồi nghỉ! Quay lại đón khi bé hết mệt');
     }
     for (final cat in cats) {
@@ -374,11 +395,17 @@ class HerdRound {
               onThinIce(cat.position))
           .toList();
       final extra = riders.length - HerdThinIce.safeLoad;
+      final previousCrack = iceCrack[z];
       iceCrack[z] = extra > 0
           ? iceCrack[z] + extra * HerdThinIce.crackRate * dt
           : max(0, iceCrack[z] - HerdThinIce.healRate * dt);
+      if (previousCrack < HerdThinIce.warnAt &&
+          iceCrack[z] >= HerdThinIce.warnAt) {
+        onSound?.call(HerdSound.iceWarning);
+      }
       if (iceCrack[z] < 1) continue;
       iceCrack[z] = 0;
+      onSound?.call(HerdSound.iceBreak);
       for (final cat in riders) {
         chain.remove(cat);
         cat.following = false;
@@ -424,6 +451,7 @@ class HerdRound {
       vendorCooldown = 2.5;
       shoutingVendor = v;
       shoutTime = 1.2;
+      onSound?.call(HerdSound.vendor);
       message('Bị bác bán hàng xua! Chờ bác quay đi hoặc đèn tắt nhé');
       return;
     }
@@ -433,6 +461,7 @@ class HerdRound {
     if (immune > 0 || ended) return false;
     if (p.distanceTo(leader) < 25) {
       lives--;
+      onSound?.call(HerdSound.hit);
       _scatter(0);
       immune = 2;
       message(lives == 0
@@ -443,6 +472,7 @@ class HerdRound {
     final hit = chain.indexWhere((cat) => cat.position.distanceTo(p) < 24);
     if (hit < 0) return false;
     _scatter(hit);
+    onSound?.call(HerdSound.scattered);
     immune = 2;
     message('Đuôi đàn bị tản ra! Quay lại đón các bạn');
     return true;
@@ -529,6 +559,7 @@ class HerdRound {
         _move(leader, push * 22);
         velocity.add(push * 120);
         _leaderBallCooldown = 1;
+        onSound?.call(HerdSound.bounced);
         trail.insert(0, leader.clone());
       }
       for (final cat in chain) {
@@ -538,6 +569,7 @@ class HerdRound {
         cat.velocity.add(push * 120);
         cat.hop = .65;
         cat.ballCooldown = 1;
+        onSound?.call(HerdSound.bounced);
       }
     }
   }

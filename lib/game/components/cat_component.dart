@@ -1,4 +1,5 @@
 import '../../ui/design.dart';
+import '../../audio/game_audio.dart';
 import 'dart:math';
 import 'package:flutter/painting.dart';
 
@@ -191,6 +192,7 @@ class CatComponent extends SpriteAnimationGroupComponent<CatState>
 
   /// A bolt the player caused; counts against the "no startle" goal.
   void _startle() {
+    GameAudio.instance.playRescue(GameSound.catStartle);
     onStartled?.call(this);
     _dodge();
   }
@@ -218,6 +220,7 @@ class CatComponent extends SpriteAnimationGroupComponent<CatState>
     }
     fishTarget = null;
     _isDragged = true;
+    GameAudio.instance.playRescue(GameSound.catGrab);
     _isTapTriggered = false;
     _isEscaping = false;
     _isVanishing = false;
@@ -263,6 +266,7 @@ class CatComponent extends SpriteAnimationGroupComponent<CatState>
     catchWindow.clear();
     if (!isPlaying()) return;
     if (onDrop(this)) {
+      GameAudio.instance.playRescue(GameSound.catRescue, important: true);
       _isDelivered = true;
       _setState(CatState.dropSuccess);
       _actionTimer = 0;
@@ -271,6 +275,7 @@ class CatComponent extends SpriteAnimationGroupComponent<CatState>
     }
 
     _isDropWrong = true;
+    GameAudio.instance.playRescue(GameSound.catWrong, important: true);
     _setState(CatState.dropWrong);
     _actionTimer = 0;
     _currentActionDuration = framesDropWrong * animationStepTime;

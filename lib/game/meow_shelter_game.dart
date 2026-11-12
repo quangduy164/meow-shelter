@@ -203,7 +203,6 @@ class MeowShelterGame extends FlameGame {
   void _handleDelivered(CatComponent cat) {
     if (_hud.status != RoundStatus.playing) return;
     _hud.delivered += 1;
-    GameAudio.instance.play(GameSound.meow);
     // Practice rounds are replayable, so they do not pay out coins.
     if (!level.isTutorial) unawaited(CampState.instance.rescue(cat.catType));
     if (level.isInfinite) {
@@ -218,7 +217,10 @@ class MeowShelterGame extends FlameGame {
     } else if (_pending.isNotEmpty) {
       final (type, boss) = _pending.removeAt(0);
       _spawnCat(type, boss: boss);
-      if (boss) _hud.showBanner(['Trùm xuất hiện!', level.twistLines.first]);
+      if (boss) {
+        GameAudio.instance.playRescue(GameSound.rescueNotice, important: true);
+        _hud.showBanner(['Trùm xuất hiện!', level.twistLines.first]);
+      }
     }
   }
 
@@ -256,6 +258,9 @@ class MeowShelterGame extends FlameGame {
     if (_secondAccumulator >= 1) {
       _secondAccumulator -= 1;
       _hud.secondsLeft -= 1;
+      if (_hud.secondsLeft == 10) {
+        GameAudio.instance.playRescue(GameSound.rescueNotice, important: true);
+      }
       if (_hud.secondsLeft <= 0) _showResult(RoundStatus.lost);
     }
   }
@@ -267,8 +272,9 @@ class MeowShelterGame extends FlameGame {
 
   void _showResult(RoundStatus status) {
     if (_hud.status != RoundStatus.playing) return;
-    GameAudio.instance
-        .play(status == RoundStatus.won ? GameSound.win : GameSound.lose);
+    GameAudio.instance.playRescue(
+        status == RoundStatus.won ? GameSound.rescueWin : GameSound.rescueLose,
+        important: true);
     _hud.status = status;
     if (status == RoundStatus.won && !level.isInfinite) {
       stats.secondsLeft = _hud.secondsLeft;
@@ -294,7 +300,7 @@ class MeowShelterGame extends FlameGame {
       return;
     }
     if (_bait.place(point, size, children.whereType<CatComponent>())) {
-      GameAudio.instance.play(GameSound.splash);
+      GameAudio.instance.playRescue(GameSound.baitDrop);
       stats.fishUsed += 1;
       if (_bait.limited) _hud.fishLeft = _bait.fishCount;
     }
@@ -314,6 +320,7 @@ class MeowShelterGame extends FlameGame {
   void _updateMovingBeds(double dt) {
     _bedTimer -= dt;
     if (!_bedWarned && _bedTimer <= 3) {
+      GameAudio.instance.playRescue(GameSound.rescueNotice, important: true);
       _bedWarned = true;
       _hud.showBanner(['Ổ sắp dời chỗ!'], 2.5);
     }
@@ -380,6 +387,7 @@ class MeowShelterGame extends FlameGame {
 
   /// Every five rescues: next map, shuffled beds and a random twist.
   void _enterNextMap() {
+    GameAudio.instance.playRescue(GameSound.rescueMilestone, important: true);
     _map = ShelterMap.maps[(_hud.delivered ~/ 5) % ShelterMap.maps.length];
     _mapClock = 0;
     _shuffleShelters();

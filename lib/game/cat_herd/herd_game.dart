@@ -19,7 +19,25 @@ class HerdGame extends FlameGame {
   HerdGame({this.needsTutorial = false, this.onTutorialCompleted});
   final bool needsTutorial;
   final Future<void> Function()? onTutorialCompleted;
-  final round = HerdRound();
+  late final round = HerdRound(onSound: _playSound);
+
+  void _playSound(HerdSound event) {
+    final (sound, priority) = switch (event) {
+      HerdSound.joined => (GameSound.herdJoin, 0),
+      HerdSound.ready => (GameSound.homeCheckpoint, 2),
+      HerdSound.locked => (GameSound.catWrong, 1),
+      HerdSound.hit => (GameSound.homeHit, 3),
+      HerdSound.scattered => (GameSound.catStartle, 2),
+      HerdSound.bounced => (GameSound.herdBounce, 0),
+      HerdSound.vendor => (GameSound.herdVendor, 2),
+      HerdSound.storm => (GameSound.herdStorm, 2),
+      HerdSound.overheated => (GameSound.herdTired, 2),
+      HerdSound.iceWarning => (GameSound.homeIce, 2),
+      HerdSound.iceBreak => (GameSound.herdIceBreak, 3),
+    };
+    GameAudio.instance.playGameplay(sound, priority: priority);
+  }
+
   late ReturnHomeJoystick _joystick;
   final _walk = <String, SpriteAnimation>{};
   final _idle = <String, SpriteAnimation>{};
@@ -100,7 +118,9 @@ class HerdGame extends FlameGame {
       remaining -= step;
     }
     if (round.ended && !overlays.isActive('result')) {
-      GameAudio.instance.play(round.won ? GameSound.win : GameSound.lose);
+      GameAudio.instance.playGameplay(
+          round.won ? GameSound.herdWin : GameSound.herdLose,
+          priority: 4);
       if (round.isTutorial && round.won && onTutorialCompleted != null) {
         unawaited(onTutorialCompleted!());
       }

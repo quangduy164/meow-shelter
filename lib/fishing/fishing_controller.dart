@@ -35,6 +35,7 @@ class FishingController extends ChangeNotifier {
   int _combo = 0;
   double _worldHour = 12;
   bool _pulling = false, _savingCatch = false, _disposed = false;
+  bool _tensionWarned = false;
   String? _error;
 
   FishingPhase get phase => _phase;
@@ -106,17 +107,19 @@ class FishingController extends ChangeNotifier {
       };
 
   void _setPhase(FishingPhase phase) {
+    GameAudio.instance.setFishingReeling(false);
     final sound = switch (phase) {
-      FishingPhase.casting => GameSound.splash,
-      FishingPhase.bite => GameSound.bite,
-      FishingPhase.caught => GameSound.win,
-      FishingPhase.lost => GameSound.lose,
+      FishingPhase.casting => GameSound.fishingCast,
+      FishingPhase.bite => GameSound.fishingBite,
+      FishingPhase.reeling => GameSound.fishingHook,
+      FishingPhase.caught => GameSound.fishingCatch,
       _ => null,
     };
     if (sound != null) GameAudio.instance.play(sound);
     _phase = phase;
     _elapsed = 0;
     _pulling = false;
+    _tensionWarned = false;
     _steer = 0;
     _drift = 0;
     _driftTarget = 0;
@@ -186,12 +189,20 @@ class FishingController extends ChangeNotifier {
                     : .11;
         _progress = (_progress + reelRate * dt).clamp(0.0, 1.0);
         if (_tension <= 0 || _tension >= 1) {
-          _lose('Dây câu bị đứt');
+          _lose('Dây câu bị đứt', snapped: true);
         } else if (_progress <= 0 || _elapsed > 35) {
           _lose('Cá đã tuột khỏi lưỡi câu');
         } else if (_progress >= 1) {
           _setPhase(FishingPhase.saving);
           _saveCatch();
+        }
+        if (_phase == FishingPhase.reeling) {
+          if (_tension >= .82 && !_tensionWarned) {
+            GameAudio.instance.play(GameSound.fishingTension);
+            _tensionWarned = true;
+          } else if (_tension < .7) {
+            _tensionWarned = false;
+          }
         }
         assert(
             _tension >= 0 && _tension <= 1 && _progress >= 0 && _progress <= 1);
@@ -201,9 +212,11 @@ class FishingController extends ChangeNotifier {
     notifyListeners();
   }
 
-  void _lose(String message) {
+  void _lose(String message, {bool snapped = false}) {
     _error = message;
     _setPhase(FishingPhase.lost);
+    GameAudio.instance
+        .play(snapped ? GameSound.fishingSnap : GameSound.fishingEscape);
     _vibrate(HapticFeedback.heavyImpact);
   }
 
@@ -244,6 +257,7 @@ class FishingController extends ChangeNotifier {
       return;
     }
     _pulling = value;
+    GameAudio.instance.setFishingReeling(value);
     notifyListeners();
   }
 
@@ -274,6 +288,7 @@ class FishingController extends ChangeNotifier {
 
   @override
   void dispose() {
+    GameAudio.instance.setFishingReeling(false);
     _disposed = true;
     super.dispose();
   }

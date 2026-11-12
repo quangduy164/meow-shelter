@@ -112,6 +112,14 @@ class _AudioSettingsDialog extends StatelessWidget {
                     ),
                   ]),
             ),
+            const SizedBox(height: DS.spaceSm),
+            const SelectableText(
+              'Nhạc: Purr Box — Purrple Cat · CC BY 4.0\n'
+              'https://purrplecat.itch.io/cat-nap\n'
+              'https://creativecommons.org/licenses/by/4.0/',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: DS.soft, fontSize: DS.fontCaption),
+            ),
           ],
         ),
       ),
