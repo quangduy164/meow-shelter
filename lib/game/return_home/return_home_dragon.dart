@@ -1,3 +1,4 @@
+import '../../ui/design.dart';
 import 'dart:math';
 import 'dart:typed_data';
 
@@ -2949,7 +2950,7 @@ class ReturnHomeDamageText extends PositionComponent {
       text: TextSpan(
         text: text,
         style: TextStyle(
-          fontSize: 20,
+          fontSize: DS.fontHeading,
           fontWeight: FontWeight.w900,
           color: color.withAlpha((255 * fade).round()),
           shadows: [

@@ -378,7 +378,7 @@ class _ShopBarState extends State<_ShopBar> {
         showCheckmark: false,
         visualDensity: VisualDensity.compact,
         labelStyle: const TextStyle(
-            color: DS.ink, fontWeight: FontWeight.w800, fontSize: 12),
+            color: DS.ink, fontWeight: FontWeight.w800, fontSize: DS.fontBody),
         backgroundColor: DS.cream,
         selectedColor: DS.gold,
         side: BorderSide(color: on ? DS.goldEdge : DS.wood, width: 1.5),
@@ -423,13 +423,13 @@ class _ShopBarState extends State<_ShopBar> {
                         style: const TextStyle(
                             color: DS.ink,
                             fontWeight: FontWeight.w900,
-                            fontSize: 12)),
+                            fontSize: DS.fontBody)),
                     TextSpan(
                         text: ' · ${breed.catchRule.trait}',
                         style: const TextStyle(
                             color: DS.soft,
                             fontWeight: FontWeight.w600,
-                            fontSize: 10.5)),
+                            fontSize: DS.fontCaption)),
                   ]),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis),
@@ -443,14 +443,15 @@ class _ShopBarState extends State<_ShopBar> {
                         child: Text('✓ Đang ở trại',
                             style: TextStyle(
                                 color: Color(0xFF6B9E4E),
-                                fontSize: 12,
+                                fontSize: DS.fontBody,
                                 fontWeight: FontWeight.w800)))
                     : ElevatedButton.icon(
                         style: DS.primary.copyWith(
                             padding:
                                 const WidgetStatePropertyAll(EdgeInsets.zero),
                             textStyle: const WidgetStatePropertyAll(TextStyle(
-                                fontSize: 12, fontWeight: FontWeight.w900))),
+                                fontSize: DS.fontBody,
+                                fontWeight: FontWeight.w900))),
                         onPressed: afford
                             ? () async {
                                 await camp.buyCat(breed.id);
@@ -497,7 +498,7 @@ class _ShopBarState extends State<_ShopBar> {
                   style: const TextStyle(
                       color: DS.ink,
                       fontWeight: FontWeight.w800,
-                      fontSize: 12)),
+                      fontSize: DS.fontBody)),
               const SizedBox(height: 4),
               SizedBox(
                 height: 26,
@@ -508,14 +509,15 @@ class _ShopBarState extends State<_ShopBar> {
                         child: Text('✓ Đã có',
                             style: TextStyle(
                                 color: Color(0xFF6B9E4E),
-                                fontSize: 12,
+                                fontSize: DS.fontBody,
                                 fontWeight: FontWeight.w800)))
                     : ElevatedButton.icon(
                         style: DS.primary.copyWith(
                             padding:
                                 const WidgetStatePropertyAll(EdgeInsets.zero),
                             textStyle: const WidgetStatePropertyAll(TextStyle(
-                                fontSize: 12, fontWeight: FontWeight.w900))),
+                                fontSize: DS.fontBody,
+                                fontWeight: FontWeight.w900))),
                         onPressed: afford
                             ? () async {
                                 await camp.buy(item);
@@ -690,7 +692,7 @@ class _BondBar extends StatelessWidget {
                     'Chạm vào mèo để vuốt ve · đủ 10 ♥ thì kỹ năng hồi nhanh 1s',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: TextStyle(color: DS.soft, fontSize: 11)),
+                    style: TextStyle(color: DS.soft, fontSize: DS.fontCaption)),
               ),
               Padding(
                 padding: const EdgeInsets.fromLTRB(6, 0, 10, 0),
@@ -765,7 +767,7 @@ class _BondBar extends StatelessWidget {
                   style: const TextStyle(
                       color: DS.ink,
                       fontWeight: FontWeight.w900,
-                      fontSize: 13)),
+                      fontSize: DS.fontBody)),
               const SizedBox(height: 1),
               if (!unlocked)
                 const Row(children: [
@@ -775,7 +777,8 @@ class _BondBar extends StatelessWidget {
                     child: Text('Mua ở cửa hàng',
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: TextStyle(color: DS.mutedText, fontSize: 11)),
+                        style: TextStyle(
+                            color: DS.mutedText, fontSize: DS.fontCaption)),
                   ),
                 ])
               else ...[
@@ -797,7 +800,7 @@ class _BondBar extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
                         color: bonded ? DS.goldEdge : DS.soft,
-                        fontSize: 11,
+                        fontSize: DS.fontCaption,
                         fontWeight: FontWeight.w700)),
               ],
             ],

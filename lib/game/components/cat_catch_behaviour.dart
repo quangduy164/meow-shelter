@@ -76,7 +76,7 @@ extension CatCatchBehaviour on CatComponent {
             text: label,
             style: const TextStyle(
                 color: Color(0xFFFFF4DA),
-                fontSize: 12,
+                fontSize: DS.fontBody,
                 fontWeight: FontWeight.w800)),
         textDirection: TextDirection.ltr)
       ..layout();
@@ -97,7 +97,7 @@ extension CatCatchBehaviour on CatComponent {
             text: line,
             style: const TextStyle(
                 color: Color(0xFF31564C),
-                fontSize: 11,
+                fontSize: DS.fontCaption,
                 fontWeight: FontWeight.w600)),
         textDirection: TextDirection.ltr,
         textAlign: TextAlign.center)

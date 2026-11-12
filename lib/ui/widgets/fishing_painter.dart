@@ -1,3 +1,4 @@
+import '../design.dart';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import '../../fishing/fishing_controller.dart';
@@ -90,7 +91,7 @@ class FishingPainter extends CustomPainter {
           text: TextSpan(
               text: phase == FishingPhase.bite ? '!' : '+1',
               style: const TextStyle(
-                  fontSize: 32,
+                  fontSize: DS.fontSymbol,
                   fontWeight: FontWeight.w900,
                   color: Color(0xFFFFF0AF),
                   shadows: [Shadow(color: Color(0xFF573215), blurRadius: 3)])),
@@ -367,7 +368,7 @@ class FishingPainter extends CustomPainter {
           text: TextSpan(
               text: 'x$combo',
               style: const TextStyle(
-                  fontSize: 15,
+                  fontSize: DS.fontValue,
                   fontWeight: FontWeight.w900,
                   color: Color(0xFFFFE066),
                   shadows: [Shadow(color: Color(0xFF5A3A10), blurRadius: 3)])),
@@ -404,7 +405,7 @@ class FishingPainter extends CustomPainter {
         text: TextSpan(
             text: '${(tension * 100).round()}%',
             style: const TextStyle(
-                fontSize: 9,
+                fontSize: DS.fontMicro,
                 fontWeight: FontWeight.w900,
                 color: Color(0xFF294941))),
         textDirection: TextDirection.ltr)

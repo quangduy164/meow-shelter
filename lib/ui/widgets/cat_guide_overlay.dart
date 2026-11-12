@@ -70,10 +70,12 @@ class CatGuideOverlay extends StatelessWidget {
               Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Text('${breed.name} · ${rule.trait}',
                 style: const TextStyle(
-                    fontWeight: FontWeight.w900, fontSize: 15, color: DS.ink)),
+                    fontWeight: FontWeight.w900,
+                    fontSize: DS.fontHeading,
+                    color: DS.ink)),
             const SizedBox(height: 2),
             Text(rule.how,
-                style: const TextStyle(color: DS.soft, fontSize: 13)),
+                style: const TextStyle(color: DS.soft, fontSize: DS.fontBody)),
           ]),
         ),
         if (onPractice != null)

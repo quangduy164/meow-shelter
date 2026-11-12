@@ -1,3 +1,4 @@
+import '../../ui/design.dart';
 import 'dart:math' as math;
 import 'package:flutter/painting.dart';
 import 'herd_round.dart';
@@ -41,7 +42,7 @@ void paintHerdHud(Canvas canvas, Size size, HerdRound round) {
           text: round.tutorialInstruction,
           style: const TextStyle(
               color: Color(0xFF28564C),
-              fontSize: 15,
+              fontSize: DS.fontBody,
               fontWeight: FontWeight.bold,
               height: 1.25,
               shadows: [Shadow(color: Color(0xCCFFF4DA), blurRadius: 3)])),

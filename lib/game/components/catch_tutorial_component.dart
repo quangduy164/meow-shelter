@@ -1,3 +1,4 @@
+import '../../ui/design.dart';
 import 'dart:math' as math;
 import 'package:flame/components.dart';
 import 'package:flutter/painting.dart';
@@ -105,7 +106,7 @@ class CatchTutorialComponent extends PositionComponent {
             text: text,
             style: const TextStyle(
                 color: Color(0xFF28564C),
-                fontSize: 15,
+                fontSize: DS.fontBody,
                 fontWeight: FontWeight.bold)),
         textAlign: TextAlign.center,
         textDirection: TextDirection.ltr)

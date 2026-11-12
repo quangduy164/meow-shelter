@@ -239,7 +239,7 @@ class _RarityTag extends StatelessWidget {
         Text(fish.rarity,
             style: TextStyle(
                 color: foreground,
-                fontSize: 10,
+                fontSize: DS.fontCaption,
                 height: 1.1,
                 fontWeight: FontWeight.w900)),
       ]),
@@ -391,7 +391,9 @@ class _TabChip extends StatelessWidget {
           child: Row(mainAxisSize: MainAxisSize.min, children: [
             Text(label,
                 style: const TextStyle(
-                    color: DS.ink, fontSize: 13, fontWeight: FontWeight.w900)),
+                    color: DS.ink,
+                    fontSize: DS.fontBody,
+                    fontWeight: FontWeight.w900)),
             const SizedBox(width: 6),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
@@ -400,7 +402,7 @@ class _TabChip extends StatelessWidget {
               child: Text('$count',
                   style: const TextStyle(
                       color: DS.cream,
-                      fontSize: 11,
+                      fontSize: DS.fontCaption,
                       fontWeight: FontWeight.w900)),
             ),
           ]),
@@ -476,7 +478,7 @@ class _FishTile extends StatelessWidget {
                         child: Text(locked ? '???' : fish.label,
                             style: TextStyle(
                                 color: locked ? DS.gold : DS.ink,
-                                fontSize: 14,
+                                fontSize: DS.fontBody,
                                 fontWeight: FontWeight.w900)),
                       ),
                     ),
@@ -498,7 +500,7 @@ class _FishTile extends StatelessWidget {
                   child: Text('×$count',
                       style: const TextStyle(
                           color: DS.ink,
-                          fontSize: 10,
+                          fontSize: DS.fontCaption,
                           fontWeight: FontWeight.w900)),
                 ),
               ),
@@ -605,7 +607,7 @@ class _DetailPanel extends StatelessWidget {
               child: Text(locked ? '???' : fish.label,
                   style: const TextStyle(
                       color: DS.ink,
-                      fontSize: 18,
+                      fontSize: DS.fontHeading,
                       fontWeight: FontWeight.w900)),
             ),
           ),
@@ -616,7 +618,7 @@ class _DetailPanel extends StatelessWidget {
         Text(locked ? 'Chưa câu được' : 'Đã câu: $count lần',
             style: TextStyle(
                 color: locked ? DS.mutedText : DS.goldEdge,
-                fontSize: 12,
+                fontSize: DS.fontBody,
                 fontWeight: FontWeight.w700)),
         const SizedBox(height: 6),
         _StatBar(
@@ -634,7 +636,7 @@ class _DetailPanel extends StatelessWidget {
               overflow: TextOverflow.ellipsis,
               style: const TextStyle(
                   color: DS.soft,
-                  fontSize: 11,
+                  fontSize: DS.fontCaption,
                   fontStyle: FontStyle.italic,
                   fontWeight: FontWeight.w600)),
         ),
@@ -654,7 +656,9 @@ class _StatBar extends StatelessWidget {
           width: 58,
           child: Text(label,
               style: const TextStyle(
-                  color: DS.label, fontSize: 11, fontWeight: FontWeight.w900)),
+                  color: DS.label,
+                  fontSize: DS.fontCaption,
+                  fontWeight: FontWeight.w900)),
         ),
         Expanded(
           child: Container(

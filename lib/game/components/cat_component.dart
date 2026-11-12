@@ -1,3 +1,4 @@
+import '../../ui/design.dart';
 import 'dart:math';
 import 'package:flutter/painting.dart';
 

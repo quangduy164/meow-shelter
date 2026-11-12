@@ -25,8 +25,62 @@ abstract final class DS {
   /// Dim layer behind modal cards.
   static const scrim = Color(0x99302010);
 
+  // Typography uses design units; UiScaleBox handles screen/font scaling.
+  static const double fontTitle = 16;
+  static const double fontHeading = 14;
+  static const double fontBody = 12;
+  static const double fontButton = 12;
+  static const double fontCaption = 10;
+  static const double fontMicro = 9;
+  static const double fontValue = 16;
+  static const double fontDisplay = 18;
+
+  // Artwork sizes are separate from readable interface text.
+  static const double fontLogo = 60;
+  static const double fontLogoCaption = 18;
+  static const double fontSymbol = 28;
+
   static const title = TextStyle(
-      color: ink, fontSize: 21, fontWeight: FontWeight.w900, letterSpacing: 1);
+      color: ink,
+      fontSize: fontTitle,
+      fontWeight: FontWeight.w900,
+      letterSpacing: .6);
+  static const headingText =
+      TextStyle(color: ink, fontSize: fontHeading, fontWeight: FontWeight.w900);
+  static const bodyText =
+      TextStyle(color: ink, fontSize: fontBody, fontWeight: FontWeight.w600);
+  static const buttonText = TextStyle(
+      fontFamily: 'Roboto',
+      fontSize: fontButton,
+      fontWeight: FontWeight.w900,
+      letterSpacing: .3);
+  static const captionText = TextStyle(
+      color: soft, fontSize: fontCaption, fontWeight: FontWeight.w600);
+  static const microText =
+      TextStyle(color: soft, fontSize: fontMicro, fontWeight: FontWeight.w700);
+  static const valueText =
+      TextStyle(color: ink, fontSize: fontValue, fontWeight: FontWeight.w900);
+  static const displayText =
+      TextStyle(color: ink, fontSize: fontDisplay, fontWeight: FontWeight.w900);
+
+  /// Also covers labels that do not specify a local TextStyle.
+  static const textTheme = TextTheme(
+    displayLarge: displayText,
+    displayMedium: displayText,
+    displaySmall: title,
+    headlineLarge: displayText,
+    headlineMedium: title,
+    headlineSmall: title,
+    titleLarge: title,
+    titleMedium: headingText,
+    titleSmall: bodyText,
+    bodyLarge: bodyText,
+    bodyMedium: bodyText,
+    bodySmall: captionText,
+    labelLarge: buttonText,
+    labelMedium: captionText,
+    labelSmall: microText,
+  );
 
   /// Cream card with a wooden border, as used by the chapter cards.
   static final card = BoxDecoration(
@@ -49,7 +103,7 @@ abstract final class DS {
     disabledBackgroundColor: mutedFill,
     disabledForegroundColor: mutedText,
     elevation: 2,
-    textStyle: const TextStyle(fontWeight: FontWeight.w900, letterSpacing: .5),
+    textStyle: buttonText,
     shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(14),
         side: const BorderSide(color: goldEdge, width: 2)),
@@ -60,7 +114,7 @@ abstract final class DS {
     backgroundColor: cream,
     foregroundColor: ink,
     elevation: 2,
-    textStyle: const TextStyle(fontWeight: FontWeight.w900, letterSpacing: .5),
+    textStyle: buttonText,
     shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(14),
         side: const BorderSide(color: wood, width: 2)),

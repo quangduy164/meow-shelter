@@ -112,12 +112,12 @@ class _VictoryOverlay extends StatelessWidget {
                 const Text('CHIẾN THẮNG!',
                     style: TextStyle(
                         color: DS.ink,
-                        fontSize: 16,
+                        fontSize: DS.fontTitle,
                         fontWeight: FontWeight.w900,
                         letterSpacing: .6)),
                 const SizedBox(height: 4),
                 const Text('Mèo đã về nhà an toàn',
-                    style: TextStyle(color: DS.soft, fontSize: 12)),
+                    style: TextStyle(color: DS.soft, fontSize: DS.fontBody)),
                 const SizedBox(height: 8),
                 Row(mainAxisAlignment: MainAxisAlignment.center, children: [
                   CatSprite(type: game.selectedCat, size: 70),
@@ -167,12 +167,12 @@ class _VictoryOverlay extends StatelessWidget {
                         child: Text('Xu nhận được',
                             style: TextStyle(
                                 color: DS.ink,
-                                fontSize: 12,
+                                fontSize: DS.fontBody,
                                 fontWeight: FontWeight.w800))),
                     Text('+${game.reward} xu',
                         style: const TextStyle(
                             color: DS.ink,
-                            fontSize: 18,
+                            fontSize: DS.fontDisplay,
                             fontWeight: FontWeight.w900)),
                   ]),
                 ),
@@ -186,7 +186,8 @@ class _VictoryOverlay extends StatelessWidget {
                             builder: (_) => const ReturnHomeScreen())),
                     icon: const Icon(Icons.replay_rounded, size: 20),
                     label: const Text('Chơi lại',
-                        style: TextStyle(fontFamily: 'Roboto', fontSize: 12)),
+                        style: TextStyle(
+                            fontFamily: 'Roboto', fontSize: DS.fontButton)),
                   )),
                   const SizedBox(width: 10),
                   Expanded(
@@ -195,7 +196,8 @@ class _VictoryOverlay extends StatelessWidget {
                     onPressed: () => Navigator.of(context).pop(),
                     icon: const GameGlyphView(GameGlyph.home, size: 20),
                     label: const Text('Trang chủ',
-                        style: TextStyle(fontFamily: 'Roboto', fontSize: 12)),
+                        style: TextStyle(
+                            fontFamily: 'Roboto', fontSize: DS.fontButton)),
                   )),
                 ]),
               ]),
@@ -217,11 +219,12 @@ class _VictoryOverlay extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                 Text(label,
-                    style: const TextStyle(color: DS.soft, fontSize: 10)),
+                    style: const TextStyle(
+                        color: DS.soft, fontSize: DS.fontCaption)),
                 Text(value,
                     style: const TextStyle(
                         color: DS.ink,
-                        fontSize: 15,
+                        fontSize: DS.fontValue,
                         fontWeight: FontWeight.w900)),
               ])),
         ]),
@@ -296,7 +299,7 @@ class _SkillButtonState extends State<_SkillButton> {
       const SizedBox(height: 2),
       Text(label,
           style: const TextStyle(
-              fontSize: 11,
+              fontSize: DS.fontCaption,
               fontWeight: FontWeight.w800,
               color: Colors.white,
               shadows: [Shadow(color: Color(0xFF3A2010), blurRadius: 3)])),
@@ -383,7 +386,9 @@ class _ComboHelpButton extends StatelessWidget {
         onPressed: onPressed,
         child: const Text('?',
             style: TextStyle(
-                color: DS.ink, fontSize: 27, fontWeight: FontWeight.w900)),
+                color: DS.ink,
+                fontSize: DS.fontSymbol,
+                fontWeight: FontWeight.w900)),
       );
 }
 
@@ -427,7 +432,7 @@ class _ComboHelpDialogState extends State<_ComboHelpDialog> {
                       child: Text('THẺ COMBO',
                           style: TextStyle(
                               color: DS.ink,
-                              fontSize: 19,
+                              fontSize: DS.fontTitle,
                               fontWeight: FontWeight.w900))),
                   IconButton(
                     constraints:
@@ -454,7 +459,7 @@ class _ComboHelpDialogState extends State<_ComboHelpDialog> {
                 const SizedBox(height: 6),
                 const Text('Chọn mèo để xem combo · Trò chơi đang tạm dừng',
                     textAlign: TextAlign.center,
-                    style: TextStyle(color: DS.soft, fontSize: 11)),
+                    style: TextStyle(color: DS.soft, fontSize: DS.fontCaption)),
               ]);
             }),
           ),
@@ -472,7 +477,7 @@ class _ComboHelpDialogState extends State<_ComboHelpDialog> {
         child: Text(breed.name,
             style: TextStyle(
                 color: selected ? Colors.white : _comboColor(breed),
-                fontSize: wide ? 12 : 10.5,
+                fontSize: wide ? DS.fontBody : DS.fontCaption,
                 fontWeight: FontWeight.w800)));
     return Semantics(
       selected: selected,
@@ -523,13 +528,13 @@ class _ComboHelpDialogState extends State<_ComboHelpDialog> {
               child: Text(combo.name,
                   style: TextStyle(
                       color: _comboColor(breed),
-                      fontSize: 17,
+                      fontSize: DS.fontHeading,
                       fontWeight: FontWeight.w900))),
           if (breed.id == widget.selectedCat)
             const Text('ĐANG CHƠI',
                 style: TextStyle(
                     color: DS.label,
-                    fontSize: 10,
+                    fontSize: DS.fontCaption,
                     fontWeight: FontWeight.w800)),
         ]),
         const SizedBox(height: 6),
@@ -603,19 +608,19 @@ class _ComboHelpDialogState extends State<_ComboHelpDialog> {
                 Text('BƯỚC ${index + 1}',
                     style: const TextStyle(
                         color: Color(0xFFFFE5AE),
-                        fontSize: 10,
+                        fontSize: DS.fontCaption,
                         fontWeight: FontWeight.w800)),
                 Text(step.attack.label,
                     style: const TextStyle(
                         color: Colors.white,
-                        fontSize: 13,
+                        fontSize: DS.fontButton,
                         fontWeight: FontWeight.w900)),
               ])),
         ]),
         const SizedBox(height: 6),
         Text(step.instruction,
             style: const TextStyle(
-                color: Colors.white, fontSize: 12.5, height: 1.3)),
+                color: Colors.white, fontSize: DS.fontBody, height: 1.3)),
       ]),
     );
   }
@@ -638,13 +643,13 @@ class _ComboHelpDialogState extends State<_ComboHelpDialog> {
                 child: Text('HIỆU ỨNG COMBO',
                     style: TextStyle(
                         color: DS.ink,
-                        fontSize: 11,
+                        fontSize: DS.fontCaption,
                         fontWeight: FontWeight.w900))),
           ]),
           const SizedBox(height: 6),
           Text(breed.homeCombo.effect,
-              style:
-                  const TextStyle(color: DS.ink, fontSize: 12.5, height: 1.3)),
+              style: const TextStyle(
+                  color: DS.ink, fontSize: DS.fontBody, height: 1.3)),
         ]),
       );
 }

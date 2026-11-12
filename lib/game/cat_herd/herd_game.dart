@@ -1,3 +1,4 @@
+import '../../ui/design.dart';
 import 'dart:async';
 import '../../audio/game_audio.dart';
 import 'dart:math' as math;
@@ -158,7 +159,7 @@ class HerdGame extends FlameGame {
           text: TextSpan(
               text: round.notice,
               style: const TextStyle(
-                  fontSize: 12,
+                  fontSize: DS.fontBody,
                   fontWeight: FontWeight.bold,
                   color: Color(0xFF5A3214))),
           textDirection: TextDirection.ltr)
@@ -246,7 +247,7 @@ class HerdGame extends FlameGame {
             Paint()..color = const Color(0xFFFFD258));
       }
     } else if (resting && !shiver && round.map.kind == HerdMapKind.snow) {
-      herdText(canvas, 'zZ', Offset(at.x + 10, at.y - 28), 11);
+      herdText(canvas, 'zZ', Offset(at.x + 10, at.y - 28), DS.fontCaption);
     }
     if (leader) {
       canvas.drawPath(

@@ -1,3 +1,4 @@
+import '../../ui/design.dart';
 import 'package:flutter/painting.dart';
 
 import 'package:flame/components.dart';
@@ -70,7 +71,7 @@ class ShelterZoneComponent extends PositionComponent {
             text: label,
             style: const TextStyle(
                 color: Color(0xFF5B3516),
-                fontSize: 12,
+                fontSize: DS.fontBody,
                 fontWeight: FontWeight.bold)),
         textDirection: TextDirection.ltr,
         textAlign: TextAlign.center)

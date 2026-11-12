@@ -1,3 +1,4 @@
+import '../design.dart';
 import 'package:flutter/material.dart';
 
 import '../home_theme.dart';
@@ -63,7 +64,7 @@ class GameLogo extends StatelessWidget {
                 child: const Text('SHELTER',
                     style: TextStyle(
                         color: _cream,
-                        fontSize: 18,
+                        fontSize: DS.fontLogoCaption,
                         fontWeight: FontWeight.w900,
                         letterSpacing: 6)),
               ),
@@ -73,7 +74,7 @@ class GameLogo extends StatelessWidget {
       );
 
   static const _title =
-      TextStyle(fontSize: 60, fontWeight: FontWeight.w900, height: 1);
+      TextStyle(fontSize: DS.fontLogo, fontWeight: FontWeight.w900, height: 1);
 }
 
 /// Same artwork as the Android launcher icon, in a 108x108 viewport.

@@ -68,7 +68,7 @@ class _LevelSelectScreenState extends State<LevelSelectScreen> {
                 const Text('CHỌN MÀN',
                     style: TextStyle(
                         color: Color(0xFFFFF4DA),
-                        fontSize: 24,
+                        fontSize: DS.fontTitle,
                         fontWeight: FontWeight.w900,
                         letterSpacing: 1.5,
                         shadows: [Shadow(color: _ink, blurRadius: 4)])),
@@ -78,7 +78,7 @@ class _LevelSelectScreenState extends State<LevelSelectScreen> {
                 Text('$total/${gameLevels.length * 3}',
                     style: const TextStyle(
                         color: Color(0xFFFFF4DA),
-                        fontSize: 18,
+                        fontSize: DS.fontValue,
                         fontWeight: FontWeight.w900)),
               ]),
             ),
@@ -156,19 +156,21 @@ class _ChapterCard extends StatelessWidget {
                   maxLines: 1,
                   style: const TextStyle(
                       color: Color(0xFFB0703A),
-                      fontSize: 11,
+                      fontSize: DS.fontCaption,
                       fontWeight: FontWeight.w900,
                       letterSpacing: 1)),
               Text(chapter.title,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
-                      color: _ink, fontSize: 18, fontWeight: FontWeight.w900)),
+                      color: _ink,
+                      fontSize: DS.fontHeading,
+                      fontWeight: FontWeight.w900)),
               Text(mixed ? 'Đủ 5 giống mèo' : '${breed.name} · ${rule.trait}',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style:
-                      const TextStyle(color: Color(0xFF8A6446), fontSize: 12)),
+                  style: const TextStyle(
+                      color: Color(0xFF8A6446), fontSize: DS.fontBody)),
             ]),
           ),
         ]),
@@ -230,7 +232,7 @@ class _LevelRow extends StatelessWidget {
                   style: const TextStyle(
                       color: Color(0xFFFFF4DA),
                       fontWeight: FontWeight.w900,
-                      fontSize: 13)),
+                      fontSize: DS.fontButton)),
             ),
             const SizedBox(width: 8),
             Expanded(
@@ -247,14 +249,14 @@ class _LevelRow extends StatelessWidget {
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(
                               color: open ? _ink : const Color(0xFF7A6E5C),
-                              fontSize: 14,
+                              fontSize: DS.fontBody,
                               fontWeight: FontWeight.w900)),
                       Text(entry.level.tag,
                           style: TextStyle(
                               color: open
                                   ? const Color(0xFF7A4A22)
                                   : const Color(0xFF8E8270),
-                              fontSize: 11)),
+                              fontSize: DS.fontCaption)),
                     ]),
               ),
             ),

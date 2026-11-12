@@ -25,7 +25,7 @@ class FishingCatchPopup extends StatelessWidget {
                   const Text('CÂU ĐƯỢC RỒI!',
                       style: TextStyle(
                           color: DS.ink,
-                          fontSize: 19,
+                          fontSize: DS.fontTitle,
                           fontWeight: FontWeight.w900)),
                   const SizedBox(height: 6),
                   SizedBox(
@@ -36,11 +36,12 @@ class FishingCatchPopup extends StatelessWidget {
                       textAlign: TextAlign.center,
                       style: const TextStyle(
                           color: DS.goldEdge,
-                          fontSize: 22,
+                          fontSize: DS.fontHeading,
                           fontWeight: FontWeight.bold)),
                   const SizedBox(height: 3),
                   Text(fish.isJunk ? 'Đồ vật thất lạc' : fish.rarity,
-                      style: const TextStyle(color: DS.soft, fontSize: 13)),
+                      style: const TextStyle(
+                          color: DS.soft, fontSize: DS.fontBody)),
                   const SizedBox(height: 14),
                   SizedBox(
                     width: double.infinity,

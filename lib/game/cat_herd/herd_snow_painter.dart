@@ -1,3 +1,4 @@
+import '../../ui/design.dart';
 import 'dart:math' as math;
 import 'package:flame/components.dart';
 import 'package:flutter/painting.dart';
@@ -75,8 +76,8 @@ void paintSnowHazards(Canvas canvas, HerdRound round) {
             ..lineTo(at.dx - 9, at.dy - 16)
             ..close(),
           Paint()..color = const Color(0xFFE9B13F));
-      _text(
-          canvas, '!', at + const Offset(-2, -28), 10, const Color(0xFF5A3214));
+      _text(canvas, '!', at + const Offset(-2, -28), DS.fontCaption,
+          const Color(0xFF5A3214));
     }
   }
   for (final splash in round.splashes) {
@@ -168,8 +169,8 @@ void paintCatChill(Canvas canvas, HerdCat cat, double time) {
     canvas.drawCircle(at + Offset(-10 + i * 10.0, -6 + fall * 16),
         2.2 * (1 - fall), Paint()..color = const Color(0xCC79C2E3));
   }
-  _text(canvas, 'brr', at + Offset(12 + math.sin(time * 30), -26), 10,
-      const Color(0xFF3E7EA3));
+  _text(canvas, 'brr', at + Offset(12 + math.sin(time * 30), -26),
+      DS.fontCaption, const Color(0xFF3E7EA3));
 }
 
 void _text(Canvas canvas, String value, Offset at, double size, Color color) {

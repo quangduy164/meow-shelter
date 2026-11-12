@@ -1,3 +1,4 @@
+import '../design.dart';
 import 'package:flutter/material.dart';
 
 class FishingDistance extends StatelessWidget {
@@ -13,7 +14,7 @@ class FishingDistance extends StatelessWidget {
               size: 23, color: Color(0xFF395D48)),
           const Text('BỜ',
               style: TextStyle(
-                  fontSize: 11,
+                  fontSize: DS.fontCaption,
                   fontWeight: FontWeight.w900,
                   color: Color(0xFF253F36))),
           const SizedBox(height: 5),
@@ -61,12 +62,12 @@ class FishingDistance extends StatelessWidget {
           const SizedBox(height: 5),
           Text('${((1 - progress) * 100).round()}%',
               style: const TextStyle(
-                  fontSize: 15,
+                  fontSize: DS.fontValue,
                   fontWeight: FontWeight.w900,
                   color: Color(0xFF253F36))),
           const Text('CÁCH BỜ',
               style: TextStyle(
-                  fontSize: 10,
+                  fontSize: DS.fontCaption,
                   fontWeight: FontWeight.w800,
                   color: Color(0xFF253F36))),
         ]),

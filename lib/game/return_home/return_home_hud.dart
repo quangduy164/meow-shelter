@@ -1,3 +1,4 @@
+import '../../ui/design.dart';
 import 'dart:math';
 import 'package:flutter/painting.dart';
 
@@ -91,10 +92,10 @@ void paintReturnHomeHud(
   final bar =
       Rect.fromLTWH(panel.left + 107, panel.top + 40, max(0.0, width - 155), 7);
   final percentBox = Rect.fromLTWH(panel.right - 33, panel.top + 33, 26, 20);
-  _label(canvas, current.name, labelBox, fontSize: 11.5);
+  _label(canvas, current.name, labelBox, fontSize: DS.fontCaption);
   _paintRouteMap(canvas, bar, progress, stops, checkpoint);
   _label(canvas, '${(progress.clamp(0.0, 1.0) * 100).floor()}%', percentBox,
-      fontSize: 10, align: TextAlign.right);
+      fontSize: DS.fontCaption, align: TextAlign.right);
   if (zone != null && bossHealth == null && !finished && zoneTimeLeft > 0) {
     final fade = (zoneTimeLeft / .35).clamp(0.0, 1.0);
     final toast = Rect.fromLTWH(
@@ -103,11 +104,12 @@ void paintReturnHomeHud(
         Paint()..color = _cream.withAlpha((225 * fade).round()));
     _label(canvas, zone,
         Rect.fromLTWH(toast.left + 10, toast.top + 3, toast.width - 20, 18),
-        fontSize: 11.5, color: _ink.withAlpha((255 * fade).round()));
+        fontSize: DS.fontCaption, color: _ink.withAlpha((255 * fade).round()));
     if (zoneSubtitle.isNotEmpty) {
       _label(canvas, zoneSubtitle,
           Rect.fromLTWH(toast.left + 10, toast.top + 21, toast.width - 20, 17),
-          fontSize: 11, color: _ink.withAlpha((210 * fade).round()));
+          fontSize: DS.fontCaption,
+          color: _ink.withAlpha((210 * fade).round()));
     }
   }
   canvas.restore();
@@ -117,7 +119,7 @@ void _label(
   Canvas canvas,
   String text,
   Rect box, {
-  double fontSize = 13,
+  double fontSize = DS.fontBody,
   Color color = _ink,
   TextAlign align = TextAlign.left,
 }) {
@@ -213,10 +215,10 @@ void _paintBossBar(Canvas canvas, Size size, EdgeInsets padding, double health,
       padding.left + (usableWidth - width) / 2, padding.top + 18, width, 58);
   _label(canvas, phase == 2 ? 'RỒNG CUỒNG NỘ' : 'RỒNG LỬA',
       Rect.fromLTWH(frame.left + 14, frame.top + 4, width - 152, 24),
-      fontSize: 17, color: _ink);
+      fontSize: DS.fontHeading, color: _ink);
   _label(canvas, tired ? 'MỆT! CÀO ĐI!' : 'GIAI ĐOẠN $phase',
       Rect.fromLTWH(frame.right - 130, frame.top + 6, 116, 20),
-      fontSize: 10.5,
+      fontSize: DS.fontCaption,
       color: tired ? const Color(0xFFB84430) : _ink,
       align: TextAlign.right);
   final bar = Rect.fromLTWH(frame.left + 14, frame.top + 31, width - 28, 18);
@@ -253,7 +255,9 @@ void _paintBossBar(Canvas canvas, Size size, EdgeInsets padding, double health,
         ..style = PaintingStyle.stroke
         ..strokeWidth = 1);
   _label(canvas, '${(health.clamp(0.0, 1.0) * 100).ceil()}%', bar,
-      fontSize: 12, color: const Color(0xFFFFF4DA), align: TextAlign.center);
+      fontSize: DS.fontBody,
+      color: const Color(0xFFFFF4DA),
+      align: TextAlign.center);
 }
 
 void _paintRouteMap(Canvas canvas, Rect bar, double progress,

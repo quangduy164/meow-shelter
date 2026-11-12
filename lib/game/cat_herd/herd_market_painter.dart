@@ -1,3 +1,4 @@
+import '../../ui/design.dart';
 import 'dart:math' as math;
 import 'package:flutter/painting.dart';
 import 'herd_market.dart';
@@ -105,7 +106,9 @@ void _bubble(Canvas c, Offset at, String text, Color color) {
       text: TextSpan(
           text: text,
           style: TextStyle(
-              color: color, fontSize: 13, fontWeight: FontWeight.w900)),
+              color: color,
+              fontSize: DS.fontBody,
+              fontWeight: FontWeight.w900)),
       textDirection: TextDirection.ltr)
     ..layout();
   t.paint(c, at - Offset(t.width / 2, t.height / 2));

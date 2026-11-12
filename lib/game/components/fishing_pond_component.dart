@@ -1,3 +1,4 @@
+import '../../ui/design.dart';
 import 'package:flame/components.dart';
 import 'package:flame/events.dart';
 import 'package:flutter/painting.dart';
@@ -74,7 +75,7 @@ class FishingPondComponent extends PositionComponent with TapCallbacks {
                   ? '+1 cá!'
                   : 'Câu cá',
           style: const TextStyle(
-              fontSize: 12,
+              fontSize: DS.fontBody,
               fontWeight: FontWeight.bold,
               color: Color(0xFFFFFFFF))),
       textDirection: TextDirection.ltr,

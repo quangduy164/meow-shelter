@@ -37,7 +37,7 @@ class HerdMapSelect extends StatelessWidget {
                     child: Text('CHỌN VÙNG KHÁM PHÁ',
                         style: TextStyle(
                             color: DS.cream,
-                            fontSize: 22,
+                            fontSize: DS.fontTitle,
                             fontWeight: FontWeight.w900,
                             letterSpacing: 1)),
                   ),
@@ -114,7 +114,7 @@ class _RegionCard extends StatelessWidget {
                                     child: Text('VÙNG $number',
                                         style: const TextStyle(
                                             color: DS.cream,
-                                            fontSize: 11,
+                                            fontSize: DS.fontCaption,
                                             fontWeight: FontWeight.w900,
                                             letterSpacing: 1))),
                               )),
@@ -130,7 +130,7 @@ class _RegionCard extends StatelessWidget {
                                   overflow: TextOverflow.ellipsis,
                                   style: const TextStyle(
                                       color: DS.ink,
-                                      fontSize: 17,
+                                      fontSize: DS.fontHeading,
                                       fontWeight: FontWeight.w900)),
                               const SizedBox(height: 4),
                               Text(
@@ -150,7 +150,7 @@ class _RegionCard extends StatelessWidget {
                                   overflow: TextOverflow.ellipsis,
                                   style: const TextStyle(
                                       color: DS.soft,
-                                      fontSize: 12,
+                                      fontSize: DS.fontBody,
                                       height: 1.3)),
                               const SizedBox(height: 10),
                               Container(
@@ -170,7 +170,7 @@ class _RegionCard extends StatelessWidget {
                                       Text('CHƠI',
                                           style: TextStyle(
                                               color: DS.ink,
-                                              fontSize: 12,
+                                              fontSize: DS.fontBody,
                                               fontWeight: FontWeight.w900)),
                                     ]),
                               ),

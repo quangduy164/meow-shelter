@@ -77,7 +77,7 @@ class _AudioSettingsDialog extends StatelessWidget {
                     child: Text('CÀI ĐẶT',
                         style: TextStyle(
                             color: DS.ink,
-                            fontSize: 16,
+                            fontSize: DS.fontTitle,
                             fontWeight: FontWeight.w900,
                             letterSpacing: .6)),
                   ),
@@ -168,7 +168,9 @@ class _AudioSettingsDialog extends StatelessWidget {
         Expanded(
             child: Text(label,
                 style: const TextStyle(
-                    color: DS.ink, fontSize: 12, fontWeight: FontWeight.w800))),
+                    color: DS.ink,
+                    fontSize: DS.fontBody,
+                    fontWeight: FontWeight.w800))),
         Switch(
           value: value,
           onChanged: onChanged,
@@ -189,7 +191,7 @@ class _AudioSettingsDialog extends StatelessWidget {
               child: Text(title,
                   style: const TextStyle(
                       color: DS.ink,
-                      fontSize: 12,
+                      fontSize: DS.fontBody,
                       fontWeight: FontWeight.w800))),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
@@ -198,7 +200,7 @@ class _AudioSettingsDialog extends StatelessWidget {
             child: Text('${(value * 100).round()}%',
                 style: const TextStyle(
                     color: DS.goldEdge,
-                    fontSize: 11,
+                    fontSize: DS.fontCaption,
                     fontWeight: FontWeight.w900)),
           ),
         ]),

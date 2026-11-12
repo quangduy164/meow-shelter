@@ -121,7 +121,7 @@ class _RoundResultOverlayState extends State<RoundResultOverlay>
                                       liveRegion: true,
                                       child: Text(_title,
                                           style: TextStyle(
-                                              fontSize: 27,
+                                              fontSize: DS.fontTitle,
                                               height: 1.1,
                                               fontWeight: FontWeight.w900,
                                               color: _won
@@ -131,7 +131,7 @@ class _RoundResultOverlayState extends State<RoundResultOverlay>
                                     const SizedBox(height: 4),
                                     Text(_subtitle,
                                         style: const TextStyle(
-                                            fontSize: 13,
+                                            fontSize: DS.fontBody,
                                             fontWeight: FontWeight.w700,
                                             color: DS.soft)),
                                   ]),
@@ -193,7 +193,7 @@ class _RoundResultOverlayState extends State<RoundResultOverlay>
                             child: Text(_header,
                                 style: const TextStyle(
                                     color: DS.ink,
-                                    fontSize: 12.5,
+                                    fontSize: DS.fontCaption,
                                     fontWeight: FontWeight.w900,
                                     letterSpacing: 1)),
                           ),
@@ -294,7 +294,7 @@ class _StarRow extends StatelessWidget {
                       textAlign: TextAlign.center,
                       maxLines: 2,
                       style: TextStyle(
-                          fontSize: 11,
+                          fontSize: DS.fontCaption,
                           height: 1.15,
                           fontWeight: FontWeight.w800,
                           color: earned ? DS.ink : DS.mutedText)),
@@ -353,7 +353,7 @@ class _ActionButton extends StatelessWidget {
                   const SizedBox(width: 7),
                   Text(label!,
                       style: const TextStyle(
-                          fontSize: 15,
+                          fontSize: DS.fontBody,
                           fontWeight: FontWeight.w900,
                           color: DS.ink)),
                 ],

@@ -27,6 +27,49 @@ In code these live in `lib/ui/design.dart` as `DS` (colours, `DS.card`,
 Text is always bold: titles `w900`, secondary `w600` or regular. Small caps
 labels use letter spacing 1–1.5.
 
+## Typography
+
+All interface text uses the scale in `lib/ui/design.dart`. These are **design
+units**, not physical pixels; `UiScaleBox` applies device scaling and the
+system text scale (up to 1.15×). Do not multiply font sizes by screen width.
+
+| Role | Token | Size | Shared style |
+| --- | --- | --- | --- |
+| Screen/dialog/result title | `DS.fontTitle` | 16 | `DS.title` |
+| Card/section heading, selected cat name | `DS.fontHeading` | 14 | `DS.headingText` |
+| Body, descriptions, menu names | `DS.fontBody` | 12 | `DS.bodyText` |
+| Button label | `DS.fontButton` | 12 | `DS.buttonText` |
+| Hint, subtitle, HUD label | `DS.fontCaption` | 10 | `DS.captionText` |
+| Compact badge, overline, small cooldown | `DS.fontMicro` | 9 | `DS.microText` |
+| Timer, count, skill countdown | `DS.fontValue` | 16 | `DS.valueText` |
+| Main home action, highlighted reward | `DS.fontDisplay` | 18 | `DS.displayText` |
+
+`MaterialApp` installs `DS.textTheme` so text without an explicit size follows
+the same scale. `DS.primary` and `DS.secondary` both use `DS.buttonText`.
+Canvas HUD labels and world captions use these tokens as well.
+
+Use a shared style directly, or preserve the widget's colour/weight while
+referencing a size token:
+
+```dart
+const Text('CÀI ĐẶT', style: DS.title);
+
+const TextStyle(
+  fontSize: DS.fontCaption,
+  color: DS.cream,
+  fontWeight: FontWeight.w800,
+);
+```
+
+Never add a new numeric `fontSize` to a screen. Update the relevant token here
+and in `design.dart` when changing the scale. Prefer wrapping or ellipsis for
+long text rather than introducing an extra font size for one screen.
+
+Logo lettering and drawn symbols are artwork, not UI text:
+`DS.fontLogo` (60), `DS.fontLogoCaption` (18), `DS.fontSymbol` (28).
+The fish journal's mystery mark scales with its illustration. These sizes
+must not be used for normal labels or titles.
+
 ## Level select screen
 
 File: `lib/ui/screens/level_select_screen.dart`
@@ -47,8 +90,8 @@ File: `lib/ui/screens/level_select_screen.dart`
 ```
 
 - Background: `ShelterGardenPainter` covered by the backdrop dim colour.
-- Top bar: round back button, title "CHỌN MÀN" in cream 24 `w900` with an ink
-  text shadow, total stars on the right (`earned/levels × 3`).
+- Top bar: round home button, title "CHỌN MÀN" in cream `DS.fontTitle` with an
+  ink text shadow, total stars on the right (`earned/levels × 3`).
 - Body: a horizontal `ListView` of chapter cards, 16 px side padding, 14 px gap.
 
 ### Chapter card
@@ -59,8 +102,9 @@ File: `lib/ui/screens/level_select_screen.dart`
   - Cat avatar: 46 px circle, `#FFE3B0` fill, wood border 2 px, showing the
     **first idle frame** of the breed's sprite sheet (sheets are 6 frames
     wide; crop with `OverflowBox` aligned left).
-  - "CHƯƠNG n" label (11, label brown), chapter title (18, ink), and
-    "Breed · trait" from `CatCatchRule` (12, soft brown). The last chapter
+  - "CHƯƠNG n" label (`fontCaption`, label brown), chapter title
+    (`fontHeading`, ink), and "Breed · trait" from `CatCatchRule`
+    (`fontBody`, soft brown). The last chapter
     shows "Đủ 5 giống mèo". All lines are single line with ellipsis.
 - Level rows below the header, 3 px vertical gap, up to 46 px tall each.
   Rows are `Flexible` so they shrink on short screens instead of overflowing.
@@ -73,7 +117,7 @@ File: `lib/ui/screens/level_select_screen.dart`
 | Locked | Muted fill | Muted border | `#8E8270` circle | Lock icon |
 
 - Radius 14, ink ripple through `InkWell`; locked rows are not tappable.
-- Text block: level name (14 `w900`) and a detail line (11): "Màn tập" for
+- Text block: level name (`fontBody`, `w900`) and a detail line (`fontCaption`): "Màn tập" for
   tutorials, otherwise "`n` mèo · `t`s". Wrapped in a scale-down `FittedBox`
   so long names never overflow.
 
@@ -98,19 +142,21 @@ File: `lib/ui/screens/home_screen.dart`
 │  (paw) MEOW                ┌───────────┐ ┌───────────┐      │
 │        SHELTER             │ 🐟        │ │ 🚩        │      │
 │  [ ▶  BẮT ĐẦU        ]     │ CÂU CÁ    │ │ MÈO VỀ NHÀ│      │
-│  [▦ CHỌN MÀN] (● 120)      └───────────┘ └───────────┘      │
+│  [▦ CHỌN MÀN]             └───────────┘ └───────────┘      │
 │                            ┌───────────┐ ┌───────────┐      │
 │                            │ 🐾 CỨU HỘ │ │ 🏠 TRẠI   │      │
 │                            └───────────┘ └───────────┘      │
+│ (⚙)                        [ TRẠI MÈO ]                     │
 └────────────────────────────────────────────────────────────┘
 ```
 
 - Content is laid out on a fixed 820×340 design-unit board inside a
   scale-down `FittedBox`, 16 units safe padding, so it fits every landscape
   screen (see Responsive layout).
-- Left half: game logo, the main play button, then "CHỌN MÀN" and the coin
-  chip side by side. Right half: a 2×2 grid of mode tiles, 12 px gaps.
-- Coins refresh every time the player returns to this screen.
+- Left half: game logo, the main play button, then "CHỌN MÀN".
+  Right half: five mode tiles in two columns, 12-unit gaps.
+- Settings is a small gear in the bottom-left safe area, with a 48-unit touch
+  target. Home does not show coins; the balance is inside the camp shop.
 
 ### Pressable button (shared shape)
 
@@ -125,32 +171,28 @@ base that sinks when pressed.
 
 | Button | Size | Face | Shade | Content |
 |---|---|---|---|---|
-| BẮT ĐẦU | 300×64 | `#FFB83F` | `#C0731F` | Play icon 34 + text 24 `w900`, spacing 2, ink |
-| CHỌN MÀN | 172×46 | cream | `#B98A55` | Grid icon 22 + text 16 `w900`, ink |
+| BẮT ĐẦU | 240×52 | `#FFB83F` | `#C0731F` | Play icon 28 + `fontDisplay`, `w900`, ink |
+| CHỌN MÀN | 148×42 | cream | `#B98A55` | Grid icon 18 + `fontButton`, `w900`, ink |
 
 "BẮT ĐẦU" opens the first level that has no stars yet.
 
 ### Mode tile
 
-- 204×146 pressable, solid mode colour, padding 14/12/12/12.
-- Top left: mode icon 54 px drawn with `onColor: true` (translucent white
-  badge `#33FFFFFF` with a white symbol).
-- Bottom: title in white 18 `w900` (spacing .5), one-line description in
-  `#E6FFFFFF` 12.5 `w600`. Both single line with ellipsis.
+- 168×88 pressable, solid mode colour, padding 8/10.
+- Icon (30 units) and title are centred as one block. The icon uses
+  `onColor: true` (translucent white badge and a white symbol).
+- Title uses `DS.fontButton`, white, `w900`, with one line and ellipsis.
+  Mode tiles have no description line.
 
-| Mode | Colour | Icon | Description |
-|---|---|---|---|
-| CÂU CÁ | `#3E9FB0` | Fish | Sưu tập cá làm mồi |
-| MÈO VỀ NHÀ | `#5E9A48` | Winding road with a flag | Né chướng ngại về nhà |
-| CỨU HỘ VÔ HẠN | `#E0703F` | Paw | Cứu mèo không giới hạn |
-| TRẠI MÈO | `#C85A7C` | House with a heart | Chăm mèo, trang trí sân |
+| Mode | Colour | Icon |
+|---|---|---|
+| CÂU CÁ | `#3E9FB0` | Fish |
+| MÈO VỀ NHÀ | `#5E9A48` | Winding road with a flag |
+| CỨU HỘ VÔ HẠN | `#E0703F` | Paw |
+| DẪN ĐÀN VỀ NHÀ | `#8277B2` | Three cats |
+| TRẠI MÈO | `#C85A7C` | House with a heart |
 
 Each mode must have its own icon; never reuse the house for two modes.
-
-### Coin chip
-
-46 px tall pill, fill ink at 80% (`#CC5A3214`), coin icon `#FFC94A` 24 px, amount in
-cream 18 `w900`.
 
 ### Background
 
@@ -177,8 +219,8 @@ Sizes are never tied to physical pixels.
   through `MaterialApp.builder`, scales every route, dialog, overlay and
   Flame game canvas uniformly:
   `scale = shortestSide / 375`, clamped to **0.8–2.0**.
-- So every number written in widgets and painters (`width: 48`,
-  `fontSize: 14`, `EdgeInsets.all(12)`, a cat 80 wide) is a **design unit**.
+- Dimensions written in widgets and painters (`width: 48`,
+  `fontSize: DS.fontBody`, `EdgeInsets.all(12)`, a cat 80 wide) are **design units**.
   On a 375-tall phone it equals 1 px; on a tablet it grows; on a small phone
   it shrinks a little.
 - Inside the box, `MediaQuery.sizeOf(context)` is already in design units:

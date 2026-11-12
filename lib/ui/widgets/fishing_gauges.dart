@@ -1,3 +1,4 @@
+import '../design.dart';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -31,7 +32,7 @@ class FishingGauge extends StatelessWidget {
                         size: 18, color: color),
                     Text('$percent%',
                         style: TextStyle(
-                            fontSize: 16,
+                            fontSize: DS.fontValue,
                             fontWeight: FontWeight.w900,
                             color: color)),
                   ])),
@@ -39,7 +40,7 @@ class FishingGauge extends StatelessWidget {
             const SizedBox(height: 4),
             Text(tension ? 'CĂNG DÂY' : 'CÁCH BỜ',
                 style: const TextStyle(
-                    fontSize: 11,
+                    fontSize: DS.fontCaption,
                     fontWeight: FontWeight.w900,
                     color: Color(0xFF253F36))),
           ])),

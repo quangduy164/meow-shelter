@@ -1,3 +1,4 @@
+import '../../ui/design.dart';
 import 'dart:math' as math;
 
 import 'package:flame/components.dart';
@@ -71,7 +72,8 @@ class HudComponent extends PositionComponent with HasGameRef<FlameGame> {
         (_fishIcon, '$fishLeft', fishLeft == 0 ? _danger : _ink),
     ];
     final labels = [
-      for (final (_, text, color) in parts) _text(text, 13, color, bold: true)
+      for (final (_, text, color) in parts)
+        _text(text, DS.fontBody, color, bold: true)
     ];
     const iconW = 16.0, gap = 4.0, sep = 13.0, padX = 11.0, h = 28.0;
     final width = labels.fold(0.0, (w, l) => w + iconW + gap + l.width) +
@@ -122,7 +124,7 @@ class HudComponent extends PositionComponent with HasGameRef<FlameGame> {
     final screen = gameRef.size;
     var y = top + rise;
     for (final line in _toast) {
-      final label = _text(line, 11.5, _cream.withOpacity(fade),
+      final label = _text(line, DS.fontCaption, _cream.withOpacity(fade),
           bold: true, maxWidth: screen.x * .5);
       final box = RRect.fromRectAndRadius(
           Rect.fromCenter(
@@ -148,7 +150,7 @@ class HudComponent extends PositionComponent with HasGameRef<FlameGame> {
     ];
     final labels = [
       for (final (goal, failed) in rows)
-        _text(goal.label, 10.5, failed ? _muted : _ink,
+        _text(goal.label, DS.fontCaption, failed ? _muted : _ink,
             bold: !failed, strike: failed)
     ];
     final width =

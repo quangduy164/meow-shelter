@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'audio/game_audio.dart';
 
-import 'ui/responsive.dart';
+import 'ui/design.dart';
 import 'ui/screens/home_screen.dart';
 import 'collection/fish_collection.dart';
 import 'camp/camp_state.dart';
@@ -24,6 +24,7 @@ Future<void> main() async {
 
   runApp(MaterialApp(
     debugShowCheckedModeBanner: false,
+    theme: ThemeData(fontFamily: 'Roboto', textTheme: DS.textTheme),
     navigatorObservers: [homeRouteObserver],
     // Every route, dialog and game canvas is laid out in design units and
     // scaled to the real screen; see lib/ui/responsive.dart.

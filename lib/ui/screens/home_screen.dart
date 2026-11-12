@@ -1,3 +1,4 @@
+import '../design.dart';
 import 'package:flutter/material.dart';
 import '../../audio/game_audio.dart';
 import '../widgets/audio_settings_button.dart';
@@ -118,7 +119,7 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
                 Text('BẮT ĐẦU',
                     style: TextStyle(
                         color: _ink,
-                        fontSize: 20,
+                        fontSize: DS.fontDisplay,
                         fontWeight: FontWeight.w900,
                         letterSpacing: 2)),
               ],
@@ -191,7 +192,7 @@ class _Label extends StatelessWidget {
           Text(text,
               style: const TextStyle(
                   color: _ink,
-                  fontSize: 14,
+                  fontSize: DS.fontButton,
                   fontWeight: FontWeight.w900,
                   letterSpacing: 1)),
         ],
@@ -232,7 +233,7 @@ class _ModeTile extends StatelessWidget {
                   textAlign: TextAlign.center,
                   style: const TextStyle(
                       color: Colors.white,
-                      fontSize: 13,
+                      fontSize: DS.fontButton,
                       fontWeight: FontWeight.w900,
                       letterSpacing: .2)),
             ],

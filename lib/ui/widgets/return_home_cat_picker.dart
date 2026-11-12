@@ -85,7 +85,7 @@ class _ReturnHomeCatPickerState extends State<ReturnHomeCatPicker>
         child: SafeArea(
           child: Center(
             child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 960, maxHeight: 380),
+              constraints: const BoxConstraints(maxWidth: 740, maxHeight: 320),
               child: Padding(
                 padding: const EdgeInsets.all(12),
                 child: Column(children: [
@@ -95,21 +95,21 @@ class _ReturnHomeCatPickerState extends State<ReturnHomeCatPicker>
                       onPressed: _starting ? null : widget.onHome,
                       size: 40,
                     ),
-                    const SizedBox(width: 12),
+                    const SizedBox(width: 8),
                     const Expanded(
                       child: Text('CHỌN MÈO',
                           style: TextStyle(
                               color: DS.cream,
-                              fontSize: 17,
+                              fontSize: DS.fontTitle,
                               fontWeight: FontWeight.w900,
                               letterSpacing: 1)),
                     ),
                   ]),
-                  const SizedBox(height: 10),
+                  const SizedBox(height: 8),
                   Expanded(
                     child: LayoutBuilder(builder: (context, box) {
                       final rosterWidth =
-                          (box.maxWidth * .23).clamp(136.0, 166.0);
+                          (box.maxWidth * .22).clamp(136.0, 148.0);
                       return Row(
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
@@ -124,7 +124,7 @@ class _ReturnHomeCatPickerState extends State<ReturnHomeCatPicker>
                                 ],
                               ]),
                             ),
-                            const SizedBox(width: 12),
+                            const SizedBox(width: 10),
                             Expanded(child: _details()),
                           ]);
                     }),
@@ -144,7 +144,7 @@ class _ReturnHomeCatPickerState extends State<ReturnHomeCatPicker>
       label: breed.name,
       child: Material(
         color: selected ? DS.cream : const Color(0xFF36554C),
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(12),
         clipBehavior: Clip.antiAlias,
         child: InkWell(
           onTap: _starting
@@ -159,13 +159,13 @@ class _ReturnHomeCatPickerState extends State<ReturnHomeCatPicker>
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 8),
             decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(14),
+                borderRadius: BorderRadius.circular(12),
                 border: Border.all(
                     color: selected ? DS.gold : const Color(0x447CA68D),
                     width: selected ? 2 : 1)),
             child: Row(children: [
               CatFace(breed.id,
-                  size: 34,
+                  size: 30,
                   background: selected
                       ? const Color(0xFFFFDFA6)
                       : breed.color.withOpacity(.25)),
@@ -176,12 +176,12 @@ class _ReturnHomeCatPickerState extends State<ReturnHomeCatPicker>
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
                         color: selected ? DS.ink : DS.cream,
-                        fontSize: 11,
+                        fontSize: DS.fontButton,
                         fontWeight: FontWeight.w900)),
               ),
               if (selected)
                 const Icon(Icons.check_circle_rounded,
-                    color: DS.goldEdge, size: 16),
+                    color: DS.goldEdge, size: 14),
             ]),
           ),
         ),
@@ -217,14 +217,14 @@ class _ReturnHomeCatPickerState extends State<ReturnHomeCatPicker>
     return DecoratedBox(
       decoration: DS.card.copyWith(color: DS.cream),
       child: Padding(
-        padding: const EdgeInsets.all(12),
+        padding: const EdgeInsets.all(10),
         child:
             Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
           SizedBox(
-            height: 72,
+            height: 64,
             child: Row(children: [
               Container(
-                width: 92,
+                width: 76,
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                       begin: Alignment.topCenter,
@@ -244,13 +244,13 @@ class _ReturnHomeCatPickerState extends State<ReturnHomeCatPicker>
                             borderRadius: BorderRadius.circular(20))),
                   ),
                   Positioned(
-                    bottom: -10,
+                    bottom: -8,
                     left: -8,
                     child: AnimatedBuilder(
                       animation: _idle,
                       builder: (_, __) => CatSprite(
                           type: breed.id,
-                          size: 108,
+                          size: 92,
                           frames: framesIdle,
                           frame: (_idle.value * framesIdle)
                               .floor()
@@ -259,7 +259,7 @@ class _ReturnHomeCatPickerState extends State<ReturnHomeCatPicker>
                   ),
                 ]),
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: 10),
               Expanded(
                   child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -270,13 +270,13 @@ class _ReturnHomeCatPickerState extends State<ReturnHomeCatPicker>
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
                           color: DS.ink,
-                          fontSize: 16,
+                          fontSize: DS.fontHeading,
                           fontWeight: FontWeight.w900)),
                   const SizedBox(height: 3),
                   Text(role,
                       style: TextStyle(
                           color: color,
-                          fontSize: 9,
+                          fontSize: DS.fontMicro,
                           fontWeight: FontWeight.w900,
                           letterSpacing: 1)),
                   const SizedBox(height: 3),
@@ -284,18 +284,20 @@ class _ReturnHomeCatPickerState extends State<ReturnHomeCatPicker>
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
-                          color: DS.soft, fontSize: 10, height: 1.2)),
+                          color: DS.soft,
+                          fontSize: DS.fontCaption,
+                          height: 1.2)),
                 ],
               )),
             ]),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 6),
           Text(_loadFailed ? 'Không tải được mèo. Hãy thử lại.' : 'BỘ KỸ NĂNG',
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: TextStyle(
                   color: _loadFailed ? const Color(0xFFB0503A) : DS.label,
-                  fontSize: 9,
+                  fontSize: DS.fontMicro,
                   fontWeight: FontWeight.w900,
                   letterSpacing: .8)),
           const SizedBox(height: 6),
@@ -319,7 +321,7 @@ class _ReturnHomeCatPickerState extends State<ReturnHomeCatPicker>
               ])),
             ],
           ])),
-          const SizedBox(height: 8),
+          const SizedBox(height: 6),
           SizedBox(
               height: 40,
               child: Row(children: [
@@ -333,28 +335,31 @@ class _ReturnHomeCatPickerState extends State<ReturnHomeCatPicker>
                   onPressed: _starting ? null : () => widget.onHelp(breed.id),
                   icon: const Icon(Icons.auto_awesome_rounded, size: 16),
                   label: const Text('Combo',
-                      style:
-                          TextStyle(fontSize: 11, fontWeight: FontWeight.w800)),
+                      style: TextStyle(
+                          fontSize: DS.fontButton,
+                          fontWeight: FontWeight.w800)),
                 ),
+                const Spacer(),
                 const SizedBox(width: 8),
-                Expanded(
+                SizedBox(
+                    width: 156,
                     child: SizedBox.expand(
                         child: ElevatedButton.icon(
-                  style: DS.primary,
-                  onPressed: _starting ? null : _start,
-                  icon: _starting
-                      ? const SizedBox.square(
-                          dimension: 16,
-                          child: CircularProgressIndicator(
-                              strokeWidth: 2, color: DS.ink))
-                      : const Icon(Icons.play_arrow_rounded, size: 23),
-                  label: Text(_starting ? 'ĐANG TẢI' : 'BẮT ĐẦU',
-                      style: const TextStyle(
-                          color: DS.ink,
-                          fontFamily: 'Roboto',
-                          fontSize: 11,
-                          fontWeight: FontWeight.w900)),
-                ))),
+                      style: DS.primary,
+                      onPressed: _starting ? null : _start,
+                      icon: _starting
+                          ? const SizedBox.square(
+                              dimension: 16,
+                              child: CircularProgressIndicator(
+                                  strokeWidth: 2, color: DS.ink))
+                          : const Icon(Icons.play_arrow_rounded, size: 23),
+                      label: Text(_starting ? 'ĐANG TẢI' : 'BẮT ĐẦU',
+                          style: const TextStyle(
+                              color: DS.ink,
+                              fontFamily: 'Roboto',
+                              fontSize: DS.fontButton,
+                              fontWeight: FontWeight.w900)),
+                    ))),
               ])),
         ]),
       ),
@@ -368,21 +373,21 @@ class _ReturnHomeCatPickerState extends State<ReturnHomeCatPicker>
         message:
             '$label · Hồi chiêu ${cooldown.toString().replaceAll('.0', '')} giây',
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
           decoration: BoxDecoration(
             color: main ? const Color(0xFFFFE9B9) : const Color(0xFFFFFBF0),
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(10),
             border: Border.all(color: main ? DS.gold : const Color(0x44B27A3E)),
           ),
           child: Row(children: [
             Container(
-              width: 30,
-              height: 30,
+              width: 26,
+              height: 26,
               decoration: BoxDecoration(
                   color: color, borderRadius: BorderRadius.circular(9)),
-              child: Center(child: SkillGlyphView(glyph, size: 24)),
+              child: Center(child: SkillGlyphView(glyph, size: 21)),
             ),
-            const SizedBox(width: 7),
+            const SizedBox(width: 6),
             Expanded(
                 child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -393,7 +398,7 @@ class _ReturnHomeCatPickerState extends State<ReturnHomeCatPicker>
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
                         color: DS.ink,
-                        fontSize: 10.5,
+                        fontSize: DS.fontCaption,
                         height: 1.15,
                         fontWeight: FontWeight.w800)),
                 Text(
@@ -401,7 +406,7 @@ class _ReturnHomeCatPickerState extends State<ReturnHomeCatPicker>
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
-                        color: DS.soft, fontSize: 9, height: 1.15)),
+                        color: DS.soft, fontSize: DS.fontMicro, height: 1.15)),
               ],
             )),
           ]),

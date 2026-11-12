@@ -1,3 +1,4 @@
+import '../design.dart';
 import 'dart:async';
 import 'dart:math' as math;
 
@@ -158,7 +159,7 @@ class ReturnHomeSkillButton extends StatelessWidget {
               child: CustomPaint(painter: _CooldownPainter(left, color))),
           Text('${cooldownLeft.ceil()}',
               style: const TextStyle(
-                  fontSize: 22,
+                  fontSize: DS.fontValue,
                   fontWeight: FontWeight.w900,
                   color: Colors.white,
                   shadows: [Shadow(color: _ink, blurRadius: 3)])),
@@ -450,7 +451,7 @@ class _ReturnHomeAimButtonState extends State<ReturnHomeAimButton> {
                             painter: _CooldownPainter(left, color))),
                     Text('${widget.cooldownLeft.ceil()}',
                         style: const TextStyle(
-                            fontSize: 18,
+                            fontSize: DS.fontValue,
                             fontWeight: FontWeight.w900,
                             color: Colors.white,
                             shadows: [Shadow(color: _ink, blurRadius: 3)])),
