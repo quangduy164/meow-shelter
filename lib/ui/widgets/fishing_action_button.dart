@@ -1,3 +1,4 @@
+import '../design.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'fishing_tool_art.dart';
@@ -91,15 +92,15 @@ class _FishingActionButtonState extends State<FishingActionButton> {
                   child: Stack(alignment: Alignment.center, children: [
                     if (widget.primary)
                       AnimatedContainer(
-                        duration: const Duration(milliseconds: 100),
+                        duration: DS.fastDuration,
                         width: 58,
                         height: 58,
                         transform:
                             Matrix4.translationValues(0, pressed ? 3 : 0, 0),
-                        padding: const EdgeInsets.all(3),
+                        padding: const EdgeInsets.all(DS.spaceXs),
                         decoration: BoxDecoration(
                           color: const Color(0xFF365D56),
-                          borderRadius: BorderRadius.circular(8),
+                          borderRadius: BorderRadius.circular(DS.radiusSm),
                           boxShadow: [
                             BoxShadow(
                                 color: const Color(0xFF29463F),
@@ -121,14 +122,14 @@ class _FishingActionButtonState extends State<FishingActionButton> {
                                       : const Color(0xFFFFE8B5),
                           border: Border.all(
                               color: const Color(0xFFFFF8DE), width: 2),
-                          borderRadius: BorderRadius.circular(5),
+                          borderRadius: BorderRadius.circular(DS.radiusXs),
                         )),
                       ),
                     SizedBox.square(
                         dimension: artSize,
                         child: AnimatedScale(
                             scale: pressed ? .94 : 1,
-                            duration: const Duration(milliseconds: 100),
+                            duration: DS.fastDuration,
                             child: Opacity(
                                 opacity: enabled || widget.busy ? 1 : .45,
                                 child: CustomPaint(

@@ -1,3 +1,4 @@
+import '../design.dart';
 import 'package:flutter/material.dart';
 
 enum ModeIconKind { catchCat, fishing, rescue, returnHome, camp, herd }
@@ -29,11 +30,11 @@ class _ModeIconPainter extends CustomPainter {
     canvas.scale(size.width / 56, size.height / 56);
     final color = switch (kind) {
       ModeIconKind.catchCat => const Color(0xFFD9657B),
-      ModeIconKind.fishing => const Color(0xFF3E9FB0),
-      ModeIconKind.rescue => const Color(0xFFF08A3A),
-      ModeIconKind.returnHome => const Color(0xFF6B9E4E),
-      ModeIconKind.camp => const Color(0xFFC85A7C),
-      ModeIconKind.herd => const Color(0xFF8277B2),
+      ModeIconKind.fishing => DS.modeFishing,
+      ModeIconKind.rescue => DS.modeRescue,
+      ModeIconKind.returnHome => DS.modeReturnHome,
+      ModeIconKind.camp => DS.modeCamp,
+      ModeIconKind.herd => DS.modeHerd,
     };
     final tile = RRect.fromRectAndRadius(
         const Rect.fromLTWH(2, 2, 52, 52), const Radius.circular(14));

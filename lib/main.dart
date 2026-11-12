@@ -24,7 +24,7 @@ Future<void> main() async {
 
   runApp(MaterialApp(
     debugShowCheckedModeBanner: false,
-    theme: ThemeData(fontFamily: 'Roboto', textTheme: DS.textTheme),
+    theme: DS.theme,
     navigatorObservers: [homeRouteObserver],
     // Every route, dialog and game canvas is laid out in design units and
     // scaled to the real screen; see lib/ui/responsive.dart.

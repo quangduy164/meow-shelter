@@ -81,13 +81,13 @@ class _ReturnHomeCatPickerState extends State<ReturnHomeCatPicker>
 
   @override
   Widget build(BuildContext context) => Material(
-        color: const Color(0xF0243E3A),
+        color: DS.selectionBackdrop,
         child: SafeArea(
           child: Center(
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 740, maxHeight: 320),
               child: Padding(
-                padding: const EdgeInsets.all(12),
+                padding: const EdgeInsets.all(DS.spaceMd),
                 child: Column(children: [
                   Row(children: [
                     RoundButton(
@@ -95,7 +95,7 @@ class _ReturnHomeCatPickerState extends State<ReturnHomeCatPicker>
                       onPressed: _starting ? null : widget.onHome,
                       size: 40,
                     ),
-                    const SizedBox(width: 8),
+                    const SizedBox(width: DS.spaceSm),
                     const Expanded(
                       child: Text('CHỌN MÈO',
                           style: TextStyle(
@@ -105,7 +105,7 @@ class _ReturnHomeCatPickerState extends State<ReturnHomeCatPicker>
                               letterSpacing: 1)),
                     ),
                   ]),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: DS.spaceSm),
                   Expanded(
                     child: LayoutBuilder(builder: (context, box) {
                       final rosterWidth =
@@ -119,12 +119,12 @@ class _ReturnHomeCatPickerState extends State<ReturnHomeCatPicker>
                                 for (var i = 0;
                                     i < CatBreed.all.length;
                                     i++) ...[
-                                  if (i > 0) const SizedBox(height: 6),
+                                  if (i > 0) const SizedBox(height: DS.spaceXs),
                                   Expanded(child: _breedCard(CatBreed.all[i])),
                                 ],
                               ]),
                             ),
-                            const SizedBox(width: 10),
+                            const SizedBox(width: DS.spaceSm),
                             Expanded(child: _details()),
                           ]);
                     }),
@@ -143,8 +143,8 @@ class _ReturnHomeCatPickerState extends State<ReturnHomeCatPicker>
       button: true,
       label: breed.name,
       child: Material(
-        color: selected ? DS.cream : const Color(0xFF36554C),
-        borderRadius: BorderRadius.circular(12),
+        color: selected ? DS.cream : DS.selectionSurface,
+        borderRadius: BorderRadius.circular(DS.radiusMd),
         clipBehavior: Clip.antiAlias,
         child: InkWell(
           onTap: _starting
@@ -157,11 +157,11 @@ class _ReturnHomeCatPickerState extends State<ReturnHomeCatPicker>
                   });
                 },
           child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8),
+            padding: const EdgeInsets.symmetric(horizontal: DS.spaceSm),
             decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(DS.radiusMd),
                 border: Border.all(
-                    color: selected ? DS.gold : const Color(0x447CA68D),
+                    color: selected ? DS.gold : DS.selectionBorder,
                     width: selected ? 2 : 1)),
             child: Row(children: [
               CatFace(breed.id,
@@ -169,7 +169,7 @@ class _ReturnHomeCatPickerState extends State<ReturnHomeCatPicker>
                   background: selected
                       ? const Color(0xFFFFDFA6)
                       : breed.color.withOpacity(.25)),
-              const SizedBox(width: 6),
+              const SizedBox(width: DS.spaceXs),
               Expanded(
                 child: Text(breed.name,
                     maxLines: 1,
@@ -217,7 +217,7 @@ class _ReturnHomeCatPickerState extends State<ReturnHomeCatPicker>
     return DecoratedBox(
       decoration: DS.card.copyWith(color: DS.cream),
       child: Padding(
-        padding: const EdgeInsets.all(10),
+        padding: const EdgeInsets.all(DS.spaceSm),
         child:
             Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
           SizedBox(
@@ -230,7 +230,7 @@ class _ReturnHomeCatPickerState extends State<ReturnHomeCatPicker>
                       begin: Alignment.topCenter,
                       end: Alignment.bottomCenter,
                       colors: [color.withOpacity(.1), color.withOpacity(.3)]),
-                  borderRadius: BorderRadius.circular(16),
+                  borderRadius: BorderRadius.circular(DS.radiusLg),
                 ),
                 child: Stack(clipBehavior: Clip.none, children: [
                   Positioned(
@@ -241,7 +241,8 @@ class _ReturnHomeCatPickerState extends State<ReturnHomeCatPicker>
                         height: 8,
                         decoration: BoxDecoration(
                             color: color.withOpacity(.22),
-                            borderRadius: BorderRadius.circular(20))),
+                            borderRadius:
+                                BorderRadius.circular(DS.radiusCard))),
                   ),
                   Positioned(
                     bottom: -8,
@@ -259,7 +260,7 @@ class _ReturnHomeCatPickerState extends State<ReturnHomeCatPicker>
                   ),
                 ]),
               ),
-              const SizedBox(width: 10),
+              const SizedBox(width: DS.spaceSm),
               Expanded(
                   child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -272,14 +273,14 @@ class _ReturnHomeCatPickerState extends State<ReturnHomeCatPicker>
                           color: DS.ink,
                           fontSize: DS.fontHeading,
                           fontWeight: FontWeight.w900)),
-                  const SizedBox(height: 3),
+                  const SizedBox(height: DS.spaceXs),
                   Text(role,
                       style: TextStyle(
                           color: color,
                           fontSize: DS.fontMicro,
                           fontWeight: FontWeight.w900,
                           letterSpacing: 1)),
-                  const SizedBox(height: 3),
+                  const SizedBox(height: DS.spaceXs),
                   Text(hint,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
@@ -291,24 +292,24 @@ class _ReturnHomeCatPickerState extends State<ReturnHomeCatPicker>
               )),
             ]),
           ),
-          const SizedBox(height: 6),
+          const SizedBox(height: DS.spaceXs),
           Text(_loadFailed ? 'Không tải được mèo. Hãy thử lại.' : 'BỘ KỸ NĂNG',
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: TextStyle(
-                  color: _loadFailed ? const Color(0xFFB0503A) : DS.label,
+                  color: _loadFailed ? DS.danger : DS.label,
                   fontSize: DS.fontMicro,
                   fontWeight: FontWeight.w900,
                   letterSpacing: .8)),
-          const SizedBox(height: 6),
+          const SizedBox(height: DS.spaceXs),
           Expanded(
               child: Column(children: [
             for (var row = 0; row < 2; row++) ...[
-              if (row > 0) const SizedBox(height: 6),
+              if (row > 0) const SizedBox(height: DS.spaceXs),
               Expanded(
                   child: Row(children: [
                 for (var col = 0; col < 2; col++) ...[
-                  if (col > 0) const SizedBox(width: 6),
+                  if (col > 0) const SizedBox(width: DS.spaceXs),
                   Expanded(
                       child: _skillCard(
                     skills[row * 2 + col].label,
@@ -321,17 +322,14 @@ class _ReturnHomeCatPickerState extends State<ReturnHomeCatPicker>
               ])),
             ],
           ])),
-          const SizedBox(height: 6),
+          const SizedBox(height: DS.spaceXs),
           SizedBox(
               height: 40,
               child: Row(children: [
                 OutlinedButton.icon(
-                  style: OutlinedButton.styleFrom(
-                      foregroundColor: DS.ink,
-                      side: const BorderSide(color: DS.wood),
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12)),
-                      padding: const EdgeInsets.symmetric(horizontal: 10)),
+                  style: DS.outlined.copyWith(
+                      padding: const WidgetStatePropertyAll(
+                          EdgeInsets.symmetric(horizontal: DS.spaceSm))),
                   onPressed: _starting ? null : () => widget.onHelp(breed.id),
                   icon: const Icon(Icons.auto_awesome_rounded, size: 16),
                   label: const Text('Combo',
@@ -340,7 +338,7 @@ class _ReturnHomeCatPickerState extends State<ReturnHomeCatPicker>
                           fontWeight: FontWeight.w800)),
                 ),
                 const Spacer(),
-                const SizedBox(width: 8),
+                const SizedBox(width: DS.spaceSm),
                 SizedBox(
                     width: 156,
                     child: SizedBox.expand(
@@ -373,21 +371,23 @@ class _ReturnHomeCatPickerState extends State<ReturnHomeCatPicker>
         message:
             '$label · Hồi chiêu ${cooldown.toString().replaceAll('.0', '')} giây',
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+          padding: const EdgeInsets.symmetric(
+              horizontal: DS.spaceXs, vertical: DS.spaceXs),
           decoration: BoxDecoration(
-            color: main ? const Color(0xFFFFE9B9) : const Color(0xFFFFFBF0),
-            borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: main ? DS.gold : const Color(0x44B27A3E)),
+            color: main ? DS.selectedFill : DS.surfaceRaised,
+            borderRadius: BorderRadius.circular(DS.radiusMd),
+            border: Border.all(color: main ? DS.gold : DS.borderSoft),
           ),
           child: Row(children: [
             Container(
               width: 26,
               height: 26,
               decoration: BoxDecoration(
-                  color: color, borderRadius: BorderRadius.circular(9)),
+                  color: color,
+                  borderRadius: BorderRadius.circular(DS.radiusSm)),
               child: Center(child: SkillGlyphView(glyph, size: 21)),
             ),
-            const SizedBox(width: 6),
+            const SizedBox(width: DS.spaceXs),
             Expanded(
                 child: Column(
               mainAxisAlignment: MainAxisAlignment.center,

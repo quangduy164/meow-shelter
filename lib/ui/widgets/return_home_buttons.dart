@@ -3,107 +3,16 @@ import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
-import '../../audio/game_audio.dart';
 
 import '../../game/cats/cat_breed.dart';
 import '../../game/skill_glyph.dart';
 import 'game_glyphs.dart';
 import 'skill_glyphs.dart';
+import 'game_pressable.dart';
 
-const _ink = Color(0xFF5A3214);
-const _cream = Color(0xFFFFF4DA);
-const _wood = Color(0xFFB27A3E);
+export 'game_pressable.dart' show RoundGameButton;
 
-/// Round game button with a darker base underneath; sinks when pressed.
-class RoundGameButton extends StatefulWidget {
-  const RoundGameButton({
-    super.key,
-    required this.tooltip,
-    required this.onPressed,
-    required this.child,
-    this.size = 52,
-    this.face = _cream,
-    this.base = _wood,
-  });
-  final String tooltip;
-  final VoidCallback? onPressed;
-  final Widget child;
-  final double size;
-  final Color face, base;
-
-  @override
-  State<RoundGameButton> createState() => _RoundGameButtonState();
-}
-
-class _RoundGameButtonState extends State<RoundGameButton> {
-  static const _depth = 4.0;
-  bool _down = false;
-
-  void _set(bool v) {
-    if (_down != v) setState(() => _down = v);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final enabled = widget.onPressed != null;
-    return Tooltip(
-      message: widget.tooltip,
-      child: Semantics(
-        button: true,
-        enabled: enabled,
-        label: widget.tooltip,
-        child: GestureDetector(
-          behavior: HitTestBehavior.opaque,
-          onTapDown: enabled ? (_) => _set(true) : null,
-          onTapUp: (_) => _set(false),
-          onTapCancel: () => _set(false),
-          onTap: enabled
-              ? () {
-                  GameAudio.instance.play(GameSound.click);
-                  widget.onPressed!();
-                }
-              : null,
-          child: SizedBox(
-            width: widget.size,
-            height: widget.size + _depth,
-            child: Stack(children: [
-              Positioned(
-                left: 0,
-                right: 0,
-                bottom: 0,
-                height: widget.size,
-                child: DecoratedBox(
-                    decoration: BoxDecoration(
-                        color: widget.base,
-                        shape: BoxShape.circle,
-                        boxShadow: const [
-                      BoxShadow(
-                          color: Color(0x40000000),
-                          blurRadius: 5,
-                          offset: Offset(0, 3))
-                    ])),
-              ),
-              AnimatedPositioned(
-                duration: const Duration(milliseconds: 70),
-                left: 0,
-                right: 0,
-                top: _down ? _depth : 0,
-                height: widget.size,
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                      color: widget.face,
-                      shape: BoxShape.circle,
-                      border: Border.all(color: widget.base, width: 3)),
-                  child: Center(child: widget.child),
-                ),
-              ),
-            ]),
-          ),
-        ),
-      ),
-    );
-  }
-}
+const _ink = DS.ink;
 
 class ReturnHomeHomeButton extends StatelessWidget {
   const ReturnHomeHomeButton({super.key, required this.onPressed});
@@ -113,8 +22,8 @@ class ReturnHomeHomeButton extends StatelessWidget {
   Widget build(BuildContext context) => RoundGameButton(
         tooltip: 'Về Trang chủ',
         onPressed: onPressed,
-        face: const Color(0xFFFFC24D),
-        base: const Color(0xFF9A6028),
+        face: DS.gold,
+        base: DS.goldEdge,
         child: const GameGlyphView(GameGlyph.home, size: 30),
       );
 }
@@ -146,10 +55,8 @@ class ReturnHomeSkillButton extends StatelessWidget {
     return RoundGameButton(
       tooltip: label,
       size: size,
-      face: ready ? color : const Color(0xFFB9AE9C),
-      base: ready
-          ? Color.lerp(color, Colors.black, .35)!
-          : const Color(0xFF7D7365),
+      face: ready ? color : DS.mutedFill,
+      base: ready ? Color.lerp(color, Colors.black, .35)! : DS.mutedBorder,
       onPressed: ready ? onPressed : null,
       child: Stack(alignment: Alignment.center, children: [
         if (ready) SkillGlyphView(glyph, size: size * .6),
@@ -401,15 +308,15 @@ class _ReturnHomeAimButtonState extends State<ReturnHomeAimButton> {
               child: DecoratedBox(
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: ready ? color : const Color(0xFFB9AE9C),
+                  color: ready ? color : DS.mutedFill,
                   border: Border.all(
                       color: ready
                           ? Color.lerp(color, Colors.black, .35)!
-                          : const Color(0xFF7D7365),
+                          : DS.mutedBorder,
                       width: 3),
                   boxShadow: const [
                     BoxShadow(
-                        color: Color(0x55000000),
+                        color: DS.shadowColor,
                         blurRadius: 5,
                         offset: Offset(0, 3))
                   ],
@@ -481,7 +388,7 @@ class ReturnHomeCancelButton extends StatelessWidget {
           color: hot ? const Color(0xCCE0483F) : const Color(0x88203040),
           border: Border.all(
               color: hot ? Colors.white : const Color(0xCCDDEEFF), width: 3),
-          boxShadow: const [BoxShadow(color: Color(0x55000000), blurRadius: 6)],
+          boxShadow: const [BoxShadow(color: DS.shadowColor, blurRadius: 6)],
         ),
         child: const Icon(Icons.close_rounded, color: Colors.white, size: 28),
       );

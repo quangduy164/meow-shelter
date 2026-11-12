@@ -1,3 +1,5 @@
+import '../design.dart';
+import '../widgets/game_surfaces.dart';
 import 'dart:async';
 import 'dart:math' as math;
 
@@ -76,7 +78,7 @@ class _FishingScreenState extends State<FishingScreen>
     if (_controller.active || _collectionOpen) return;
     setState(() => _collectionOpen = true);
     try {
-      await showDialog<void>(
+      await showGameDialog<void>(
           context: context,
           builder: (context) =>
               FishCollectionDialog(collection: FishCollection.instance));
@@ -185,7 +187,7 @@ class _FishingScreenState extends State<FishingScreen>
                                     progress: _controller.progress))),
                       SafeArea(
                           child: Padding(
-                              padding: const EdgeInsets.all(8),
+                              padding: const EdgeInsets.all(DS.spaceSm),
                               child: Align(
                                   alignment: Alignment.topLeft,
                                   child: RoundButton(

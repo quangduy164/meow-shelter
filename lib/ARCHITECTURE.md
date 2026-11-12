@@ -4,12 +4,16 @@
 
 - `main.dart`: app start, landscape lock, loading saved progress.
 - `ui/`: Flutter screens and widgets.
-  - `design.dart`: shared colours and button/card styles (`DS`); see
+  - `design.dart`: colours, typography, spacing, shapes, motion and Material
+    theme (`DS`); see
     `DESIGN.md` at the repo root.
   - `screens/`: Home, Level Select, Game (Flame host), Fishing, Return Home,
     Camp.
   - `widgets/`: shared pieces such as `CatSprite` / `CatFace` (all sprite
     cropping), `RoundButton`, the catch guide and result overlays, fishing art.
+    `game_pressable.dart` owns raised and round action input/feedback;
+    `game_surfaces.dart` owns panels, modal shells/headers, stats and badges.
+    These foundations depend on no game mode; screens supply values/callbacks.
 - `game/cats/`: cat data shared by every mode.
   - `cat_breed.dart`: **single source of truth per breed** — name, colour,
     bed asset, catch rule text, Return Home skill (label, icon, cooldown).

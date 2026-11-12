@@ -12,6 +12,7 @@ import '../widgets/return_home_buttons.dart';
 import '../widgets/game_glyphs.dart';
 import '../widgets/skill_glyphs.dart';
 import '../widgets/return_home_cat_picker.dart';
+import '../widgets/game_surfaces.dart';
 
 class ReturnHomeScreen extends StatefulWidget {
   const ReturnHomeScreen({super.key});
@@ -39,7 +40,7 @@ class _ReturnHomeScreenState extends State<ReturnHomeScreen> {
     if (_game.isLoaded) _game.joystick.delta.setZero();
     _game.pauseEngine();
     try {
-      await showDialog<void>(
+      await showGameDialog<void>(
         context: context,
         builder: (_) => _ComboHelpDialog(
             selectedCat:
@@ -69,11 +70,11 @@ class _ReturnHomeScreenState extends State<ReturnHomeScreen> {
                 child: Align(
                   alignment: Alignment.topRight,
                   child: Padding(
-                    padding: const EdgeInsets.all(12),
+                    padding: const EdgeInsets.all(DS.spaceMd),
                     child: Row(mainAxisSize: MainAxisSize.min, children: [
                       _ComboHelpButton(
                           onPressed: () => _showComboHelp(context)),
-                      const SizedBox(width: 10),
+                      const SizedBox(width: DS.spaceSm),
                       ReturnHomeHomeButton(
                           onPressed: () => Navigator.of(context).pop()),
                     ]),
@@ -101,12 +102,13 @@ class _VictoryOverlay extends StatelessWidget {
       child: SafeArea(
           child: Center(
               child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(DS.spaceLg),
         child: FittedBox(
             fit: BoxFit.scaleDown,
             child: Container(
               width: 440,
-              padding: const EdgeInsets.fromLTRB(22, 16, 22, 18),
+              padding: const EdgeInsets.fromLTRB(
+                  DS.spaceXl, DS.spaceLg, DS.spaceXl, DS.spaceLg),
               decoration: DS.card,
               child: Column(mainAxisSize: MainAxisSize.min, children: [
                 const Text('CHIẾN THẮNG!',
@@ -115,13 +117,13 @@ class _VictoryOverlay extends StatelessWidget {
                         fontSize: DS.fontTitle,
                         fontWeight: FontWeight.w900,
                         letterSpacing: .6)),
-                const SizedBox(height: 4),
+                const SizedBox(height: DS.spaceXs),
                 const Text('Mèo đã về nhà an toàn',
                     style: TextStyle(color: DS.soft, fontSize: DS.fontBody)),
-                const SizedBox(height: 8),
+                const SizedBox(height: DS.spaceSm),
                 Row(mainAxisAlignment: MainAxisAlignment.center, children: [
                   CatSprite(type: game.selectedCat, size: 70),
-                  const SizedBox(width: 10),
+                  const SizedBox(width: DS.spaceSm),
                   Row(mainAxisSize: MainAxisSize.min, children: [
                     for (var i = 0; i < 3; i++)
                       Icon(
@@ -132,7 +134,7 @@ class _VictoryOverlay extends StatelessWidget {
                           color: i < game.stars ? DS.goldEdge : DS.mutedBorder),
                   ]),
                 ]),
-                const SizedBox(height: 8),
+                const SizedBox(height: DS.spaceSm),
                 Row(children: [
                   Expanded(
                       child: _stat(
@@ -140,7 +142,7 @@ class _VictoryOverlay extends StatelessWidget {
                               color: DS.label, size: 20),
                           'Thời gian',
                           time)),
-                  const SizedBox(width: 10),
+                  const SizedBox(width: DS.spaceSm),
                   Expanded(
                       child: _stat(
                           const SizedBox.square(
@@ -150,19 +152,19 @@ class _VictoryOverlay extends StatelessWidget {
                           'Cá thu thập',
                           '${game.fish}')),
                 ]),
-                const SizedBox(height: 8),
+                const SizedBox(height: DS.spaceSm),
                 Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: DS.spaceMd, vertical: DS.spaceSm),
                   decoration: BoxDecoration(
                     color: DS.gold.withOpacity(.4),
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(DS.radiusMd),
                     border: Border.all(color: DS.goldEdge),
                   ),
                   child: Row(children: [
                     const Icon(Icons.monetization_on_rounded,
                         color: DS.goldEdge, size: 22),
-                    const SizedBox(width: 8),
+                    const SizedBox(width: DS.spaceSm),
                     const Expanded(
                         child: Text('Xu nhận được',
                             style: TextStyle(
@@ -176,7 +178,7 @@ class _VictoryOverlay extends StatelessWidget {
                             fontWeight: FontWeight.w900)),
                   ]),
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: DS.spaceMd),
                 Row(children: [
                   Expanded(
                       child: ElevatedButton.icon(
@@ -189,7 +191,7 @@ class _VictoryOverlay extends StatelessWidget {
                         style: TextStyle(
                             fontFamily: 'Roboto', fontSize: DS.fontButton)),
                   )),
-                  const SizedBox(width: 10),
+                  const SizedBox(width: DS.spaceSm),
                   Expanded(
                       child: ElevatedButton.icon(
                     style: DS.primary,
@@ -206,29 +208,8 @@ class _VictoryOverlay extends StatelessWidget {
     );
   }
 
-  Widget _stat(Widget icon, String label, String value) => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
-        decoration: BoxDecoration(
-            color: Colors.white.withOpacity(.65),
-            borderRadius: BorderRadius.circular(12)),
-        child: Row(children: [
-          icon,
-          const SizedBox(width: 8),
-          Expanded(
-              child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                Text(label,
-                    style: const TextStyle(
-                        color: DS.soft, fontSize: DS.fontCaption)),
-                Text(value,
-                    style: const TextStyle(
-                        color: DS.ink,
-                        fontSize: DS.fontValue,
-                        fontWeight: FontWeight.w900)),
-              ])),
-        ]),
-      );
+  Widget _stat(Widget icon, String label, String value) =>
+      GameStat(icon: icon, label: label, value: value);
 }
 
 class _VictoryFishPainter extends CustomPainter {
@@ -258,7 +239,7 @@ class _SkillButtonState extends State<_SkillButton> {
   @override
   void initState() {
     super.initState();
-    _timer = Timer.periodic(const Duration(milliseconds: 100), (_) {
+    _timer = Timer.periodic(DS.fastDuration, (_) {
       if (mounted) setState(() {});
     });
   }
@@ -296,7 +277,7 @@ class _SkillButtonState extends State<_SkillButton> {
         onCast: (stick) => setState(() => game.castAttack(slot, stick)),
         onCancel: () => setState(game.cancelAim),
       ),
-      const SizedBox(height: 2),
+      const SizedBox(height: DS.space2),
       Text(label,
           style: const TextStyle(
               fontSize: DS.fontCaption,
@@ -411,10 +392,10 @@ class _ComboHelpDialogState extends State<_ComboHelpDialog> {
   }
 
   @override
-  Widget build(BuildContext context) => Dialog(
-        backgroundColor: DS.cream,
-        shape: DS.dialogShape,
-        insetPadding: const EdgeInsets.all(12),
+  Widget build(BuildContext context) => GameDialog(
+        maxWidth: DS.wideDialogWidth,
+        padding: EdgeInsets.zero,
+        insetPadding: const EdgeInsets.all(DS.spaceMd),
         child: SizedBox(
           width: 860,
           height: min(
@@ -423,26 +404,15 @@ class _ComboHelpDialogState extends State<_ComboHelpDialog> {
                   MediaQuery.paddingOf(context).vertical -
                   24),
           child: Padding(
-            padding: const EdgeInsets.all(10),
+            padding: const EdgeInsets.all(DS.spaceSm),
             child: LayoutBuilder(builder: (_, constraints) {
               final wide = constraints.maxWidth >= 480;
               return Column(children: [
-                Row(children: [
-                  const Expanded(
-                      child: Text('THẺ COMBO',
-                          style: TextStyle(
-                              color: DS.ink,
-                              fontSize: DS.fontTitle,
-                              fontWeight: FontWeight.w900))),
-                  IconButton(
-                    constraints:
-                        const BoxConstraints(minWidth: 36, minHeight: 36),
-                    padding: const EdgeInsets.all(6),
-                    tooltip: 'Đóng hướng dẫn',
-                    onPressed: () => Navigator.of(context).pop(),
-                    icon: const GameGlyphView(GameGlyph.close, size: 24),
-                  ),
-                ]),
+                GameDialogHeader(
+                  title: 'THẺ COMBO',
+                  closeTooltip: 'Đóng hướng dẫn',
+                  onClose: () => Navigator.of(context).pop(),
+                ),
                 SizedBox(
                     height: 48,
                     child: Row(children: [
@@ -450,13 +420,15 @@ class _ComboHelpDialogState extends State<_ComboHelpDialog> {
                         Expanded(
                             child: Padding(
                           padding: EdgeInsets.only(
-                              right: index == CatBreed.all.length - 1 ? 0 : 6),
+                              right: index == CatBreed.all.length - 1
+                                  ? 0
+                                  : DS.spaceXs),
                           child: _catTab(index, wide),
                         )),
                     ])),
-                const SizedBox(height: 6),
+                const SizedBox(height: DS.spaceXs),
                 Expanded(child: _comboCard(CatBreed.all[_selected], wide)),
-                const SizedBox(height: 6),
+                const SizedBox(height: DS.spaceXs),
                 const Text('Chọn mèo để xem combo · Trò chơi đang tạm dừng',
                     textAlign: TextAlign.center,
                     style: TextStyle(color: DS.soft, fontSize: DS.fontCaption)),
@@ -486,18 +458,19 @@ class _ComboHelpDialogState extends State<_ComboHelpDialog> {
             ? _comboColor(breed)
             : Color.lerp(Colors.white, _comboColor(breed), .18)!,
         shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(10),
+            borderRadius: BorderRadius.circular(DS.radiusMd),
             side:
                 BorderSide(color: _comboColor(breed), width: selected ? 2 : 1)),
         clipBehavior: Clip.antiAlias,
         child: InkWell(
           onTap: () => setState(() => _selected = index),
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 3),
+            padding: const EdgeInsets.symmetric(
+                horizontal: DS.spaceXs, vertical: DS.spaceXs),
             child: wide
                 ? Row(mainAxisAlignment: MainAxisAlignment.center, children: [
                     CatFace(breed.id, size: 25),
-                    const SizedBox(width: 4),
+                    const SizedBox(width: DS.spaceXs),
                     Flexible(child: name),
                   ])
                 : Column(
@@ -515,15 +488,15 @@ class _ComboHelpDialogState extends State<_ComboHelpDialog> {
   Widget _comboCard(CatBreed breed, bool wide) {
     final combo = breed.homeCombo;
     return Container(
-      padding: const EdgeInsets.all(8),
+      padding: const EdgeInsets.all(DS.spaceSm),
       decoration: BoxDecoration(
           color: Color.lerp(DS.cream, _comboColor(breed), .1),
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(DS.radiusControl),
           border: Border.all(color: _comboColor(breed), width: 2)),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
           CatFace(breed.id, size: 26),
-          const SizedBox(width: 6),
+          const SizedBox(width: DS.spaceXs),
           Expanded(
               child: Text(combo.name,
                   style: TextStyle(
@@ -537,7 +510,7 @@ class _ComboHelpDialogState extends State<_ComboHelpDialog> {
                     fontSize: DS.fontCaption,
                     fontWeight: FontWeight.w800)),
         ]),
-        const SizedBox(height: 6),
+        const SizedBox(height: DS.spaceXs),
         Expanded(child: LayoutBuilder(builder: (_, constraints) {
           final panels = [
             for (var i = 0; i < combo.steps.length; i++) _stepPanel(breed, i),
@@ -556,7 +529,8 @@ class _ComboHelpDialogState extends State<_ComboHelpDialog> {
                           for (var i = 0; i < panels.length; i++) ...[
                             if (i > 0)
                               const Padding(
-                                  padding: EdgeInsets.symmetric(horizontal: 2),
+                                  padding: EdgeInsets.symmetric(
+                                      horizontal: DS.space2),
                                   child: Icon(Icons.chevron_right_rounded,
                                       color: DS.label, size: 18)),
                             Expanded(flex: i == 2 ? 6 : 5, child: panels[i]),
@@ -564,7 +538,7 @@ class _ComboHelpDialogState extends State<_ComboHelpDialog> {
                         ])
                   : Column(children: [
                       for (var i = 0; i < panels.length; i++) ...[
-                        if (i > 0) const SizedBox(height: 6),
+                        if (i > 0) const SizedBox(height: DS.spaceXs),
                         panels[i],
                       ],
                     ]),
@@ -578,7 +552,7 @@ class _ComboHelpDialogState extends State<_ComboHelpDialog> {
   Widget _stepPanel(CatBreed breed, int index) {
     final step = breed.homeCombo.steps[index];
     return Container(
-      padding: const EdgeInsets.all(8),
+      padding: const EdgeInsets.all(DS.spaceSm),
       decoration: BoxDecoration(
           gradient: LinearGradient(
               begin: Alignment.topLeft,
@@ -587,7 +561,7 @@ class _ComboHelpDialogState extends State<_ComboHelpDialog> {
                 Color.lerp(step.attack.color, Colors.black, .32)!,
                 Color.lerp(step.attack.color, Colors.black, .5)!
               ]),
-          borderRadius: BorderRadius.circular(10),
+          borderRadius: BorderRadius.circular(DS.radiusMd),
           border: Border.all(
               color: Color.lerp(step.attack.color, Colors.black, .55)!)),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -597,10 +571,10 @@ class _ComboHelpDialogState extends State<_ComboHelpDialog> {
               height: 32,
               decoration: BoxDecoration(
                   color: Colors.white.withOpacity(.18),
-                  borderRadius: BorderRadius.circular(8)),
+                  borderRadius: BorderRadius.circular(DS.radiusSm)),
               child:
                   Center(child: SkillGlyphView(step.attack.glyph, size: 25))),
-          const SizedBox(width: 6),
+          const SizedBox(width: DS.spaceXs),
           Expanded(
               child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -617,7 +591,7 @@ class _ComboHelpDialogState extends State<_ComboHelpDialog> {
                         fontWeight: FontWeight.w900)),
               ])),
         ]),
-        const SizedBox(height: 6),
+        const SizedBox(height: DS.spaceXs),
         Text(step.instruction,
             style: const TextStyle(
                 color: Colors.white, fontSize: DS.fontBody, height: 1.3)),
@@ -627,18 +601,18 @@ class _ComboHelpDialogState extends State<_ComboHelpDialog> {
 
   Widget _effectPanel(CatBreed breed) => Container(
         width: double.infinity,
-        padding: const EdgeInsets.all(8),
+        padding: const EdgeInsets.all(DS.spaceSm),
         decoration: BoxDecoration(
             gradient: const LinearGradient(
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
                 colors: [Color(0xFFFFDE79), Color(0xFFFFB64D)]),
             border: Border.all(color: DS.goldEdge, width: 1.2),
-            borderRadius: BorderRadius.circular(10)),
+            borderRadius: BorderRadius.circular(DS.radiusMd)),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           const Row(children: [
             Icon(Icons.auto_awesome_rounded, color: DS.goldEdge, size: 16),
-            SizedBox(width: 4),
+            SizedBox(width: DS.spaceXs),
             Expanded(
                 child: Text('HIỆU ỨNG COMBO',
                     style: TextStyle(
@@ -646,7 +620,7 @@ class _ComboHelpDialogState extends State<_ComboHelpDialog> {
                         fontSize: DS.fontCaption,
                         fontWeight: FontWeight.w900))),
           ]),
-          const SizedBox(height: 6),
+          const SizedBox(height: DS.spaceXs),
           Text(breed.homeCombo.effect,
               style: const TextStyle(
                   color: DS.ink, fontSize: DS.fontBody, height: 1.3)),

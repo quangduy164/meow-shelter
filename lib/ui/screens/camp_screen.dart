@@ -116,7 +116,7 @@ class _CampScreenState extends State<CampScreen>
                           },
                           child: AnimatedScale(
                             scale: dragging ? 1.08 : 1,
-                            duration: const Duration(milliseconds: 120),
+                            duration: DS.fastDuration,
                             child: Opacity(
                               opacity: dragging ? .85 : 1,
                               child: SizedBox.square(
@@ -205,7 +205,7 @@ class _CampScreenState extends State<CampScreen>
               ),
             ])
               AnimatedPositioned(
-                duration: const Duration(milliseconds: 220),
+                duration: DS.transitionDuration,
                 curve: Curves.easeOut,
                 left: 0,
                 right: 0,
@@ -217,7 +217,7 @@ class _CampScreenState extends State<CampScreen>
               alignment: Alignment.topCenter,
               child: SafeArea(
                 child: Padding(
-                  padding: const EdgeInsets.all(12),
+                  padding: const EdgeInsets.all(DS.spaceMd),
                   // Only navigation and panel controls stay in the top bar.
                   // Progress counters belong inside the panel that uses them.
                   child: Row(children: [
@@ -236,7 +236,7 @@ class _CampScreenState extends State<CampScreen>
                             active: _panel == _Panel.shop,
                             onTap: () => _toggle(_Panel.shop),
                           ),
-                          const SizedBox(width: 8),
+                          const SizedBox(width: DS.spaceSm),
                           _PanelButton(
                             label: 'THÂN THIẾT',
                             icon: _CampIcon.heart,
@@ -266,14 +266,15 @@ class _Chip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        padding: const EdgeInsets.symmetric(
+            horizontal: DS.spaceMd, vertical: DS.spaceXs),
         decoration: BoxDecoration(
             color: const Color(0xEEFFF4DA),
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: const Color(0xFFB27A3E), width: 2)),
+            borderRadius: BorderRadius.circular(DS.radiusLg),
+            border: Border.all(color: DS.wood, width: 2)),
         child: Row(mainAxisSize: MainAxisSize.min, children: [
           Icon(icon, color: color, size: 20),
-          const SizedBox(width: 6),
+          const SizedBox(width: DS.spaceXs),
           Text(text,
               style:
                   const TextStyle(fontWeight: FontWeight.w900, color: DS.ink)),
@@ -316,10 +317,10 @@ class _ShopBarState extends State<_ShopBar> {
     ];
     return Container(
       decoration: const BoxDecoration(
-        color: Color(0xF2FFF4DA),
+        color: DS.surfaceGlass,
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
         border: Border(top: BorderSide(color: DS.wood, width: 3)),
-        boxShadow: [BoxShadow(color: Color(0x55000000), blurRadius: 10)],
+        boxShadow: [BoxShadow(color: DS.shadowColor, blurRadius: 10)],
       ),
       child: SafeArea(
         top: false,
@@ -330,7 +331,8 @@ class _ShopBarState extends State<_ShopBar> {
               Expanded(
                 child: ListView(
                   scrollDirection: Axis.horizontal,
-                  padding: const EdgeInsets.fromLTRB(10, 6, 0, 2),
+                  padding: const EdgeInsets.fromLTRB(
+                      DS.spaceSm, DS.spaceXs, 0, DS.space2),
                   children: [
                     _chip(null),
                     for (final c in CampCategory.values) _chip(c),
@@ -340,7 +342,8 @@ class _ShopBarState extends State<_ShopBar> {
               _Chip(Icons.monetization_on_rounded, '${camp.coins}',
                   const Color(0xFFE7A72F)),
               Padding(
-                padding: const EdgeInsets.fromLTRB(6, 2, 10, 0),
+                padding: const EdgeInsets.fromLTRB(
+                    DS.spaceXs, DS.space2, DS.spaceSm, 0),
                 child: RoundButton(
                     glyph: GameGlyph.close,
                     size: 30,
@@ -351,7 +354,8 @@ class _ShopBarState extends State<_ShopBar> {
           Expanded(
             child: ListView(
               scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.fromLTRB(10, 4, 10, 8),
+              padding: const EdgeInsets.fromLTRB(
+                  DS.spaceSm, DS.spaceXs, DS.spaceSm, DS.spaceSm),
               children: _tab == null
                   ? [
                       for (final breed in CatBreed.all)
@@ -368,7 +372,7 @@ class _ShopBarState extends State<_ShopBar> {
   Widget _chip(CampCategory? c) {
     final on = c == _tab;
     return Padding(
-      padding: const EdgeInsets.only(right: 6),
+      padding: const EdgeInsets.only(right: DS.spaceXs),
       child: ChoiceChip(
         selected: on,
         onSelected: (_) => setState(() => _tab = c),
@@ -394,11 +398,11 @@ class _ShopBarState extends State<_ShopBar> {
     final afford = camp.coins >= price;
     return Container(
       width: 190,
-      margin: const EdgeInsets.only(right: 8),
-      padding: const EdgeInsets.all(6),
+      margin: const EdgeInsets.only(right: DS.spaceSm),
+      padding: const EdgeInsets.all(DS.spaceXs),
       decoration: BoxDecoration(
-        color: owned ? const Color(0xFFEDE6D2) : Colors.white,
-        borderRadius: BorderRadius.circular(12),
+        color: owned ? DS.surfaceMuted : Colors.white,
+        borderRadius: BorderRadius.circular(DS.radiusMd),
         border: Border.all(color: owned ? DS.mutedBorder : DS.wood, width: 2),
       ),
       child: Row(children: [
@@ -408,7 +412,7 @@ class _ShopBarState extends State<_ShopBar> {
               child: CatFace(breed.id,
                   background: const Color(0xFFFFE3B0), border: DS.wood)),
         ),
-        const SizedBox(width: 6),
+        const SizedBox(width: DS.spaceXs),
         Expanded(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -433,7 +437,7 @@ class _ShopBarState extends State<_ShopBar> {
                   ]),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis),
-              const SizedBox(height: 4),
+              const SizedBox(height: DS.spaceXs),
               SizedBox(
                 height: 26,
                 width: double.infinity,
@@ -442,7 +446,7 @@ class _ShopBarState extends State<_ShopBar> {
                         alignment: Alignment.centerLeft,
                         child: Text('✓ Đang ở trại',
                             style: TextStyle(
-                                color: Color(0xFF6B9E4E),
+                                color: DS.success,
                                 fontSize: DS.fontBody,
                                 fontWeight: FontWeight.w800)))
                     : ElevatedButton.icon(
@@ -475,18 +479,18 @@ class _ShopBarState extends State<_ShopBar> {
     final afford = camp.coins >= item.price;
     return Container(
       width: 176,
-      margin: const EdgeInsets.only(right: 8),
-      padding: const EdgeInsets.all(6),
+      margin: const EdgeInsets.only(right: DS.spaceSm),
+      padding: const EdgeInsets.all(DS.spaceXs),
       decoration: BoxDecoration(
-        color: owned ? const Color(0xFFEDE6D2) : Colors.white,
-        borderRadius: BorderRadius.circular(12),
+        color: owned ? DS.surfaceMuted : Colors.white,
+        borderRadius: BorderRadius.circular(DS.radiusMd),
         border: Border.all(color: owned ? DS.mutedBorder : DS.wood, width: 2),
       ),
       // Art on the left keeps it large even on short screens.
       child: Row(children: [
         AspectRatio(
             aspectRatio: 1, child: FittedBox(child: _DecorationArt(item.id))),
-        const SizedBox(width: 6),
+        const SizedBox(width: DS.spaceXs),
         Expanded(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -499,7 +503,7 @@ class _ShopBarState extends State<_ShopBar> {
                       color: DS.ink,
                       fontWeight: FontWeight.w800,
                       fontSize: DS.fontBody)),
-              const SizedBox(height: 4),
+              const SizedBox(height: DS.spaceXs),
               SizedBox(
                 height: 26,
                 width: double.infinity,
@@ -508,7 +512,7 @@ class _ShopBarState extends State<_ShopBar> {
                         alignment: Alignment.centerLeft,
                         child: Text('✓ Đã có',
                             style: TextStyle(
-                                color: Color(0xFF6B9E4E),
+                                color: DS.success,
                                 fontSize: DS.fontBody,
                                 fontWeight: FontWeight.w800)))
                     : ElevatedButton.icon(
@@ -571,12 +575,13 @@ class _PanelButton extends StatelessWidget {
           customBorder: const StadiumBorder(),
           onTap: onTap,
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(6, 4, 14, 4),
+            padding: const EdgeInsets.fromLTRB(
+                DS.spaceXs, DS.spaceXs, DS.spaceMd, DS.spaceXs),
             child: Row(mainAxisSize: MainAxisSize.min, children: [
               SizedBox.square(
                   dimension: 30,
                   child: CustomPaint(painter: _CampIconPainter(icon))),
-              const SizedBox(width: 6),
+              const SizedBox(width: DS.spaceXs),
               Text(label,
                   style: const TextStyle(
                       color: DS.ink,
@@ -669,10 +674,10 @@ class _BondBar extends StatelessWidget {
     final camp = CampState.instance;
     return Container(
       decoration: const BoxDecoration(
-        color: Color(0xF2FFF4DA),
+        color: DS.surfaceGlass,
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
         border: Border(top: BorderSide(color: DS.wood, width: 3)),
-        boxShadow: [BoxShadow(color: Color(0x55000000), blurRadius: 10)],
+        boxShadow: [BoxShadow(color: DS.shadowColor, blurRadius: 10)],
       ),
       child: SafeArea(
         top: false,
@@ -680,13 +685,13 @@ class _BondBar extends StatelessWidget {
           SizedBox(
             height: 36,
             child: Row(children: [
-              const SizedBox(width: 14),
+              const SizedBox(width: DS.spaceMd),
               const Text('ĐỘ THÂN THIẾT',
                   style: TextStyle(
                       color: DS.ink,
                       fontWeight: FontWeight.w900,
                       letterSpacing: 1)),
-              const SizedBox(width: 8),
+              const SizedBox(width: DS.spaceSm),
               const Expanded(
                 child: Text(
                     'Chạm vào mèo để vuốt ve · đủ 10 ♥ thì kỹ năng hồi nhanh 1s',
@@ -695,7 +700,8 @@ class _BondBar extends StatelessWidget {
                     style: TextStyle(color: DS.soft, fontSize: DS.fontCaption)),
               ),
               Padding(
-                padding: const EdgeInsets.fromLTRB(6, 0, 10, 0),
+                padding:
+                    const EdgeInsets.fromLTRB(DS.spaceXs, 0, DS.spaceSm, 0),
                 child: RoundButton(
                     glyph: GameGlyph.close, size: 30, onPressed: onClose),
               ),
@@ -704,7 +710,8 @@ class _BondBar extends StatelessWidget {
           Expanded(
             child: ListView(
               scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.fromLTRB(10, 0, 10, 8),
+              padding: const EdgeInsets.fromLTRB(
+                  DS.spaceSm, 0, DS.spaceSm, DS.spaceSm),
               children: [
                 for (final breed in CatBreed.all) _card(camp, breed),
               ],
@@ -722,11 +729,11 @@ class _BondBar extends StatelessWidget {
     final bonded = camp.bonded(breed.id);
     return Container(
       width: 190,
-      margin: const EdgeInsets.only(right: 8),
-      padding: const EdgeInsets.all(6),
+      margin: const EdgeInsets.only(right: DS.spaceSm),
+      padding: const EdgeInsets.all(DS.spaceXs),
       decoration: BoxDecoration(
-        color: unlocked ? Colors.white : const Color(0xFFEDE6D2),
-        borderRadius: BorderRadius.circular(12),
+        color: unlocked ? Colors.white : DS.surfaceMuted,
+        borderRadius: BorderRadius.circular(DS.radiusMd),
         border: Border.all(
             color: bonded
                 ? DS.goldEdge
@@ -755,7 +762,7 @@ class _BondBar extends StatelessWidget {
             ]),
           ),
         ),
-        const SizedBox(width: 6),
+        const SizedBox(width: DS.spaceXs),
         Expanded(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -772,7 +779,7 @@ class _BondBar extends StatelessWidget {
               if (!unlocked)
                 const Row(children: [
                   Icon(Icons.lock_rounded, size: 13, color: DS.mutedText),
-                  SizedBox(width: 3),
+                  SizedBox(width: DS.spaceXs),
                   Expanded(
                     child: Text('Mua ở cửa hàng',
                         maxLines: 1,

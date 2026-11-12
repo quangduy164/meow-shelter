@@ -30,18 +30,19 @@ class CatGuideOverlay extends StatelessWidget {
           child: Center(
             child: Container(
               constraints: const BoxConstraints(maxWidth: 560, maxHeight: 340),
-              margin: const EdgeInsets.all(16),
-              padding: const EdgeInsets.fromLTRB(18, 14, 18, 12),
+              margin: const EdgeInsets.all(DS.spaceLg),
+              padding: const EdgeInsets.fromLTRB(
+                  DS.spaceLg, DS.spaceMd, DS.spaceLg, DS.spaceMd),
               decoration: DS.card,
               child: Column(mainAxisSize: MainAxisSize.min, children: [
                 const Text('CÁCH BẮT MÈO', style: DS.title),
-                const SizedBox(height: 8),
+                const SizedBox(height: DS.spaceSm),
                 Flexible(
                   child: ListView(shrinkWrap: true, children: [
                     for (final type in types) _row(type),
                   ]),
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: DS.spaceSm),
                 ElevatedButton(
                   onPressed: () async {
                     await CampState.instance.markGuidesSeen(types);
@@ -61,10 +62,10 @@ class CatGuideOverlay extends StatelessWidget {
     final breed = CatBreed.of(type);
     final rule = breed.catchRule;
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 5),
+      padding: const EdgeInsets.symmetric(vertical: DS.spaceXs),
       child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
         CatSprite(type: type, size: 56),
-        const SizedBox(width: 10),
+        const SizedBox(width: DS.spaceSm),
         Expanded(
           child:
               Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -73,7 +74,7 @@ class CatGuideOverlay extends StatelessWidget {
                     fontWeight: FontWeight.w900,
                     fontSize: DS.fontHeading,
                     color: DS.ink)),
-            const SizedBox(height: 2),
+            const SizedBox(height: DS.space2),
             Text(rule.how,
                 style: const TextStyle(color: DS.soft, fontSize: DS.fontBody)),
           ]),

@@ -29,10 +29,11 @@ class HerdMapSelect extends StatelessWidget {
           child: SafeArea(
             child: Column(children: [
               Padding(
-                padding: const EdgeInsets.fromLTRB(12, 10, 16, 6),
+                padding: const EdgeInsets.fromLTRB(
+                    DS.spaceMd, DS.spaceSm, DS.spaceLg, DS.spaceXs),
                 child: Row(children: [
                   RoundButton(glyph: GameGlyph.home, onPressed: onHome),
-                  const SizedBox(width: 12),
+                  const SizedBox(width: DS.spaceMd),
                   const Expanded(
                     child: Text('CHỌN VÙNG KHÁM PHÁ',
                         style: TextStyle(
@@ -54,9 +55,11 @@ class HerdMapSelect extends StatelessWidget {
                   final width = ((box.maxWidth - 60) / 3).clamp(230.0, 300.0);
                   return ListView.separated(
                     scrollDirection: Axis.horizontal,
-                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                    padding: const EdgeInsets.fromLTRB(
+                        DS.spaceLg, 0, DS.spaceLg, DS.spaceLg),
                     itemCount: HerdMap.all.length,
-                    separatorBuilder: (_, __) => const SizedBox(width: 14),
+                    separatorBuilder: (_, __) =>
+                        const SizedBox(width: DS.spaceMd),
                     itemBuilder: (context, i) => SizedBox(
                       width: width,
                       child: _RegionCard(
@@ -84,10 +87,10 @@ class _RegionCard extends StatelessWidget {
   Widget build(BuildContext context) => DecoratedBox(
         decoration: DS.card,
         child: Padding(
-          padding: const EdgeInsets.all(3),
+          padding: const EdgeInsets.all(DS.spaceXs),
           child: Material(
             color: DS.cream,
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(DS.radiusLg),
             clipBehavior: Clip.antiAlias,
             child: InkWell(
               onTap: onPressed,
@@ -107,10 +110,12 @@ class _RegionCard extends StatelessWidget {
                               child: DecoratedBox(
                                 decoration: BoxDecoration(
                                     color: DS.ink,
-                                    borderRadius: BorderRadius.circular(8)),
+                                    borderRadius:
+                                        BorderRadius.circular(DS.radiusSm)),
                                 child: Padding(
                                     padding: const EdgeInsets.symmetric(
-                                        horizontal: 9, vertical: 5),
+                                        horizontal: DS.spaceSm,
+                                        vertical: DS.spaceXs),
                                     child: Text('VÙNG $number',
                                         style: const TextStyle(
                                             color: DS.cream,
@@ -121,7 +126,8 @@ class _RegionCard extends StatelessWidget {
                         ]),
                       ),
                       Padding(
-                        padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+                        padding: const EdgeInsets.fromLTRB(
+                            DS.spaceMd, DS.spaceSm, DS.spaceMd, DS.spaceSm),
                         child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
@@ -132,7 +138,7 @@ class _RegionCard extends StatelessWidget {
                                       color: DS.ink,
                                       fontSize: DS.fontHeading,
                                       fontWeight: FontWeight.w900)),
-                              const SizedBox(height: 4),
+                              const SizedBox(height: DS.spaceXs),
                               Text(
                                   switch (map.kind) {
                                     HerdMapKind.tutorial =>
@@ -152,13 +158,14 @@ class _RegionCard extends StatelessWidget {
                                       color: DS.soft,
                                       fontSize: DS.fontBody,
                                       height: 1.3)),
-                              const SizedBox(height: 10),
+                              const SizedBox(height: DS.spaceSm),
                               Container(
-                                padding:
-                                    const EdgeInsets.symmetric(vertical: 8),
+                                padding: const EdgeInsets.symmetric(
+                                    vertical: DS.spaceSm),
                                 decoration: BoxDecoration(
                                     color: DS.gold,
-                                    borderRadius: BorderRadius.circular(10),
+                                    borderRadius:
+                                        BorderRadius.circular(DS.radiusMd),
                                     border: Border.all(
                                         color: DS.goldEdge, width: 1.5)),
                                 child: const Row(
@@ -166,7 +173,7 @@ class _RegionCard extends StatelessWidget {
                                     children: [
                                       Icon(Icons.play_arrow_rounded,
                                           color: DS.ink, size: 20),
-                                      SizedBox(width: 4),
+                                      SizedBox(width: DS.spaceXs),
                                       Text('CHƠI',
                                           style: TextStyle(
                                               color: DS.ink,

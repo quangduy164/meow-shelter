@@ -17,13 +17,13 @@ class FishingDistance extends StatelessWidget {
                   fontSize: DS.fontCaption,
                   fontWeight: FontWeight.w900,
                   color: Color(0xFF253F36))),
-          const SizedBox(height: 5),
+          const SizedBox(height: DS.spaceXs),
           Expanded(
               child: Container(
             width: 38,
             decoration: BoxDecoration(
                 color: const Color(0xEAF0F7ED),
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.circular(DS.radiusSm),
                 border: Border.all(color: const Color(0xFF688C7C), width: 2)),
             clipBehavior: Clip.antiAlias,
             child: Stack(fit: StackFit.expand, children: [
@@ -32,8 +32,8 @@ class FishingDistance extends StatelessWidget {
                   alignment: Alignment.bottomCenter,
                   child: const ColoredBox(color: Color(0x6656B2A2))),
               Padding(
-                  padding:
-                      const EdgeInsets.symmetric(vertical: 15, horizontal: 4),
+                  padding: const EdgeInsets.symmetric(
+                      vertical: 15, horizontal: DS.spaceXs),
                   child: Column(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: List.generate(
@@ -46,7 +46,7 @@ class FishingDistance extends StatelessWidget {
                                   child:
                                       ColoredBox(color: Color(0x66688C7C))))))),
               Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 4),
+                  padding: const EdgeInsets.symmetric(vertical: DS.spaceXs),
                   child: Align(
                       alignment: Alignment(0, 1 - progress * 2),
                       child: Container(
@@ -54,12 +54,12 @@ class FishingDistance extends StatelessWidget {
                           height: 30,
                           decoration: BoxDecoration(
                               color: const Color(0xFF187C83),
-                              borderRadius: BorderRadius.circular(6)),
+                              borderRadius: BorderRadius.circular(DS.radiusXs)),
                           child: const Icon(Icons.set_meal_rounded,
                               size: 21, color: Color(0xFFFFE2A0))))),
             ]),
           )),
-          const SizedBox(height: 5),
+          const SizedBox(height: DS.spaceXs),
           Text('${((1 - progress) * 100).round()}%',
               style: const TextStyle(
                   fontSize: DS.fontValue,

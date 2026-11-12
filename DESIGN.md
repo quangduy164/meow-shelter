@@ -1,7 +1,93 @@
 # Meow Shelter – Design
 
-Visual rules for the game's menus. The level select screen is the reference
-style: new menu screens should reuse its colours, card shapes and states.
+Shared foundation for menus, dialogs, overlays and HUD labels. Tokens live in
+`lib/ui/design.dart`; `main.dart` installs `DS.theme` once. Prefer the shared
+components below before creating another decoration or button implementation.
+
+## Foundation and components
+
+All measurements below are design units, scaled by `UiScaleBox`.
+
+| Group | Tokens / rule |
+| --- | --- |
+| Spacing | `space2` 2, `spaceXs` 4, `spaceSm` 8, `spaceMd` 12, `spaceLg` 16, `spaceXl` 24, `space2xl` 32 |
+| Radius | `radiusXs` 6, `radiusSm` 8, `radiusMd` 12, `radiusControl` 14, `radiusLg` 16, `radiusCard` 20, `radiusXl` 24 |
+| Border | `borderThin` 1, `borderSubtle` 1.5, `borderControl` 2, `borderRaised` 2.5, `borderStrong` 3 |
+| Icons | `iconSm` 16, `iconMd` 20, `iconLg` 24, `iconXl` 32 |
+| Controls | `controlHeight` 40, `compactHeight` 32; round/icon actions use `touchTarget` 48 |
+| Raised depth | `buttonDepth` 4; home feature buttons use `featureDepth` 6 |
+| Width limits | `dialogWidth` 600, `wideDialogWidth` 860, `resultWidth` 500; always constrain to available space |
+| Motion | `pressDuration` 70 ms, `fastDuration` 120 ms, `transitionDuration` 220 ms, `overlayDuration` 260 ms |
+| Elevation | `cardShadow` for panels, `controlShadow` for raised controls |
+
+`DS.theme` also defines Material buttons, icon buttons, dialogs, chips,
+tooltips, switches, sliders and progress indicators. Standard controls inherit
+these defaults; use `DS.primary`, `DS.secondary` or `DS.outlined` for action roles.
+Keep local overrides limited to layout and meaningful domain colours.
+
+| Component | File | Purpose |
+| --- | --- | --- |
+| `GamePressable` | `widgets/game_pressable.dart` | Raised rectangular/circular action; shared sound, ripple, focus, keyboard input and pressed animation |
+| `RoundGameButton` | `widgets/game_pressable.dart` | Round action with tooltip; also exported from `return_home_buttons.dart` for existing callers |
+| `RoundButton` | `widgets/round_button.dart` | Existing icon/glyph shortcut for home and other round actions |
+| `GamePanel` | `widgets/game_surfaces.dart` | Cream card or inset section (`inset: true`) |
+| `GameDialog` | `widgets/game_surfaces.dart` | Common modal surface, border, safe inset and maximum width |
+| `GameDialogHeader` | `widgets/game_surfaces.dart` | Title, optional icon, labelled close action |
+| `showGameDialog` | `widgets/game_surfaces.dart` | Opens a modal with the shared scrim |
+| `GameStat` | `widgets/game_surfaces.dart` | Icon, value and caption used by result screens |
+| `GameBadge` | `widgets/game_surfaces.dart` | Compact status label with tinted background |
+
+Paths in this table are relative to `lib/ui/`. Components own appearance and
+input feedback; screens own layout, navigation and scrolling. `GameDialog`
+does not add scrolling automatically: short settings fit directly, while
+collections use an explicitly constrained scrollable body.
+
+```dart
+showGameDialog<void>(
+  context: context,
+  builder: (context) => GameDialog(
+    child: Column(mainAxisSize: MainAxisSize.min, children: [
+      GameDialogHeader(
+        title: 'TIÊU ĐỀ',
+        onClose: () => Navigator.of(context).pop(),
+      ),
+      const SizedBox(height: DS.spaceMd),
+      const GamePanel(inset: true, child: Text('Nội dung', style: DS.bodyText)),
+    ]),
+  ),
+);
+```
+
+### Interaction states
+
+- Enabled actions receive a callback; disabled actions use `onPressed: null`.
+  `GamePressable` uses muted face/border/text and never calls a disabled action.
+  Avoid hard-coded child colours if the child should inherit disabled colours.
+- Pressed controls sink by their configured depth. Focus, hover, keyboard
+  activation and semantics come from Material/InkWell. Give icon-only actions
+  a tooltip. Reduced-motion mode disables the raised-button movement.
+- Selected items use `selectedFill` with the normal accent border; dark cat
+  selection panels use `selectionBackdrop`, `selectionSurface` and
+  `selectionBorder`. Keep selection distinct from disabled state.
+- During asynchronous work, disable the triggering action and retain the
+  screen's progress feedback to prevent duplicate requests.
+- Aiming skills, joystick and hold-to-reel controls retain their specialised
+  gestures. Reuse tokens, but do not replace those gestures with a tap button.
+
+### Extending a screen
+
+1. Choose a shared surface and action component; use `DS.theme` defaults for
+   ordinary Material controls.
+2. Use the typography scale, semantic colours and spacing/radius tokens.
+   Add a token only for a genuinely shared role, not every illustration value.
+3. Keep game rules and persistence outside these widgets. Pass callbacks and
+   display values into components.
+4. Check the landscape sizes listed below, text scale 1.15, disabled actions,
+   long labels and close/home navigation.
+
+Scene painting, logo geometry, sprite sizes, rarity/breed colours and map
+palettes remain domain artwork. Their coordinates and colours do not need to
+follow interface spacing or surface tokens. Shared HUD typography does.
 
 ## Colour tokens
 
@@ -24,6 +110,12 @@ In code these live in `lib/ui/design.dart` as `DS` (colours, `DS.card`,
 | Soft brown | `#8A6446`, `#7A4A22` | Secondary text |
 | Backdrop dim | `#660F371E` | Layer over the garden painting |
 
+Additional semantic colours: `surfaceRaised` for inset content,
+`surfaceMuted` for quiet areas, `surfaceGlass` for translucent cards,
+`borderSoft`/`borderMedium` for internal dividers, `success`, `danger` and
+`info` for status, and `selectedFill` for selected items. Mode tiles and badges
+share `modeFishing`, `modeReturnHome`, `modeRescue`, `modeHerd`, `modeCamp`.
+
 Text is always bold: titles `w900`, secondary `w600` or regular. Small caps
 labels use letter spacing 1–1.5.
 
@@ -44,7 +136,7 @@ system text scale (up to 1.15×). Do not multiply font sizes by screen width.
 | Timer, count, skill countdown | `DS.fontValue` | 16 | `DS.valueText` |
 | Main home action, highlighted reward | `DS.fontDisplay` | 18 | `DS.displayText` |
 
-`MaterialApp` installs `DS.textTheme` so text without an explicit size follows
+`MaterialApp` installs `DS.theme` (including `DS.textTheme`) so text without an explicit size follows
 the same scale. `DS.primary` and `DS.secondary` both use `DS.buttonText`.
 Canvas HUD labels and world captions use these tokens as well.
 
@@ -92,11 +184,11 @@ File: `lib/ui/screens/level_select_screen.dart`
 - Background: `ShelterGardenPainter` covered by the backdrop dim colour.
 - Top bar: round home button, title "CHỌN MÀN" in cream `DS.fontTitle` with an
   ink text shadow, total stars on the right (`earned/levels × 3`).
-- Body: a horizontal `ListView` of chapter cards, 16 px side padding, 14 px gap.
+- Body: a horizontal `ListView` of chapter cards using the shared spacing scale.
 
 ### Chapter card
 
-- Width 230, height fills the screen; padding 12/10.
+- Width 230, height fills the screen; padding uses the shared spacing scale.
 - Fill cream, radius 20, wood border 3 px, shadow `#55000000` blur 8 offset y 4.
 - Header row:
   - Cat avatar: 46 px circle, `#FFE3B0` fill, wood border 2 px, showing the

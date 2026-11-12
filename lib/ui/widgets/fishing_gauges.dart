@@ -37,7 +37,7 @@ class FishingGauge extends StatelessWidget {
                             color: color)),
                   ])),
                 )),
-            const SizedBox(height: 4),
+            const SizedBox(height: DS.spaceXs),
             Text(tension ? 'CĂNG DÂY' : 'CÁCH BỜ',
                 style: const TextStyle(
                     fontSize: DS.fontCaption,

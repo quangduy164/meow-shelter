@@ -2,38 +2,35 @@ import 'package:flutter/material.dart';
 
 import '../../audio/game_audio.dart';
 import '../design.dart';
+import 'game_surfaces.dart';
 
 class AudioSettingsButton extends StatelessWidget {
   const AudioSettingsButton({super.key});
 
   @override
-  Widget build(BuildContext context) => Tooltip(
-        message: 'Cài đặt',
-        child: SizedBox.square(
-          dimension: 48,
-          child: IconButton(
-            tooltip: 'Cài đặt',
-            icon: Container(
-              width: 34,
-              height: 34,
-              decoration: BoxDecoration(
-                color: DS.cream.withOpacity(.92),
-                shape: BoxShape.circle,
-                border: Border.all(color: DS.wood, width: 1.5),
-              ),
-              child:
-                  const Icon(Icons.settings_rounded, size: 19, color: DS.ink),
+  Widget build(BuildContext context) => SizedBox.square(
+        dimension: DS.touchTarget,
+        child: IconButton(
+          tooltip: 'Cài đặt',
+          icon: Container(
+            width: 34,
+            height: 34,
+            decoration: BoxDecoration(
+              color: DS.cream.withOpacity(.92),
+              shape: BoxShape.circle,
+              border: Border.all(color: DS.wood, width: DS.borderSubtle),
             ),
-            padding: EdgeInsets.zero,
-            onPressed: () {
-              GameAudio.instance.play(GameSound.click);
-              showDialog<void>(
-                context: context,
-                barrierColor: DS.scrim,
-                builder: (_) => const _AudioSettingsDialog(),
-              );
-            },
+            child: const Icon(Icons.settings_rounded,
+                size: DS.iconMd, color: DS.ink),
           ),
+          padding: EdgeInsets.zero,
+          onPressed: () {
+            GameAudio.instance.play(GameSound.click);
+            showGameDialog<void>(
+              context: context,
+              builder: (_) => const _AudioSettingsDialog(),
+            );
+          },
         ),
       );
 }
@@ -44,127 +41,94 @@ class _AudioSettingsDialog extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final audio = GameAudio.instance;
-    return Dialog(
-      insetPadding: const EdgeInsets.all(16),
-      backgroundColor: DS.cream,
-      shape: DS.dialogShape,
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 600),
-        child: Padding(
-          padding: const EdgeInsets.all(18),
-          child: AnimatedBuilder(
-            animation: Listenable.merge([
-              audio.musicVolume,
-              audio.effectsVolume,
-              audio.musicEnabled,
-              audio.vibrationEnabled,
-            ]),
-            builder: (context, _) => Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Row(children: [
-                  Container(
-                    width: 38,
-                    height: 38,
-                    decoration: BoxDecoration(
-                        color: DS.gold,
-                        borderRadius: BorderRadius.circular(12)),
-                    child: const Icon(Icons.settings_rounded,
-                        color: DS.ink, size: 23),
-                  ),
-                  const SizedBox(width: 10),
-                  const Expanded(
-                    child: Text('CÀI ĐẶT',
-                        style: TextStyle(
-                            color: DS.ink,
-                            fontSize: DS.fontTitle,
-                            fontWeight: FontWeight.w900,
-                            letterSpacing: .6)),
-                  ),
-                  IconButton(
-                    tooltip: 'Đóng cài đặt',
-                    onPressed: () => Navigator.of(context).pop(),
-                    icon: const Icon(Icons.close_rounded, color: DS.ink),
-                  ),
-                ]),
-                const SizedBox(height: 12),
-                SizedBox(
-                  height: 168,
-                  child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        Expanded(
-                          flex: 3,
-                          child: _panel(Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              _volumeControl(
-                                context,
-                                'Nhạc nền',
-                                Icons.music_note_rounded,
-                                audio.musicVolume.value,
-                                audio.setMusicVolume,
-                              ),
-                              const SizedBox(height: 8),
-                              _volumeControl(
-                                context,
-                                'Hiệu ứng',
-                                Icons.volume_up_rounded,
-                                audio.effectsVolume.value,
-                                audio.setEffectsVolume,
-                                onChangeEnd: (_) => audio.play(GameSound.click),
-                              ),
-                            ],
-                          )),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          flex: 2,
-                          child: _panel(Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              _toggle(
-                                'Phát nhạc',
-                                Icons.music_note_rounded,
-                                audio.musicEnabled.value,
-                                audio.setMusicEnabled,
-                              ),
-                              const Divider(
-                                  height: 16, color: Color(0x33B27A3E)),
-                              _toggle(
-                                'Rung',
-                                Icons.vibration_rounded,
-                                audio.vibrationEnabled.value,
-                                audio.setVibrationEnabled,
-                              ),
-                            ],
-                          )),
-                        ),
-                      ]),
-                ),
-              ],
+    return GameDialog(
+      child: AnimatedBuilder(
+        animation: Listenable.merge([
+          audio.musicVolume,
+          audio.effectsVolume,
+          audio.musicEnabled,
+          audio.vibrationEnabled,
+        ]),
+        builder: (context, _) => Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            GameDialogHeader(
+              title: 'CÀI ĐẶT',
+              icon: Icons.settings_rounded,
+              closeTooltip: 'Đóng cài đặt',
+              onClose: () => Navigator.of(context).pop(),
             ),
-          ),
+            const SizedBox(height: DS.spaceMd),
+            SizedBox(
+              height: 168,
+              child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Expanded(
+                      flex: 3,
+                      child: _panel(Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          _volumeControl(
+                            context,
+                            'Nhạc nền',
+                            Icons.music_note_rounded,
+                            audio.musicVolume.value,
+                            audio.setMusicVolume,
+                          ),
+                          const SizedBox(height: DS.spaceSm),
+                          _volumeControl(
+                            context,
+                            'Hiệu ứng',
+                            Icons.volume_up_rounded,
+                            audio.effectsVolume.value,
+                            audio.setEffectsVolume,
+                            onChangeEnd: (_) => audio.play(GameSound.click),
+                          ),
+                        ],
+                      )),
+                    ),
+                    const SizedBox(width: DS.spaceMd),
+                    Expanded(
+                      flex: 2,
+                      child: _panel(Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          _toggle(
+                            'Phát nhạc',
+                            Icons.music_note_rounded,
+                            audio.musicEnabled.value,
+                            audio.setMusicEnabled,
+                          ),
+                          const Divider(height: DS.spaceLg),
+                          _toggle(
+                            'Rung',
+                            Icons.vibration_rounded,
+                            audio.vibrationEnabled.value,
+                            audio.setVibrationEnabled,
+                          ),
+                        ],
+                      )),
+                    ),
+                  ]),
+            ),
+          ],
         ),
       ),
     );
   }
 
-  Widget _panel(Widget child) => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-        decoration: BoxDecoration(
-          color: const Color(0xFFFFFBF0),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: const Color(0x55B27A3E)),
-        ),
-        child: child,
-      );
+  Widget _panel(Widget child) => GamePanel(
+      inset: true,
+      padding: const EdgeInsets.symmetric(
+          horizontal: DS.spaceMd, vertical: DS.spaceSm),
+      child: child);
 
   Widget _toggle(String label, IconData icon, bool value,
           ValueChanged<bool> onChanged) =>
       Row(children: [
         Icon(icon, size: 18, color: value ? DS.goldEdge : DS.mutedText),
-        const SizedBox(width: 6),
+        const SizedBox(width: DS.spaceXs),
         Expanded(
             child: Text(label,
                 style: const TextStyle(
@@ -186,7 +150,7 @@ class _AudioSettingsDialog extends StatelessWidget {
       Column(mainAxisSize: MainAxisSize.min, children: [
         Row(children: [
           Icon(icon, size: 19, color: DS.goldEdge),
-          const SizedBox(width: 6),
+          const SizedBox(width: DS.spaceXs),
           Expanded(
               child: Text(title,
                   style: const TextStyle(
@@ -194,9 +158,11 @@ class _AudioSettingsDialog extends StatelessWidget {
                       fontSize: DS.fontBody,
                       fontWeight: FontWeight.w800))),
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+            padding: const EdgeInsets.symmetric(
+                horizontal: DS.spaceXs, vertical: DS.space2),
             decoration: BoxDecoration(
-                color: DS.cream, borderRadius: BorderRadius.circular(7)),
+                color: DS.cream,
+                borderRadius: BorderRadius.circular(DS.radiusSm)),
             child: Text('${(value * 100).round()}%',
                 style: const TextStyle(
                     color: DS.goldEdge,

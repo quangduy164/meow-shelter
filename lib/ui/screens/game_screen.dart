@@ -1,3 +1,4 @@
+import '../design.dart';
 import 'package:flame/game.dart';
 import 'package:flutter/material.dart';
 import '../../game/meow_shelter_game.dart';
@@ -57,7 +58,7 @@ class _GameScreenState extends State<GameScreen> {
             game: game, onHome: () => Navigator.of(context).pop()),
         'home': (context, game) => SafeArea(
               child: Padding(
-                padding: const EdgeInsets.all(12),
+                padding: const EdgeInsets.all(DS.spaceMd),
                 child: Align(
                   alignment: Alignment.topLeft,
                   child: Row(mainAxisSize: MainAxisSize.min, children: [
@@ -66,7 +67,7 @@ class _GameScreenState extends State<GameScreen> {
                       tooltip: 'Về chọn màn',
                       onPressed: () => Navigator.of(context).pop(),
                     ),
-                    const SizedBox(width: 8),
+                    const SizedBox(width: DS.spaceSm),
                     RoundButton(
                       icon: Icons.help_outline_rounded,
                       onPressed: () {

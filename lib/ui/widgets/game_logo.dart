@@ -4,8 +4,8 @@ import 'package:flutter/material.dart';
 import '../home_theme.dart';
 import 'santa_hat_painter.dart';
 
-const _ink = Color(0xFF5A3214);
-const _cream = Color(0xFFFFF4DA);
+const _ink = DS.ink;
+const _cream = DS.cream;
 const _orange = Color(0xFFF08A3A);
 
 /// Simple home logo: the app's cat-head badge next to the game name.
@@ -39,7 +39,7 @@ class GameLogo extends StatelessWidget {
               ],
             ),
           ),
-          const SizedBox(width: 14),
+          const SizedBox(width: DS.spaceMd),
           Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -54,13 +54,13 @@ class GameLogo extends StatelessWidget {
                           ..color = _ink)),
                 Text('MEOW', style: _title.copyWith(color: _cream)),
               ]),
-              const SizedBox(height: 2),
+              const SizedBox(height: DS.space2),
               Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+                padding: const EdgeInsets.symmetric(
+                    horizontal: DS.spaceMd, vertical: DS.space2),
                 decoration: BoxDecoration(
                     color: christmas ? const Color(0xFF226A52) : _ink,
-                    borderRadius: BorderRadius.circular(8)),
+                    borderRadius: BorderRadius.circular(DS.radiusSm)),
                 child: const Text('SHELTER',
                     style: TextStyle(
                         color: _cream,

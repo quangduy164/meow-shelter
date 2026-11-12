@@ -13,6 +13,7 @@ import 'return_home_background.dart';
 import 'return_home_cat.dart';
 import 'return_home_crossing.dart';
 import 'return_home_dragon.dart';
+import 'return_home_dragon_brood.dart';
 import 'return_home_hud.dart';
 import 'return_home_gate.dart';
 import 'return_home_joystick.dart';
@@ -572,7 +573,11 @@ class ReturnHomeGame extends FlameGame {
   /// One point of damage; logs need two, everything else breaks at once.
   void _hurt(ReturnHomeObstacle o) {
     o.damage += 1;
-    if (o.kind != ReturnHomeObstacleKind.log || o.damage >= 2) _destroy(o);
+    if (o is DragonBrood) {
+      if (o.damage >= 2) _destroy(o);
+    } else if (o.kind != ReturnHomeObstacleKind.log || o.damage >= 2) {
+      _destroy(o);
+    }
   }
 
   void _resolveAttacks() {
@@ -778,9 +783,13 @@ class ReturnHomeGame extends FlameGame {
       _world.add(ReturnHomeShadowStep(from: center, to: center));
       _world.add(
           ReturnHomeBurst(position: center, color: const Color(0xFF7B5FC4)));
-      for (final o in _spawner.obstacles) {
+      for (final o in List<ReturnHomeObstacle>.of(_spawner.obstacles)) {
         if (o.position.distanceTo(center) <= HomeAttack.decoy.radius) {
-          o.scare(center, roarPush);
+          if (o is DragonBrood) {
+            _destroy(o);
+          } else {
+            o.scare(center, roarPush);
+          }
         }
       }
       final boss = _boss;
@@ -821,6 +830,7 @@ class ReturnHomeGame extends FlameGame {
   }
 
   void _destroy(ReturnHomeObstacle o, {bool icy = false}) {
+    if (o is DragonBrood) o.dismiss();
     _spawner.obstacles.remove(o);
     _contacts.remove(o);
     _comboRocks.remove(o);
@@ -873,6 +883,13 @@ class ReturnHomeGame extends FlameGame {
   void _updateBoss(double dt) {
     final dragon = _dragon;
     if (dragon == null) return;
+    _spawner.obstacles
+        .removeWhere((o) => o is DragonBrood && (o.dead || o.isRemoved));
+    for (final child in dragon.brood) {
+      if (!child.dead && !_spawner.obstacles.contains(child)) {
+        _spawner.obstacles.add(child);
+      }
+    }
     if (dragon.gone) {
       dragon.removeFromParent();
       _dragon = null;
@@ -898,7 +915,7 @@ class ReturnHomeGame extends FlameGame {
               : 1;
     // The dragon blocks the lane: the cat stays in the arena in front of it.
     final minX = _arenaLeft + 6;
-    final maxX = dragon.bodyRect.left - ReturnHomeCat.hitboxLeft - 80;
+    final maxX = dragon.arenaBarrierX - ReturnHomeCat.hitboxLeft - 80;
     if (dragon.evolving) {
       final boundaryX = max(minX,
           dragon.position.x - dragon.bodyRect.width * 2.3 - _cat.size.x / 2);
@@ -925,6 +942,9 @@ class ReturnHomeGame extends FlameGame {
           }
         }
         attack.blockedAt = stop;
+      } else if (attack is DragonEmber) {
+        attack.blocked = walls
+            .any((w) => w.closest(attack.point).distanceTo(attack.point) < 18);
       } else if (attack is DragonMeteor && attack.impactNow) {
         attack.blocked = walls.any(
             (w) => w.closest(attack.target).distanceTo(attack.target) < 44);
@@ -1169,6 +1189,12 @@ class ReturnHomeGame extends FlameGame {
     // Iterate a copy: a respawn removes nearby rocks and birds from the list.
     for (final obstacle in List<ReturnHomeObstacle>.of(_spawner.obstacles)) {
       if (obstacle.kind == ReturnHomeObstacleKind.log) continue;
+      if (obstacle is DragonBrood &&
+          (!obstacle.hatched ||
+              obstacle.dead ||
+              obstacle.age < DragonBrood.hatchTime + .6)) {
+        continue;
+      }
       final touching = obstacle.hits(_cat.hitbox);
       if (_comboRocks.containsKey(obstacle)) continue;
       if (touching && obstacle.frozen > 0) continue;
@@ -1314,6 +1340,13 @@ class ReturnHomeGame extends FlameGame {
       rock.comboProjectile = false;
     }
     _comboRocks.clear();
+    _spawner.obstacles.removeWhere((o) {
+      if (o is DragonBrood) {
+        o.dismiss();
+        return true;
+      }
+      return false;
+    });
     _decoy?.removeFromParent();
     _decoy = null;
     _comboNoticeCooldown = 0;

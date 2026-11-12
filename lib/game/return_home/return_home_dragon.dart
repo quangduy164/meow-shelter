@@ -6,6 +6,7 @@ import 'package:flame/components.dart';
 import 'package:flutter/painting.dart';
 
 import 'return_home_road.dart';
+import 'return_home_dragon_brood.dart';
 import 'return_home_skills.dart';
 
 /// The fire dragon guarding the lane home. It stands in front of the house on
@@ -51,6 +52,13 @@ class ReturnHomeDragon extends PositionComponent {
   double tired = 0;
 
   final attacks = <DragonAttack>[];
+  final brood = <DragonBrood>[];
+  double _summonCooldown = 0;
+  double get arenaBarrierX => position.x - 72 * _scale;
+  DragonDive? get _dive => attacks.whereType<DragonDive>().firstOrNull;
+  Vector2 get _diveShift => _dive?.groundOffset ?? Vector2.zero();
+  double get _diveLift => _dive?.lift ?? 0;
+  bool get flying => _dive?.airborne ?? false;
 
   double _intro = 0;
   double _death = -1;
@@ -85,7 +93,7 @@ class ReturnHomeDragon extends PositionComponent {
   bool get intro => _intro < introTime;
   bool get defeated => _death >= 0;
   bool get gone => _death > fleeTime;
-  bool get vulnerable => !intro && !defeated && !evolving;
+  bool get vulnerable => !intro && !defeated && !evolving && !flying;
   int get phase => _evolved ? 2 : 1;
   bool get evolving =>
       _evolutionT >= 0 && _evolutionT < evolutionPushTime + evolutionTime;
@@ -105,7 +113,10 @@ class ReturnHomeDragon extends PositionComponent {
     final local = Vector2(cos(_bodyYaw) * localX,
         y + _bodyOffset.y + 8 + sin(_bodyYaw) * localX * .32)
       ..rotate(_bodyTurn);
-    return position + (local + Vector2(15, -8)) * _scale;
+    return position +
+        _diveShift +
+        Vector2(0, _diveLift) +
+        (local + Vector2(15, -8)) * _scale;
   }
 
   /// Head hit area and the point skills aim at.
@@ -147,7 +158,7 @@ class ReturnHomeDragon extends PositionComponent {
       if (lane.burning) {
         final elapsed = lane.t - lane.warn;
         return _smoothUnit(elapsed / .1) *
-            (1 - _smoothUnit((elapsed - DragonFlameLane.burn + .14) / .14));
+            (1 - _smoothUnit((elapsed - lane.burnDuration + .14) / .14));
       }
     }
     return 0;
@@ -169,6 +180,7 @@ class ReturnHomeDragon extends PositionComponent {
       tired = 0;
       frozen = 0;
       _clearAttacks();
+      clearBrood();
       _followUp = null;
     } else if (!_evolved && hp <= maxHp * .5) {
       _beginEvolution();
@@ -179,6 +191,7 @@ class ReturnHomeDragon extends PositionComponent {
   /// Stun from a roar or an ice shard: cancels the move being wound up.
   void interrupt() {
     if (!vulnerable) return;
+    if (_dive != null && !_dive!.warning) return;
     for (final a in List<DragonAttack>.of(attacks)) {
       if (a.warning) {
         attacks.remove(a);
@@ -215,6 +228,8 @@ class ReturnHomeDragon extends PositionComponent {
     _castSpread = 0;
     _bodyOffset.setZero();
     _clearAttacks();
+    clearBrood();
+    _summonCooldown = 0;
   }
 
   void _beginEvolution() {
@@ -237,6 +252,36 @@ class ReturnHomeDragon extends PositionComponent {
     attacks.clear();
   }
 
+  void clearBrood() {
+    for (final child in brood) {
+      child.dismiss();
+    }
+    brood.clear();
+  }
+
+  void _summonBrood() {
+    brood.removeWhere((b) => b.dead || b.isRemoved);
+    if (brood.isNotEmpty) return;
+    for (var i = 0; i < 2; i++) {
+      final x = arenaLeft + (position.x - arenaLeft) * (.38 + i * .22);
+      final half = road.halfWidth(x) - 30;
+      final child = DragonBrood(
+          road: road,
+          position:
+              Vector2(x, road.centerY(x) + (i == 0 ? -1 : 1) * half * .55),
+          ranged: i == 1,
+          left: arenaLeft,
+          right: position.x - 80,
+          onShoot: (from, to) {
+            if (!defeated) _add(DragonEmber(from: from, target: to));
+          });
+      brood.add(child);
+      parent?.add(child);
+      parent?.add(ReturnHomeBurst(
+          position: child.position.clone(), color: const Color(0xFFF69B61)));
+    }
+  }
+
   @override
   void update(double dt) {
     super.update(dt);
@@ -247,7 +292,8 @@ class ReturnHomeDragon extends PositionComponent {
     _jaw += (_mouth - _jaw) * (1 - exp(-12 * motionDt));
     // Smooth continuous animation channels keep idle motion alive.
     _breath = sin(_t * 2.6) * .5 + .5;
-    final airborne = (intro && _intro < 1.05) || (defeated && _death > .6);
+    final airborne =
+        (intro && _intro < 1.05) || (defeated && _death > .6) || flying;
     _flightBlend +=
         ((airborne ? 1.0 : 0.0) - _flightBlend) * (1 - exp(-5 * motionDt));
     _wingPhase = (_wingPhase + motionDt * (2.8 + 7 * _flightBlend)) % (2 * pi);
@@ -267,7 +313,9 @@ class ReturnHomeDragon extends PositionComponent {
     frozen = max(0, frozen - dt);
     final world = evolving ? dt : dt * timeScale;
     for (final a in List<DragonAttack>.of(attacks)) {
-      a.tick(a is DragonTailSweep && frozen > 0 ? 0 : world);
+      if (a is DragonDive) a.follow(target);
+      a.tick(
+          (a is DragonTailSweep || a is DragonDive) && frozen > 0 ? 0 : world);
       if (a.done) {
         attacks.remove(a);
         a.removeFromParent();
@@ -275,11 +323,17 @@ class ReturnHomeDragon extends PositionComponent {
     }
     final ai = evolving ? dt : (frozen > 0 ? 0.0 : world);
     if (!_evolved && hp <= maxHp * .5) _beginEvolution();
+    _summonCooldown = max(0, _summonCooldown - ai);
+    brood.removeWhere((b) => b.dead || b.isRemoved);
     tired = max(0, tired - ai);
-    _closeTime = target.x > position.x - 230 * _scale ? _closeTime + ai : 0;
+    if (target.x <= position.x - 230 * _scale) {
+      _closeTime = 0;
+    } else if (_move == _Move.idle && tired <= 0) {
+      _closeTime += ai;
+    }
     for (final lane in attacks.whereType<DragonFlameLane>()) {
       // Leave a fixed dodge window; the head and telegraph share the locked lane.
-      if (ai > 0 && lane.t < lane.warn - .28) {
+      if (ai > 0 && lane.sweepTo == null && lane.t < lane.warn - .28) {
         final half = road.halfWidth(target.x) - DragonFlameLane.halfHeight;
         final center = road.centerY(target.x);
         lane.laneY = target.y.clamp(center - half, center + half);
@@ -291,7 +345,11 @@ class ReturnHomeDragon extends PositionComponent {
     final charge = _fireCharge;
     final fire = _firePower;
     final rain = _move == _Move.rain ? _smoothUnit(_moveT / .45) : 0.0;
-    final roar = evolving ? sin(pi * _smoothUnit(_evolutionProgress)) : 0.0;
+    final roar = evolving
+        ? sin(pi * _smoothUnit(_evolutionProgress))
+        : (_move == _Move.summon
+            ? sin(pi * (_moveT / 1.2).clamp(0.0, 1.0))
+            : 0.0);
     _bodyYaw = tail?.bodyYaw ?? 0;
     final blend = 1 - exp(-16 * ai);
     final castTurn =
@@ -374,8 +432,8 @@ class ReturnHomeDragon extends PositionComponent {
             _followUp = switch (first) {
               _Move.rain => _Move.breath,
               _Move.breath => _Move.tail,
-              _Move.tail => _Move.rain,
-              _Move.idle => null,
+              _Move.tail => _Move.breath,
+              _Move.idle || _Move.dive || _Move.summon => null,
             };
           }
           _start(first);
@@ -414,6 +472,16 @@ class ReturnHomeDragon extends PositionComponent {
         if (attacks.whereType<DragonTailSweep>().isEmpty) {
           _finish();
         }
+      case _Move.dive:
+        _mouth = .15;
+        if (_dive == null) _finish();
+      case _Move.summon:
+        _mouth = _moveT < 1.2 ? 1 : 0;
+        if (_moveT >= 1.2) {
+          _summonBrood();
+          _finish();
+          _cooldown = 1.0;
+        }
       case _Move.idle:
         break;
     }
@@ -424,11 +492,15 @@ class ReturnHomeDragon extends PositionComponent {
 
   _Move _pick() {
     final close = target.x > position.x - 230 * _scale;
+    if (phase == 2 && brood.isEmpty && _summonCooldown <= 0) {
+      return _Move.summon;
+    }
     if (_closeTime > 1.2 && _last != _Move.tail) return _Move.tail;
     final options = <(_Move, int)>[
+      if (phase == 2 && _last != _Move.dive) (_Move.dive, close ? 3 : 6),
       if (_last != _Move.breath || _lastCount < 2)
         (_Move.breath, _last == _Move.breath ? 1 : (close ? 3 : 5)),
-      if (_last != _Move.rain || _lastCount < 2)
+      if (phase == 1 && (_last != _Move.rain || _lastCount < 2))
         (_Move.rain, _last == _Move.rain ? 1 : (close ? 2 : 6)),
       if (close && (_last != _Move.tail || _lastCount < 2))
         (_Move.tail, _last == _Move.tail ? 1 : 6),
@@ -450,12 +522,20 @@ class ReturnHomeDragon extends PositionComponent {
     final warn = phase == 2 ? .85 : 1.0;
     switch (move) {
       case _Move.breath:
+        final center = road.centerY(target.x);
+        final half = road.halfWidth(target.x);
+        final side = target.y >= center ? 1.0 : -1.0;
         _add(DragonFlameLane(
-            laneY: target.y, left: arenaLeft, right: mouth.x, warn: warn));
+            laneY: phase == 2 ? center + side * (half - 28) : target.y,
+            sweepTo: phase == 2 ? center + side * 8 : null,
+            left: arenaLeft,
+            right: mouth.x,
+            warn: warn));
       case _Move.rain:
         _rainLeft = _rainCount;
         _rainNext = .45;
       case _Move.tail:
+        _closeTime = 0;
         _add(DragonTailSweep(
             road: road,
             left: position.x - 200 * _scale,
@@ -464,6 +544,15 @@ class ReturnHomeDragon extends PositionComponent {
             visualScale: _scale,
             restClock: _t,
             warn: warn + .1));
+      case _Move.dive:
+        _add(DragonDive(
+            home: position.clone(),
+            road: road,
+            left: arenaLeft,
+            barrierX: arenaBarrierX,
+            target: target));
+      case _Move.summon:
+        _summonCooldown = 14;
       case _Move.idle:
         break;
     }
@@ -496,7 +585,7 @@ class ReturnHomeDragon extends PositionComponent {
 
   @override
   void render(Canvas canvas) {
-    var lift = 0.0, drift = 0.0, shrink = 1.0;
+    var lift = _diveLift, drift = 0.0, shrink = 1.0;
     if (intro) {
       final k = (_intro / 1.1).clamp(0.0, 1.0);
       lift = -380 * pow(1 - k, 2).toDouble();
@@ -516,12 +605,14 @@ class ReturnHomeDragon extends PositionComponent {
     final shadowK = 1 - min(1.0, -lift / 380);
     canvas.drawOval(
         Rect.fromCenter(
-            center: Offset(drift * _scale + 10 * _scale, 2),
+            center: Offset(
+                _diveShift.x + drift * _scale + 10 * _scale, _diveShift.y + 2),
             width: 200 * _scale * shadowK,
             height: 34 * _scale * shadowK),
         Paint()
           ..color = Color.fromARGB((70 * shadowK).round(), 0x30, 0x10, 0x08));
-    canvas.translate(drift * _scale + shake, lift + _bodyBob * shadowK);
+    canvas.translate(_diveShift.x + drift * _scale + shake,
+        _diveShift.y + lift + _bodyBob * shadowK);
     canvas.scale(_scale * shrink);
     if (evolving) _paintEvolutionBurst(canvas);
     if (intro && _intro > 1.0 && _intro < 1.5) {
@@ -2435,7 +2526,7 @@ bool _tailSegmentHits(Offset a, Offset b, Rect box) {
   return true;
 }
 
-enum _Move { idle, breath, rain, tail }
+enum _Move { idle, breath, rain, tail, dive, summon }
 
 // ===========================================================================
 // Dragon attacks. Each runs on the dragon's clock (tick), so time stop
@@ -2456,6 +2547,139 @@ abstract class DragonAttack extends PositionComponent {
   bool hits(Rect box);
 }
 
+/// Ground target follows briefly, locks, then the same body lands on that mark.
+class DragonDive extends DragonAttack {
+  DragonDive(
+      {required this.home,
+      required this.road,
+      required this.left,
+      required this.barrierX,
+      required Vector2 target})
+      : spot = target.clone() {
+    follow(target);
+  }
+  final Vector2 home, spot;
+  final ReturnHomeRoad road;
+  final double left, barrierX;
+  static const lockAt = .85, impactAt = 1.6, endAt = 2.8, radius = 52.0;
+  bool impactNow = false;
+  bool get airborne => t >= .45 && (t < impactAt || t >= 1.95);
+  @override
+  bool get warning => t < .45;
+  @override
+  bool get done => t >= endAt;
+  void follow(Vector2 target) {
+    if (t >= lockAt) return;
+    spot.x = target.x.clamp(left + radius, barrierX - 55);
+    final half = max(10.0, road.halfWidth(spot.x) - radius * .55);
+    final c = road.centerY(spot.x);
+    spot.y = target.y.clamp(c - half, c + half);
+  }
+
+  @override
+  void tick(double dt) {
+    final previous = t;
+    super.tick(dt);
+    impactNow = previous < impactAt && t >= impactAt;
+  }
+
+  Vector2 get groundOffset {
+    if (t < .45) return Vector2.zero();
+    if (t < impactAt) return (spot - home) * _smoothUnit((t - .45) / .9);
+    if (t < 1.95) return spot - home;
+    return (spot - home) * (1 - _smoothUnit((t - 1.95) / (endAt - 1.95)));
+  }
+
+  double get lift {
+    if (t < .45) return 0;
+    if (t < 1.15) return -165 * _smoothUnit((t - .45) / .45);
+    if (t < impactAt) return -165 * (1 - _smoothUnit((t - 1.15) / .45));
+    if (t >= 1.95) {
+      return -75 * sin(pi * ((t - 1.95) / (endAt - 1.95)).clamp(0.0, 1.0));
+    }
+    return 0;
+  }
+
+  @override
+  bool hits(Rect box) =>
+      impactNow &&
+      inGroundEllipse(Vector2(box.center.dx, box.center.dy), spot, radius,
+          margin: 8);
+  @override
+  void render(Canvas canvas) {
+    if (t < impactAt) {
+      final zone = groundEllipse(spot, radius);
+      canvas.drawOval(zone,
+          Paint()..color = Color.fromRGBO(238, 64, 44, t < lockAt ? .18 : .38));
+      canvas.drawOval(
+          zone,
+          Paint()
+            ..color = const Color(0xFFED603F)
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = t < lockAt ? 2 : 4);
+      final c = Offset(spot.x, spot.y);
+      final pen = Paint()
+        ..color = const Color(0xFFFFE3A1)
+        ..strokeWidth = 2.5;
+      canvas.drawLine(c - const Offset(10, 0), c + const Offset(10, 0), pen);
+      canvas.drawLine(c - const Offset(0, 7), c + const Offset(0, 7), pen);
+    } else if (t < 1.95) {
+      final k = ((t - impactAt) / .35).clamp(0.0, 1.0);
+      canvas.drawOval(
+          groundEllipse(spot, radius * (1 + k)),
+          Paint()
+            ..color = const Color(0xFFFFCF85).withOpacity(1 - k)
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = 5 * (1 - k) + 1);
+      for (var i = 0; i < 10; i++) {
+        final a = i * pi / 5;
+        canvas.drawCircle(
+            Offset(spot.x + cos(a) * radius * k,
+                spot.y + sin(a) * radius * k * .5 - 12 * k),
+            3 * (1 - k) + 1,
+            Paint()..color = const Color(0xFFC6A980).withOpacity((1 - k) * .7));
+      }
+    }
+  }
+}
+
+/// A hatchling's small, dodgeable shot flies toward a snapshot of its target.
+class DragonEmber extends DragonAttack {
+  DragonEmber({required Vector2 from, required Vector2 target})
+      : from = from.clone(),
+        destination = target.clone();
+  final Vector2 from, destination;
+  bool blocked = false;
+  static const flight = .95;
+  Vector2 get point =>
+      from + (destination - from) * (t / flight).clamp(0.0, 1.0);
+  @override
+  bool get warning => false;
+  @override
+  bool get done => blocked || t > flight + .12;
+  @override
+  bool hits(Rect box) =>
+      !done && box.inflate(9).contains(Offset(point.x, point.y));
+  @override
+  void render(Canvas canvas) {
+    if (done) return;
+    final p = point;
+    final dir = destination - from;
+    final n = dir.length2 > .01 ? dir.normalized() : Vector2(1, 0);
+    canvas.drawLine(
+        Offset(p.x - n.x * 21, p.y - n.y * 21),
+        Offset(p.x, p.y),
+        Paint()
+          ..color = const Color(0x99F77F35)
+          ..strokeWidth = 9
+          ..strokeCap = StrokeCap.round);
+    canvas.drawCircle(
+        Offset(p.x, p.y), 8, Paint()..color = const Color(0xFFE96334));
+    canvas.drawCircle(Offset(p.x - 1, p.y - 1), 4.5,
+        Paint()..color = const Color(0xFFFFE5A3));
+  }
+}
+
 /// A band of fire across the lane, from the dragon's mouth to the arena edge.
 /// Warns for [warn] seconds, then burns. A stone wall standing in the band
 /// stops the flames at [blockedAt].
@@ -2464,7 +2688,21 @@ class DragonFlameLane extends DragonAttack {
       {required this.laneY,
       required this.left,
       required this.right,
-      required this.warn});
+      required this.warn,
+      this.sweepTo})
+      : startY = laneY;
+
+  final double startY;
+  final double? sweepTo;
+  double get burnDuration => sweepTo == null ? burn : 1.25;
+  @override
+  void tick(double dt) {
+    super.tick(dt);
+    if (sweepTo != null && t >= warn) {
+      laneY = startY +
+          (sweepTo! - startY) * ((t - warn) / burnDuration).clamp(0.0, 1.0);
+    }
+  }
 
   double laneY;
   final double left, warn;
@@ -2478,9 +2716,9 @@ class DragonFlameLane extends DragonAttack {
 
   @override
   bool get warning => t < warn;
-  bool get burning => t >= warn && t < warn + burn;
+  bool get burning => t >= warn && t < warn + burnDuration;
   @override
-  bool get done => t >= warn + burn + .15;
+  bool get done => t >= warn + burnDuration + .15;
 
   double get _from => max(left, blockedAt ?? left);
   double get _front =>
@@ -2497,6 +2735,26 @@ class DragonFlameLane extends DragonAttack {
     final band =
         Rect.fromLTRB(left, laneY - halfHeight, right, laneY + halfHeight);
     if (warning) {
+      if (sweepTo != null) {
+        final zone = Rect.fromLTRB(left, min(startY, sweepTo!) - halfHeight,
+            right, max(startY, sweepTo!) + halfHeight);
+        canvas.drawRect(zone, Paint()..color = const Color(0x33FF5638));
+        final x = left + (right - left) * .5;
+        final arrow = Paint()
+          ..color = const Color(0xDDFFF2CE)
+          ..strokeWidth = 3
+          ..style = PaintingStyle.stroke
+          ..strokeCap = StrokeCap.round;
+        final sign = (sweepTo! - startY).sign;
+        canvas.drawPath(
+            Path()
+              ..moveTo(x, startY)
+              ..lineTo(x, sweepTo!)
+              ..moveTo(x - 7, sweepTo! - sign * 8)
+              ..lineTo(x, sweepTo!)
+              ..lineTo(x + 7, sweepTo! - sign * 8),
+            arrow);
+      }
       final k = t / warn;
       final pulse = .5 + .5 * sin(t * 26);
       canvas.drawRect(
@@ -2530,7 +2788,8 @@ class DragonFlameLane extends DragonAttack {
       return;
     }
     final e = t - warn;
-    final fade = (e < burn ? 1.0 : 1 - (e - burn) / .15).clamp(0.0, 1.0);
+    final fade =
+        (e < burnDuration ? 1.0 : 1 - (e - burnDuration) / .15).clamp(0.0, 1.0);
     if (done || fade <= 0) return;
     final start = _front;
     final mouth = emitter ?? Vector2(right, laneY);

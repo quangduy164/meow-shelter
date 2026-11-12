@@ -20,14 +20,15 @@ class FishingCatchPopup extends StatelessWidget {
             child: DecoratedBox(
               decoration: DS.card,
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(20, 16, 20, 18),
+                padding: const EdgeInsets.fromLTRB(
+                    DS.spaceLg, DS.spaceLg, DS.spaceLg, DS.spaceLg),
                 child: Column(mainAxisSize: MainAxisSize.min, children: [
                   const Text('CÂU ĐƯỢC RỒI!',
                       style: TextStyle(
                           color: DS.ink,
                           fontSize: DS.fontTitle,
                           fontWeight: FontWeight.w900)),
-                  const SizedBox(height: 6),
+                  const SizedBox(height: DS.spaceXs),
                   SizedBox(
                       width: 150,
                       height: 92,
@@ -38,11 +39,11 @@ class FishingCatchPopup extends StatelessWidget {
                           color: DS.goldEdge,
                           fontSize: DS.fontHeading,
                           fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 3),
+                  const SizedBox(height: DS.spaceXs),
                   Text(fish.isJunk ? 'Đồ vật thất lạc' : fish.rarity,
                       style: const TextStyle(
                           color: DS.soft, fontSize: DS.fontBody)),
-                  const SizedBox(height: 14),
+                  const SizedBox(height: DS.spaceMd),
                   SizedBox(
                     width: double.infinity,
                     height: 44,

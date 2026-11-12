@@ -4,8 +4,7 @@ import '../../collection/fish_collection.dart';
 import '../../collection/fish_species.dart';
 import 'fishing_fish_art.dart';
 import '../design.dart';
-import 'game_glyphs.dart';
-import 'round_button.dart';
+import 'game_surfaces.dart';
 
 /// Fish journal: tabbed grid on the left, details of the picked entry on
 /// the right. Undiscovered entries show as silhouettes named "???".
@@ -38,7 +37,7 @@ List<Color> _rarityFill(FishSpecies fish) => switch (_rarityLevel(fish)) {
       2 => const [Color(0xFFCAE5FF), Color(0xFF85B5DE)],
       3 => const [Color(0xFFDDC1F2), Color(0xFFB07BD1)],
       4 => const [Color(0xFFFFDF85), Color(0xFFDFAC43)],
-      _ => const [Color(0xFFFFFBEF), Color(0xFFF3E4C8)],
+      _ => const [DS.surfaceRaised, Color(0xFFF3E4C8)],
     };
 
 /// Paint-only animation: the grid and text do not rebuild for each sparkle.
@@ -215,7 +214,8 @@ class _RarityTag extends StatelessWidget {
         ? color
         : (level == 4 ? const Color(0xFF69350C) : Colors.white);
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+      padding: const EdgeInsets.symmetric(
+          horizontal: DS.spaceSm, vertical: DS.spaceXs),
       decoration: BoxDecoration(
           gradient: LinearGradient(
               begin: Alignment.topLeft,
@@ -231,11 +231,11 @@ class _RarityTag extends StatelessWidget {
           boxShadow: level >= 3
               ? [BoxShadow(color: color.withOpacity(.25), blurRadius: 5)]
               : null,
-          borderRadius: BorderRadius.circular(7),
+          borderRadius: BorderRadius.circular(DS.radiusSm),
           border: Border.all(color: color)),
       child: Row(mainAxisSize: MainAxisSize.min, children: [
         Icon(icon, size: 12, color: foreground),
-        const SizedBox(width: 4),
+        const SizedBox(width: DS.spaceXs),
         Text(fish.rarity,
             style: TextStyle(
                 color: foreground,
@@ -274,17 +274,23 @@ class _FishCollectionDialogState extends State<FishCollectionDialog> {
     // Detail column takes a share of the card so narrow (4:3) screens still
     // leave room for the grid.
     final detailWidth = (width * .36).clamp(170.0, 240.0);
-    return Dialog(
-      backgroundColor: Colors.transparent,
-      insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+    return GameDialog(
+      maxWidth: 780,
+      padding: EdgeInsets.zero,
+      insetPadding: const EdgeInsets.symmetric(
+          horizontal: DS.spaceXl, vertical: DS.spaceLg),
       child: Container(
         width: width,
         height: (screen.height * .88).clamp(260.0, 460.0),
-        decoration: DS.card.copyWith(color: DS.cream),
-        padding: const EdgeInsets.fromLTRB(14, 10, 14, 12),
+        padding: const EdgeInsets.fromLTRB(
+            DS.spaceMd, DS.spaceSm, DS.spaceMd, DS.spaceMd),
         child: Column(children: [
-          const _Header(),
-          const SizedBox(height: 8),
+          GameDialogHeader(
+              title: 'BỘ SƯU TẬP',
+              icon: Icons.menu_book_rounded,
+              closeTooltip: 'Đóng bộ sưu tập',
+              onClose: () => Navigator.pop(context)),
+          const SizedBox(height: DS.spaceSm),
           Expanded(
             child:
                 Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
@@ -299,7 +305,7 @@ class _FishCollectionDialogState extends State<FishCollectionDialog> {
                           count: widget.collection.count,
                           active: !_junkTab,
                           onTap: () => _switchTab(false)),
-                      const SizedBox(width: 8),
+                      const SizedBox(width: DS.spaceSm),
                       _TabChip(
                           label: 'Đồ thất lạc',
                           count: widget.collection.junkCount,
@@ -307,7 +313,7 @@ class _FishCollectionDialogState extends State<FishCollectionDialog> {
                           onTap: () => _switchTab(true)),
                     ]),
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: DS.spaceSm),
                   Expanded(
                     child: GridView.builder(
                       padding: EdgeInsets.zero,
@@ -330,7 +336,7 @@ class _FishCollectionDialogState extends State<FishCollectionDialog> {
                   ),
                 ]),
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: DS.spaceMd),
               SizedBox(
                 width: detailWidth,
                 child: _DetailPanel(
@@ -343,27 +349,6 @@ class _FishCollectionDialogState extends State<FishCollectionDialog> {
       ),
     );
   }
-}
-
-class _Header extends StatelessWidget {
-  const _Header();
-
-  @override
-  Widget build(BuildContext context) => Row(children: [
-        const Icon(Icons.menu_book_rounded, color: DS.wood, size: 26),
-        const SizedBox(width: 8),
-        const Expanded(child: Text('BỘ SƯU TẬP', style: DS.title)),
-        _CloseButton(onTap: () => Navigator.pop(context)),
-      ]);
-}
-
-class _CloseButton extends StatelessWidget {
-  const _CloseButton({required this.onTap});
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) =>
-      RoundButton(glyph: GameGlyph.close, size: 36, onPressed: onTap);
 }
 
 class _TabChip extends StatelessWidget {
@@ -382,10 +367,11 @@ class _TabChip extends StatelessWidget {
         onTap: onTap,
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 160),
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+          padding: const EdgeInsets.symmetric(
+              horizontal: DS.spaceMd, vertical: DS.spaceXs),
           decoration: BoxDecoration(
               color: active ? DS.gold : DS.cream,
-              borderRadius: BorderRadius.circular(14),
+              borderRadius: BorderRadius.circular(DS.radiusControl),
               border:
                   Border.all(color: active ? DS.goldEdge : DS.wood, width: 2)),
           child: Row(mainAxisSize: MainAxisSize.min, children: [
@@ -394,11 +380,13 @@ class _TabChip extends StatelessWidget {
                     color: DS.ink,
                     fontSize: DS.fontBody,
                     fontWeight: FontWeight.w900)),
-            const SizedBox(width: 6),
+            const SizedBox(width: DS.spaceXs),
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+              padding: const EdgeInsets.symmetric(
+                  horizontal: DS.spaceXs, vertical: 1),
               decoration: BoxDecoration(
-                  color: DS.ink, borderRadius: BorderRadius.circular(8)),
+                  color: DS.ink,
+                  borderRadius: BorderRadius.circular(DS.radiusSm)),
               child: Text('$count',
                   style: const TextStyle(
                       color: DS.cream,
@@ -437,7 +425,7 @@ class _FishTile extends StatelessWidget {
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                   colors: _rarityFill(fish)),
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(DS.radiusControl),
           border: Border.all(
               color: level > 0
                   ? tone
@@ -455,7 +443,7 @@ class _FishTile extends StatelessWidget {
               : null,
         ),
         child: ClipRRect(
-          borderRadius: BorderRadius.circular(11),
+          borderRadius: BorderRadius.circular(DS.radiusMd),
           child: Stack(children: [
             if (level > 0)
               Positioned.fill(child: IgnorePointer(child: _RarityAura(fish))),
@@ -470,9 +458,10 @@ class _FishTile extends StatelessWidget {
                         child: locked
                             ? _MysteryArt(fish: fish, mark: 26)
                             : CustomPaint(painter: FishingFishArt(fish))),
-                    const SizedBox(height: 4),
+                    const SizedBox(height: DS.spaceXs),
                     Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 6),
+                      padding:
+                          const EdgeInsets.symmetric(horizontal: DS.spaceXs),
                       child: FittedBox(
                         fit: BoxFit.scaleDown,
                         child: Text(locked ? '???' : fish.label,
@@ -482,7 +471,7 @@ class _FishTile extends StatelessWidget {
                                 fontWeight: FontWeight.w900)),
                       ),
                     ),
-                    const SizedBox(height: 5),
+                    const SizedBox(height: DS.spaceXs),
                     _RarityTag(fish),
                   ]),
             ),
@@ -491,11 +480,11 @@ class _FishTile extends StatelessWidget {
                 right: 5,
                 top: 9,
                 child: Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: DS.spaceXs, vertical: 1),
                   decoration: BoxDecoration(
                       color: DS.cream,
-                      borderRadius: BorderRadius.circular(8),
+                      borderRadius: BorderRadius.circular(DS.radiusSm),
                       border: Border.all(color: DS.goldEdge, width: 1.5)),
                   child: Text('×$count',
                       style: const TextStyle(
@@ -541,13 +530,13 @@ class _DetailPanel extends StatelessWidget {
     final level = _rarityLevel(fish);
     final tone = _rarityTone(fish);
     return Container(
-      padding: const EdgeInsets.all(10),
+      padding: const EdgeInsets.all(DS.spaceSm),
       decoration: BoxDecoration(
           gradient: LinearGradient(
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
               colors: _rarityFill(fish)),
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(DS.radiusLg),
           border: Border.all(
               color: level > 0 ? tone : DS.wood, width: level > 0 ? 4 : 2),
           boxShadow: level > 0
@@ -558,7 +547,7 @@ class _DetailPanel extends StatelessWidget {
           flex: 5,
           child: Container(
             decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(DS.radiusMd),
               gradient: LinearGradient(
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
@@ -598,7 +587,7 @@ class _DetailPanel extends StatelessWidget {
             ]),
           ),
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: DS.spaceSm),
         Row(children: [
           Expanded(
             child: FittedBox(
@@ -612,23 +601,23 @@ class _DetailPanel extends StatelessWidget {
             ),
           ),
         ]),
-        const SizedBox(height: 6),
+        const SizedBox(height: DS.spaceXs),
         Align(alignment: Alignment.centerLeft, child: _RarityTag(fish)),
-        const SizedBox(height: 2),
+        const SizedBox(height: DS.space2),
         Text(locked ? 'Chưa câu được' : 'Đã câu: $count lần',
             style: TextStyle(
                 color: locked ? DS.mutedText : DS.goldEdge,
                 fontSize: DS.fontBody,
                 fontWeight: FontWeight.w700)),
-        const SizedBox(height: 6),
+        const SizedBox(height: DS.spaceXs),
         _StatBar(
             label: 'Sức kéo',
             value: locked ? 0 : (fish.pullStrength / 1.2).clamp(0.0, 1.0)),
-        const SizedBox(height: 4),
+        const SizedBox(height: DS.spaceXs),
         _StatBar(
             label: 'Tốc độ',
             value: locked ? 0 : (fish.movementSpeed / 1.7).clamp(0.0, 1.0)),
-        const SizedBox(height: 6),
+        const SizedBox(height: DS.spaceXs),
         Flexible(
           flex: 2,
           child: Text(locked ? 'Hãy tiếp tục câu để khám phá.' : _note,
@@ -664,13 +653,15 @@ class _StatBar extends StatelessWidget {
           child: Container(
             height: 8,
             decoration: BoxDecoration(
-                color: DS.mutedFill, borderRadius: BorderRadius.circular(4)),
+                color: DS.mutedFill,
+                borderRadius: BorderRadius.circular(DS.radiusXs)),
             child: FractionallySizedBox(
               alignment: Alignment.centerLeft,
               widthFactor: value,
               child: Container(
                   decoration: BoxDecoration(
-                      color: DS.wood, borderRadius: BorderRadius.circular(4))),
+                      color: DS.wood,
+                      borderRadius: BorderRadius.circular(DS.radiusXs))),
             ),
           ),
         ),

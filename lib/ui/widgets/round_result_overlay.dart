@@ -1,3 +1,4 @@
+import 'game_pressable.dart';
 import 'dart:math' as math;
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
@@ -88,12 +89,12 @@ class _RoundResultOverlayState extends State<RoundResultOverlay>
         SafeArea(
           child: Center(
             child: Padding(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(DS.spaceLg),
               child: FittedBox(
                 fit: BoxFit.scaleDown,
                 child: TweenAnimationBuilder<double>(
                   tween: Tween(begin: .9, end: 1),
-                  duration: const Duration(milliseconds: 260),
+                  duration: DS.overlayDuration,
                   curve: Curves.easeOutBack,
                   builder: (context, scale, child) =>
                       Transform.scale(scale: scale, child: child),
@@ -102,7 +103,8 @@ class _RoundResultOverlayState extends State<RoundResultOverlay>
                     child: Stack(clipBehavior: Clip.none, children: [
                       Container(
                         width: 470,
-                        padding: const EdgeInsets.fromLTRB(20, 26, 20, 16),
+                        padding: const EdgeInsets.fromLTRB(
+                            DS.spaceLg, 26, DS.spaceLg, DS.spaceLg),
                         decoration: DS.card.copyWith(color: DS.cream),
                         child:
                             Column(mainAxisSize: MainAxisSize.min, children: [
@@ -112,7 +114,7 @@ class _RoundResultOverlayState extends State<RoundResultOverlay>
                                 frames: _frameCount,
                                 animation: _sprite,
                                 won: _won),
-                            const SizedBox(width: 16),
+                            const SizedBox(width: DS.spaceLg),
                             Expanded(
                               child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -124,11 +126,10 @@ class _RoundResultOverlayState extends State<RoundResultOverlay>
                                               fontSize: DS.fontTitle,
                                               height: 1.1,
                                               fontWeight: FontWeight.w900,
-                                              color: _won
-                                                  ? DS.ink
-                                                  : const Color(0xFFB0503A))),
+                                              color:
+                                                  _won ? DS.ink : DS.danger)),
                                     ),
-                                    const SizedBox(height: 4),
+                                    const SizedBox(height: DS.spaceXs),
                                     Text(_subtitle,
                                         style: const TextStyle(
                                             fontSize: DS.fontBody,
@@ -138,23 +139,23 @@ class _RoundResultOverlayState extends State<RoundResultOverlay>
                             ),
                           ]),
                           if (_scored) ...[
-                            const SizedBox(height: 12),
+                            const SizedBox(height: DS.spaceMd),
                             _StarRow(game: _game, reveal: _reveal),
                           ],
-                          const SizedBox(height: 14),
+                          const SizedBox(height: DS.spaceMd),
                           Row(children: [
                             _ActionButton(
                                 tooltip: 'Về chọn màn',
                                 icon: Icons.home_rounded,
                                 glyph: GameGlyph.home,
                                 onPressed: widget.onHome),
-                            const SizedBox(width: 10),
+                            const SizedBox(width: DS.spaceSm),
                             if (next) ...[
                               _ActionButton(
                                   tooltip: 'Chơi lại',
                                   icon: Icons.replay_rounded,
                                   onPressed: _game.restartRound),
-                              const SizedBox(width: 10),
+                              const SizedBox(width: DS.spaceSm),
                             ],
                             Expanded(
                               child: _ActionButton(
@@ -178,10 +179,11 @@ class _RoundResultOverlayState extends State<RoundResultOverlay>
                         child: Center(
                           child: Container(
                             padding: const EdgeInsets.symmetric(
-                                horizontal: 16, vertical: 5),
+                                horizontal: DS.spaceLg, vertical: DS.spaceXs),
                             decoration: BoxDecoration(
                                 color: DS.gold,
-                                borderRadius: BorderRadius.circular(14),
+                                borderRadius:
+                                    BorderRadius.circular(DS.radiusControl),
                                 border:
                                     Border.all(color: DS.goldEdge, width: 2),
                                 boxShadow: const [
@@ -232,7 +234,7 @@ class _Portrait extends StatelessWidget {
           gradient: RadialGradient(
               colors: won
                   ? const [Color(0xFFFFF0C8), Color(0xFFFFD98A)]
-                  : const [Color(0xFFF0E6D6), Color(0xFFD9CDB8)]),
+                  : const [Color(0xFFF0E6D6), DS.mutedFill]),
           border: Border.all(color: DS.wood, width: 3),
         ),
         child: AnimatedBuilder(
@@ -258,11 +260,12 @@ class _StarRow extends StatelessWidget {
       for (final goal in game.level.goals) (goal.label, goal.met(game.stats)),
     ];
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 6),
+      padding: const EdgeInsets.symmetric(
+          vertical: DS.spaceSm, horizontal: DS.spaceXs),
       decoration: BoxDecoration(
-          color: const Color(0xFFFFFBEF),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: const Color(0x99B27A3E), width: 1.5)),
+          color: DS.surfaceRaised,
+          borderRadius: BorderRadius.circular(DS.radiusLg),
+          border: Border.all(color: DS.borderMedium, width: 1.5)),
       child: Row(children: [
         for (var i = 0; i < entries.length; i++)
           Expanded(
@@ -289,7 +292,7 @@ class _StarRow extends StatelessWidget {
                               : null),
                     ),
                   ),
-                  const SizedBox(height: 2),
+                  const SizedBox(height: DS.space2),
                   Text(entries[i].$1,
                       textAlign: TextAlign.center,
                       maxLines: 2,
@@ -325,43 +328,25 @@ class _ActionButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final edge = primary ? DS.goldEdge : DS.wood;
-    return Tooltip(
-      message: tooltip,
-      child: Container(
-        height: 46,
-        width: label == null ? 46 : null,
-        decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(14),
-            boxShadow: [BoxShadow(color: edge, offset: const Offset(0, 4))]),
-        child: Material(
-          color: primary ? DS.gold : DS.cream,
-          shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(14),
-              side: BorderSide(color: edge, width: 2)),
-          child: InkWell(
-            onTap: onPressed,
-            borderRadius: BorderRadius.circular(14),
-            child: Semantics(
-              button: true,
-              label: tooltip,
-              child:
-                  Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                glyph != null
-                    ? GameGlyphView(glyph!, size: 26)
-                    : Icon(icon, size: 23, color: DS.ink),
-                if (label != null) ...[
-                  const SizedBox(width: 7),
-                  Text(label!,
-                      style: const TextStyle(
-                          fontSize: DS.fontBody,
-                          fontWeight: FontWeight.w900,
-                          color: DS.ink)),
-                ],
-              ]),
-            ),
-          ),
-        ),
-      ),
+    return GamePressable(
+      height: DS.controlHeight,
+      width: label == null ? DS.touchTarget : null,
+      color: primary ? DS.gold : DS.cream,
+      shade: edge,
+      radius: DS.radiusControl,
+      depth: DS.buttonDepth,
+      gradient: false,
+      tooltip: tooltip,
+      onPressed: onPressed,
+      child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+        glyph != null
+            ? GameGlyphView(glyph!, size: DS.iconLg)
+            : Icon(icon, size: DS.iconMd, color: DS.ink),
+        if (label != null) ...[
+          const SizedBox(width: DS.spaceSm),
+          Text(label!, style: DS.buttonText.copyWith(color: DS.ink)),
+        ],
+      ]),
     );
   }
 }

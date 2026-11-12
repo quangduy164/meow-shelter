@@ -11,7 +11,7 @@ import '../widgets/round_button.dart';
 import '../widgets/game_glyphs.dart';
 import 'game_screen.dart';
 
-const _ink = Color(0xFF5A3214);
+const _ink = DS.ink;
 
 /// Level map: one card per chapter, scrolling sideways. Each chapter shows the
 /// breed it teaches and its catch trait, then its levels with best stars.
@@ -59,25 +59,26 @@ class _LevelSelectScreenState extends State<LevelSelectScreen> {
         SafeArea(
           child: Column(children: [
             Padding(
-              padding: const EdgeInsets.fromLTRB(12, 10, 16, 6),
+              padding: const EdgeInsets.fromLTRB(
+                  DS.spaceMd, DS.spaceSm, DS.spaceLg, DS.spaceXs),
               child: Row(children: [
                 RoundButton(
                     glyph: GameGlyph.home,
                     onPressed: () => Navigator.of(context).pop()),
-                const SizedBox(width: 12),
+                const SizedBox(width: DS.spaceMd),
                 const Text('CHỌN MÀN',
                     style: TextStyle(
-                        color: Color(0xFFFFF4DA),
+                        color: DS.cream,
                         fontSize: DS.fontTitle,
                         fontWeight: FontWeight.w900,
                         letterSpacing: 1.5,
                         shadows: [Shadow(color: _ink, blurRadius: 4)])),
                 const Spacer(),
-                const Icon(Icons.star_rounded, color: Color(0xFFFFC23D)),
-                const SizedBox(width: 4),
+                const Icon(Icons.star_rounded, color: DS.star),
+                const SizedBox(width: DS.spaceXs),
                 Text('$total/${gameLevels.length * 3}',
                     style: const TextStyle(
-                        color: Color(0xFFFFF4DA),
+                        color: DS.cream,
                         fontSize: DS.fontValue,
                         fontWeight: FontWeight.w900)),
               ]),
@@ -85,7 +86,8 @@ class _LevelSelectScreenState extends State<LevelSelectScreen> {
             Expanded(
               child: ListView(
                 scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.fromLTRB(16, 4, 16, 14),
+                padding: const EdgeInsets.fromLTRB(
+                    DS.spaceLg, DS.spaceXs, DS.spaceLg, DS.spaceMd),
                 children: [
                   for (final chapter in levelChapters) ...[
                     _ChapterCard(
@@ -101,7 +103,7 @@ class _LevelSelectScreenState extends State<LevelSelectScreen> {
                       ],
                       onPlay: _play,
                     ),
-                    const SizedBox(width: 14),
+                    const SizedBox(width: DS.spaceMd),
                   ],
                 ],
               ),
@@ -134,28 +136,28 @@ class _ChapterCard extends StatelessWidget {
     final mixed = number == levelChapters.length;
     return Container(
       width: 230,
-      padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+      padding: const EdgeInsets.fromLTRB(
+          DS.spaceMd, DS.spaceSm, DS.spaceMd, DS.spaceSm),
       decoration: BoxDecoration(
-        color: const Color(0xF2FFF4DA),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: const Color(0xFFB27A3E), width: 3),
+        color: DS.surfaceGlass,
+        borderRadius: BorderRadius.circular(DS.radiusCard),
+        border: Border.all(color: DS.wood, width: 3),
         boxShadow: const [
-          BoxShadow(
-              color: Color(0x55000000), blurRadius: 8, offset: Offset(0, 4))
+          BoxShadow(color: DS.shadowColor, blurRadius: 8, offset: Offset(0, 4))
         ],
       ),
       child: Column(children: [
         Row(children: [
           CatFace(chapter.breed,
               background: const Color(0xFFFFE3B0), border: DS.wood),
-          const SizedBox(width: 8),
+          const SizedBox(width: DS.spaceSm),
           Expanded(
             child:
                 Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Text('CHƯƠNG $number',
                   maxLines: 1,
                   style: const TextStyle(
-                      color: Color(0xFFB0703A),
+                      color: DS.label,
                       fontSize: DS.fontCaption,
                       fontWeight: FontWeight.w900,
                       letterSpacing: 1)),
@@ -169,12 +171,12 @@ class _ChapterCard extends StatelessWidget {
               Text(mixed ? 'Đủ 5 giống mèo' : '${breed.name} · ${rule.trait}',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                      color: Color(0xFF8A6446), fontSize: DS.fontBody)),
+                  style:
+                      const TextStyle(color: DS.soft, fontSize: DS.fontBody)),
             ]),
           ),
         ]),
-        const SizedBox(height: 8),
+        const SizedBox(height: DS.spaceSm),
         // Rows share the card height: 46 on phones, up to 62 on tall
         // screens, and they shrink rather than overflow on short ones.
         Expanded(
@@ -186,7 +188,7 @@ class _ChapterCard extends StatelessWidget {
                 for (final entry in entries)
                   Flexible(
                     child: Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 3),
+                      padding: const EdgeInsets.symmetric(vertical: DS.spaceXs),
                       child: SizedBox(
                           height: row,
                           child: _LevelRow(
@@ -211,30 +213,28 @@ class _LevelRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final open = entry.unlocked;
     return Material(
-      color: open ? const Color(0xFFFFC24D) : const Color(0xFFD9CDB8),
-      borderRadius: BorderRadius.circular(14),
+      color: open ? DS.gold : DS.mutedFill,
+      borderRadius: BorderRadius.circular(DS.radiusControl),
       child: InkWell(
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(DS.radiusControl),
         onTap: open ? onTap : null,
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10),
+          padding: const EdgeInsets.symmetric(horizontal: DS.spaceSm),
           decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(14),
+              borderRadius: BorderRadius.circular(DS.radiusControl),
               border: Border.all(
-                  color:
-                      open ? const Color(0xFF9A6028) : const Color(0xFFAA9C86),
-                  width: 2)),
+                  color: open ? DS.goldEdge : DS.mutedBorder, width: 2)),
           child: Row(children: [
             CircleAvatar(
               radius: 15,
-              backgroundColor: open ? _ink : const Color(0xFF8E8270),
+              backgroundColor: open ? _ink : DS.mutedText,
               child: Text('${levelNumber(entry.level)}',
                   style: const TextStyle(
-                      color: Color(0xFFFFF4DA),
+                      color: DS.cream,
                       fontWeight: FontWeight.w900,
                       fontSize: DS.fontButton)),
             ),
-            const SizedBox(width: 8),
+            const SizedBox(width: DS.spaceSm),
             Expanded(
               child: FittedBox(
                 fit: BoxFit.scaleDown,
@@ -253,23 +253,21 @@ class _LevelRow extends StatelessWidget {
                               fontWeight: FontWeight.w900)),
                       Text(entry.level.tag,
                           style: TextStyle(
-                              color: open
-                                  ? const Color(0xFF7A4A22)
-                                  : const Color(0xFF8E8270),
+                              color:
+                                  open ? const Color(0xFF7A4A22) : DS.mutedText,
                               fontSize: DS.fontCaption)),
                     ]),
               ),
             ),
             if (!open)
-              const Icon(Icons.lock_rounded, color: Color(0xFF8E8270), size: 20)
+              const Icon(Icons.lock_rounded, color: DS.mutedText, size: 20)
             else
               Row(mainAxisSize: MainAxisSize.min, children: [
                 for (var i = 0; i < 3; i++)
                   Icon(Icons.star_rounded,
                       size: 17,
-                      color: i < entry.stars
-                          ? const Color(0xFFFFF4DA)
-                          : const Color(0x55704019)),
+                      color:
+                          i < entry.stars ? DS.cream : const Color(0x55704019)),
               ]),
           ]),
         ),
