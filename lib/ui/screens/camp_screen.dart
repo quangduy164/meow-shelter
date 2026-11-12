@@ -28,6 +28,8 @@ class _CampScreenState extends State<CampScreen>
   final _random = Random();
   final _cats = <CampResident>[];
   late final Ticker _tick;
+  final _animation = ValueNotifier(0);
+  int _roomHour = DateTime.now().hour;
   Duration _last = Duration.zero;
   String? _dragging;
   CampResident? _carried;
@@ -61,7 +63,9 @@ class _CampScreenState extends State<CampScreen>
       for (final cat in _cats) {
         cat.update(dt, _random, toys);
       }
-      setState(() {});
+      final hour = DateTime.now().hour;
+      if (hour != _roomHour) setState(() => _roomHour = hour);
+      _animation.value++;
     })
       ..start();
   }
@@ -69,6 +73,7 @@ class _CampScreenState extends State<CampScreen>
   @override
   void dispose() {
     _tick.dispose();
+    _animation.dispose();
     super.dispose();
   }
 
@@ -92,8 +97,9 @@ class _CampScreenState extends State<CampScreen>
           // the height of the top bar and leave the rest blank.
           return Stack(fit: StackFit.expand, children: [
             Positioned.fill(
-                child: CustomPaint(
-                    painter: CampRoomPainter(hour: DateTime.now().hour))),
+                child: RepaintBoundary(
+                    child: CustomPaint(
+                        painter: CampRoomPainter(hour: _roomHour)))),
             for (final item in [
               ...CampDecoration.all.where((d) => d.id == 'rug'),
               ...CampDecoration.all.where((d) => d.id != 'rug'),
@@ -131,70 +137,83 @@ class _CampScreenState extends State<CampScreen>
                               child: SizedBox.square(
                                   dimension: 60 * item.scale,
                                   child: FittedBox(
-                                      child: _DecorationArt(item.id))),
+                                      child: RepaintBoundary(
+                                          child: _DecorationArt(item.id)))),
                             ),
                           ),
                         ),
                       );
                     }),
-            // Cats are re-sorted by depth every frame; the key keeps each
-            // cat's gesture (pet / carry) attached to the same cat.
-            for (final cat in _cats..sort((a, b) => a.y.compareTo(b.y)))
-              Positioned(
-                key: ObjectKey(cat),
-                left: w * cat.x - 40,
-                top: h * cat.y - 60,
-                // Tap to pet; drag to pick the cat up and carry it.
-                child: GestureDetector(
-                  onTap: () => _pet(cat),
-                  // Only one cat can be carried at a time.
-                  onPanStart: (_) {
-                    if (_carried != null && _carried != cat) return;
-                    setState(() {
-                      _carried = cat;
-                      cat.pickUp();
-                    });
-                    GameAudio.instance
-                        .playGameplay(GameSound.campLift, priority: 1);
-                  },
-                  onPanUpdate: (d) => _carried != cat
-                      ? null
-                      : setState(() {
-                          cat.x = (cat.x + d.delta.dx / w).clamp(.03, .97);
-                          cat.y = (cat.y + d.delta.dy / h).clamp(.3, .95);
-                        }),
-                  onPanEnd: (_) {
-                    if (_carried != cat) return;
-                    setState(() {
-                      _carried = null;
-                      cat.drop();
-                    });
-                    GameAudio.instance
-                        .playGameplay(GameSound.campDrop, priority: 1);
-                  },
-                  onPanCancel: () {
-                    if (_carried != cat) return;
-                    setState(() {
-                      _carried = null;
-                      cat.drop();
-                    });
-                  },
-                  child: Column(mainAxisSize: MainAxisSize.min, children: [
-                    SizedBox(
-                        height: 20,
-                        child: cat.heart > 0
-                            ? const Icon(Icons.favorite,
-                                color: Color(0xFFE85D6F), size: 18)
-                            : null),
-                    CatSprite(
-                        type: cat.type,
-                        action: cat.act.sheet,
-                        frames: cat.act.frames,
-                        frame: cat.frame,
-                        flip: cat.facingLeft),
+            Positioned.fill(
+              child: RepaintBoundary(
+                child: AnimatedBuilder(
+                  animation: _animation,
+                  builder: (context, _) => Stack(children: [
+                    // Cats are re-sorted by depth every frame; the key keeps each
+                    // cat's gesture (pet / carry) attached to the same cat.
+                    for (final cat in _cats..sort((a, b) => a.y.compareTo(b.y)))
+                      Positioned(
+                        key: ObjectKey(cat),
+                        left: w * cat.x - 40,
+                        top: h * cat.y - 60,
+                        // Tap to pet; drag to pick the cat up and carry it.
+                        child: GestureDetector(
+                          onTap: () => _pet(cat),
+                          // Only one cat can be carried at a time.
+                          onPanStart: (_) {
+                            if (_carried != null && _carried != cat) return;
+                            setState(() {
+                              _carried = cat;
+                              cat.pickUp();
+                            });
+                            GameAudio.instance
+                                .playGameplay(GameSound.campLift, priority: 1);
+                          },
+                          onPanUpdate: (d) => _carried != cat
+                              ? null
+                              : setState(() {
+                                  cat.x =
+                                      (cat.x + d.delta.dx / w).clamp(.03, .97);
+                                  cat.y =
+                                      (cat.y + d.delta.dy / h).clamp(.3, .95);
+                                }),
+                          onPanEnd: (_) {
+                            if (_carried != cat) return;
+                            setState(() {
+                              _carried = null;
+                              cat.drop();
+                            });
+                            GameAudio.instance
+                                .playGameplay(GameSound.campDrop, priority: 1);
+                          },
+                          onPanCancel: () {
+                            if (_carried != cat) return;
+                            setState(() {
+                              _carried = null;
+                              cat.drop();
+                            });
+                          },
+                          child:
+                              Column(mainAxisSize: MainAxisSize.min, children: [
+                            SizedBox(
+                                height: 20,
+                                child: cat.heart > 0
+                                    ? const Icon(Icons.favorite,
+                                        color: Color(0xFFE85D6F), size: 18)
+                                    : null),
+                            CatSprite(
+                                type: cat.type,
+                                action: cat.act.sheet,
+                                frames: cat.act.frames,
+                                frame: cat.frame,
+                                flip: cat.facingLeft),
+                          ]),
+                        ),
+                      ),
                   ]),
                 ),
               ),
+            ),
             // Tapping anywhere outside an open panel closes it.
             if (_panel != _Panel.none)
               Positioned.fill(
@@ -511,7 +530,9 @@ class _ShopBarState extends State<_ShopBar> {
       // Art on the left keeps it large even on short screens.
       child: Row(children: [
         AspectRatio(
-            aspectRatio: 1, child: FittedBox(child: _DecorationArt(item.id))),
+            aspectRatio: 1,
+            child: FittedBox(
+                child: RepaintBoundary(child: _DecorationArt(item.id)))),
         const SizedBox(width: DS.spaceXs),
         Expanded(
           child: Column(

@@ -67,7 +67,8 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
         body: Stack(
           fit: StackFit.expand,
           children: [
-            const CustomPaint(painter: HomeBackgroundPainter()),
+            const RepaintBoundary(
+                child: CustomPaint(painter: HomeBackgroundPainter())),
             SafeArea(
               child: Padding(
                 padding: const EdgeInsets.all(DS.spaceLg),

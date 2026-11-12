@@ -2,6 +2,7 @@ import 'dart:math';
 import 'package:flame/components.dart';
 import 'package:flutter/painting.dart';
 import 'return_home_game.dart';
+import 'return_home_view.dart';
 
 /// Gate ground geometry follows the lane; the near half renders over the cat.
 class ReturnHomeGate extends Component with HasGameReference<ReturnHomeGame> {
@@ -78,8 +79,14 @@ class ReturnHomeGate extends Component with HasGameReference<ReturnHomeGame> {
     canvas.restore();
   }
 
+  /// The gate sits at the very end of the road; skip it until it's in view.
+  bool get _offscreen => offscreenX(
+      game.road.gateCenterX - _reach, game.road.gateCenterX + _reach);
+  static const double _reach = 320;
+
   @override
   void render(Canvas canvas) {
+    if (_offscreen) return;
     final far = _foot(false);
     final near = _foot(true);
     // An oblique threshold on the ground, not a front-facing doorway.
@@ -123,6 +130,7 @@ class ReturnHomeGate extends Component with HasGameReference<ReturnHomeGame> {
   }
 
   void renderForeground(Canvas canvas) {
+    if (_offscreen) return;
     final far = _foot(false), near = _foot(true);
     _fence(canvas, near, true);
     _leaf(canvas, far, near, true);

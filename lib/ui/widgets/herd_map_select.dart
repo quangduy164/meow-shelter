@@ -52,20 +52,31 @@ class HerdMapSelect extends StatelessWidget {
               ),
               Expanded(
                 child: LayoutBuilder(builder: (context, box) {
-                  final width = ((box.maxWidth - 60) / 3).clamp(230.0, 300.0);
-                  return ListView.separated(
-                    scrollDirection: Axis.horizontal,
-                    padding: const EdgeInsets.fromLTRB(
-                        DS.spaceLg, 0, DS.spaceLg, DS.spaceLg),
-                    itemCount: HerdMap.all.length,
-                    separatorBuilder: (_, __) =>
-                        const SizedBox(width: DS.spaceMd),
-                    itemBuilder: (context, i) => SizedBox(
-                      width: width,
-                      child: _RegionCard(
-                          map: HerdMap.all[i],
-                          number: i + 1,
-                          onPressed: () => onPlay(HerdMap.all[i])),
+                  // Compact cards: all four regions fit side by side on most
+                  // phones, centred vertically instead of filling the height.
+                  final width = ((box.maxWidth - 80) / 4).clamp(170.0, 210.0);
+                  final height =
+                      (box.maxHeight - DS.spaceLg).clamp(0.0, 240.0).toDouble();
+                  return Align(
+                    alignment: Alignment.center,
+                    child: SizedBox(
+                      height: height,
+                      child: ListView.separated(
+                        shrinkWrap: true,
+                        scrollDirection: Axis.horizontal,
+                        padding: const EdgeInsets.fromLTRB(
+                            DS.spaceLg, 0, DS.spaceLg, DS.spaceLg),
+                        itemCount: HerdMap.all.length,
+                        separatorBuilder: (_, __) =>
+                            const SizedBox(width: DS.spaceMd),
+                        itemBuilder: (context, i) => SizedBox(
+                          width: width,
+                          child: _RegionCard(
+                              map: HerdMap.all[i],
+                              number: i + 1,
+                              onPressed: () => onPlay(HerdMap.all[i])),
+                        ),
+                      ),
                     ),
                   );
                 }),
@@ -127,7 +138,7 @@ class _RegionCard extends StatelessWidget {
                       ),
                       Padding(
                         padding: const EdgeInsets.fromLTRB(
-                            DS.spaceMd, DS.spaceSm, DS.spaceMd, DS.spaceSm),
+                            DS.spaceSm, DS.spaceXs, DS.spaceSm, DS.spaceSm),
                         child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
@@ -158,10 +169,10 @@ class _RegionCard extends StatelessWidget {
                                       color: DS.soft,
                                       fontSize: DS.fontBody,
                                       height: 1.3)),
-                              const SizedBox(height: DS.spaceSm),
+                              const SizedBox(height: DS.spaceXs),
                               Container(
                                 padding: const EdgeInsets.symmetric(
-                                    vertical: DS.spaceSm),
+                                    vertical: DS.spaceXs),
                                 decoration: BoxDecoration(
                                     color: DS.gold,
                                     borderRadius:

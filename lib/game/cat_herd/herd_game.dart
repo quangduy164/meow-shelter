@@ -1,5 +1,6 @@
 import '../../ui/design.dart';
 import 'dart:async';
+import 'dart:ui' as ui;
 import '../../audio/game_audio.dart';
 import 'dart:math' as math;
 import 'package:flame/components.dart';
@@ -13,6 +14,8 @@ import 'herd_hud.dart';
 import 'herd_market_painter.dart';
 import 'herd_desert_painter.dart';
 import 'herd_snow_painter.dart';
+import 'herd_map_painter.dart';
+import 'herd_home_painter.dart';
 
 /// Coordinates simulation, input and sprite rendering. Rules live in HerdRound.
 class HerdGame extends FlameGame {
@@ -43,24 +46,55 @@ class HerdGame extends FlameGame {
   final _idle = <String, SpriteAnimation>{};
   bool _ready = false;
   bool pausedByApp = false;
+  ui.Picture? _background, _home;
+  HerdMap? _cachedMap;
+  Size? _cachedSize;
+
+  void _cacheScenery(Size viewport) {
+    if (_background != null &&
+        _cachedMap == round.map &&
+        _cachedSize == viewport) return;
+    _background?.dispose();
+    _home?.dispose();
+    final background = ui.PictureRecorder();
+    paintHerdMapBase(Canvas(background), viewport, round);
+    _background = background.endRecording();
+    final home = ui.PictureRecorder();
+    paintHerdHome(Canvas(home), round.home.toOffset(), round.map.kind);
+    _home = home.endRecording();
+    _cachedMap = round.map;
+    _cachedSize = viewport;
+  }
+
+  @override
+  void onRemove() {
+    _background?.dispose();
+    _home?.dispose();
+    _background = _home = null;
+    super.onRemove();
+  }
 
   @override
   Future<void> onLoad() async {
     await super.onLoad();
-    for (final type in ['orange', 'himalaya', 'scottish', 'calico', 'black']) {
+    // Decode all ten sheets at once; one after another kept the screen blank
+    // for the sum of every load.
+    Future<void> loadSheet(String type, bool moving) async {
       final folder = 'Cat/${type[0].toUpperCase()}${type.substring(1)}';
-      for (final moving in [false, true]) {
-        final img = await images
-            .load('$folder/cat-$type-${moving ? 'walk' : 'idle'}.png');
-        final animation = SpriteAnimation.fromFrameData(
-            img,
-            SpriteAnimationData.sequenced(
-                amount: img.width ~/ img.height,
-                stepTime: .12,
-                textureSize: Vector2.all(img.height.toDouble())));
-        (moving ? _walk : _idle)[type] = animation;
-      }
+      final img = await images
+          .load('$folder/cat-$type-${moving ? 'walk' : 'idle'}.png');
+      (moving ? _walk : _idle)[type] = SpriteAnimation.fromFrameData(
+          img,
+          SpriteAnimationData.sequenced(
+              amount: img.width ~/ img.height,
+              stepTime: .12,
+              textureSize: Vector2.all(img.height.toDouble())));
     }
+
+    await Future.wait([
+      for (final type in ['orange', 'himalaya', 'scottish', 'calico', 'black'])
+        for (final moving in [false, true]) loadSheet(type, moving),
+    ]);
     _joystick = ReturnHomeJoystick(position: Vector2(85, size.y - 75));
     add(_joystick);
     _ready = true;
@@ -131,7 +165,10 @@ class HerdGame extends FlameGame {
   @override
   void render(Canvas canvas) {
     if (!_ready) return;
-    paintHerdField(canvas, Size(size.x, size.y), round);
+    final viewport = Size(size.x, size.y);
+    _cacheScenery(viewport);
+    paintHerdField(canvas, viewport, round,
+        background: _background, home: _home);
     if (round.isTutorial && !round.ended && round.tutorialStep > 1) {
       _tutorialGuide(canvas);
     }

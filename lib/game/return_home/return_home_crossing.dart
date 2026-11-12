@@ -4,6 +4,7 @@ import 'package:flame/components.dart';
 import 'package:flutter/painting.dart';
 
 import 'return_home_road.dart';
+import 'return_home_view.dart';
 
 /// A shallow stream cutting across the lane. Paws must stay on a stone; water
 /// costs one heart and sends the cat back to the near bank.
@@ -181,6 +182,9 @@ class ReturnHomeCrossing extends PositionComponent {
 
   @override
   void render(Canvas canvas) {
+    // The water path and its pebble metrics are rebuilt per frame; skip that
+    // entirely while the stream is off screen.
+    if (offscreenX(left - 160, right + 160)) return;
     final water = _waterPath();
     final bounds = water.getBounds();
     // Sandy, pebbly bank under the water edge.

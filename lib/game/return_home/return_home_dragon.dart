@@ -662,8 +662,10 @@ class ReturnHomeDragon extends PositionComponent {
         tail?.localCenterline ??
             _dragonTailPoints(const Offset(62, -32), 1, _t));
     final profile = _smoothUnit((cos(_bodyYaw).abs() - .08) / .42);
-    if (profile > 0) {
-      if (profile < 1) {
+    // Opacity layers are full-screen offscreen passes; only pay for one while
+    // the fade is actually visible.
+    if (profile > .02) {
+      if (profile < .98) {
         canvas.saveLayer(
             null,
             Paint()
@@ -672,10 +674,10 @@ class ReturnHomeDragon extends PositionComponent {
       _paintBody(canvas);
       if (tired > 0 && !defeated) _paintDizzy(canvas);
       if (frozen > 0) _paintIce(canvas);
-      if (profile < 1) canvas.restore();
+      if (profile < .98) canvas.restore();
     }
     canvas.restore();
-    if (profile < 1) _paintTurnedBody(canvas, 1 - profile);
+    if (profile < .98) _paintTurnedBody(canvas, 1 - profile);
     if (evolving) {
       final flash =
           (1 - ((_evolutionProgress - .69) / .09).abs()).clamp(0.0, 1.0);
@@ -1044,6 +1046,8 @@ class ReturnHomeDragon extends PositionComponent {
     final bounds = surface.getBounds();
     canvas.save();
     canvas.clipPath(surface);
+    final plates = Path();
+    final highlights = Path();
     var row = 0;
     for (var y = bounds.top + spacing * .5;
         y < bounds.bottom;
@@ -1051,28 +1055,31 @@ class ReturnHomeDragon extends PositionComponent {
       for (var x = bounds.left + (row.isEven ? 0 : spacing * .5);
           x < bounds.right;
           x += spacing) {
-        final plate = Path()
+        plates
           ..moveTo(x - spacing * .42, y)
           ..lineTo(x, y - spacing * .25)
           ..lineTo(x + spacing * .42, y)
           ..lineTo(x + spacing * .25, y + spacing * .36)
           ..lineTo(x, y + spacing * .55)
           ..lineTo(x - spacing * .25, y + spacing * .36);
-        canvas.drawPath(
-            plate,
-            Paint()
-              ..color = const Color(0x55201732)
-              ..style = PaintingStyle.stroke
-              ..strokeWidth = .8);
-        canvas.drawLine(
-            Offset(x - spacing * .3, y),
-            Offset(x, y - spacing * .18),
-            Paint()
-              ..color = const Color(0x66EEA2A3)
-              ..strokeWidth = .9);
+        highlights
+          ..moveTo(x - spacing * .3, y)
+          ..lineTo(x, y - spacing * .18);
       }
       row++;
     }
+    canvas.drawPath(
+        plates,
+        Paint()
+          ..color = const Color(0x55201732)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = .8);
+    canvas.drawPath(
+        highlights,
+        Paint()
+          ..color = const Color(0x66EEA2A3)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = .9);
     canvas.restore();
   }
 
@@ -1671,13 +1678,22 @@ class ReturnHomeDragon extends PositionComponent {
   }
 
   void _paintBody(Canvas canvas) {
-    if (_evolution > 0) {
-      canvas.saveLayer(null,
-          Paint()..color = const Color(0xFFFFFFFF).withOpacity(_evolution));
-      _paintAscendedBody(canvas);
-      canvas.restore();
+    if (_evolution <= 0) {
+      _paintOriginalBody(canvas);
+      return;
     }
-    if (_evolution >= 1) return;
+    if (_evolution >= .98) {
+      _paintAscendedBody(canvas);
+      return;
+    }
+    if (_evolution <= .02) {
+      _paintOriginalBody(canvas);
+      return;
+    }
+    canvas.saveLayer(
+        null, Paint()..color = const Color(0xFFFFFFFF).withOpacity(_evolution));
+    _paintAscendedBody(canvas);
+    canvas.restore();
     canvas.saveLayer(null,
         Paint()..color = const Color(0xFFFFFFFF).withOpacity(1 - _evolution));
     _paintOriginalBody(canvas);
@@ -1758,7 +1774,9 @@ class ReturnHomeDragon extends PositionComponent {
     }
     canvas.restore();
     canvas.drawPath(body, _outline);
-    if (_evolution < 1) {
+    if (_evolution <= 0) {
+      _paintArmorPlates(canvas, _breath);
+    } else if (_evolution < 1) {
       canvas.saveLayer(null,
           Paint()..color = const Color(0xFFFFFFFF).withOpacity(1 - _evolution));
       _paintArmorPlates(canvas, _breath);
@@ -3206,6 +3224,14 @@ class ReturnHomeDamageText extends PositionComponent {
   final Color color;
   double _t = 0;
   static const double _life = .75;
+  TextPainter? _painter;
+
+  @override
+  void onRemove() {
+    _painter?.dispose();
+    _painter = null;
+    super.onRemove();
+  }
 
   @override
   void update(double dt) {
@@ -3217,23 +3243,25 @@ class ReturnHomeDamageText extends PositionComponent {
 
   @override
   void render(Canvas canvas) {
-    final fade = 1 - _t / _life;
-    final painter = TextPainter(
+    final fade = (1 - _t / _life).clamp(0.0, 1.0);
+    // Laid out once; the fade is a small layer sized to the text instead of
+    // re-laying out the text with a new colour every frame.
+    final painter = _painter ??= TextPainter(
       text: TextSpan(
         text: text,
         style: TextStyle(
           fontSize: DS.fontHeading,
           fontWeight: FontWeight.w900,
-          color: color.withAlpha((255 * fade).round()),
-          shadows: [
-            Shadow(
-                color: const Color(0xFF4A1E14).withAlpha((255 * fade).round()),
-                blurRadius: 3)
-          ],
+          color: color,
+          shadows: const [Shadow(color: Color(0xFF4A1E14), blurRadius: 3)],
         ),
       ),
       textDirection: TextDirection.ltr,
     )..layout();
-    painter.paint(canvas, Offset(-painter.width / 2, -painter.height / 2));
+    final at = Offset(-painter.width / 2, -painter.height / 2);
+    canvas.saveLayer((at & painter.size).inflate(6),
+        Paint()..color = Color.fromARGB((255 * fade).round(), 255, 255, 255));
+    painter.paint(canvas, at);
+    canvas.restore();
   }
 }

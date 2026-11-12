@@ -41,6 +41,18 @@ class _HerdScreenState extends State<HerdScreen> with WidgetsBindingObserver {
   Widget build(BuildContext context) => Scaffold(
           body: GameWidget<HerdGame>(
         game: _game,
+        // Shown while sprites load: the map picker's own backdrop, so the
+        // screen fades straight into it instead of flashing black.
+        loadingBuilder: (_) => const DecoratedBox(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [Color(0xFF293B52), Color(0xFF477471)],
+            ),
+          ),
+          child: Center(child: CircularProgressIndicator(color: DS.cream)),
+        ),
         initialActiveOverlays: const ['exit'],
         overlayBuilderMap: {
           'exit': (context, game) => SafeArea(

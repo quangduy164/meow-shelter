@@ -1,4 +1,5 @@
 import 'dart:math' as math;
+import 'dart:ui' as ui;
 import 'package:flame/components.dart';
 import 'package:flutter/painting.dart';
 import 'herd_round.dart';
@@ -7,10 +8,18 @@ import 'herd_map_painter.dart';
 import 'herd_home_painter.dart';
 import 'herd_market_painter.dart';
 import 'herd_snow_painter.dart';
+import 'herd_route_painter.dart';
 
 /// Scenery and hazards only; cat sprites are owned by HerdGame.
-void paintHerdField(Canvas canvas, Size size, HerdRound round) {
-  paintHerdMap(canvas, size, round);
+void paintHerdField(Canvas canvas, Size size, HerdRound round,
+    {ui.Picture? background, ui.Picture? home}) {
+  if (background == null) {
+    paintHerdMap(canvas, size, round);
+  } else {
+    canvas.drawPicture(background);
+    paintHerdMapMotion(canvas, size, round);
+    paintHerdRoute(canvas, size, round);
+  }
   paintSnowHazards(canvas, round);
   for (final patrol in round.patrols) {
     final p = patrol.position(round.patrolClock(patrol) * .7).toOffset();
@@ -65,7 +74,11 @@ void paintHerdField(Canvas canvas, Size size, HerdRound round) {
         const Offset(-4, -5), 3, Paint()..color = const Color(0x88FFFFFF));
     canvas.restore();
   }
-  paintHerdHome(canvas, round.home.toOffset(), round.map.kind);
+  if (home == null) {
+    paintHerdHome(canvas, round.home.toOffset(), round.map.kind);
+  } else {
+    canvas.drawPicture(home);
+  }
   paintMarketVendors(canvas, round);
 }
 

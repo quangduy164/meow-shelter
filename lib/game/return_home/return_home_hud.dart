@@ -115,6 +115,10 @@ void paintReturnHomeHud(
   canvas.restore();
 }
 
+/// Laid-out labels by content and box; the HUD redraws every frame but its
+/// text rarely changes, and text layout is one of the costliest paint steps.
+final _labels = <(String, double, Color, TextAlign, double), TextPainter>{};
+
 void _label(
   Canvas canvas,
   String text,
@@ -124,6 +128,14 @@ void _label(
   TextAlign align = TextAlign.left,
 }) {
   if (box.width <= 0) return;
+  final key = (text, fontSize, color, align, box.width);
+  final cached = _labels.remove(key);
+  if (cached != null) {
+    _labels[key] = cached; // most recently used goes last
+    cached.paint(canvas, Offset(box.left, box.center.dy - cached.height / 2));
+    return;
+  }
+  if (_labels.length >= 48) _labels.remove(_labels.keys.first)?.dispose();
   final painter = TextPainter(
       text: TextSpan(
           text: text,
@@ -139,6 +151,7 @@ void _label(
       maxLines: 1,
       ellipsis: '…')
     ..layout(minWidth: box.width, maxWidth: box.width);
+  _labels[key] = painter;
   painter.paint(canvas, Offset(box.left, box.center.dy - painter.height / 2));
 }
 

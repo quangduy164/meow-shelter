@@ -29,10 +29,8 @@ class ReturnHomeCatPicker extends StatefulWidget {
   State<ReturnHomeCatPicker> createState() => _ReturnHomeCatPickerState();
 }
 
-class _ReturnHomeCatPickerState extends State<ReturnHomeCatPicker>
-    with SingleTickerProviderStateMixin {
+class _ReturnHomeCatPickerState extends State<ReturnHomeCatPicker> {
   late CatBreed _selected;
-  late final AnimationController _idle;
   bool _starting = false;
   bool _loadFailed = false;
 
@@ -40,26 +38,6 @@ class _ReturnHomeCatPickerState extends State<ReturnHomeCatPicker>
   void initState() {
     super.initState();
     _selected = CatBreed.of(widget.initialCat);
-    _idle = AnimationController(
-        vsync: this,
-        duration: Duration(
-            milliseconds: (framesIdle * animationStepTime * 1000).round()));
-  }
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    if (MediaQuery.disableAnimationsOf(context)) {
-      _idle.stop();
-    } else if (!_idle.isAnimating) {
-      _idle.repeat();
-    }
-  }
-
-  @override
-  void dispose() {
-    _idle.dispose();
-    super.dispose();
   }
 
   Future<void> _start() async {
@@ -247,16 +225,9 @@ class _ReturnHomeCatPickerState extends State<ReturnHomeCatPicker>
                   Positioned(
                     bottom: -8,
                     left: -8,
-                    child: AnimatedBuilder(
-                      animation: _idle,
-                      builder: (_, __) => CatSprite(
-                          type: breed.id,
-                          size: 92,
-                          frames: framesIdle,
-                          frame: (_idle.value * framesIdle)
-                              .floor()
-                              .clamp(0, framesIdle - 1)),
-                    ),
+                    // A still pose: the first idle frame.
+                    child:
+                        CatSprite(type: breed.id, size: 92, frames: framesIdle),
                   ),
                 ]),
               ),

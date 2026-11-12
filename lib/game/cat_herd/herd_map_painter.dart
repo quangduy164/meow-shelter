@@ -6,6 +6,13 @@ import 'herd_route_painter.dart';
 
 /// Exclusive art for the herd mode. Geometry comes from HerdMap.
 void paintHerdMap(Canvas canvas, Size size, HerdRound r) {
+  paintHerdMapBase(canvas, size, r);
+  paintHerdMapMotion(canvas, size, r);
+  paintHerdRoute(canvas, size, r);
+}
+
+/// Only map geometry and decoration; safe to record until map/size changes.
+void paintHerdMapBase(Canvas canvas, Size size, HerdRound r) {
   canvas.save();
   canvas.scale(size.width / 800, size.height / 375);
   switch (r.map.kind) {
@@ -21,7 +28,14 @@ void paintHerdMap(Canvas canvas, Size size, HerdRound r) {
       _snow(canvas, r);
   }
   canvas.restore();
-  paintHerdRoute(canvas, size, r);
+}
+
+void paintHerdMapMotion(Canvas canvas, Size size, HerdRound r) {
+  canvas.save();
+  canvas.scale(size.width / 800, size.height / 375);
+  if (r.map.kind == HerdMapKind.nightMarket) _marketSignal(canvas, r);
+  if (r.map.kind == HerdMapKind.snow) _snowfall(canvas, r);
+  canvas.restore();
 }
 
 Rect _rect(Rect r) =>
@@ -162,6 +176,11 @@ void _market(Canvas c, HerdRound r) {
       }
     }
   }
+}
+
+void _marketSignal(Canvas c, HerdRound r) {
+  const crossingX = 800 * .45;
+  const road = Rect.fromLTWH(0, 375 * .44, 800, 375 * .18);
   final green = r.map.green(r.time);
   final signal = Offset(crossingX + 37, road.top - 36);
   _fill(c, Rect.fromLTWH(signal.dx + 9, signal.dy + 26, 5, 17),
@@ -565,6 +584,9 @@ void _snow(Canvas c, HerdRound r) {
           Paint()..color = const Color(0xFFF0F6ED));
     }
   }
+}
+
+void _snowfall(Canvas c, HerdRound r) {
   for (var i = 0; i < 25; i++) {
     final x = (i * 71.0 + r.time * 9) % 800,
         y = 65 + (i * 31.0 + r.time * 12) % 300;

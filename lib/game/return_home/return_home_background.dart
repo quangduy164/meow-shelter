@@ -28,6 +28,10 @@ class ReturnHomeBackground extends PositionComponent {
 
   ui.Picture? _scene;
 
+  /// Viewport the scene was last built for. Flame calls onGameResize before
+  /// onLoad, so without this the whole landscape was tessellated twice.
+  Size? _builtFor;
+
   @override
   Future<void> onLoad() async {
     await super.onLoad();
@@ -42,8 +46,16 @@ class ReturnHomeBackground extends PositionComponent {
 
   void rebuild() {
     size = Vector2(road.worldWidth, road.viewportHeight);
+    final viewport = Size(road.worldWidth, road.viewportHeight);
+    if (_scene != null && _builtFor == viewport) return;
+    _builtFor = viewport;
     final recorder = ui.PictureRecorder();
-    final canvas = Canvas(recorder);
+    _paintScene(Canvas(recorder));
+    _scene?.dispose();
+    _scene = recorder.endRecording();
+  }
+
+  void _paintScene(Canvas canvas) {
     final skyHeight = road.viewportHeight * horizon;
     _ground(canvas);
     paintSkyGradient(canvas, road, skyHeight, _tone);
@@ -55,14 +67,19 @@ class ReturnHomeBackground extends PositionComponent {
     paintStream(canvas, road);
     _props(canvas);
     paintFlowers(canvas, road);
-    _scene?.dispose();
-    _scene = recorder.endRecording();
   }
 
   @override
   void render(Canvas canvas) {
     final scene = _scene;
     if (scene != null) canvas.drawPicture(scene);
+  }
+
+  @override
+  void onRemove() {
+    _scene?.dispose();
+    _scene = null;
+    super.onRemove();
   }
 
   Color _tone(double x, Color Function(ReturnHomeBiome biome) pick) =>

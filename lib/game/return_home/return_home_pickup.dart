@@ -3,6 +3,8 @@ import 'dart:math';
 import 'package:flame/components.dart';
 import 'package:flutter/painting.dart';
 
+import 'return_home_view.dart';
+
 enum ReturnHomePickupKind { fish, heart }
 
 /// Small optional rewards on the road. They give the player a reason to choose
@@ -25,6 +27,7 @@ class ReturnHomePickup extends PositionComponent {
 
   @override
   void render(Canvas canvas) {
+    if (offscreenX(position.x - size.x, position.x + size.x)) return;
     canvas.save();
     canvas.translate(size.x / 2, size.y / 2 + sin(_time * 4) * 2);
     canvas.drawOval(const Rect.fromLTWH(-11, 10, 22, 5),

@@ -74,7 +74,7 @@ enum GameSound {
 // Camp: BigSoundBank CC0 0981 (purr), above 0494/1473 (meows), and Kenney
 // Interface Sounds CC0 drop_001/003, pluck_002, confirmation_001/003.
 
-/// One music player and one effect player shared by all screens.
+/// Music and reel playback are separate from preloaded, low-latency effects.
 class GameAudio with WidgetsBindingObserver {
   GameAudio._();
   static final instance = GameAudio._();
@@ -88,6 +88,10 @@ class GameAudio with WidgetsBindingObserver {
   bool _reeling = false;
   bool _foreground = true, _musicLoaded = false, _homeActive = false;
   Future<void> _pending = Future.value();
+  Future<void> _effectPending = Future.value();
+  Future<void> _warmup = Future.value();
+  final _effectPlayers = <GameSound, Future<AudioPlayer>>{};
+  int _effectRequest = 0;
   final _rescueClock = Stopwatch()..start();
   int _nextRescueSound = 0;
   final _lastRescueSounds = <GameSound, int>{};
@@ -111,6 +115,7 @@ class GameAudio with WidgetsBindingObserver {
         WidgetsBinding.instance.lifecycleState == AppLifecycleState.resumed;
     WidgetsBinding.instance.addObserver(this);
     _enqueue(_sync);
+    _warmup = _warmEffects();
   }
 
   Future<void> setMusicVolume(double value) {
@@ -160,16 +165,17 @@ class GameAudio with WidgetsBindingObserver {
   }
 
   Future<void> _sync() async {
+    await _enqueueEffect(() async {
+      if (!_foreground || effectsVolume.value == 0) {
+        await _effect?.stop();
+      } else {
+        await _effect?.setVolume(.4 * effectsVolume.value);
+      }
+    });
     await _syncReel();
     if (!_foreground) {
       await _music?.pause();
-      await _effect?.stop();
       return;
-    }
-    if (effectsVolume.value == 0) {
-      await _effect?.stop();
-    } else {
-      await _effect?.setVolume(.4 * effectsVolume.value);
     }
     if (!_homeActive || !musicEnabled.value || musicVolume.value == 0) {
       await _music?.pause();
@@ -184,6 +190,47 @@ class GameAudio with WidgetsBindingObserver {
     } else {
       await music.setVolume(.12 * musicVolume.value);
       if (music.state != PlayerState.playing) await music.resume();
+    }
+  }
+
+  Future<void> _enqueueEffect(Future<void> Function() action) {
+    _effectPending =
+        _effectPending.then((_) => action()).catchError((Object error) {
+      debugPrint('Sound effect unavailable: $error');
+    });
+    return _effectPending;
+  }
+
+  Future<AudioPlayer> _effectPlayer(GameSound sound) =>
+      _effectPlayers.putIfAbsent(sound, () => _prepareEffect(sound));
+
+  Future<AudioPlayer> _prepareEffect(GameSound sound) async {
+    final player = AudioPlayer()..audioCache = FlameAudio.audioCache;
+    try {
+      await player.setPlayerMode(PlayerMode.lowLatency);
+      await player.setAudioContext(const AudioContext(
+        android: AudioContextAndroid(audioFocus: AndroidAudioFocus.none),
+        iOS: AudioContextIOS(options: [AVAudioSessionOptions.mixWithOthers]),
+      ));
+      await player.setReleaseMode(ReleaseMode.stop);
+      await player.setSource(AssetSource('${sound.name}.wav'));
+      return player;
+    } catch (_) {
+      _effectPlayers.remove(sound);
+      await player.dispose();
+      rethrow;
+    }
+  }
+
+  Future<void> _warmEffects() async {
+    // Load one at a time without blocking the UI or the music queue.
+    for (final sound in GameSound.values) {
+      if (_preferences == null) return;
+      try {
+        await _effectPlayer(sound);
+      } catch (error) {
+        debugPrint('Could not preload ${sound.name}: $error');
+      }
     }
   }
 
@@ -253,29 +300,38 @@ class GameAudio with WidgetsBindingObserver {
     if (_preferences == null || effectsVolume.value == 0 || !_foreground) {
       return;
     }
-    final requested = DateTime.now();
-    unawaited(_enqueue(() async {
+    final requested = _rescueClock.elapsedMilliseconds;
+    if (sound == GameSound.click && requested < _gameplaySoundUntil) return;
+    final request = ++_effectRequest;
+    unawaited(_enqueueEffect(() async {
       if (effectsVolume.value == 0 ||
           !_foreground ||
-          DateTime.now().difference(requested).inMilliseconds > 300) return;
+          request != _effectRequest) {
+        return;
+      }
       if (sound == GameSound.click &&
           _rescueClock.elapsedMilliseconds < _gameplaySoundUntil) {
         return;
       }
-      final effect =
-          _effect ??= AudioPlayer()..audioCache = FlameAudio.audioCache;
-      await effect.stop();
-      await effect.play(
-        AssetSource('${sound.name}.wav'),
-        volume: .4 * effectsVolume.value,
-        // Effects must not take audio focus away from the background music.
-        ctx: const AudioContext(
-          android: AudioContextAndroid(audioFocus: AndroidAudioFocus.none),
-          iOS: AudioContextIOS(options: [
-            AVAudioSessionOptions.mixWithOthers,
-          ]),
-        ),
-      );
+      final effect = await _effectPlayer(sound);
+      if (_preferences == null ||
+          !_foreground ||
+          effectsVolume.value == 0 ||
+          request != _effectRequest ||
+          _rescueClock.elapsedMilliseconds - requested > 200) return;
+      await _effect?.stop();
+      if (request != _effectRequest ||
+          !_foreground ||
+          effectsVolume.value == 0) {
+        return;
+      }
+      _effect = effect;
+      await effect.setVolume(.4 * effectsVolume.value);
+      if (request != _effectRequest ||
+          !_foreground ||
+          effectsVolume.value == 0 ||
+          _rescueClock.elapsedMilliseconds - requested > 200) return;
+      await effect.resume();
     }));
   }
 
@@ -289,9 +345,16 @@ class GameAudio with WidgetsBindingObserver {
     WidgetsBinding.instance.removeObserver(this);
     _foreground = false;
     _reeling = false;
+    _preferences = null;
+    _effectRequest++;
+    await _warmup;
     await _pending;
+    await _effectPending;
     await _music?.dispose();
-    await _effect?.dispose();
+    for (final player in _effectPlayers.values.toList()) {
+      await (await player).dispose();
+    }
+    _effectPlayers.clear();
     await _reel?.dispose();
     _reel = null;
     _music = _effect = null;
