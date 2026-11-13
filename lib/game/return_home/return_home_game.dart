@@ -320,7 +320,8 @@ class ReturnHomeGame extends FlameGame {
     // The second press shares the placement cooldown instead of restarting it.
     if (canRecallDecoy(slot)) {
       final decoy = _decoy!;
-      if (_blinkWithDecoy(decoy.lureCenter.clone(), triggerCombo: false)) {
+      final landing = _decoyLanding(decoy.lureCenter);
+      if (landing != null && _blinkWithDecoy(landing, triggerCombo: false)) {
         decoy.recalled = true;
         GameAudio.instance.playGameplay(GameSound.homeShadow, priority: 1);
       }
@@ -355,6 +356,42 @@ class ReturnHomeGame extends FlameGame {
           },
           priority: 1);
     }
+  }
+
+  Vector2? _decoyLanding(Vector2 center) {
+    final halfSprite = _cat.size.x / 2;
+    final minX = bossFight
+        ? _arenaLeft + 6 + halfSprite
+        : ReturnHomeRoad.startX + halfSprite;
+    final maxX = bossFight
+        ? _dragon!.arenaBarrierX - ReturnHomeCat.hitboxLeft - 80 + halfSprite
+        : road.endX + halfSprite;
+    final towardCat = _catCenter - center;
+    final startAngle = atan2(towardCat.y, towardCat.x);
+    // Search near the clone, validating the hitbox after the cat's lane clamp.
+    for (var radius = 0.0; radius <= HomeAttack.decoy.radius; radius += 10) {
+      for (var i = 0; i < (radius == 0 ? 1 : 16); i++) {
+        final angle = startAngle + i * pi / 8;
+        final point = center + Vector2(cos(angle), sin(angle)) * radius;
+        point.x = point.x.clamp(minX, max(minX, maxX));
+        final lane = road.halfWidth(point.x);
+        final cy = road.centerY(point.x);
+        const hitCenterY =
+            ReturnHomeCat.hitboxTop + ReturnHomeCat.hitboxHeight / 2;
+        point.y = point.y.clamp(cy - lane - _cat.size.y / 2 + hitCenterY,
+            cy + lane - ReturnHomeCat.pawLine + hitCenterY);
+        if (point.distanceTo(center) > HomeAttack.decoy.radius ||
+            !_blinkValid(point)) continue;
+        final box = Rect.fromCenter(
+            center: Offset(point.x, point.y),
+            width: ReturnHomeCat.hitboxWidth,
+            height: ReturnHomeCat.hitboxHeight);
+        if (_spawner.obstacles
+            .any((o) => !_hidden(o) && !o.harmless && o.hits(box))) continue;
+        return point;
+      }
+    }
+    return null;
   }
 
   bool _blinkWithDecoy(Vector2 target, {bool triggerCombo = true}) {

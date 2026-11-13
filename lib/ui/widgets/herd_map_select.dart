@@ -130,7 +130,7 @@ class _RegionCard extends StatelessWidget {
                                     child: Text('VÙNG $number',
                                         style: const TextStyle(
                                             color: DS.cream,
-                                            fontSize: DS.fontCaption,
+                                            fontSize: DS.fontCardBadge,
                                             fontWeight: FontWeight.w900,
                                             letterSpacing: 1))),
                               )),
@@ -147,28 +147,8 @@ class _RegionCard extends StatelessWidget {
                                   overflow: TextOverflow.ellipsis,
                                   style: const TextStyle(
                                       color: DS.ink,
-                                      fontSize: DS.fontHeading,
+                                      fontSize: DS.fontCardTitle,
                                       fontWeight: FontWeight.w900)),
-                              const SizedBox(height: DS.spaceXs),
-                              Text(
-                                  switch (map.kind) {
-                                    HerdMapKind.tutorial =>
-                                      'Tập di chuyển và đón mèo',
-                                    HerdMapKind.nightMarket =>
-                                      'Bác bán hàng · Đèn lồng · Lẻn qua chợ',
-                                    HerdMapKind.dunes =>
-                                      'Bóng râm · Nắng nóng · Bão cát',
-                                    HerdMapKind.playground =>
-                                      'Khối gỗ · Xe chạy vòng · Bóng nảy',
-                                    HerdMapKind.snow =>
-                                      'Băng mỏng · Làn trượt · Đảo tuyết',
-                                  },
-                                  maxLines: 2,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: const TextStyle(
-                                      color: DS.soft,
-                                      fontSize: DS.fontBody,
-                                      height: 1.3)),
                               const SizedBox(height: DS.spaceXs),
                               Container(
                                 padding: const EdgeInsets.symmetric(
@@ -183,12 +163,12 @@ class _RegionCard extends StatelessWidget {
                                     mainAxisAlignment: MainAxisAlignment.center,
                                     children: [
                                       Icon(Icons.play_arrow_rounded,
-                                          color: DS.ink, size: 20),
+                                          color: DS.ink, size: DS.iconSm),
                                       SizedBox(width: DS.spaceXs),
                                       Text('CHƠI',
                                           style: TextStyle(
                                               color: DS.ink,
-                                              fontSize: DS.fontBody,
+                                              fontSize: DS.fontCardButton,
                                               fontWeight: FontWeight.w900)),
                                     ]),
                               ),

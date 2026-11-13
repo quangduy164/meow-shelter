@@ -251,11 +251,6 @@ class _LevelRow extends StatelessWidget {
                               color: open ? _ink : const Color(0xFF7A6E5C),
                               fontSize: DS.fontBody,
                               fontWeight: FontWeight.w900)),
-                      Text(entry.level.tag,
-                          style: TextStyle(
-                              color:
-                                  open ? const Color(0xFF7A4A22) : DS.mutedText,
-                              fontSize: DS.fontCaption)),
                     ]),
               ),
             ),

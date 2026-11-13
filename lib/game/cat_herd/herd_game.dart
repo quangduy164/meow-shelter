@@ -211,7 +211,11 @@ class HerdGame extends FlameGame {
       _tutorialGuide(canvas);
     }
     paintHerdHud(canvas, Size(size.x, size.y), round);
-    if (round.noticeTime > 0 && !round.isTutorial) {
+    // Just the one-line hint at the start of a map; in-play status messages
+    // are not shown.
+    if (round.noticeTime > 0 &&
+        !round.isTutorial &&
+        round.notice == round.map.hint) {
       final text = TextPainter(
           text: TextSpan(
               text: round.notice,
@@ -220,8 +224,11 @@ class HerdGame extends FlameGame {
                   fontWeight: FontWeight.bold,
                   color: Color(0xFF5A3214))),
           textDirection: TextDirection.ltr)
-        ..layout(maxWidth: size.x - 200);
-      final at = Offset((size.x - text.width) / 2, size.y - text.height - 14);
+        ..layout(maxWidth: math.min(560.0, size.x - 208) - 24);
+      // Top row, centred in the space right of the Home button and life pill
+      // (same slot as the tutorial caption in paintHerdHud).
+      final centerX = (196 + size.x - 12) / 2;
+      final at = Offset(centerX - text.width / 2, 36 - text.height / 2);
       canvas.drawRRect(
           RRect.fromRectAndRadius(
               (at & text.size).inflate(6), const Radius.circular(6)),

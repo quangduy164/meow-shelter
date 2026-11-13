@@ -204,6 +204,9 @@ class HerdRound {
       patrol.trafficLight ? map.patrolTime(time) : time;
 
   void message(String text, [double seconds = 2.5]) {
+    // Only the opening map hint is shown on screen; status messages must not
+    // cut it short.
+    if (notice == map.hint && noticeTime > 0) return;
     notice = text;
     noticeTime = seconds;
   }

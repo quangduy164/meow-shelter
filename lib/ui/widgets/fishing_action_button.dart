@@ -2,6 +2,7 @@ import '../design.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'fishing_tool_art.dart';
+import 'paw_loader.dart';
 
 export 'fishing_tool_art.dart' show FishingTool;
 
@@ -142,10 +143,7 @@ class _FishingActionButtonState extends State<FishingActionButton> {
                       const Positioned(
                           right: 10,
                           bottom: 8,
-                          child: SizedBox.square(
-                              dimension: 18,
-                              child: CircularProgressIndicator(
-                                  strokeWidth: 2, color: Color(0xFF365F56)))),
+                          child: PawLoader(size: 20, color: Color(0xFF365F56))),
                   ])),
             ),
           ),

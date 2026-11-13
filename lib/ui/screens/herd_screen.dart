@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import '../../game/cat_herd/herd_game.dart';
 import '../widgets/herd_map_select.dart';
 import '../widgets/herd_result_overlay.dart';
+import '../widgets/paw_loader.dart';
 import '../widgets/round_button.dart';
 import '../widgets/game_glyphs.dart';
 import '../../camp/camp_state.dart';
@@ -51,7 +52,7 @@ class _HerdScreenState extends State<HerdScreen> with WidgetsBindingObserver {
               colors: [Color(0xFF293B52), Color(0xFF477471)],
             ),
           ),
-          child: Center(child: CircularProgressIndicator(color: DS.cream)),
+          child: Center(child: PawLoader(size: 64, color: DS.cream)),
         ),
         initialActiveOverlays: const ['exit'],
         overlayBuilderMap: {

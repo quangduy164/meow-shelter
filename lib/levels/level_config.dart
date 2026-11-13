@@ -64,23 +64,6 @@ class LevelConfig {
       ? 'Cứu càng nhiều mèo'
       : 'Cứu ${catTypes.length} mèo vào $shelterCount ổ';
 
-  /// Short line under the level name in the level list.
-  String get tag {
-    if (isTutorial) return 'Màn tập';
-    final cats = '${catTypes.length} mèo';
-    if (isBoss) return 'Màn trùm · $cats';
-    final twists = [
-      if (map != null) map!.name,
-      if (fishLimit > 0) 'Chỉ $fishLimit cá',
-      if (waveSize > 0) 'Từng đợt',
-      if (movingBeds) 'Ổ dời chỗ',
-      if (darkness) 'Tắt đèn',
-    ];
-    return twists.isEmpty
-        ? '$cats · ${timeLimit}s'
-        : '${twists.join(' · ')} · $cats';
-  }
-
   /// Short toast lines about this level's twist, shown when it starts.
   List<String> get twistLines => [
         if (map != null) '${map!.name}: ${map!.rule}',

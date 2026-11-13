@@ -97,6 +97,12 @@ abstract final class DS {
   static const double fontValue = 16;
   static const double fontDisplay = 18;
 
+  // Compact cards (e.g. the herd region picker, ~190 wide): one step down
+  // so names and labels fit the narrower card without crowding.
+  static const double fontCardTitle = 13;
+  static const double fontCardButton = 11;
+  static const double fontCardBadge = 9;
+
   // Artwork sizes are separate from readable interface text.
   static const double fontLogo = 60;
   static const double fontLogoCaption = 18;

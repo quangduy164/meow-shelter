@@ -6,6 +6,7 @@ import '../../game/constants.dart';
 import '../../game/skill_glyph.dart';
 import '../design.dart';
 import 'cat_sprite.dart';
+import 'paw_loader.dart';
 import 'game_glyphs.dart';
 import 'round_button.dart';
 import 'skill_glyphs.dart';
@@ -317,10 +318,7 @@ class _ReturnHomeCatPickerState extends State<ReturnHomeCatPicker> {
                       style: DS.primary,
                       onPressed: _starting ? null : _start,
                       icon: _starting
-                          ? const SizedBox.square(
-                              dimension: 16,
-                              child: CircularProgressIndicator(
-                                  strokeWidth: 2, color: DS.ink))
+                          ? const PawLoader(size: 20, color: DS.ink)
                           : const Icon(Icons.play_arrow_rounded, size: 23),
                       label: Text(_starting ? 'ĐANG TẢI' : 'BẮT ĐẦU',
                           style: const TextStyle(
