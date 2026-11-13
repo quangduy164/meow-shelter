@@ -165,6 +165,10 @@ class GameAudio with WidgetsBindingObserver {
   }
 
   Future<void> _sync() async {
+    if (!_foreground) {
+      await _silence();
+      return;
+    }
     await _enqueueEffect(() async {
       if (!_foreground || effectsVolume.value == 0) {
         await _effect?.stop();
@@ -174,7 +178,7 @@ class GameAudio with WidgetsBindingObserver {
     });
     await _syncReel();
     if (!_foreground) {
-      await _music?.pause();
+      await _silence();
       return;
     }
     if (!_homeActive || !musicEnabled.value || musicVolume.value == 0) {
@@ -184,13 +188,22 @@ class GameAudio with WidgetsBindingObserver {
     final music = _music ??= AudioPlayer()..audioCache = FlameAudio.audioCache;
     if (!_musicLoaded) {
       await music.setReleaseMode(ReleaseMode.loop);
-      await music.play(AssetSource('background.mp3'),
-          volume: .12 * musicVolume.value);
+      await music.setSource(AssetSource('background.mp3'));
       _musicLoaded = true;
-    } else {
-      await music.setVolume(.12 * musicVolume.value);
-      if (music.state != PlayerState.playing) await music.resume();
     }
+    await music.setVolume(.12 * musicVolume.value);
+    if (!_foreground ||
+        !_homeActive ||
+        !musicEnabled.value ||
+        musicVolume.value == 0) {
+      await music.pause();
+      return;
+    }
+    if (music.state != PlayerState.playing) await music.resume();
+    if (!_foreground ||
+        !_homeActive ||
+        !musicEnabled.value ||
+        musicVolume.value == 0) await music.pause();
   }
 
   Future<void> _enqueueEffect(Future<void> Function() action) {
@@ -252,14 +265,16 @@ class GameAudio with WidgetsBindingObserver {
     await reel.setVolume(.22 * effectsVolume.value);
     if (reel.state == PlayerState.playing) return;
     await reel.setReleaseMode(ReleaseMode.loop);
-    await reel.play(
-      AssetSource('fishingReel.wav'),
-      volume: .22 * effectsVolume.value,
-      ctx: const AudioContext(
-        android: AudioContextAndroid(audioFocus: AndroidAudioFocus.none),
-        iOS: AudioContextIOS(options: [AVAudioSessionOptions.mixWithOthers]),
-      ),
-    );
+    await reel.setAudioContext(const AudioContext(
+      android: AudioContextAndroid(audioFocus: AndroidAudioFocus.none),
+      iOS: AudioContextIOS(options: [AVAudioSessionOptions.mixWithOthers]),
+    ));
+    await reel.setSource(AssetSource('fishingReel.wav'));
+    if (!_foreground || !_reeling || effectsVolume.value == 0) return;
+    await reel.resume();
+    if (!_foreground || !_reeling || effectsVolume.value == 0) {
+      await reel.stop();
+    }
   }
 
   void playRescue(GameSound sound, {bool important = false}) {
@@ -332,14 +347,29 @@ class GameAudio with WidgetsBindingObserver {
           effectsVolume.value == 0 ||
           _rescueClock.elapsedMilliseconds - requested > 200) return;
       await effect.resume();
+      if (!_foreground || effectsVolume.value == 0) await effect.stop();
     }));
   }
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     _foreground = state == AppLifecycleState.resumed;
+    if (!_foreground) {
+      _effectRequest++;
+      _reeling = false;
+      // Lifecycle muting must not wait behind asset loading or preferences.
+      unawaited(_silence());
+    }
     unawaited(_enqueue(_sync));
   }
+
+  Future<void> _silence() => Future.wait([
+        if (_music != null) _music!.pause(),
+        if (_effect != null) _effect!.stop(),
+        if (_reel != null) _reel!.stop(),
+      ].map((operation) => operation.catchError((Object error) {
+            debugPrint('Could not silence audio: $error');
+          })));
 
   Future<void> dispose() async {
     WidgetsBinding.instance.removeObserver(this);

@@ -142,25 +142,12 @@ class CatComponent extends SpriteAnimationGroupComponent<CatState>
       canvas.drawOval(Rect.fromLTWH(6, size.y * .8, size.x - 12, 12),
           Paint()..color = const Color(0x8874FF97));
     }
-    final needsSmallerArtwork = ((catType == 'himalaya' ||
-                catType == 'calico') &&
-            (current == CatState.dashEscape || current == CatState.vanish)) ||
-        (catType == 'scottish' &&
-            (current == CatState.run ||
-                current == CatState.dashEscape ||
-                current == CatState.vanish)) ||
-        (catType == 'orange' &&
-            (current == CatState.run || current == CatState.walk));
+    // Sheets are drawn to size: still poses big, moving poses ~80% of that.
     canvas.save();
     // Flip artwork only so input, bait and shelter checks share stable bounds.
     if (_direction == -1) {
       canvas.translate(size.x, 0);
       canvas.scale(-1, 1);
-    }
-    if (needsSmallerArtwork) {
-      const factor = 0.8;
-      canvas.translate(size.x * (1 - factor) / 2, size.y * 0.82 * (1 - factor));
-      canvas.scale(factor);
     }
     super.render(canvas);
     canvas.restore();
