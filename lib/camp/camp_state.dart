@@ -83,6 +83,8 @@ class CampState {
     owned.clear();
     catNames.clear();
     seenGuides.clear();
+    bestNight = 0;
+    bestNightCats = 0;
   }
 
   void _load(Map<String, dynamic> data) {
@@ -106,6 +108,8 @@ class CampState {
     }
     seenGuides.addAll(List<String>.from(data['seenGuides'] as List? ?? []));
     levelStars.addAll(Map<String, int>.from(data['levelStars'] as Map? ?? {}));
+    bestNight = data['bestNight'] as int? ?? 0;
+    bestNightCats = data['bestNightCats'] as int? ?? 0;
     // Saves from before the cat shop: breeds already rescued stay owned.
     if (data['catShop'] == null) {
       for (final e in rescued.entries) {
@@ -117,7 +121,7 @@ class CampState {
   static late CampState instance;
   static const _key = 'camp_state_v1';
 
-  /// Affection needed for the skill-cooldown bonus in Return Home.
+  /// Affection needed for the skill-cooldown bonus in Adventure.
   static const bondedAffection = 10;
 
   final SharedPreferences preferences;
@@ -170,6 +174,21 @@ class CampState {
     levelStars['$id'] = stars;
     progress.value += 1;
     await _save();
+  }
+
+  /// Night-shift record: furthest night reached, then cats rescued.
+  int bestNight = 0;
+  int bestNightCats = 0;
+
+  /// Saves the run if it beats the record; returns whether it did.
+  bool recordNightShift(int night, int cats) {
+    if (night < bestNight || (night == bestNight && cats <= bestNightCats)) {
+      return false;
+    }
+    bestNight = night;
+    bestNightCats = cats;
+    _save();
+    return true;
   }
 
   static const _herdTutorialKey = 'mode:herd:tutorial:v1';
@@ -272,6 +291,8 @@ class CampState {
         },
         'seenGuides': seenGuides.toList(),
         'levelStars': levelStars,
+        'bestNight': bestNight,
+        'bestNightCats': bestNightCats,
         'catShop': 1,
       });
 }

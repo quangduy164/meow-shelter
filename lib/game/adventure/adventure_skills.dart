@@ -6,9 +6,9 @@ import 'package:flutter/painting.dart';
 import '../cats/home_attack.dart';
 import '../cats/cat_state.dart';
 import '../constants.dart';
-import 'return_home_obstacle.dart';
+import 'adventure_obstacle.dart';
 
-/// World-side effects of the Return Home secondary skills (see
+/// World-side effects of the Adventure secondary skills (see
 /// [HomeAttack]). Every effect only knows how to move and how to look; the
 /// game decides what it hits. Shapes drawn here use the same numbers the game
 /// hits with, so what the player sees is what lands.
@@ -63,8 +63,8 @@ Color _a(Color c, double alpha) =>
 
 /// A flying skill shot. The fireball bursts on the first hazard; the ice shard
 /// pierces and freezes everything along its lane.
-class ReturnHomeProjectile extends PositionComponent {
-  ReturnHomeProjectile({
+class AdventureProjectile extends PositionComponent {
+  AdventureProjectile({
     required Vector2 position,
     required this.direction,
     required this.attack,
@@ -77,7 +77,7 @@ class ReturnHomeProjectile extends PositionComponent {
   final _trail = <Vector2>[];
 
   /// Hazards already hit; a piercing shard hits each one once.
-  final hit = <ReturnHomeObstacle>{};
+  final hit = <AdventureObstacle>{};
   bool hitBoss = false;
 
   bool get icy => attack == HomeAttack.iceShard;
@@ -188,8 +188,8 @@ class _Spark {
 /// A cone of fire pouring from the cat's mouth for [HomeAttack.flameBreath]
 /// duration. The game moves [position] with the cat each frame; the direction
 /// is fixed at cast. [tickNow] is true on the frames the flames hurt.
-class ReturnHomeFlameBreath extends PositionComponent {
-  ReturnHomeFlameBreath({required Vector2 position, required this.direction})
+class AdventureFlameBreath extends PositionComponent {
+  AdventureFlameBreath({required Vector2 position, required this.direction})
       : super(position: position, anchor: Anchor.center, priority: 7);
 
   final Vector2 direction;
@@ -290,8 +290,8 @@ class ReturnHomeFlameBreath extends PositionComponent {
 /// A bomb lobbed onto [target]: it flies [bombFlight] s, explodes (destroying
 /// everything in its ellipse, [explodeNow]) and leaves a fire patch for
 /// [HomeAttack.fireBomb] duration that burns whatever walks in ([tickNow]).
-class ReturnHomeFireBomb extends PositionComponent {
-  ReturnHomeFireBomb({required Vector2 from, required this.target})
+class AdventureFireBomb extends PositionComponent {
+  AdventureFireBomb({required Vector2 from, required this.target})
       : _from = from.clone(),
         super(position: target.clone(), anchor: Anchor.center, priority: 7);
 
@@ -421,8 +421,8 @@ class ReturnHomeFireBomb extends PositionComponent {
 // ===========================================================================
 
 /// Smoke where the cat left and where it arrived, joined by a fading trail.
-class ReturnHomeShadowStep extends PositionComponent {
-  ReturnHomeShadowStep({required Vector2 from, required Vector2 to})
+class AdventureShadowStep extends PositionComponent {
+  AdventureShadowStep({required Vector2 from, required Vector2 to})
       : _to = to - from,
         super(position: from.clone(), anchor: Anchor.center, priority: 7);
 
@@ -467,8 +467,8 @@ class ReturnHomeShadowStep extends PositionComponent {
 
 /// A ghostly copy of the cat that lures birds. When it fades it bursts and
 /// shoves nearby hazards away ([HomeAttack.decoy] radius).
-class ReturnHomeDecoy extends SpriteAnimationGroupComponent<CatState> {
-  ReturnHomeDecoy({
+class AdventureDecoy extends SpriteAnimationGroupComponent<CatState> {
+  AdventureDecoy({
     required Map<CatState, SpriteAnimation> animations,
     required Vector2 center,
     required this.flip,
@@ -541,8 +541,8 @@ class ReturnHomeDecoy extends SpriteAnimationGroupComponent<CatState> {
 
 /// The clock ring that sweeps out from the cat when time stops, then a small
 /// clock above its head counting down while hazards stand still.
-class ReturnHomeTimeStopAura extends Component {
-  ReturnHomeTimeStopAura() : super(priority: 8);
+class AdventureTimeStopAura extends Component {
+  AdventureTimeStopAura() : super(priority: 8);
 
   Vector2 center = Vector2.zero();
   double timeLeft = 0;
@@ -653,8 +653,8 @@ void paintIceBlock(Canvas canvas, double timeLeft,
 }
 
 /// Ring of ice spikes bursting out to [HomeAttack.frostNova] radius.
-class ReturnHomeFrostWave extends PositionComponent {
-  ReturnHomeFrostWave({required Vector2 position, this.radius = 140})
+class AdventureFrostWave extends PositionComponent {
+  AdventureFrostWave({required Vector2 position, this.radius = 140})
       : super(position: position, anchor: Anchor.center, priority: 3);
 
   double _t = 0;
@@ -719,8 +719,8 @@ class ReturnHomeFrostWave extends PositionComponent {
 
 /// A strip of ice laid from the cat along the aim: water under it is dry
 /// ground until it melts.
-class ReturnHomeIceBridge extends PositionComponent {
-  ReturnHomeIceBridge({required Vector2 origin, required Vector2 direction})
+class AdventureIceBridge extends PositionComponent {
+  AdventureIceBridge({required Vector2 origin, required Vector2 direction})
       : _dir = direction.normalized(),
         super(position: origin.clone(), priority: 2);
 
@@ -816,8 +816,8 @@ class ReturnHomeIceBridge extends PositionComponent {
 /// A short wall of boulders standing across the aim direction for
 /// [HomeAttack.stoneWall] duration. Rocks bounce off it, crabs turn back and
 /// diving birds are scared away. The cat is not blocked by its own wall.
-class ReturnHomeStoneWall extends PositionComponent {
-  ReturnHomeStoneWall({required Vector2 center, required Vector2 facing})
+class AdventureStoneWall extends PositionComponent {
+  AdventureStoneWall({required Vector2 center, required Vector2 facing})
       : _n = facing.normalized(),
         super(position: center.clone(), priority: 4);
 
@@ -918,8 +918,8 @@ class ReturnHomeStoneWall extends PositionComponent {
 }
 
 /// Mirror shards circling the cat while [HomeAttack.reflect] is up.
-class ReturnHomeReflectAura extends Component {
-  ReturnHomeReflectAura() : super(priority: 6);
+class AdventureReflectAura extends Component {
+  AdventureReflectAura() : super(priority: 6);
 
   Vector2 center = Vector2.zero();
   double timeLeft = 0;
@@ -984,10 +984,10 @@ class ReturnHomeReflectAura extends Component {
 // Cat eye: slow aura that also reveals hidden springs.
 // ===========================================================================
 
-class ReturnHomeCatEyeAura extends Component {
-  ReturnHomeCatEyeAura({required this.obstacles}) : super(priority: 6);
+class AdventureCatEyeAura extends Component {
+  AdventureCatEyeAura({required this.obstacles}) : super(priority: 6);
 
-  final List<ReturnHomeObstacle> obstacles;
+  final List<AdventureObstacle> obstacles;
   Vector2 center = Vector2.zero();
   double timeLeft = 0;
   double _t = 0;
@@ -1021,7 +1021,7 @@ class ReturnHomeCatEyeAura extends Component {
     }
     // Hidden springs in range get a marker.
     for (final o in obstacles) {
-      if (o.kind != ReturnHomeObstacleKind.spring || o.springT > 0) continue;
+      if (o.kind != AdventureObstacleKind.spring || o.springT > 0) continue;
       final p = Offset(o.position.x, o.position.y);
       if ((p - c).distance > radius) continue;
       final pulse = 1 + sin(_t * 8) * .12;
@@ -1065,8 +1065,8 @@ class ReturnHomeCatEyeAura extends Component {
 
 /// A lightning strike: warning ring that closes in, then the bolt and a flash.
 /// [struck] flips true on the frame the damage lands.
-class ReturnHomeBolt extends PositionComponent {
-  ReturnHomeBolt({required Vector2 position, required this.seed})
+class AdventureBolt extends PositionComponent {
+  AdventureBolt({required Vector2 position, required this.seed})
       : super(position: position, anchor: Anchor.center, priority: 8);
 
   final int seed;
@@ -1157,8 +1157,8 @@ class ReturnHomeBolt extends PositionComponent {
 }
 
 /// Debris and smoke where a hazard was destroyed.
-class ReturnHomeBurst extends PositionComponent {
-  ReturnHomeBurst({
+class AdventureBurst extends PositionComponent {
+  AdventureBurst({
     required Vector2 position,
     required this.color,
     this.fiery = false,
@@ -1215,8 +1215,8 @@ class ReturnHomeBurst extends PositionComponent {
 /// World-space preview while a skill button is held, MOBA style: the big
 /// range ring around the cat plus the exact shape the skill will hit. Turns
 /// red when the cast would be wasted (e.g. blinking into water).
-class ReturnHomeAimIndicator extends Component {
-  ReturnHomeAimIndicator() : super(priority: 9);
+class AdventureAimIndicator extends Component {
+  AdventureAimIndicator() : super(priority: 9);
 
   HomeAttack? attack;
 
@@ -1341,7 +1341,7 @@ class ReturnHomeAimIndicator extends Component {
         }
       case AimShape.wall:
         final corners =
-            ReturnHomeStoneWall.footprint(target, direction, attack.radius);
+            AdventureStoneWall.footprint(target, direction, attack.radius);
         final wall = Path()..addPolygon(corners, true);
         canvas.drawPath(wall, Paint()..color = _a(color, .55));
         canvas.drawPath(wall, edge);
@@ -1439,8 +1439,8 @@ class ReturnHomeAimIndicator extends Component {
 
 /// Expanding sound rings from the cat; the outer ring reaches [roarRadius]
 /// at the same moment the push lands, so the shown area is the real one.
-class ReturnHomeRoarWave extends PositionComponent {
-  ReturnHomeRoarWave({required Vector2 position})
+class AdventureRoarWave extends PositionComponent {
+  AdventureRoarWave({required Vector2 position})
       : super(position: position, anchor: Anchor.center, priority: 7);
 
   double _t = 0;
@@ -1494,8 +1494,8 @@ class ReturnHomeRoarWave extends PositionComponent {
 
 /// Magnetic aura around the cat while magnet claws are active: the dashed
 /// circle is the exact pull radius; it flickers in the last second.
-class ReturnHomeMagnetAura extends Component {
-  ReturnHomeMagnetAura() : super(priority: 4);
+class AdventureMagnetAura extends Component {
+  AdventureMagnetAura() : super(priority: 4);
 
   Vector2 center = Vector2.zero();
   double timeLeft = 0;

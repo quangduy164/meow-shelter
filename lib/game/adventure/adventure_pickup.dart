@@ -3,17 +3,17 @@ import 'dart:math';
 import 'package:flame/components.dart';
 import 'package:flutter/painting.dart';
 
-import 'return_home_view.dart';
+import 'adventure_view.dart';
 
-enum ReturnHomePickupKind { fish, heart }
+enum AdventurePickupKind { fish, heart }
 
 /// Small optional rewards on the road. They give the player a reason to choose
 /// a risky line instead of only walking straight home.
-class ReturnHomePickup extends PositionComponent {
-  ReturnHomePickup({required this.kind, required Vector2 position})
+class AdventurePickup extends PositionComponent {
+  AdventurePickup({required this.kind, required Vector2 position})
       : super(position: position, size: Vector2.all(30), anchor: Anchor.center);
 
-  final ReturnHomePickupKind kind;
+  final AdventurePickupKind kind;
   double _time = 0;
 
   bool hits(Rect cat) => cat.overlaps(Rect.fromCenter(
@@ -32,7 +32,7 @@ class ReturnHomePickup extends PositionComponent {
     canvas.translate(size.x / 2, size.y / 2 + sin(_time * 4) * 2);
     canvas.drawOval(const Rect.fromLTWH(-11, 10, 22, 5),
         Paint()..color = const Color(0x334B392C));
-    if (kind == ReturnHomePickupKind.fish) {
+    if (kind == AdventurePickupKind.fish) {
       canvas.drawOval(const Rect.fromLTWH(-11, -6, 20, 12),
           Paint()..color = const Color(0xFF4F9EA0));
       canvas.drawPath(

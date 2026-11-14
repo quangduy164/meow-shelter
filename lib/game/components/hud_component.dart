@@ -3,6 +3,7 @@ import 'dart:math' as math;
 
 import 'package:flame/components.dart';
 import 'package:flame/game.dart';
+import 'package:flutter/animation.dart';
 import 'package:flutter/painting.dart';
 
 import '../../levels/level_goal.dart';
@@ -28,6 +29,32 @@ class HudComponent extends PositionComponent with HasGameRef<FlameGame> {
   bool isTutorial = false;
   bool isInfinite = false;
 
+  /// Night-shift night number (0 outside the night shift) and cats rescued
+  /// tonight out of [totalCats].
+  int night = 0;
+  int tonight = 0;
+
+  /// Calico helper running: every bed takes any cat, so beds glow.
+  bool anyBed = false;
+
+  /// Tonight's boss flag, full rules (shown on the intro card) and short
+  /// tags (shown as chips on the small mission card).
+  bool bossNight = false;
+  List<String> nightNotes = const [];
+  List<String> nightTags = const [];
+
+  double _intro = 0;
+  int _shownTonight = 0;
+  double _pop = 0;
+  static const _introLength = 3.2;
+
+  /// Shows the big "night N" title card in the middle of the field.
+  void startNight() {
+    _intro = _introLength;
+    _shownTonight = 0;
+    _pop = 0;
+  }
+
   /// Fish left on fish-limit levels; null when bait is unlimited.
   int? fishLeft;
 
@@ -50,24 +77,36 @@ class HudComponent extends PositionComponent with HasGameRef<FlameGame> {
     super.update(dt);
     _clock += dt;
     if (_toastTime > 0) _toastTime -= dt;
+    if (_intro > 0) _intro -= dt;
+    if (_pop > 0) _pop -= dt;
+    if (tonight != _shownTonight) {
+      _shownTonight = tonight;
+      _pop = .35;
+    }
   }
 
   @override
   void render(Canvas canvas) {
     super.render(canvas);
     if (status != RoundStatus.playing || isTutorial) return;
+    if (anyBed) _drawBedGlow(canvas);
     final pill = _drawStatusPill(canvas);
     _drawToast(canvas, pill.bottom + 6);
     _drawGoals(canvas);
+    if (night > 0) {
+      _drawNightCard(canvas);
+      if (_intro > 0) _drawNightIntro(canvas);
+    }
   }
 
   Rect _drawStatusPill(Canvas canvas) {
     final screen = gameRef.size;
-    final lowTime = !isInfinite && secondsLeft <= 10;
+    final timed = !isInfinite || night > 0;
+    final lowTime = timed && secondsLeft <= 10;
     final parts = <(void Function(Canvas, Offset, Color), String, Color)>[
-      if (!isInfinite)
-        (_clockIcon, '${secondsLeft}s', lowTime ? _danger : _ink),
-      (_pawIcon, isInfinite ? '$delivered' : '$delivered/$totalCats', _ink),
+      if (timed) (_clockIcon, '${secondsLeft}s', lowTime ? _danger : _ink),
+      if (night == 0)
+        (_pawIcon, isInfinite ? '$delivered' : '$delivered/$totalCats', _ink),
       if (fishLeft != null)
         (_fishIcon, '$fishLeft', fishLeft == 0 ? _danger : _ink),
     ];
@@ -115,6 +154,142 @@ class HudComponent extends PositionComponent with HasGameRef<FlameGame> {
     }
     canvas.restore();
     return box;
+  }
+
+  /// Night-shift mission card, top right and compact: night number and
+  /// count on one line, a segmented progress bar, and tiny twist chips.
+  /// The full rules live on the intro card at the start of the night.
+  void _drawNightCard(Canvas canvas) {
+    final screen = gameRef.size;
+    const width = 132.0, pad = 7.0, barH = 7.0;
+    const inner = width - pad * 2;
+    final head = _text('ĐÊM $night', DS.fontBody, _ink, bold: true);
+    final count = _text('$tonight/$totalCats', DS.fontBody,
+        tonight >= totalCats ? DS.success : _ink,
+        bold: true);
+    final tags = [
+      for (final tag in nightTags) _text(tag, DS.fontMicro, _cream, bold: true)
+    ];
+    const tagH = 13.0;
+    final headH = math.max(head.height, count.height);
+    final height = pad + headH + 4 + barH + (tags.isEmpty ? 0 : 5 + tagH) + pad;
+    final box = Rect.fromLTWH(screen.x - width - 10, 10, width, height);
+    final shape = RRect.fromRectAndRadius(box, const Radius.circular(10));
+    canvas.drawRRect(shape.shift(const Offset(0, 2)),
+        Paint()..color = const Color(0x44402616));
+    canvas.drawRRect(shape, Paint()..color = const Color(0xE6FFF4DA));
+    canvas.drawRRect(
+        shape,
+        Paint()
+          ..color = bossNight ? const Color(0xFFE85D6F) : _wood
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 2);
+    var y = box.top + pad;
+    _moonIcon(canvas, Offset(box.left + pad + 6, y + headH / 2), _ink);
+    head.paint(
+        canvas, Offset(box.left + pad + 15, y + (headH - head.height) / 2));
+    final scale = 1 + math.max(0.0, _pop) / .35 * .3;
+    canvas.save();
+    canvas.translate(box.right - pad - count.width / 2, y + headH / 2);
+    canvas.scale(scale);
+    count.paint(canvas, Offset(-count.width / 2, -count.height / 2));
+    canvas.restore();
+    y += headH + 4;
+    // One slot per cat tonight; the newest flashes.
+    final gap = totalCats > 8 ? 1.5 : 2.5;
+    final seg = (inner - gap * (totalCats - 1)) / math.max(1, totalCats);
+    for (var i = 0; i < totalCats; i++) {
+      final r = RRect.fromRectAndRadius(
+          Rect.fromLTWH(box.left + pad + i * (seg + gap), y, seg, barH),
+          const Radius.circular(3));
+      final done = i < tonight;
+      canvas.drawRRect(
+          r,
+          Paint()
+            ..color = done ? const Color(0xFF6DBE63) : const Color(0x2E704019));
+      if (done && i == tonight - 1 && _pop > 0) {
+        canvas.drawRRect(
+            r.inflate(_pop * 5),
+            Paint()
+              ..color = const Color(0xFF6DBE63).withOpacity(_pop / .35 * .5));
+      }
+    }
+    y += barH;
+    if (tags.isEmpty) return;
+    y += 5;
+    var x = box.left + pad;
+    for (var i = 0; i < tags.length; i++) {
+      final tag = tags[i];
+      final w = tag.width + 8;
+      if (x + w > box.right - pad) break;
+      canvas.drawRRect(
+          RRect.fromRectAndRadius(
+              Rect.fromLTWH(x, y, w, tagH), const Radius.circular(6.5)),
+          Paint()
+            ..color = nightTags[i] == 'Có trùm'
+                ? const Color(0xFFE85D6F)
+                : const Color(0xFF6B5A8E));
+      tag.paint(canvas, Offset(x + 4, y + (tagH - tag.height) / 2));
+      x += w + 3;
+    }
+  }
+
+  /// Big title card at the start of each night, fading in and out.
+  void _drawNightIntro(Canvas canvas) {
+    final screen = gameRef.size;
+    final t = _introLength - _intro;
+    final alpha = math.min(t / .25, _intro / .5).clamp(0.0, 1.0);
+    final grow =
+        .85 + .15 * Curves.easeOutBack.transform(math.min(1.0, t / .4));
+    final title = _text('ĐÊM $night', 40, _gold.withOpacity(alpha), bold: true);
+    final boss = bossNight
+        ? _text('ĐÊM TRÙM!', DS.fontTitle,
+            const Color(0xFFFF8A80).withOpacity(alpha),
+            bold: true)
+        : null;
+    final goal = _text('Cứu $totalCats mèo trong ${secondsLeft}s', 20,
+        _cream.withOpacity(alpha),
+        bold: true);
+    final notes = [
+      for (final note in nightNotes)
+        _text(note, DS.fontBody, _cream.withOpacity(alpha * .9),
+            maxWidth: screen.x * .5)
+    ];
+    final lines = [title, if (boss != null) boss, goal, ...notes];
+    final width = lines.fold(0.0, (w, l) => math.max(w, l.width)) + 48;
+    final height = lines.fold(0.0, (h, l) => h + l.height + 4) + 28;
+    canvas.save();
+    canvas.translate(screen.x / 2, screen.y * .45);
+    canvas.scale(grow);
+    final box = RRect.fromRectAndRadius(
+        Rect.fromCenter(center: Offset.zero, width: width, height: height),
+        const Radius.circular(18));
+    canvas.drawRRect(
+        box, Paint()..color = Color.fromRGBO(36, 30, 60, .88 * alpha));
+    canvas.drawRRect(
+        box,
+        Paint()
+          ..color = _gold.withOpacity(alpha)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 3);
+    var y = -height / 2 + 14;
+    for (final line in lines) {
+      line.paint(canvas, Offset(-line.width / 2, y));
+      y += line.height + 4;
+    }
+    canvas.restore();
+  }
+
+  /// Gold frame pulsing round the field while any bed takes any cat.
+  void _drawBedGlow(Canvas canvas) {
+    final screen = gameRef.size;
+    final alpha = .35 + math.sin(_clock * 6) * .15;
+    canvas.drawRect(
+        Rect.fromLTWH(0, 0, screen.x, screen.y).deflate(3),
+        Paint()
+          ..color = _gold.withOpacity(alpha)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 6);
   }
 
   void _drawToast(Canvas canvas, double top) {
@@ -184,7 +359,10 @@ class HudComponent extends PositionComponent with HasGameRef<FlameGame> {
       };
 
   TextPainter _text(String text, double size, Color color,
-          {bool bold = false, bool strike = false, double? maxWidth}) =>
+          {bool bold = false,
+          bool strike = false,
+          double? maxWidth,
+          int maxLines = 1}) =>
       TextPainter(
           text: TextSpan(
               text: text,
@@ -195,7 +373,7 @@ class HudComponent extends PositionComponent with HasGameRef<FlameGame> {
                   decoration: strike ? TextDecoration.lineThrough : null,
                   decorationColor: color)),
           textDirection: TextDirection.ltr,
-          maxLines: 1,
+          maxLines: maxLines,
           ellipsis: '…')
         ..layout(maxWidth: maxWidth ?? double.infinity);
 
@@ -208,6 +386,16 @@ class HudComponent extends PositionComponent with HasGameRef<FlameGame> {
     canvas.drawCircle(c, 6.5, stroke);
     canvas.drawLine(c, c + const Offset(0, -4), stroke);
     canvas.drawLine(c, c + const Offset(3, 1.5), stroke);
+  }
+
+  static void _moonIcon(Canvas canvas, Offset c, Color color) {
+    final moon = Path.combine(
+        PathOperation.difference,
+        Path()..addOval(Rect.fromCircle(center: c, radius: 6.5)),
+        Path()
+          ..addOval(Rect.fromCircle(
+              center: c + const Offset(3.5, -2.5), radius: 5.5)));
+    canvas.drawPath(moon, Paint()..color = const Color(0xFFE0A93A));
   }
 
   static void _pawIcon(Canvas canvas, Offset c, Color color) {

@@ -3,12 +3,12 @@ import 'dart:math';
 import 'package:flutter/painting.dart';
 
 import '../world/nature_art.dart';
-import 'return_home_road.dart';
+import 'adventure_road.dart';
 
-/// Roadside art, one painter per [ReturnHomeScenery]. Everything here derives
+/// Roadside art, one painter per [AdventureScenery]. Everything here derives
 /// its position from the road, so props follow the curve for free.
 ///
-/// To add a biome: give it a scenery value, append a [ReturnHomeBiome] entry and
+/// To add a biome: give it a scenery value, append a [AdventureBiome] entry and
 /// add one painter plus one case in [paintSceneryProp].
 
 /// Spacing between props, and how far short of the house they stop.
@@ -21,32 +21,32 @@ const double streamShoulder = 130.0;
 
 void paintSceneryProp(
   Canvas canvas,
-  ReturnHomeRoad road,
-  ReturnHomeScenery scenery,
+  AdventureRoad road,
+  AdventureScenery scenery,
   double x,
   int index,
 ) {
   switch (scenery) {
-    case ReturnHomeScenery.fence:
+    case AdventureScenery.fence:
       paintWoodFence(canvas, road, x, x + sceneryStep);
-    case ReturnHomeScenery.garden:
+    case AdventureScenery.garden:
       paintGardenProp(canvas, road, x, index);
-    case ReturnHomeScenery.bamboo:
+    case AdventureScenery.bamboo:
       paintBamboo(canvas, road, x, index);
-    case ReturnHomeScenery.stream:
+    case AdventureScenery.stream:
       paintStreamReeds(canvas, road, x);
-    case ReturnHomeScenery.bridge:
+    case AdventureScenery.bridge:
       paintBridgeSpan(canvas, road, x, x + sceneryStep);
-    case ReturnHomeScenery.field:
+    case AdventureScenery.field:
       paintFieldProp(canvas, road, x, index);
-    case ReturnHomeScenery.village:
+    case AdventureScenery.village:
       paintVillageProp(canvas, road, x, index);
-    case ReturnHomeScenery.lane:
+    case AdventureScenery.lane:
       paintLaneProp(canvas, road, x, index);
   }
 }
 
-void paintWoodFence(Canvas canvas, ReturnHomeRoad road, double x0, double x1) {
+void paintWoodFence(Canvas canvas, AdventureRoad road, double x0, double x1) {
   final a = road.edgePoint(x0, -1);
   final b = road.edgePoint(x1, -1);
   final rail = Paint()
@@ -64,7 +64,7 @@ void paintWoodFence(Canvas canvas, ReturnHomeRoad road, double x0, double x1) {
         ..strokeCap = StrokeCap.round);
 }
 
-void paintGardenProp(Canvas canvas, ReturnHomeRoad road, double x, int index) {
+void paintGardenProp(Canvas canvas, AdventureRoad road, double x, int index) {
   final h = road.viewportHeight;
   if (index % 3 == 0) {
     final base = road.edgePoint(x, -1) + const Offset(0, -6);
@@ -83,9 +83,9 @@ void paintGardenProp(Canvas canvas, ReturnHomeRoad road, double x, int index) {
       bloom + const Offset(5, 2), 3, Paint()..color = const Color(0xFFFFE49A));
 }
 
-void paintStream(Canvas canvas, ReturnHomeRoad road) {
+void paintStream(Canvas canvas, AdventureRoad road) {
   final biomes = road.biomes;
-  final biome = biomes.firstWhere((b) => b.scenery == ReturnHomeScenery.stream);
+  final biome = biomes.firstWhere((b) => b.scenery == AdventureScenery.stream);
   final nextFrom = biomes.indexWhere((b) => b.from > biome.from);
   final w = road.worldWidth;
   final h = road.viewportHeight;
@@ -114,7 +114,7 @@ void paintStream(Canvas canvas, ReturnHomeRoad road) {
   canvas.drawPath(path, Paint()..color = const Color(0xFF6FB6CE));
 }
 
-void paintStreamReeds(Canvas canvas, ReturnHomeRoad road, double x) {
+void paintStreamReeds(Canvas canvas, AdventureRoad road, double x) {
   final shore =
       road.edgePoint(x, 1) + Offset(0, 12 + road.viewportHeight * .05);
   final reed = Paint()
@@ -134,7 +134,7 @@ void paintStreamReeds(Canvas canvas, ReturnHomeRoad road, double x) {
       Paint()..color = const Color(0xFFBFC4AE));
 }
 
-void paintStreetProp(Canvas canvas, ReturnHomeRoad road, double x, int index) {
+void paintStreetProp(Canvas canvas, AdventureRoad road, double x, int index) {
   final base = road.edgePoint(x, -1);
   canvas.drawLine(
       base + const Offset(0, 4),
@@ -156,7 +156,7 @@ void paintStreetProp(Canvas canvas, ReturnHomeRoad road, double x, int index) {
 }
 
 /// Clouds drift across the sky band, which is the strip above the horizon.
-void paintClouds(Canvas canvas, ReturnHomeRoad road) {
+void paintClouds(Canvas canvas, AdventureRoad road) {
   final w = road.worldWidth;
   final h = road.viewportHeight;
   for (var i = 0; i < 6; i++) {
@@ -166,7 +166,7 @@ void paintClouds(Canvas canvas, ReturnHomeRoad road) {
   }
 }
 
-void paintFlowers(Canvas canvas, ReturnHomeRoad road) {
+void paintFlowers(Canvas canvas, AdventureRoad road) {
   final w = road.worldWidth;
   final h = road.viewportHeight;
   final stem = Paint()
@@ -184,7 +184,7 @@ void paintFlowers(Canvas canvas, ReturnHomeRoad road) {
 }
 
 /// Tall bamboo culms on both sides with a few leaf sprays.
-void paintBamboo(Canvas canvas, ReturnHomeRoad road, double x, int index) {
+void paintBamboo(Canvas canvas, AdventureRoad road, double x, int index) {
   final h = road.viewportHeight;
   for (final side in [-1.0, 1.0]) {
     for (var k = 0; k < 3; k++) {
@@ -218,7 +218,7 @@ void paintBamboo(Canvas canvas, ReturnHomeRoad road, double x, int index) {
 }
 
 /// A wooden bridge: water under both edges, planks across and handrails.
-void paintBridgeSpan(Canvas canvas, ReturnHomeRoad road, double x0, double x1) {
+void paintBridgeSpan(Canvas canvas, AdventureRoad road, double x0, double x1) {
   final h = road.viewportHeight;
   final water = Paint()..color = const Color(0xFF5FB4D0);
   for (final side in [-1.0, 1.0]) {
@@ -252,7 +252,7 @@ void paintBridgeSpan(Canvas canvas, ReturnHomeRoad road, double x0, double x1) {
 }
 
 /// Wheat tufts and the odd hay bale along an open field.
-void paintFieldProp(Canvas canvas, ReturnHomeRoad road, double x, int index) {
+void paintFieldProp(Canvas canvas, AdventureRoad road, double x, int index) {
   final wheat = Paint()
     ..color = const Color(0xFFD9A93F)
     ..strokeWidth = 2
@@ -281,7 +281,7 @@ void paintFieldProp(Canvas canvas, ReturnHomeRoad road, double x, int index) {
 }
 
 /// Small houses and brick walls on the village street.
-void paintVillageProp(Canvas canvas, ReturnHomeRoad road, double x, int index) {
+void paintVillageProp(Canvas canvas, AdventureRoad road, double x, int index) {
   final base = road.edgePoint(x, -1) - const Offset(0, 6);
   if (index.isEven) {
     final colors = [const Color(0xFFF1D7B0), const Color(0xFFE7C3A3)];
@@ -310,7 +310,7 @@ void paintVillageProp(Canvas canvas, ReturnHomeRoad road, double x, int index) {
 }
 
 /// The last quiet lane: low hedges and flower pots by the doorsteps.
-void paintLaneProp(Canvas canvas, ReturnHomeRoad road, double x, int index) {
+void paintLaneProp(Canvas canvas, AdventureRoad road, double x, int index) {
   for (final side in [-1.0, 1.0]) {
     final base = road.edgePoint(x, side) + Offset(0, side * 10);
     canvas.drawRRect(

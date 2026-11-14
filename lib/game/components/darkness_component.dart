@@ -6,8 +6,14 @@ import 'package:flame/components.dart';
 /// Lights-off layer for dark levels: the field is night-dark except for
 /// soft pools of light at [lights] (fish, beds and cats that are ready).
 class DarknessComponent extends PositionComponent with HasGameRef {
-  DarknessComponent({required this.lights, required this.visible})
+  DarknessComponent(
+      {required this.lights,
+      required this.visible,
+      this.shade = const Color(0xF0101828)})
       : super(priority: 80);
+
+  /// Colour of the dark; a lighter shade keeps the scenery faintly visible.
+  final Color shade;
 
   final Iterable<(Offset, double)> Function() lights;
   final bool Function() visible;
@@ -24,7 +30,7 @@ class DarknessComponent extends PositionComponent with HasGameRef {
     if (!visible()) return;
     final area = Offset.zero & Size(gameRef.size.x, gameRef.size.y);
     canvas.saveLayer(area, Paint());
-    canvas.drawRect(area, Paint()..color = const Color(0xF0101828));
+    canvas.drawRect(area, Paint()..color = shade);
     for (final (center, radius) in lights()) {
       final r = radius * (1 + math.sin(_clock * 2.4 + center.dx) * .04);
       canvas.drawCircle(

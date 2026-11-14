@@ -8,6 +8,7 @@ import '../../game/components/hud_component.dart';
 import '../../game/meow_shelter_game.dart';
 import '../../game/constants.dart';
 import '../../levels/levels.dart';
+import '../../camp/camp_state.dart';
 
 /// End-of-round card: cat portrait, headline, one star per mission with
 /// its label underneath, and the next actions.
@@ -64,7 +65,7 @@ class _RoundResultOverlayState extends State<RoundResultOverlay>
 
   String get _header {
     final level = _game.level;
-    if (level.isInfinite) return 'CỨU HỘ VÔ HẠN';
+    if (level.isInfinite) return 'CA TRỰC ĐÊM';
     if (level.isTutorial) return 'MÀN TẬP';
     return 'MÀN ${levelNumber(level) ?? ''} · ${level.name.toUpperCase()}';
   }
@@ -78,7 +79,15 @@ class _RoundResultOverlayState extends State<RoundResultOverlay>
   String get _subtitle {
     final level = _game.level;
     final rescued = _game.rescued;
-    if (level.isInfinite) return 'Cứu được $rescued mèo · +${rescued * 5} xu';
+    final run = _game.run;
+    if (run != null) {
+      final camp = CampState.instance;
+      final record = _game.newRecord
+          ? 'KỶ LỤC MỚI!'
+          : 'Kỷ lục: đêm ${camp.bestNight} · ${camp.bestNightCats} mèo';
+      return 'Trụ tới đêm ${run.night} · cứu ${run.totalRescued} mèo · '
+          '+${run.coins} xu\n$record';
+    }
     if (level.isTutorial) return 'Bạn đã biết cách bắt mèo này rồi';
     if (_won) return 'Cứu đủ $rescued mèo · +${rescued * 5} xu';
     return 'Đã cứu $rescued/${level.catTypes.length} mèo · thử lại nhé!';

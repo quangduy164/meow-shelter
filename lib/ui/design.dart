@@ -36,8 +36,8 @@ abstract final class DS {
   static const shadowColor = Color(0x55000000);
   static const controlShadowColor = Color(0x40000000);
   static const modeFishing = Color(0xFF3E9FB0);
-  static const modeReturnHome = Color(0xFF5E9A48);
-  static const modeRescue = Color(0xFFE0703F);
+  static const modeAdventure = Color(0xFF5E9A48);
+  static const modeNightShift = Color(0xFF3D5A99);
   static const modeHerd = Color(0xFF8277B2);
   static const modeCamp = Color(0xFFC85A7C);
 

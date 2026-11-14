@@ -31,7 +31,7 @@ enum AimShape {
   global,
 }
 
-/// The three secondary skills each breed carries in Return Home. Pure data:
+/// The three secondary skills each breed carries in Adventure. Pure data:
 /// numbers the game, the range preview and the buttons all read, so what the
 /// player sees while aiming is exactly what the skill does.
 enum HomeAttack {

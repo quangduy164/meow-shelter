@@ -9,6 +9,7 @@ import '../widgets/cat_guide_overlay.dart';
 import '../widgets/round_button.dart';
 import '../widgets/game_glyphs.dart';
 import '../widgets/round_result_overlay.dart';
+import '../widgets/night_shift_overlays.dart';
 
 class GameScreen extends StatefulWidget {
   const GameScreen({super.key, required this.level});
@@ -41,9 +42,15 @@ class _GameScreenState extends State<GameScreen> {
                     builder: (_) => GameScreen(level: nextLevel)))
             : null);
     return Scaffold(
-      body: GameWidget<MeowShelterGame>(game: _game!, initialActiveOverlays: const [
+      body: GameWidget<MeowShelterGame>(game: _game!, initialActiveOverlays: [
         'home',
+        // The night shift starts by choosing helper cats.
+        if (_level.isInfinite) 'nightSetup',
       ], overlayBuilderMap: {
+        'nightSetup': (context, game) => NightSetupOverlay(
+            game: game, onHome: () => Navigator.of(context).pop()),
+        'nightCards': (context, game) => NightCardsOverlay(game: game),
+        'nightSkills': (context, game) => NightSkillBar(game: game),
         'catGuide': (context, game) => _PausedGuide(
               game: game,
               types: _level.catTypes.toSet().toList(),

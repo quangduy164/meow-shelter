@@ -268,7 +268,7 @@ int? levelNumber(LevelConfig level) {
 
 const infiniteLevel = LevelConfig(
     id: 99,
-    name: 'Cứu hộ vô hạn',
+    name: 'Ca trực đêm',
     catTypes: ['orange', 'himalaya', 'scottish', 'calico', 'black'],
     timeLimit: 0,
     speedMultiplier: .8,

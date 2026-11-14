@@ -1,12 +1,12 @@
 import 'dart:math';
 import 'package:flame/components.dart';
 import 'package:flutter/painting.dart';
-import 'return_home_game.dart';
-import 'return_home_view.dart';
+import 'adventure_game.dart';
+import 'adventure_view.dart';
 
 /// Gate ground geometry follows the lane; the near half renders over the cat.
-class ReturnHomeGate extends Component with HasGameReference<ReturnHomeGame> {
-  ReturnHomeGate() : super(priority: 3);
+class AdventureGate extends Component with HasGameReference<AdventureGame> {
+  AdventureGate() : super(priority: 3);
 
   late final Component foreground = _GateForeground(this);
   double _open = 0;
@@ -309,7 +309,7 @@ class ReturnHomeGate extends Component with HasGameReference<ReturnHomeGame> {
 
 class _GateForeground extends Component {
   _GateForeground(this.gate) : super(priority: 7);
-  final ReturnHomeGate gate;
+  final AdventureGate gate;
 
   @override
   void render(Canvas canvas) => gate.renderForeground(canvas);

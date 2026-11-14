@@ -7,14 +7,14 @@ import 'package:flutter/painting.dart';
 import '../cats/cat_animations.dart';
 import '../cats/cat_state.dart';
 import '../constants.dart';
-import 'return_home_game.dart';
-import 'return_home_road.dart';
+import 'adventure_game.dart';
+import 'adventure_road.dart';
 
 /// The player: joystick steering, a knockback that costs progress, the black
 /// cat's shadow form, and the clamp that keeps its paws on the curving lane.
-class ReturnHomeCat extends SpriteAnimationGroupComponent<CatState>
-    with HasGameReference<ReturnHomeGame> {
-  ReturnHomeCat()
+class AdventureCat extends SpriteAnimationGroupComponent<CatState>
+    with HasGameReference<AdventureGame> {
+  AdventureCat()
       : super(
             position: Vector2(0, 0),
             size: Vector2(catWidth, catHeight),
@@ -99,7 +99,7 @@ class ReturnHomeCat extends SpriteAnimationGroupComponent<CatState>
     await super.onLoad();
     animations = await loadCatAnimations(game.images, game.selectedCat);
     position = Vector2(
-        ReturnHomeRoad.startX, game.road.centerY(_bodyCenterX) - size.y / 2);
+        AdventureRoad.startX, game.road.centerY(_bodyCenterX) - size.y / 2);
   }
 
   Future<void> changeType(String type) async {
@@ -169,7 +169,7 @@ class ReturnHomeCat extends SpriteAnimationGroupComponent<CatState>
     final wasBlocked = ignoresObstacles || game.blockedByLog(hitbox);
     final previous = position.clone();
     position += delta;
-    position.x = position.x.clamp(ReturnHomeRoad.startX, game.road.endX);
+    position.x = position.x.clamp(AdventureRoad.startX, game.road.endX);
     _clampToLane();
     if (wasBlocked || !game.blockedByLog(hitbox)) return;
     position.setFrom(previous);
@@ -201,7 +201,7 @@ class ReturnHomeCat extends SpriteAnimationGroupComponent<CatState>
         if (dir.x.abs() > .01) _facing = dir.x.sign;
       case 'calico':
         // Patches up one heart, never above the starting count.
-        if (game.lives < ReturnHomeGame.startingLives) {
+        if (game.lives < AdventureGame.startingLives) {
           game.lives += 1;
         } else {
           shield = true;
@@ -221,7 +221,7 @@ class ReturnHomeCat extends SpriteAnimationGroupComponent<CatState>
         Vector2(hitboxLeft + hitboxWidth / 2, hitboxTop + hitboxHeight / 2);
     for (var k = 1.0; k >= 0; k -= .1) {
       position = from + (to - from) * k;
-      position.x = position.x.clamp(ReturnHomeRoad.startX, game.road.endX);
+      position.x = position.x.clamp(AdventureRoad.startX, game.road.endX);
       _clampToLane();
       if (!game.blockedByLog(hitbox)) break;
     }

@@ -9,7 +9,7 @@ import 'camp_screen.dart';
 import 'fishing_screen.dart';
 import 'game_screen.dart';
 import 'level_select_screen.dart';
-import 'return_home_screen.dart';
+import 'adventure_screen.dart';
 import 'herd_screen.dart';
 import '../widgets/game_logo.dart';
 import '../widgets/home_background_painter.dart';
@@ -60,6 +60,8 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
   Future<void> _open(Widget screen) async {
     await Navigator.of(context)
         .push(MaterialPageRoute<void>(builder: (_) => screen));
+    // Records such as the night-shift best show on the mode tiles.
+    if (mounted) setState(() {});
   }
 
   @override
@@ -152,19 +154,22 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
               onPressed: () => _open(const FishingScreen()),
             ),
             _ModeTile(
-              title: 'MÈO VỀ NHÀ',
-              icon: ModeIconKind.returnHome,
-              color: DS.modeReturnHome,
-              onPressed: () => _open(const ReturnHomeScreen()),
+              title: 'MÈO PHIÊU LƯU',
+              icon: ModeIconKind.adventure,
+              color: DS.modeAdventure,
+              onPressed: () => _open(const AdventureScreen()),
             ),
             _ModeTile(
-              title: 'CỨU HỘ VÔ HẠN',
-              icon: ModeIconKind.rescue,
-              color: DS.modeRescue,
+              title: 'CA TRỰC ĐÊM',
+              subtitle: CampState.instance.bestNight > 0
+                  ? 'Kỷ lục: đêm ${CampState.instance.bestNight}'
+                  : null,
+              icon: ModeIconKind.nightShift,
+              color: DS.modeNightShift,
               onPressed: () => _open(const GameScreen(level: infiniteLevel)),
             ),
             _ModeTile(
-              title: 'DẪN ĐÀN VỀ NHÀ',
+              title: 'DẪN ĐÀN',
               icon: ModeIconKind.herd,
               color: DS.modeHerd,
               onPressed: () => _open(const HerdScreen()),
@@ -208,8 +213,12 @@ class _ModeTile extends StatelessWidget {
     required this.icon,
     required this.color,
     required this.onPressed,
+    this.subtitle,
   });
   final String title;
+
+  /// Small line under the title, e.g. a record.
+  final String? subtitle;
   final ModeIconKind icon;
   final Color color;
   final VoidCallback onPressed;
@@ -229,7 +238,7 @@ class _ModeTile extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               ModeIcon(kind: icon, size: 30, onColor: true),
-              const SizedBox(height: DS.spaceSm),
+              SizedBox(height: subtitle == null ? DS.spaceSm : DS.spaceXs),
               Text(title,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
@@ -239,6 +248,14 @@ class _ModeTile extends StatelessWidget {
                       fontSize: DS.fontButton,
                       fontWeight: FontWeight.w900,
                       letterSpacing: .2)),
+              if (subtitle != null)
+                Text(subtitle!,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                        color: Color(0xDDFFFFFF),
+                        fontSize: DS.fontCaption,
+                        fontWeight: FontWeight.w700)),
             ],
           ),
         ),

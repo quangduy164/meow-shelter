@@ -28,7 +28,7 @@ Keep local overrides limited to layout and meaningful domain colours.
 | Component | File | Purpose |
 | --- | --- | --- |
 | `GamePressable` | `widgets/game_pressable.dart` | Raised rectangular/circular action; shared sound, ripple, focus, keyboard input and pressed animation |
-| `RoundGameButton` | `widgets/game_pressable.dart` | Round action with tooltip; also exported from `return_home_buttons.dart` for existing callers |
+| `RoundGameButton` | `widgets/game_pressable.dart` | Round action with tooltip; also exported from `adventure_buttons.dart` for existing callers |
 | `RoundButton` | `widgets/round_button.dart` | Existing icon/glyph shortcut for home and other round actions |
 | `GamePanel` | `widgets/game_surfaces.dart` | Cream card or inset section (`inset: true`) |
 | `GameDialog` | `widgets/game_surfaces.dart` | Common modal surface, border, safe inset and maximum width |
@@ -114,7 +114,7 @@ Additional semantic colours: `surfaceRaised` for inset content,
 `surfaceMuted` for quiet areas, `surfaceGlass` for translucent cards,
 `borderSoft`/`borderMedium` for internal dividers, `success`, `danger` and
 `info` for status, and `selectedFill` for selected items. Mode tiles and badges
-share `modeFishing`, `modeReturnHome`, `modeRescue`, `modeHerd`, `modeCamp`.
+share `modeFishing`, `modeAdventure`, `modeRescue`, `modeHerd`, `modeCamp`.
 
 Text is always bold: titles `w900`, secondary `w600` or regular. Small caps
 labels use letter spacing 1–1.5.
@@ -233,7 +233,7 @@ File: `lib/ui/screens/home_screen.dart`
 ┌────────────────────────────────────────────────────────────┐
 │  (paw) MEOW                ┌───────────┐ ┌───────────┐      │
 │        SHELTER             │ 🐟        │ │ 🚩        │      │
-│  [ ▶  BẮT ĐẦU        ]     │ CÂU CÁ    │ │ MÈO VỀ NHÀ│      │
+│  [ ▶  BẮT ĐẦU        ]     │ CÂU CÁ    │ │ MÈO PHIÊU LƯU│   │
 │  [▦ CHỌN MÀN]             └───────────┘ └───────────┘      │
 │                            ┌───────────┐ ┌───────────┐      │
 │                            │ 🐾 CỨU HỘ │ │ 🏠 TRẠI   │      │
@@ -279,9 +279,9 @@ base that sinks when pressed.
 | Mode | Colour | Icon |
 |---|---|---|
 | CÂU CÁ | `#3E9FB0` | Fish |
-| MÈO VỀ NHÀ | `#5E9A48` | Winding road with a flag |
+| MÈO PHIÊU LƯU | `#5E9A48` | Winding road with a flag |
 | CỨU HỘ VÔ HẠN | `#E0703F` | Paw |
-| DẪN ĐÀN VỀ NHÀ | `#8277B2` | Three cats |
+| DẪN ĐÀN | `#8277B2` | Three cats |
 | TRẠI MÈO | `#C85A7C` | House with a heart |
 
 Each mode must have its own icon; never reuse the house for two modes.

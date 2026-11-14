@@ -12,8 +12,8 @@ import 'round_button.dart';
 import 'skill_glyphs.dart';
 
 /// Previewing a breed never starts the game; only the main action commits it.
-class ReturnHomeCatPicker extends StatefulWidget {
-  const ReturnHomeCatPicker({
+class AdventureCatPicker extends StatefulWidget {
+  const AdventureCatPicker({
     super.key,
     required this.onStart,
     required this.onHome,
@@ -27,10 +27,10 @@ class ReturnHomeCatPicker extends StatefulWidget {
   final String initialCat;
 
   @override
-  State<ReturnHomeCatPicker> createState() => _ReturnHomeCatPickerState();
+  State<AdventureCatPicker> createState() => _AdventureCatPickerState();
 }
 
-class _ReturnHomeCatPickerState extends State<ReturnHomeCatPicker> {
+class _AdventureCatPickerState extends State<AdventureCatPicker> {
   late CatBreed _selected;
   bool _starting = false;
   bool _loadFailed = false;
@@ -51,7 +51,7 @@ class _ReturnHomeCatPickerState extends State<ReturnHomeCatPicker> {
     try {
       await widget.onStart(_selected.id);
     } catch (error) {
-      debugPrint('Could not start Return Home: $error');
+      debugPrint('Could not start Adventure: $error');
       if (mounted) setState(() => _loadFailed = true);
     } finally {
       if (mounted) setState(() => _starting = false);

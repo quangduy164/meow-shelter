@@ -2,22 +2,22 @@ import 'dart:math';
 
 import 'package:flutter/painting.dart';
 
-import 'return_home_road.dart';
+import 'adventure_road.dart';
 
-/// Extra texture for the Return Home landscape: sky gradient, a horizon band
+/// Extra texture for the Adventure landscape: sky gradient, a horizon band
 /// with each stretch's own far silhouettes, grass tufts and flowers, and a
 /// surface pattern on the road. Everything is seeded and recorded once into
 /// the cached background picture, so detail costs nothing per frame.
 
 /// Picks a biome colour at world x, blended across stretch borders.
 typedef BiomeTone = Color Function(
-    double x, Color Function(ReturnHomeBiome biome) pick);
+    double x, Color Function(AdventureBiome biome) pick);
 
 Color _mix(Color a, Color b, double t) => Color.lerp(a, b, t)!;
 
 /// Vertical sky gradient: deeper at the top, hazy and light at the horizon.
 void paintSkyGradient(
-    Canvas canvas, ReturnHomeRoad road, double skyHeight, BiomeTone tone) {
+    Canvas canvas, AdventureRoad road, double skyHeight, BiomeTone tone) {
   final w = road.worldWidth;
   const columns = 320;
   final dx = w / columns;
@@ -45,7 +45,7 @@ void paintSkyGradient(
 /// Far scenery sitting on the horizon: two layers of soft hills tinted
 /// toward the sky, topped with each stretch's landmark silhouettes.
 void paintHorizon(
-    Canvas canvas, ReturnHomeRoad road, double skyHeight, BiomeTone tone) {
+    Canvas canvas, AdventureRoad road, double skyHeight, BiomeTone tone) {
   final w = road.worldWidth;
   final h = road.viewportHeight;
   const step = 24.0;
@@ -78,18 +78,18 @@ void paintHorizon(
     final far = _mix(tone(x, (b) => b.grass), tone(x, (b) => b.sky), .42);
     final dark = _mix(far, const Color(0xFF1E3B2A), .18);
     switch (biome.scenery) {
-      case ReturnHomeScenery.fence:
-      case ReturnHomeScenery.garden:
-      case ReturnHomeScenery.lane:
+      case AdventureScenery.fence:
+      case AdventureScenery.garden:
+      case AdventureScenery.lane:
         _farTree(canvas, base, h * (.035 + random.nextDouble() * .02), dark);
-      case ReturnHomeScenery.stream:
-      case ReturnHomeScenery.bridge:
+      case AdventureScenery.stream:
+      case AdventureScenery.bridge:
         if (random.nextDouble() < .45) {
           _farPeak(canvas, base, h * (.07 + random.nextDouble() * .04), far);
         } else {
           _farTree(canvas, base, h * .03, dark);
         }
-      case ReturnHomeScenery.bamboo:
+      case AdventureScenery.bamboo:
         for (var k = 0; k < 4; k++) {
           final p = base + Offset(k * 7.0, 0);
           final top = p - Offset(0, h * (.05 + random.nextDouble() * .03));
@@ -105,14 +105,14 @@ void paintHorizon(
                   center: top + const Offset(4, 2), width: 10, height: 4),
               Paint()..color = dark);
         }
-      case ReturnHomeScenery.field:
+      case AdventureScenery.field:
         if (random.nextDouble() < .3) {
           _farWindmill(canvas, base, h * .07, dark);
         } else {
           canvas.drawOval(Rect.fromCenter(center: base, width: 14, height: 8),
               Paint()..color = _mix(const Color(0xFFD8B256), far, .45));
         }
-      case ReturnHomeScenery.village:
+      case AdventureScenery.village:
         _farRoofs(canvas, base, h, random, dark);
     }
   }
@@ -195,7 +195,7 @@ void _farRoofs(
 /// Grass texture on both verges: soft light/dark patches, tufts, little
 /// flowers and pebbles. Drawn before the road so the road covers stray marks.
 void paintGrassDetail(
-    Canvas canvas, ReturnHomeRoad road, double skyHeight, BiomeTone tone) {
+    Canvas canvas, AdventureRoad road, double skyHeight, BiomeTone tone) {
   final w = road.worldWidth;
   final h = road.viewportHeight;
   final random = Random(29);
@@ -234,7 +234,7 @@ void paintGrassDetail(
             canvas,
             p,
             5 + random.nextDouble() * 5,
-            scenery == ReturnHomeScenery.field
+            scenery == AdventureScenery.field
                 ? _mix(dark, const Color(0xFFB8952E), .5)
                 : dark);
       } else if (roll < .92) {
@@ -275,7 +275,7 @@ void _tuft(Canvas canvas, Offset p, double size, Color color) {
 
 /// Surface pattern on the lane, chosen per stretch: pebbles and wheel ruts on
 /// dirt, cobbles in the village, flat paving slabs on the lane home.
-void paintRoadDetail(Canvas canvas, ReturnHomeRoad road, BiomeTone tone) {
+void paintRoadDetail(Canvas canvas, AdventureRoad road, BiomeTone tone) {
   final w = road.worldWidth;
   final random = Random(41);
   for (var x = 20.0; x < w - 20; x += 9) {
@@ -286,10 +286,10 @@ void paintRoadDetail(Canvas canvas, ReturnHomeRoad road, BiomeTone tone) {
     final dark = _mix(roadColor, const Color(0xFF3A2414), .22);
     final light = _mix(roadColor, const Color(0xFFFFFFFF), .3);
     switch (biome.scenery) {
-      case ReturnHomeScenery.bridge:
+      case AdventureScenery.bridge:
         // Planks are painted with the bridge props.
         break;
-      case ReturnHomeScenery.village:
+      case AdventureScenery.village:
         // Cobbles: staggered rounded stones across the street.
         if ((x / 9).round() % 2 == 0) {
           final rows = (half * 2 / 13).floor();
@@ -312,7 +312,7 @@ void paintRoadDetail(Canvas canvas, ReturnHomeRoad road, BiomeTone tone) {
                 Paint()..color = light.withOpacity(.18));
           }
         }
-      case ReturnHomeScenery.lane:
+      case AdventureScenery.lane:
         // Paving slabs with thin joints every few steps.
         if ((x / 9).round() % 5 == 0) {
           canvas.drawLine(

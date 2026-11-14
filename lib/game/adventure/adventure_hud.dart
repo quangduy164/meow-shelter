@@ -6,7 +6,7 @@ typedef RouteStop = ({double at, Color color, String name});
 const _ink = Color(0xFF5A3214);
 const _cream = Color(0xFFFFF4DA);
 
-void paintReturnHomeHud(
+void paintAdventureHud(
   Canvas canvas, {
   required Size size,
   required double progress,
@@ -67,7 +67,7 @@ void paintReturnHomeHud(
   for (var i = 0; i < 3; i++) {
     _heart(canvas, Offset(panel.left + 19 + i * 21, rowY), i < lives);
   }
-  paintReturnHomeFishIcon(canvas, Offset(panel.left + 105, rowY));
+  paintAdventureFishIcon(canvas, Offset(panel.left + 105, rowY));
   _label(
       canvas,
       fish.toString(),
@@ -183,7 +183,7 @@ void _heart(Canvas canvas, Offset c, bool full) {
 }
 
 /// Shared by the in-game HUD and the victory card.
-void paintReturnHomeFishIcon(Canvas canvas, Offset c) {
+void paintAdventureFishIcon(Canvas canvas, Offset c) {
   final paint = Paint()..color = const Color(0xFF579FA0);
   canvas.drawPath(
       Path()

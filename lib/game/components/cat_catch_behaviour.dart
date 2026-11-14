@@ -148,6 +148,32 @@ extension CatCatchBehaviour on CatComponent {
     }
   }
 
+  /// Whether the Himalaya helper's blessing can fill this cat up now.
+  bool get canBless =>
+      isLoaded &&
+      !_isDelivered &&
+      !_isDragged &&
+      !_isDropWrong &&
+      !_isEscaping &&
+      !catchWindow.canCatch;
+
+  /// Night-shift blessing: the cat is full at once and ready to carry.
+  void bless() {
+    fishTarget = null;
+    _meals = _mealsNeeded;
+    _playTaps = 0;
+    hasEaten = true;
+    _dodgeTime = 0;
+    _isVanishing = false;
+    _hasTeleported = false;
+    _isTapTriggered = false;
+    _skillActive = false;
+    _velocityY = 0;
+    _setState(CatState.idle);
+    catchWindow.open(catType == 'orange' ? CatCatchRule.orangeNap : 1);
+    _dialogue.say('Được ban phước, ngoan rồi!');
+  }
+
   /// Calico ignores fish; three quick taps tire it out instead.
   void _play() {
     _playTaps += 1;

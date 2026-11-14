@@ -3,8 +3,8 @@ import 'dart:math';
 import 'package:flame/components.dart';
 import 'package:flutter/painting.dart';
 
-import 'return_home_road.dart';
-import 'return_home_view.dart';
+import 'adventure_road.dart';
+import 'adventure_view.dart';
 
 /// A shallow stream cutting across the lane. Paws must stay on a stone; water
 /// costs one heart and sends the cat back to the near bank.
@@ -12,8 +12,8 @@ import 'return_home_view.dart';
 /// The stones drift up and down the lane, each at its own pace, so the dry
 /// path only opens when two neighbours line up. The cat has to wait on a stone
 /// (which carries it along) and hop across at the right moment.
-class ReturnHomeCrossing extends PositionComponent {
-  ReturnHomeCrossing({required this.road, required this.centerFraction})
+class AdventureCrossing extends PositionComponent {
+  AdventureCrossing({required this.road, required this.centerFraction})
       : super(priority: 1) {
     _stones = List.generate(_lanes.length, (_) => Offset.zero);
     _previous = List.generate(_lanes.length, (_) => Offset.zero);
@@ -21,7 +21,7 @@ class ReturnHomeCrossing extends PositionComponent {
     _previous.setAll(0, _stones);
   }
 
-  final ReturnHomeRoad road;
+  final AdventureRoad road;
   final double centerFraction;
   static const double crossingWidth = 240;
 

@@ -1,7 +1,7 @@
 import '../design.dart';
 import 'package:flutter/material.dart';
 
-enum ModeIconKind { catchCat, fishing, rescue, returnHome, camp, herd }
+enum ModeIconKind { catchCat, fishing, nightShift, adventure, camp, herd }
 
 /// Flat mode badges: one colored tile with a single white symbol.
 class ModeIcon extends StatelessWidget {
@@ -31,8 +31,8 @@ class _ModeIconPainter extends CustomPainter {
     final color = switch (kind) {
       ModeIconKind.catchCat => const Color(0xFFD9657B),
       ModeIconKind.fishing => DS.modeFishing,
-      ModeIconKind.rescue => DS.modeRescue,
-      ModeIconKind.returnHome => DS.modeReturnHome,
+      ModeIconKind.nightShift => DS.modeNightShift,
+      ModeIconKind.adventure => DS.modeAdventure,
       ModeIconKind.camp => DS.modeCamp,
       ModeIconKind.herd => DS.modeHerd,
     };
@@ -81,21 +81,67 @@ class _ModeIconPainter extends CustomPainter {
               ..close(),
             white);
         canvas.drawCircle(const Offset(18, 26), 2.2, Paint()..color = color);
-      case ModeIconKind.rescue:
+      case ModeIconKind.nightShift:
+        // Crescent moon, two stars and a hanging lantern.
+        canvas.drawPath(
+            Path.combine(
+                PathOperation.difference,
+                Path()
+                  ..addOval(Rect.fromCircle(
+                      center: const Offset(21, 25), radius: 13)),
+                Path()
+                  ..addOval(Rect.fromCircle(
+                      center: const Offset(28, 19), radius: 11))),
+            white);
+        for (final (c, r) in const [
+          (Offset(33, 12), 2.6),
+          (Offset(13, 44), 2.0)
+        ]) {
+          canvas.drawPath(
+              Path()
+                ..moveTo(c.dx, c.dy - r * 1.6)
+                ..lineTo(c.dx + r * .5, c.dy - r * .5)
+                ..lineTo(c.dx + r * 1.6, c.dy)
+                ..lineTo(c.dx + r * .5, c.dy + r * .5)
+                ..lineTo(c.dx, c.dy + r * 1.6)
+                ..lineTo(c.dx - r * .5, c.dy + r * .5)
+                ..lineTo(c.dx - r * 1.6, c.dy)
+                ..lineTo(c.dx - r * .5, c.dy - r * .5)
+                ..close(),
+              white);
+        }
+        canvas.drawLine(
+            const Offset(40, 18),
+            const Offset(40, 24),
+            Paint()
+              ..color = Colors.white
+              ..strokeWidth = 2);
+        canvas.drawRRect(
+            RRect.fromRectAndRadius(
+                const Rect.fromLTWH(37, 23, 6, 3), const Radius.circular(1)),
+            white);
         canvas.drawOval(
             Rect.fromCenter(
-                center: const Offset(28, 35), width: 20, height: 16),
+                center: const Offset(40, 34), width: 14, height: 16),
             white);
-        for (final toe in const [
-          Offset(16, 23),
-          Offset(24, 17),
-          Offset(32, 17),
-          Offset(40, 23),
-        ]) {
-          canvas.drawOval(
-              Rect.fromCenter(center: toe, width: 8, height: 10), white);
-        }
-      case ModeIconKind.returnHome:
+        final slit = Paint()
+          ..color = onColor ? const Color(0x664E5BA6) : color
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 1.4;
+        canvas.drawLine(const Offset(40, 27.5), const Offset(40, 40.5), slit);
+        canvas.drawLine(const Offset(36, 29), const Offset(36, 39), slit);
+        canvas.drawLine(const Offset(44, 29), const Offset(44, 39), slit);
+        canvas.drawRRect(
+            RRect.fromRectAndRadius(
+                const Rect.fromLTWH(37, 41.5, 6, 3), const Radius.circular(1)),
+            white);
+        canvas.drawLine(
+            const Offset(40, 44),
+            const Offset(40, 48),
+            Paint()
+              ..color = Colors.white
+              ..strokeWidth = 1.6);
+      case ModeIconKind.adventure:
         final road = Paint()
           ..color = Colors.white
           ..style = PaintingStyle.stroke

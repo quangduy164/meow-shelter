@@ -3,11 +3,11 @@ import 'dart:math';
 import 'package:flame/components.dart';
 import 'package:flutter/painting.dart';
 
-import 'return_home_obstacle.dart';
-import 'return_home_skills.dart';
+import 'adventure_obstacle.dart';
+import 'adventure_skills.dart';
 
 /// Boss summons share hazard targeting, freezing and damage handling.
-class DragonBrood extends ReturnHomeObstacle {
+class DragonBrood extends AdventureObstacle {
   DragonBrood(
       {required super.road,
       required super.position,
@@ -15,7 +15,7 @@ class DragonBrood extends ReturnHomeObstacle {
       required this.left,
       required this.right,
       required this.onShoot})
-      : super(kind: ReturnHomeObstacleKind.crab) {
+      : super(kind: AdventureObstacleKind.crab) {
     priority = 6;
   }
 
@@ -63,7 +63,7 @@ class DragonBrood extends ReturnHomeObstacle {
     age += dt;
     if (!wasHatched && hatched) {
       damage = 0;
-      parent?.add(ReturnHomeBurst(
+      parent?.add(AdventureBurst(
           position: position.clone(),
           color: const Color(0xFFFFBC76),
           fiery: true));

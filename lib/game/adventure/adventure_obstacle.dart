@@ -3,11 +3,11 @@ import 'dart:math';
 import 'package:flame/components.dart';
 import 'package:flutter/painting.dart';
 
-import 'return_home_hazard_art.dart';
-import 'return_home_road.dart';
-import 'return_home_skills.dart';
+import 'adventure_hazard_art.dart';
+import 'adventure_road.dart';
+import 'adventure_skills.dart';
 
-enum ReturnHomeObstacleKind { spikes, rock, log, bird, spring, crab }
+enum AdventureObstacleKind { spikes, rock, log, bird, spring, crab }
 
 /// How long a crab rests at a lane edge, snapping its claws, before turning.
 const double crabPause = .55;
@@ -53,15 +53,15 @@ const double wallRestitution = .55;
 
 /// One hazard on the road: how it moves, what its visible shape is and which
 /// rect counts as a hit. Placement is the spawner's business.
-class ReturnHomeObstacle extends PositionComponent {
-  ReturnHomeObstacle({
+class AdventureObstacle extends PositionComponent {
+  AdventureObstacle({
     required this.kind,
     required this.road,
     required Vector2 position,
   }) : super(position: position, size: Vector2.all(54), anchor: Anchor.center);
 
-  final ReturnHomeObstacleKind kind;
-  final ReturnHomeRoad road;
+  final AdventureObstacleKind kind;
+  final AdventureRoad road;
   Vector2 velocity = Vector2.zero();
   double angularVelocity = 0;
   bool vertical = false;
@@ -81,21 +81,21 @@ class ReturnHomeObstacle extends PositionComponent {
   /// birds abort their dive. Spikes, logs and springs are fixed in the ground.
   void scare(Vector2 from, double push) {
     switch (kind) {
-      case ReturnHomeObstacleKind.rock:
+      case AdventureObstacleKind.rock:
         final away = position - from;
         if (away.length2 == 0) away.setValues(1, 0);
         velocity = away.normalized() * push;
-      case ReturnHomeObstacleKind.crab:
+      case AdventureObstacleKind.crab:
         final side = position.y >= from.y ? 1.0 : -1.0;
         velocity.y = side * velocity.y.abs();
         springT = 0;
         position.y += side * 28;
-      case ReturnHomeObstacleKind.bird:
+      case AdventureObstacleKind.bird:
         _phase = _BirdPhase.leave;
         harmless = true;
-      case ReturnHomeObstacleKind.spikes:
-      case ReturnHomeObstacleKind.log:
-      case ReturnHomeObstacleKind.spring:
+      case AdventureObstacleKind.spikes:
+      case AdventureObstacleKind.log:
+      case AdventureObstacleKind.spring:
         break;
     }
   }
@@ -119,19 +119,19 @@ class ReturnHomeObstacle extends PositionComponent {
   /// [cat] is the center of the cat's hitbox in world space.
   void updatePhysics(double dt, Offset cat) {
     if (frozen > 0 || dt <= 0) return;
-    if (kind == ReturnHomeObstacleKind.spring) {
+    if (kind == AdventureObstacleKind.spring) {
       springT = max(0, springT - dt);
       return;
     }
-    if (kind == ReturnHomeObstacleKind.bird) {
+    if (kind == AdventureObstacleKind.bird) {
       _updateBird(dt, cat);
       return;
     }
-    if (kind == ReturnHomeObstacleKind.crab) {
+    if (kind == AdventureObstacleKind.crab) {
       _updateCrab(dt);
       return;
     }
-    if (kind != ReturnHomeObstacleKind.rock) return;
+    if (kind != AdventureObstacleKind.rock) return;
     velocity.x -= rockSlope * dt;
     if (velocity.length > rockMaxSpeed) velocity.scaleTo(rockMaxSpeed);
     position += velocity * dt;
@@ -236,7 +236,7 @@ class ReturnHomeObstacle extends PositionComponent {
   }
 
   /// Solid footprint used when hazards collide with each other.
-  Rect get solidRect => kind == ReturnHomeObstacleKind.log
+  Rect get solidRect => kind == AdventureObstacleKind.log
       ? (vertical
           ? Rect.fromCenter(
               center: Offset(position.x - 1, position.y - 3),
@@ -252,17 +252,17 @@ class ReturnHomeObstacle extends PositionComponent {
           height: 20);
 
   bool hits(Rect catBox) {
-    if (kind == ReturnHomeObstacleKind.spring) {
+    if (kind == AdventureObstacleKind.spring) {
       return catBox.overlaps(Rect.fromCenter(
           center: Offset(position.x, position.y), width: 26, height: 14));
     }
-    if (kind == ReturnHomeObstacleKind.spikes) {
+    if (kind == AdventureObstacleKind.spikes) {
       return catBox.overlaps(Rect.fromCenter(
           center: Offset(position.x + 1, position.y + 1),
           width: 34,
           height: 20));
     }
-    if (kind == ReturnHomeObstacleKind.log) {
+    if (kind == AdventureObstacleKind.log) {
       // Trunk plus its rounded end cap, in whichever orientation it is drawn.
       return catBox.overlaps(vertical
           ? Rect.fromCenter(
@@ -274,11 +274,11 @@ class ReturnHomeObstacle extends PositionComponent {
               width: logLength,
               height: 22));
     }
-    if (kind == ReturnHomeObstacleKind.crab) {
+    if (kind == AdventureObstacleKind.crab) {
       return catBox.overlaps(Rect.fromCenter(
           center: Offset(position.x, position.y + 1), width: 34, height: 16));
     }
-    if (kind == ReturnHomeObstacleKind.bird) {
+    if (kind == AdventureObstacleKind.bird) {
       if (harmless) return false;
       // Body and head only; grazing a flapping wingtip stays a near miss.
       return catBox.overlaps(Rect.fromCenter(
@@ -300,23 +300,23 @@ class ReturnHomeObstacle extends PositionComponent {
     canvas.save();
     canvas.translate(size.x / 2, size.y / 2);
     switch (kind) {
-      case ReturnHomeObstacleKind.spikes:
+      case AdventureObstacleKind.spikes:
         paintSpikes(canvas);
-      case ReturnHomeObstacleKind.rock:
+      case AdventureObstacleKind.rock:
         paintRock(canvas, angle);
-      case ReturnHomeObstacleKind.bird:
+      case AdventureObstacleKind.bird:
         paintBird(canvas,
             flap: _flap,
             tilt: _tilt,
             shadowDx: _shadowDx,
             shadowDy: _shadowDy,
             shadowDepth: _shadowDepth);
-      case ReturnHomeObstacleKind.log:
+      case AdventureObstacleKind.log:
         paintLog(canvas, vertical: vertical);
         if (damage > 0) _paintScorch(canvas);
-      case ReturnHomeObstacleKind.spring:
+      case AdventureObstacleKind.spring:
         _paintSpring(canvas);
-      case ReturnHomeObstacleKind.crab:
+      case AdventureObstacleKind.crab:
         paintCrab(canvas, walk: _flap, resting: springT > 0);
     }
     if (comboProjectile) {
@@ -330,10 +330,10 @@ class ReturnHomeObstacle extends PositionComponent {
     }
     if (frozen > 0) {
       switch (kind) {
-        case ReturnHomeObstacleKind.log:
+        case AdventureObstacleKind.log:
           paintIceBlock(canvas, frozen,
               width: vertical ? 34 : 78, height: vertical ? 78 : 34);
-        case ReturnHomeObstacleKind.spring:
+        case AdventureObstacleKind.spring:
           if (springT > 0) paintIceBlock(canvas, frozen, height: 46);
         default:
           paintIceBlock(canvas, frozen);
@@ -343,7 +343,7 @@ class ReturnHomeObstacle extends PositionComponent {
   }
 }
 
-extension on ReturnHomeObstacle {
+extension on AdventureObstacle {
   /// Charred patch and embers on a log that has taken a fireball.
   void _paintScorch(Canvas canvas) {
     final rect = vertical
@@ -488,14 +488,14 @@ extension on ReturnHomeObstacle {
 /// Hazard-vs-hazard physics. Rocks are moving circles; logs and spikes are
 /// fixed bodies. Overlaps are pushed apart so nothing passes through, and the
 /// velocity along the contact normal is reflected with energy loss.
-void resolveObstacleCollisions(List<ReturnHomeObstacle> obstacles) {
+void resolveObstacleCollisions(List<AdventureObstacle> obstacles) {
   final rocks = obstacles
-      .where((o) => o.kind == ReturnHomeObstacleKind.rock)
+      .where((o) => o.kind == AdventureObstacleKind.rock)
       .toList(growable: false);
   final solids = obstacles
       .where((o) =>
-          o.kind == ReturnHomeObstacleKind.log ||
-          o.kind == ReturnHomeObstacleKind.spikes)
+          o.kind == AdventureObstacleKind.log ||
+          o.kind == AdventureObstacleKind.spikes)
       .toList(growable: false);
 
   for (var i = 0; i < rocks.length; i++) {

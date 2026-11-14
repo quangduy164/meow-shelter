@@ -7,7 +7,7 @@
   - `design.dart`: colours, typography, spacing, shapes, motion and Material
     theme (`DS`); see
     `DESIGN.md` at the repo root.
-  - `screens/`: Home, Level Select, Game (Flame host), Fishing, Return Home,
+  - `screens/`: Home, Level Select, Game (Flame host), Fishing, Adventure,
     Camp.
   - `widgets/`: shared pieces such as `CatSprite` / `CatFace` (all sprite
     cropping), `RoundButton`, the catch guide and result overlays, fishing art.
@@ -16,18 +16,24 @@
     These foundations depend on no game mode; screens supply values/callbacks.
 - `game/cats/`: cat data shared by every mode.
   - `cat_breed.dart`: **single source of truth per breed** — name, colour,
-    bed asset, catch rule text, Return Home skill (label, icon, cooldown).
+    bed asset, catch rule text, Adventure skill (label, icon, cooldown).
   - `cat_catch_rule.dart`: catch-rule tuning numbers.
   - `cat_animations.dart`, `cat_state.dart`, `cat_dialogue.dart`.
 - `game/`: the rescue mode (Flame).
-  - `meow_shelter_game.dart`: round flow, rescues, stars.
+  - `meow_shelter_game.dart`: round flow, rescues, stars, and the infinite
+    "night shift" (nights with a quota and clock, cards between nights).
+  - `night_shift.dart`: night-shift data: cards, run progress, helper skills
+    of camp cats (`CatAssist` is what cats read while a helper skill runs).
+    UI lives in `ui/widgets/night_shift_overlays.dart`. Night maps (`NightMap`)
+    are separate from rescue maps; `world/moonlit_yard.dart` is the backyard:
+    lanterns, drifting moonlight and clouds; cats are grabbed only in light.
   - `components/cat_component.dart`: movement, dragging and escapes.
   - `components/cat_catch_behaviour.dart`: per-breed catch rules (part of the
     cat component library).
   - `systems/bait_system.dart`, `catch_window.dart`, `world/`.
-- `game/return_home/`: the Return Home mode. Road and biomes, spawner,
+- `game/adventure/`: the Adventure mode. Road and biomes, spawner,
   obstacles, cat, scenery, HUD, joystick — one concern per file.
-- `game/cat_herd/`: Lead the Herd mode, independent of rescue and Return Home.
+- `game/cat_herd/`: Lead the Herd mode, independent of rescue and Adventure.
   - `herd_round.dart`: deterministic simulation when seeded: recruitment,
     distance-sampled leader trail, followers, patrol hits, scattering,
     delivery, score and win/loss. `reset` starts a fresh round; `update`
@@ -116,14 +122,14 @@
 
 - **New breed:** add a `CatBreed` entry and its sprite sheets, a bed slot in
   `world/shelter_layout.dart`, its catch rule in `cat_catch_behaviour.dart`
-  and its skill effect in `ReturnHomeCat.activateSkill`.
+  and its skill effect in `AdventureCat.activateSkill`.
 - **New level:** add it to a chapter in `levels/levels.dart` with a new id
   (ids 201+; never reuse one). Give it a twist (`fishLimit`, `waveSize`,
   `movingBeds`, `darkness`) or a `bossType`, plus up to two `LevelGoal`s
   (`levels/level_goal.dart`) for stars 2 and 3.
 - **New decoration:** add a `CampDecoration` entry and a case in
   `CampDecorPainter`.
-- **New Return Home area:** add a `ReturnHomeBiome` and a scenery painter.
+- **New Adventure area:** add a `AdventureBiome` and a scenery painter.
 
 ## Rules
 

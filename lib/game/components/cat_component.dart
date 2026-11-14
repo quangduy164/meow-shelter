@@ -15,6 +15,7 @@ import '../../levels/level_config.dart';
 import '../cats/cat_skill.dart';
 import '../cats/cat_dialogue.dart';
 import '../cats/cat_catch_rule.dart';
+import '../night_shift.dart';
 
 part 'cat_catch_behaviour.dart';
 
@@ -34,6 +35,8 @@ class CatComponent extends SpriteAnimationGroupComponent<CatState>
     this.terrainSpeed,
     this.isBoss = false,
     this.onStartled,
+    this.assist,
+    this.inLight,
   })  : catchWindow = CatchWindow(
             readySeconds: level.readySeconds,
             gripSeconds: level.skillFor(catType) == CatSkill.slippery
@@ -48,6 +51,14 @@ class CatComponent extends SpriteAnimationGroupComponent<CatState>
         );
 
   final String catType;
+
+  /// Night-shift helper effects; null outside the night shift.
+  final CatAssist? assist;
+
+  /// Whether the cat stands in lantern or moon light on the night yard.
+  /// Lit cats are calm: no bolting, no tricks, and they wait twice as long.
+  final bool Function(CatComponent cat)? inLight;
+  bool get _calm => assist?.calm == true || inLight?.call(this) == true;
 
   /// Big chapter boss: slower, but needs more fish or taps.
   final bool isBoss;
@@ -77,7 +88,9 @@ class CatComponent extends SpriteAnimationGroupComponent<CatState>
   bool get isLit => catchWindow.canCatch || _isDragged || fishTarget != null;
 
   double get _pace =>
-      level.speedMultiplier * (isBoss ? CatCatchRule.bossPace : 1);
+      level.speedMultiplier *
+      (isBoss ? CatCatchRule.bossPace : 1) *
+      (assist?.pace ?? 1);
 
   void lure(Vector2 target) {
     if (!canLure) return;
@@ -179,6 +192,11 @@ class CatComponent extends SpriteAnimationGroupComponent<CatState>
 
   /// A bolt the player caused; counts against the "no startle" goal.
   void _startle() {
+    // The black helper keeps everyone calm: no bolting, just carry on.
+    if (_calm) {
+      _pickNextAction();
+      return;
+    }
     GameAudio.instance.playRescue(GameSound.catStartle);
     onStartled?.call(this);
     _dodge();
@@ -201,6 +219,7 @@ class CatComponent extends SpriteAnimationGroupComponent<CatState>
   void onDragStart(DragStartEvent event) {
     super.onDragStart(event);
     if (!isPlaying() || _isDropWrong || _isDelivered) return;
+
     if (!catchWindow.grab()) {
       if (_dodgeTime <= 0 && !level.isTutorial) _startle();
       return;
@@ -279,7 +298,9 @@ class CatComponent extends SpriteAnimationGroupComponent<CatState>
     }
     _skillCooldown -= dt;
     final wasReady = catchWindow.canCatch;
-    catchWindow.tick(dt);
+    if (assist?.frozen != true) {
+      catchWindow.tick(inLight?.call(this) == true ? dt * .5 : dt);
+    }
     if (_isDragged) {
       if (catchWindow.grip <= 0) {
         _isDragged = false;
@@ -303,7 +324,7 @@ class CatComponent extends SpriteAnimationGroupComponent<CatState>
     if (target != null) {
       final delta = target - (position + size / 2);
       final distance = delta.length;
-      final speed = catWalkSpeed * _pace * _terrain;
+      final speed = catWalkSpeed * _pace * _terrain * (assist?.lure ?? 1);
       if (distance <= speed * dt + 4) {
         fishTarget = null;
         _lureStuck = 0;
@@ -467,6 +488,7 @@ class CatComponent extends SpriteAnimationGroupComponent<CatState>
       return;
     }
     if (_skillCooldown <= 0 &&
+        !_calm &&
         skill != CatSkill.none &&
         skill != CatSkill.slippery) {
       _skillActive = true;

@@ -6,9 +6,9 @@ import 'dart:typed_data';
 import 'package:flame/components.dart';
 import 'package:flutter/painting.dart';
 
-import 'return_home_road.dart';
-import 'return_home_dragon_brood.dart';
-import 'return_home_skills.dart';
+import 'adventure_road.dart';
+import 'adventure_dragon_brood.dart';
+import 'adventure_skills.dart';
 
 /// The fire dragon guarding the lane home. It stands in front of the house on
 /// the final screen; the cat must beat it to walk the last metres.
@@ -20,12 +20,12 @@ import 'return_home_skills.dart';
 /// Fight rhythm: every big move is telegraphed (red zone, ground shadow), and
 /// after a single move or an enraged two-move chain the dragon is tired: its
 /// head drops into the lane, glows, takes extra damage and can be scratched.
-class ReturnHomeDragon extends PositionComponent {
-  ReturnHomeDragon(
+class AdventureDragon extends PositionComponent {
+  AdventureDragon(
       {required this.road, required Vector2 feet, required this.onSound})
       : super(position: feet, priority: 6);
 
-  final ReturnHomeRoad road;
+  final AdventureRoad road;
   final void Function(GameSound sound) onSound;
 
   static const double maxHp = 50;
@@ -281,7 +281,7 @@ class ReturnHomeDragon extends PositionComponent {
           });
       brood.add(child);
       parent?.add(child);
-      parent?.add(ReturnHomeBurst(
+      parent?.add(AdventureBurst(
           position: child.position.clone(), color: const Color(0xFFF69B61)));
     }
   }
@@ -2590,7 +2590,7 @@ class DragonDive extends DragonAttack {
     follow(target);
   }
   final Vector2 home, spot;
-  final ReturnHomeRoad road;
+  final AdventureRoad road;
   final double left, barrierX;
   static const lockAt = .85, impactAt = 1.6, endAt = 2.8, radius = 52.0;
   bool impactNow = false;
@@ -3058,7 +3058,7 @@ class DragonTailSweep extends DragonAttack {
     this.restClock = 0,
   });
 
-  final ReturnHomeRoad road;
+  final AdventureRoad road;
   final double left, right, warn, visualScale;
   final Vector2 root;
   double restClock;
@@ -3213,8 +3213,8 @@ class DragonTailSweep extends DragonAttack {
 }
 
 /// A damage number floating up from where the dragon was hit.
-class ReturnHomeDamageText extends PositionComponent {
-  ReturnHomeDamageText(
+class AdventureDamageText extends PositionComponent {
+  AdventureDamageText(
       {required Vector2 position,
       required this.text,
       this.color = const Color(0xFFFFF4DA)})

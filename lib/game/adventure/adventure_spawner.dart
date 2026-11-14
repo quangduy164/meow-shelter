@@ -2,16 +2,16 @@ import 'dart:math';
 
 import 'package:flame/components.dart';
 
-import 'return_home_obstacle.dart';
-import 'return_home_road.dart';
+import 'adventure_obstacle.dart';
+import 'adventure_road.dart';
 
 /// Owns the hazard list: seeds the opening layout, keeps rocks and birds coming
 /// in from off the right edge and drops whatever has fallen behind the camera.
 ///
 /// Every number that controls pressure is a named parameter here, so a new
 /// hazard type is a `_add...` method plus one case in [seed].
-class ReturnHomeSpawner {
-  ReturnHomeSpawner({
+class AdventureSpawner {
+  AdventureSpawner({
     required this.road,
     required this.world,
     Random? random,
@@ -30,7 +30,7 @@ class ReturnHomeSpawner {
     this.cullBehind = 100,
   }) : random = random ?? Random(42);
 
-  final ReturnHomeRoad road;
+  final AdventureRoad road;
   final World world;
   final Random random;
 
@@ -56,7 +56,7 @@ class ReturnHomeSpawner {
   /// How far past the left edge of view a hazard may fall before it is dropped.
   final double cullBehind;
 
-  final obstacles = <ReturnHomeObstacle>[];
+  final obstacles = <AdventureObstacle>[];
   double _rockTimer = 0;
   double _birdTimer = 2;
 
@@ -126,11 +126,11 @@ class ReturnHomeSpawner {
 
   /// Drops flying/rolling hazards that have fallen behind the camera and returns
   /// them, so the caller can forget any pending contact with them.
-  List<ReturnHomeObstacle> cull(double leftEdge) {
-    final removed = <ReturnHomeObstacle>[];
-    for (final obstacle in List<ReturnHomeObstacle>.of(obstacles)) {
-      final chasing = obstacle.kind == ReturnHomeObstacleKind.rock ||
-          obstacle.kind == ReturnHomeObstacleKind.bird;
+  List<AdventureObstacle> cull(double leftEdge) {
+    final removed = <AdventureObstacle>[];
+    for (final obstacle in List<AdventureObstacle>.of(obstacles)) {
+      final chasing = obstacle.kind == AdventureObstacleKind.rock ||
+          obstacle.kind == AdventureObstacleKind.bird;
       if (!chasing || obstacle.position.x >= leftEdge) continue;
       obstacles.remove(obstacle);
       obstacle.removeFromParent();
@@ -142,8 +142,8 @@ class ReturnHomeSpawner {
   /// Spikes sit at a random depth in the lane; they are small enough that the
   /// cat can always route around them.
   void _addSpikes(double x) {
-    _place(ReturnHomeObstacle(
-        kind: ReturnHomeObstacleKind.spikes,
+    _place(AdventureObstacle(
+        kind: AdventureObstacleKind.spikes,
         road: road,
         position: Vector2(
             x,
@@ -154,8 +154,8 @@ class ReturnHomeSpawner {
   /// Logs hug a road edge, so a blocked lane always leaves the other side free.
   void _addLog(double x) {
     final half = road.halfWidth(x);
-    final obstacle = ReturnHomeObstacle(
-        kind: ReturnHomeObstacleKind.log,
+    final obstacle = AdventureObstacle(
+        kind: AdventureObstacleKind.log,
         road: road,
         position: Vector2(x, road.centerY(x)));
     obstacle.vertical = half * 2 - logLength >= logMinGap && random.nextBool();
@@ -166,8 +166,8 @@ class ReturnHomeSpawner {
 
   /// Hidden springs sit anywhere in the lane and fling the cat backwards.
   void _addSpring(double x) {
-    _place(ReturnHomeObstacle(
-        kind: ReturnHomeObstacleKind.spring,
+    _place(AdventureObstacle(
+        kind: AdventureObstacleKind.spring,
         road: road,
         position: Vector2(
             x,
@@ -178,8 +178,8 @@ class ReturnHomeSpawner {
   /// Crabs walk sideways across the whole lane at a random pace, starting at a
   /// random depth, so the player times a gap instead of just steering around.
   void _addCrab(double x) {
-    final crab = ReturnHomeObstacle(
-        kind: ReturnHomeObstacleKind.crab,
+    final crab = AdventureObstacle(
+        kind: AdventureObstacleKind.crab,
         road: road,
         position: Vector2(x,
             road.centerY(x) + _depth(road.halfWidth(x) - laneHazardClearance)));
@@ -189,8 +189,8 @@ class ReturnHomeSpawner {
   }
 
   void _addRock(double x, {required double speed}) {
-    final rock = ReturnHomeObstacle(
-        kind: ReturnHomeObstacleKind.rock,
+    final rock = AdventureObstacle(
+        kind: AdventureObstacleKind.rock,
         road: road,
         position: Vector2(x,
             road.centerY(x) + _depth(road.halfWidth(x) - rockSpawnClearance)));
@@ -201,8 +201,8 @@ class ReturnHomeSpawner {
   }
 
   void _addBird(double x) {
-    final bird = ReturnHomeObstacle(
-        kind: ReturnHomeObstacleKind.bird,
+    final bird = AdventureObstacle(
+        kind: AdventureObstacleKind.bird,
         road: road,
         position: Vector2(x, road.viewportHeight * birdCruiseHeight));
     bird.velocity = Vector2(-275 - random.nextDouble() * 55, 0);
@@ -211,8 +211,8 @@ class ReturnHomeSpawner {
 
   /// A rock thrown into play by the dragon, rolling left from [at].
   void addRockAt(Vector2 at, {required double speed}) {
-    final rock = ReturnHomeObstacle(
-        kind: ReturnHomeObstacleKind.rock, road: road, position: at.clone());
+    final rock = AdventureObstacle(
+        kind: AdventureObstacleKind.rock, road: road, position: at.clone());
     rock.velocity = Vector2(-speed, (random.nextDouble() * 2 - 1) * 60);
     rock.angularVelocity = -3.5;
     _place(rock);
@@ -223,7 +223,7 @@ class ReturnHomeSpawner {
 
   double _depth(double reach) => (random.nextDouble() * 2 - 1) * reach;
 
-  void _place(ReturnHomeObstacle obstacle) {
+  void _place(AdventureObstacle obstacle) {
     obstacles.add(obstacle);
     world.add(obstacle);
   }

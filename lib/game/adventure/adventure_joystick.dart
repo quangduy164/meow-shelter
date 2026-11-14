@@ -4,8 +4,8 @@ import 'package:flutter/painting.dart';
 
 /// Thumb stick pinned to the viewport: it only reports a normalized delta, so
 /// whatever reads it decides what a full push means.
-class ReturnHomeJoystick extends PositionComponent with DragCallbacks {
-  ReturnHomeJoystick({required Vector2 position})
+class AdventureJoystick extends PositionComponent with DragCallbacks {
+  AdventureJoystick({required Vector2 position})
       : super(
             position: position,
             size: Vector2.all(116),

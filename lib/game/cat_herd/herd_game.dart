@@ -6,7 +6,7 @@ import 'dart:math' as math;
 import 'package:flame/components.dart';
 import 'package:flame/game.dart';
 import 'package:flutter/painting.dart';
-import '../return_home/return_home_joystick.dart';
+import '../adventure/adventure_joystick.dart';
 import 'herd_round.dart';
 import 'herd_scene.dart';
 import 'herd_map.dart';
@@ -41,7 +41,7 @@ class HerdGame extends FlameGame {
     GameAudio.instance.playGameplay(sound, priority: priority);
   }
 
-  late ReturnHomeJoystick _joystick;
+  late AdventureJoystick _joystick;
   final _walk = <String, SpriteAnimation>{};
   final _idle = <String, SpriteAnimation>{};
   bool _ready = false;
@@ -95,7 +95,7 @@ class HerdGame extends FlameGame {
       for (final type in ['orange', 'himalaya', 'scottish', 'calico', 'black'])
         for (final moving in [false, true]) loadSheet(type, moving),
     ]);
-    _joystick = ReturnHomeJoystick(position: Vector2(85, size.y - 75));
+    _joystick = AdventureJoystick(position: Vector2(85, size.y - 75));
     add(_joystick);
     _ready = true;
     round.reset(size);

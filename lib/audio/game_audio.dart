@@ -65,7 +65,7 @@ enum GameSound {
 // Rescue UI: Kenney Interface Sounds (CC0), drop_002, maximize_001,
 // error_003, question_001, confirmation_002/004, back_002.
 // https://opengameart.org/content/interface-sounds
-// Return Home: edited BigSoundBank CC0 1340 (fire), 2205 (ice), 0486 (growl),
+// Adventure: edited BigSoundBank CC0 1340 (fire), 2205 (ice), 0486 (growl),
 // plus the above water/cat recordings and Kenney Interface Sounds (CC0):
 // drop_004, pluck_001, scroll_003, glass_002, minimize_002, question_002,
 // bong_001 and confirmation_001/002/003/004.

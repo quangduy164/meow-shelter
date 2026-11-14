@@ -3,7 +3,7 @@ import 'dart:math';
 import 'package:flutter/painting.dart';
 
 /// Which roadside decoration set a stretch paints.
-enum ReturnHomeScenery {
+enum AdventureScenery {
   fence,
   garden,
   stream,
@@ -17,8 +17,8 @@ enum ReturnHomeScenery {
 /// One stretch of the road. Each stretch has its own palette and scenery and,
 /// more importantly, its own way to play: which hazards appear, how often
 /// rocks and birds arrive, how wide the lane is and whether wind pushes the cat.
-class ReturnHomeBiome {
-  const ReturnHomeBiome({
+class AdventureBiome {
+  const AdventureBiome({
     required this.name,
     required this.from,
     required this.sky,
@@ -43,7 +43,7 @@ class ReturnHomeBiome {
 
   /// World fraction where this stretch begins.
   final double from;
-  final ReturnHomeScenery scenery;
+  final AdventureScenery scenery;
   final Color sky;
   final Color grass;
   final Color road;
@@ -74,9 +74,9 @@ class ReturnHomeBiome {
 
   bool get calm => spikes + logs + springs + crabs == 0 && rockRate == 0;
 
-  static const all = <ReturnHomeBiome>[
+  static const all = <AdventureBiome>[
     // 1. Learn the basics: spikes and slow rocks on a wide dirt road.
-    ReturnHomeBiome(
+    AdventureBiome(
       name: 'Đường đất',
       from: 0,
       sky: Color(0xFF75C8DF),
@@ -88,10 +88,10 @@ class ReturnHomeBiome {
       spikes: .70,
       rockRate: .6,
       rockSpeed: .75,
-      scenery: ReturnHomeScenery.fence,
+      scenery: AdventureScenery.fence,
     ),
     // 2. A narrower garden path full of logs: steering, not dodging.
-    ReturnHomeBiome(
+    AdventureBiome(
       name: 'Vườn sau',
       from: .125,
       sky: Color(0xFF8CCFE0),
@@ -103,10 +103,10 @@ class ReturnHomeBiome {
       spikes: .20,
       logs: .65,
       rockRate: .35,
-      scenery: ReturnHomeScenery.garden,
+      scenery: AdventureScenery.garden,
     ),
     // 3. Drifting stepping stones over the stream; crabs instead of rocks.
-    ReturnHomeBiome(
+    AdventureBiome(
       name: 'Bờ suối',
       from: .25,
       sky: Color(0xFF9BC7D8),
@@ -117,10 +117,10 @@ class ReturnHomeBiome {
       halfWidth: .16,
       spikes: .15,
       crabs: .9,
-      scenery: ReturnHomeScenery.stream,
+      scenery: AdventureScenery.stream,
     ),
     // 4. Hidden springs everywhere under the bamboo.
-    ReturnHomeBiome(
+    AdventureBiome(
       name: 'Rừng tre',
       from: .375,
       sky: Color(0xFF9FD3C6),
@@ -133,10 +133,10 @@ class ReturnHomeBiome {
       logs: .15,
       springs: .55,
       rockRate: .4,
-      scenery: ReturnHomeScenery.bamboo,
+      scenery: AdventureScenery.bamboo,
     ),
     // 5. Wide open field: birds dive constantly, nothing sits on the road.
-    ReturnHomeBiome(
+    AdventureBiome(
       name: 'Cánh đồng',
       from: .50,
       sky: Color(0xFF86CDEB),
@@ -148,10 +148,10 @@ class ReturnHomeBiome {
       spikes: .15,
       rockRate: .3,
       birdRate: 3,
-      scenery: ReturnHomeScenery.field,
+      scenery: AdventureScenery.field,
     ),
     // 6. Narrow bridge with gusts pushing the cat toward the rails.
-    ReturnHomeBiome(
+    AdventureBiome(
       name: 'Cầu gỗ',
       from: .625,
       sky: Color(0xFFA8D4E6),
@@ -163,10 +163,10 @@ class ReturnHomeBiome {
       spikes: .30,
       rockRate: .45,
       wind: 85,
-      scenery: ReturnHomeScenery.bridge,
+      scenery: AdventureScenery.bridge,
     ),
     // 7. Brick village street: fast, frequent rolling rocks.
-    ReturnHomeBiome(
+    AdventureBiome(
       name: 'Làng nhỏ',
       from: .75,
       sky: Color(0xFFB6C6D2),
@@ -180,10 +180,10 @@ class ReturnHomeBiome {
       logs: .10,
       rockRate: 2.2,
       rockSpeed: 1.35,
-      scenery: ReturnHomeScenery.village,
+      scenery: AdventureScenery.village,
     ),
     // 8. The calm lane home: no hazards, just the walk to the door.
-    ReturnHomeBiome(
+    AdventureBiome(
       name: 'Ngõ về nhà',
       from: .875,
       sky: Color(0xFFF2C79A),
@@ -192,7 +192,7 @@ class ReturnHomeBiome {
       roadLight: Color(0xFFEBDDBE),
       edge: Color(0x667E8B5E),
       halfWidth: .18,
-      scenery: ReturnHomeScenery.lane,
+      scenery: AdventureScenery.lane,
     ),
   ];
 }
@@ -200,19 +200,19 @@ class ReturnHomeBiome {
 /// The winding lane, and the single source of truth for "where is the road at
 /// world x". Hazards, the cat's clamp, the rolling rocks and the scenery all
 /// read it, so the curve can be retuned in one place.
-class ReturnHomeRoad {
-  ReturnHomeRoad({
+class AdventureRoad {
+  AdventureRoad({
     this.worldMultiplier = 8,
     this.curveAmplitude = .075,
     this.curveHarmonic = 2.6,
     this.sweepAmplitude = .028,
     this.sweepHarmonic = 1.3,
     this.sweepPhase = 1.1,
-    List<ReturnHomeBiome>? biomes,
-  }) : biomes = biomes ?? ReturnHomeBiome.all;
+    List<AdventureBiome>? biomes,
+  }) : biomes = biomes ?? AdventureBiome.all;
 
-  /// Stretches of the run, ordered by [ReturnHomeBiome.from].
-  final List<ReturnHomeBiome> biomes;
+  /// Stretches of the run, ordered by [AdventureBiome.from].
+  final List<AdventureBiome> biomes;
 
   /// Length of the run in viewport widths.
   final double worldMultiplier;
@@ -241,7 +241,7 @@ class ReturnHomeRoad {
 
   double fraction(double x) => (x / _worldWidth).clamp(0.0, 1.0);
 
-  ReturnHomeBiome biomeAtFraction(double f) {
+  AdventureBiome biomeAtFraction(double f) {
     var match = biomes.first;
     for (final biome in biomes) {
       if (f >= biome.from) match = biome;
@@ -249,7 +249,7 @@ class ReturnHomeRoad {
     return match;
   }
 
-  ReturnHomeBiome biomeAt(double x) => biomeAtFraction(fraction(x));
+  AdventureBiome biomeAt(double x) => biomeAtFraction(fraction(x));
 
   /// Vertical center of the lane at world x.
   double centerY(double x) {
@@ -273,7 +273,7 @@ class ReturnHomeRoad {
   /// Half-length of the smooth hand-over between two stretches, in world px.
   static const double borderBlend = 70;
 
-  double _blended(double x, double Function(ReturnHomeBiome biome) pick) {
+  double _blended(double x, double Function(AdventureBiome biome) pick) {
     for (var i = 1; i < biomes.length; i++) {
       final d = x - biomes[i].from * _worldWidth;
       if (d.abs() >= borderBlend) continue;

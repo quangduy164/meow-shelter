@@ -60,7 +60,7 @@ Chế độ cứu hộ riêng dùng `infiniteLevel`, dành cho việc tiếp t�
 - Có thể câu trúng đồ thất lạc như dép, ủng hoặc lon rỗng.
 - Cá được lưu vào bộ sưu tập. Cho mèo ăn **không tiêu hao** số cá đã sưu tập.
 
-### Mèo về nhà
+### Mèo phiêu lưu
 
 Điều khiển mèo bằng joystick, thu thập cá/tim và vượt các khu vực:
 
@@ -80,9 +80,9 @@ Chế độ cứu hộ riêng dùng `infiniteLevel`, dành cho việc tiếp t�
 | Scottish | Khiên phản chấn | Tiếng gầm, Tường đá, Phản đòn |
 | Tam thể | Phúc lành | Móng nam châm, Mắt mèo, Sấm sét |
 
-Tên và combo nằm trong `lib/game/cats/cat_breed.dart`. Tầm đánh, hồi chiêu, dạng vùng nhắm và thời gian hiệu lực nằm trong `lib/game/cats/home_attack.dart`; xử lý va chạm và hiệu ứng nằm trong `lib/game/return_home/`.
+Tên và combo nằm trong `lib/game/cats/cat_breed.dart`. Tầm đánh, hồi chiêu, dạng vùng nhắm và thời gian hiệu lực nằm trong `lib/game/cats/home_attack.dart`; xử lý va chạm và hiệu ứng nằm trong `lib/game/adventure/`.
 
-### Dẫn đàn về nhà
+### Dẫn đàn
 
 Dùng joystick dẫn mèo đầu đàn đến các nhóm mèo rồi đưa đàn về nhà. Mèo đi sau bám theo đường di chuyển của đầu đàn và tìm đường vòng qua vật cản.
 
@@ -99,7 +99,7 @@ Dùng joystick dẫn mèo đầu đàn đến các nhóm mèo rồi đưa đàn 
 - Chạm để vuốt ve, kéo để bế mèo. Độ thân thiết được lưu theo loài.
 - Mua đồ trang trí và kéo thả để sắp xếp; vị trí được lưu lại.
 - Tiền hiển thị **bên trong Cửa hàng**, không nằm trên homepage hoặc thanh chính của trại.
-- Đạt ngưỡng thân thiết giúp giảm thời gian hồi kỹ năng chính trong Mèo về nhà.
+- Đạt ngưỡng thân thiết giúp giảm thời gian hồi kỹ năng chính trong Mèo phiêu lưu.
 
 ## Giao diện và âm thanh
 
@@ -140,7 +140,7 @@ lib/
 │   ├── components/           # Mèo, cá, ổ, HUD và hướng dẫn cứu hộ
 │   ├── systems/              # Hệ thống mồi cá
 │   ├── world/                # Bố cục sân và phong cảnh bản đồ
-│   ├── return_home/          # Đường về nhà, bẫy, kỹ năng và boss
+│   ├── adventure/          # Đường về nhà, bẫy, kỹ năng và boss
 │   └── cat_herd/             # Dẫn đàn, tìm đường, bản đồ và mô phỏng
 └── ui/
     ├── screens/              # Màn Flutter chứa giao diện/game
@@ -162,8 +162,8 @@ lib/
 | Logo và mũ Noel | `lib/ui/widgets/game_logo.dart`, `lib/ui/widgets/santa_hat_painter.dart` |
 | Thông tin mèo, kỹ năng chính, combo | `lib/game/cats/cat_breed.dart` |
 | Tầm đánh, hồi chiêu, loại vùng nhắm | `lib/game/cats/home_attack.dart` |
-| Hiệu ứng kỹ năng | `lib/game/return_home/return_home_skills.dart` |
-| Khu vực và rải bẫy | `lib/game/return_home/return_home_road.dart`, `lib/game/return_home/return_home_spawner.dart` |
+| Hiệu ứng kỹ năng | `lib/game/adventure/adventure_skills.dart` |
+| Khu vực và rải bẫy | `lib/game/adventure/adventure_road.dart`, `lib/game/adventure/adventure_spawner.dart` |
 | Thêm/sửa màn cứu hộ | `lib/levels/` |
 | Bản đồ và luật Dẫn đàn | `lib/game/cat_herd/herd_map.dart`, `lib/game/cat_herd/herd_round.dart` |
 | Giá mèo, đồ trang trí, ngưỡng thân thiết | `lib/camp/camp_state.dart` |

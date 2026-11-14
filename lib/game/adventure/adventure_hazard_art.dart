@@ -3,7 +3,7 @@ import 'dart:math';
 import 'package:flutter/painting.dart';
 
 /// Vector art for each hazard. Every painter assumes the canvas origin sits at
-/// the hazard's center, which [ReturnHomeObstacle] sets up once.
+/// the hazard's center, which [AdventureObstacle] sets up once.
 ///
 /// A new hazard is one painter here plus one hitbox in the obstacle.
 void paintSpikes(Canvas canvas) {

@@ -4,8 +4,8 @@ import '../skill_glyph.dart';
 import 'cat_catch_rule.dart';
 import 'home_attack.dart';
 
-/// The Return Home skill of a breed: how it looks on the skill button and how
-/// long it takes to recharge. The effect itself lives in `ReturnHomeCat`.
+/// The Adventure skill of a breed: how it looks on the skill button and how
+/// long it takes to recharge. The effect itself lives in `AdventureCat`.
 class CatHomeSkill {
   const CatHomeSkill(this.label, this.glyph, this.color, this.cooldown);
   final String label;
@@ -19,7 +19,7 @@ class CatHomeSkill {
 /// To add a breed: add an entry here, add its sprite sheets under
 /// `assets/images/Cat/<Folder>/`, then handle its id in the per-breed
 /// behaviour (catch rule in `cat_catch_behaviour.dart`, skill effect in
-/// `ReturnHomeCat.activateSkill`).
+/// `AdventureCat.activateSkill`).
 class CatBreed {
   const CatBreed({
     required this.id,
@@ -43,7 +43,7 @@ class CatBreed {
   final CatCatchRule catchRule;
   final CatHomeSkill homeSkill;
 
-  /// The three secondary Return Home skills, in button order around the main
+  /// The three secondary Adventure skills, in button order around the main
   /// one (left, diagonal, top).
   final List<HomeAttack> attacks;
 

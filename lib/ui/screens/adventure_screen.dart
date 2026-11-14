@@ -3,32 +3,32 @@ import 'package:flutter/material.dart';
 import 'dart:async';
 import 'dart:math';
 
-import '../../game/return_home/return_home_game.dart';
-import '../../game/return_home/return_home_hud.dart';
+import '../../game/adventure/adventure_game.dart';
+import '../../game/adventure/adventure_hud.dart';
 import '../../game/cats/cat_breed.dart';
 import '../design.dart';
 import '../widgets/cat_sprite.dart';
-import '../widgets/return_home_buttons.dart';
+import '../widgets/adventure_buttons.dart';
 import '../widgets/game_glyphs.dart';
 import '../widgets/skill_glyphs.dart';
-import '../widgets/return_home_cat_picker.dart';
+import '../widgets/adventure_cat_picker.dart';
 import '../widgets/game_surfaces.dart';
 
-class ReturnHomeScreen extends StatefulWidget {
-  const ReturnHomeScreen({super.key});
+class AdventureScreen extends StatefulWidget {
+  const AdventureScreen({super.key});
 
   @override
-  State<ReturnHomeScreen> createState() => _ReturnHomeScreenState();
+  State<AdventureScreen> createState() => _AdventureScreenState();
 }
 
-class _ReturnHomeScreenState extends State<ReturnHomeScreen> {
-  late final ReturnHomeGame _game;
+class _AdventureScreenState extends State<AdventureScreen> {
+  late final AdventureGame _game;
   bool _showingComboHelp = false;
 
   @override
   void initState() {
     super.initState();
-    _game = ReturnHomeGame();
+    _game = AdventureGame();
   }
 
   Future<void> _showComboHelp(BuildContext context,
@@ -56,10 +56,10 @@ class _ReturnHomeScreenState extends State<ReturnHomeScreen> {
   Widget build(BuildContext context) {
     _game.hudPadding = MediaQuery.paddingOf(context);
     return Scaffold(
-      body: GameWidget<ReturnHomeGame>(
+      body: GameWidget<AdventureGame>(
         game: _game,
         overlayBuilderMap: {
-          'chooseCat': (context, game) => ReturnHomeCatPicker(
+          'chooseCat': (context, game) => AdventureCatPicker(
               initialCat: game.selectedCat,
               onStart: game.chooseCat,
               onHome: () => Navigator.of(context).pop(),
@@ -75,7 +75,7 @@ class _ReturnHomeScreenState extends State<ReturnHomeScreen> {
                       _ComboHelpButton(
                           onPressed: () => _showComboHelp(context)),
                       const SizedBox(width: DS.spaceSm),
-                      ReturnHomeHomeButton(
+                      AdventureHomeButton(
                           onPressed: () => Navigator.of(context).pop()),
                     ]),
                   ),
@@ -90,7 +90,7 @@ class _ReturnHomeScreenState extends State<ReturnHomeScreen> {
 
 class _VictoryOverlay extends StatelessWidget {
   const _VictoryOverlay({required this.game});
-  final ReturnHomeGame game;
+  final AdventureGame game;
 
   @override
   Widget build(BuildContext context) {
@@ -185,7 +185,7 @@ class _VictoryOverlay extends StatelessWidget {
                     style: DS.secondary,
                     onPressed: () => Navigator.of(context).pushReplacement(
                         MaterialPageRoute<void>(
-                            builder: (_) => const ReturnHomeScreen())),
+                            builder: (_) => const AdventureScreen())),
                     icon: const Icon(Icons.replay_rounded, size: 20),
                     label: const Text('Chơi lại',
                         style: TextStyle(
@@ -217,7 +217,7 @@ class _VictoryFishPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) =>
-      paintReturnHomeFishIcon(canvas, size.center(Offset.zero));
+      paintAdventureFishIcon(canvas, size.center(Offset.zero));
 
   @override
   bool shouldRepaint(covariant _VictoryFishPainter oldDelegate) => false;
@@ -225,7 +225,7 @@ class _VictoryFishPainter extends CustomPainter {
 
 class _SkillButton extends StatefulWidget {
   const _SkillButton({required this.game});
-  final ReturnHomeGame game;
+  final AdventureGame game;
 
   @override
   State<_SkillButton> createState() => _SkillButtonState();
@@ -256,7 +256,7 @@ class _SkillButtonState extends State<_SkillButton> {
     final recall = game.canRecallDecoy(slot);
     final label = recall ? 'Đến phân thân' : attack.label;
     return Column(mainAxisSize: MainAxisSize.min, children: [
-      ReturnHomeAimButton(
+      AdventureAimButton(
         key: ValueKey(attack),
         label: label,
         glyph: recall ? CatBreed.black.attacks[0].glyph : attack.glyph,
@@ -321,7 +321,7 @@ class _SkillButtonState extends State<_SkillButton> {
               Positioned(
                 left: mainCenter.dx - main / 2,
                 top: mainCenter.dy - main / 2,
-                child: ReturnHomeSkillButton(
+                child: AdventureSkillButton(
                   catType: game.selectedCat,
                   size: main,
                   ready: game.skillReady,
@@ -347,7 +347,7 @@ class _SkillButtonState extends State<_SkillButton> {
             child: SizedBox.square(
               dimension: 76,
               child: Center(
-                child: ReturnHomeCancelButton(key: _cancelKey, hot: _cancelHot),
+                child: AdventureCancelButton(key: _cancelKey, hot: _cancelHot),
               ),
             ),
           ),

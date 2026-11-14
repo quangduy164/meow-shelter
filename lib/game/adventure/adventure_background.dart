@@ -4,17 +4,17 @@ import 'dart:ui' as ui;
 import 'package:flame/components.dart';
 import 'package:flutter/painting.dart';
 
-import 'return_home_details.dart';
-import 'return_home_road.dart';
-import 'return_home_scenery.dart';
+import 'adventure_details.dart';
+import 'adventure_road.dart';
+import 'adventure_scenery.dart';
 
 /// The whole landscape behind the run. It never moves, so it is tessellated
 /// once into a [ui.Picture] and replayed each frame instead of re-drawing a few
 /// hundred vector shapes every tick.
-class ReturnHomeBackground extends PositionComponent {
-  ReturnHomeBackground({required this.road});
+class AdventureBackground extends PositionComponent {
+  AdventureBackground({required this.road});
 
-  final ReturnHomeRoad road;
+  final AdventureRoad road;
 
   /// Columns the world is sliced into for palette blending and road geometry.
   /// Fine enough that colour cross-fades between stretches look smooth.
@@ -82,10 +82,10 @@ class ReturnHomeBackground extends PositionComponent {
     super.onRemove();
   }
 
-  Color _tone(double x, Color Function(ReturnHomeBiome biome) pick) =>
+  Color _tone(double x, Color Function(AdventureBiome biome) pick) =>
       _biomeColor(min(1.0, max(0.0, x / road.worldWidth)), pick);
 
-  Color _biomeColor(double f, Color Function(ReturnHomeBiome biome) pick) {
+  Color _biomeColor(double f, Color Function(AdventureBiome biome) pick) {
     final biomes = road.biomes;
     final biome = road.biomeAtFraction(f);
     final index = biomes.indexOf(biome);
@@ -124,7 +124,7 @@ class ReturnHomeBackground extends PositionComponent {
     // One full pass per layer (shoulder, road, light centre): drawing the
     // layers column by column let each slice's road fill cover the previous
     // slice's light centre and left thin dark seams across the lane.
-    final layers = <(double, double, Color Function(ReturnHomeBiome))>[
+    final layers = <(double, double, Color Function(AdventureBiome))>[
       (1.0, 6, (b) => b.edge),
       (1.0, 0, (b) => b.road),
       (.58, 0, (b) => b.roadLight),
@@ -167,7 +167,7 @@ class ReturnHomeBackground extends PositionComponent {
         paint);
   }
 
-  /// Only biomes with a [ReturnHomeBiome.dash] get centre lines, which is what
+  /// Only biomes with a [AdventureBiome.dash] get centre lines, which is what
   /// separates the paved outer suburb from the dirt tracks before it.
   void _centerDashes(Canvas canvas) {
     for (var x = 60.0; x < road.worldWidth - sceneryEndMargin; x += 96) {

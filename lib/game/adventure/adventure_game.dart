@@ -9,24 +9,24 @@ import 'package:flame/components.dart';
 import 'package:flame/game.dart';
 import 'package:flutter/painting.dart';
 
-import 'return_home_background.dart';
-import 'return_home_cat.dart';
-import 'return_home_crossing.dart';
-import 'return_home_dragon.dart';
-import 'return_home_dragon_brood.dart';
-import 'return_home_hud.dart';
-import 'return_home_gate.dart';
-import 'return_home_joystick.dart';
-import 'return_home_obstacle.dart';
-import 'return_home_pickup.dart';
-import 'return_home_road.dart';
-import 'return_home_skills.dart';
-import 'return_home_spawner.dart';
+import 'adventure_background.dart';
+import 'adventure_cat.dart';
+import 'adventure_crossing.dart';
+import 'adventure_dragon.dart';
+import 'adventure_dragon_brood.dart';
+import 'adventure_hud.dart';
+import 'adventure_gate.dart';
+import 'adventure_joystick.dart';
+import 'adventure_obstacle.dart';
+import 'adventure_pickup.dart';
+import 'adventure_road.dart';
+import 'adventure_skills.dart';
+import 'adventure_spawner.dart';
 
-/// The Return Home mode: owns the road, the hazard spawner, the cat and the run
+/// The Adventure mode: owns the road, the hazard spawner, the cat and the run
 /// state. Everything else is a collaborator that reads [road].
-class ReturnHomeGame extends FlameGame {
-  ReturnHomeGame();
+class AdventureGame extends FlameGame {
+  AdventureGame();
 
   /// Lives at the start, the invulnerability window after a hit, the share of
   /// the final viewport kept free of new hazards, and the skill cooldown.
@@ -34,13 +34,13 @@ class ReturnHomeGame extends FlameGame {
   static const double hitCooldown = .9;
   static const double safeFinishStretch = .45;
 
-  late ReturnHomeJoystick joystick;
-  late ReturnHomeCat _cat;
-  late ReturnHomeSpawner _spawner;
-  final _crossings = <ReturnHomeCrossing>[];
+  late AdventureJoystick joystick;
+  late AdventureCat _cat;
+  late AdventureSpawner _spawner;
+  final _crossings = <AdventureCrossing>[];
 
   /// The winding lane. Resized in place, so collaborators can hold on to it.
-  final ReturnHomeRoad road = ReturnHomeRoad();
+  final AdventureRoad road = AdventureRoad();
 
   double progress = 0;
   int lives = startingLives;
@@ -54,11 +54,11 @@ class ReturnHomeGame extends FlameGame {
   int reward = 0;
   int falls = 0;
   double elapsed = 0;
-  double checkpointX = ReturnHomeRoad.startX;
+  double checkpointX = AdventureRoad.startX;
   double checkpointMessage = 0;
   EdgeInsets hudPadding = EdgeInsets.zero;
   String zoneName = '';
-  final _pickups = <ReturnHomePickup>[];
+  final _pickups = <AdventurePickup>[];
 
   /// The breed's three secondary skills (see HomeAttack) and their state.
   List<HomeAttack> get attacks => CatBreed.of(selectedCat).attacks;
@@ -68,29 +68,29 @@ class ReturnHomeGame extends FlameGame {
   double reflectTime = 0;
   double catEyeTime = 0;
   bool _catEyeExtended = false;
-  final _magnet = ReturnHomeMagnetAura();
-  final _reflectAura = ReturnHomeReflectAura();
-  final _timeAura = ReturnHomeTimeStopAura();
-  late ReturnHomeCatEyeAura _catEyeAura;
-  final _projectiles = <ReturnHomeProjectile>[];
-  final _bolts = <ReturnHomeBolt>[];
-  final _breaths = <ReturnHomeFlameBreath>[];
-  final _bombs = <ReturnHomeFireBomb>[];
-  final _bridges = <ReturnHomeIceBridge>[];
-  final _walls = <ReturnHomeStoneWall>[];
-  ReturnHomeDecoy? _decoy;
-  final _aim = ReturnHomeAimIndicator();
+  final _magnet = AdventureMagnetAura();
+  final _reflectAura = AdventureReflectAura();
+  final _timeAura = AdventureTimeStopAura();
+  late AdventureCatEyeAura _catEyeAura;
+  final _projectiles = <AdventureProjectile>[];
+  final _bolts = <AdventureBolt>[];
+  final _breaths = <AdventureFlameBreath>[];
+  final _bombs = <AdventureFireBomb>[];
+  final _bridges = <AdventureIceBridge>[];
+  final _walls = <AdventureStoneWall>[];
+  AdventureDecoy? _decoy;
+  final _aim = AdventureAimIndicator();
   Offset? _aimStick;
   late World _world;
   int _boltSeed = 0;
-  final _comboRocks = <ReturnHomeObstacle, double>{};
+  final _comboRocks = <AdventureObstacle, double>{};
   double _comboNoticeCooldown = 0;
 
   /// Slot whose button is being held (range preview showing), if any.
   int? aimingSlot;
 
-  /// Boss fight on the final screen (see return_home_dragon.dart).
-  ReturnHomeDragon? _dragon;
+  /// Boss fight on the final screen (see adventure_dragon.dart).
+  AdventureDragon? _dragon;
   bool bossDefeated = false;
   double _scratchCooldown = 0;
   double _bossCamera = 0;
@@ -105,7 +105,7 @@ class ReturnHomeGame extends FlameGame {
   bool get bossTired => (_dragon?.tired ?? 0) > 0;
 
   /// The dragon when skills can hurt it.
-  ReturnHomeDragon? get _boss {
+  AdventureDragon? get _boss {
     final d = _dragon;
     return d != null && !bossDefeated && d.vulnerable ? d : null;
   }
@@ -115,7 +115,7 @@ class ReturnHomeGame extends FlameGame {
   int get stars => 1 + (falls == 0 ? 1 : 0) + (fish >= 10 ? 1 : 0);
 
   double _hitCooldown = 0;
-  final _contacts = <ReturnHomeObstacle>{};
+  final _contacts = <AdventureObstacle>{};
 
   Future<void> chooseCat(String type) async {
     if (started || _choosing) return;
@@ -179,15 +179,15 @@ class ReturnHomeGame extends FlameGame {
         _ => 0,
       };
 
-  static bool _hidden(ReturnHomeObstacle o) =>
-      o.kind == ReturnHomeObstacleKind.spring && o.springT <= 0;
+  static bool _hidden(AdventureObstacle o) =>
+      o.kind == AdventureObstacleKind.spring && o.springT <= 0;
 
   /// Nearest visible hazard within [range], not behind the cat. Hidden springs
   /// stay hidden: auto-aim never gives them away.
-  ReturnHomeObstacle? _autoTarget(double range,
-      {bool Function(ReturnHomeObstacle)? only}) {
+  AdventureObstacle? _autoTarget(double range,
+      {bool Function(AdventureObstacle)? only}) {
     final origin = _castOrigin;
-    ReturnHomeObstacle? best;
+    AdventureObstacle? best;
     var bestDistance = range;
     for (final o in _spawner.obstacles) {
       if (_hidden(o) || (only != null && !only(o))) continue;
@@ -246,7 +246,7 @@ class ReturnHomeGame extends FlameGame {
       final target = switch (attack) {
         HomeAttack.bolt || HomeAttack.fireBomb => _autoTarget(attack.range),
         HomeAttack.stoneWall => _autoTarget(attack.range,
-            only: (o) => o.kind == ReturnHomeObstacleKind.rock),
+            only: (o) => o.kind == AdventureObstacleKind.rock),
         _ => null,
       };
       point = target?.position.clone() ??
@@ -279,7 +279,7 @@ class ReturnHomeGame extends FlameGame {
     }
     if (attack == HomeAttack.shadowStep || attack == HomeAttack.decoy) {
       // Feet must land on the road.
-      point.x = point.x.clamp(ReturnHomeRoad.startX, road.endX).toDouble();
+      point.x = point.x.clamp(AdventureRoad.startX, road.endX).toDouble();
       final half = road.halfWidth(point.x) - 10;
       final center = road.centerY(point.x);
       point.y = point.y.clamp(center - half, center + half).toDouble();
@@ -293,8 +293,8 @@ class ReturnHomeGame extends FlameGame {
   bool _blinkValid(Vector2 center) {
     final box = Rect.fromCenter(
         center: Offset(center.x, center.y),
-        width: ReturnHomeCat.hitboxWidth,
-        height: ReturnHomeCat.hitboxHeight);
+        width: AdventureCat.hitboxWidth,
+        height: AdventureCat.hitboxHeight);
     if (blockedByLog(box)) return false;
     return !_crossings.any((c) => c.inWater(box, dry: _onIce));
   }
@@ -362,9 +362,9 @@ class ReturnHomeGame extends FlameGame {
     final halfSprite = _cat.size.x / 2;
     final minX = bossFight
         ? _arenaLeft + 6 + halfSprite
-        : ReturnHomeRoad.startX + halfSprite;
+        : AdventureRoad.startX + halfSprite;
     final maxX = bossFight
-        ? _dragon!.arenaBarrierX - ReturnHomeCat.hitboxLeft - 80 + halfSprite
+        ? _dragon!.arenaBarrierX - AdventureCat.hitboxLeft - 80 + halfSprite
         : road.endX + halfSprite;
     final towardCat = _catCenter - center;
     final startAngle = atan2(towardCat.y, towardCat.x);
@@ -377,15 +377,15 @@ class ReturnHomeGame extends FlameGame {
         final lane = road.halfWidth(point.x);
         final cy = road.centerY(point.x);
         const hitCenterY =
-            ReturnHomeCat.hitboxTop + ReturnHomeCat.hitboxHeight / 2;
+            AdventureCat.hitboxTop + AdventureCat.hitboxHeight / 2;
         point.y = point.y.clamp(cy - lane - _cat.size.y / 2 + hitCenterY,
-            cy + lane - ReturnHomeCat.pawLine + hitCenterY);
+            cy + lane - AdventureCat.pawLine + hitCenterY);
         if (point.distanceTo(center) > HomeAttack.decoy.radius ||
             !_blinkValid(point)) continue;
         final box = Rect.fromCenter(
             center: Offset(point.x, point.y),
-            width: ReturnHomeCat.hitboxWidth,
-            height: ReturnHomeCat.hitboxHeight);
+            width: AdventureCat.hitboxWidth,
+            height: AdventureCat.hitboxHeight);
         if (_spawner.obstacles
             .any((o) => !_hidden(o) && !o.harmless && o.hits(box))) continue;
         return point;
@@ -398,7 +398,7 @@ class ReturnHomeGame extends FlameGame {
     if (!_blinkValid(target)) return false;
     final from = _catCenter;
     _cat.blinkTo(target);
-    _world.add(ReturnHomeShadowStep(from: from, to: _catCenter));
+    _world.add(AdventureShadowStep(from: from, to: _catCenter));
     final decoy = _decoy;
     if (triggerCombo &&
         decoy != null &&
@@ -419,24 +419,24 @@ class ReturnHomeGame extends FlameGame {
     switch (attack) {
       case HomeAttack.fireball:
       case HomeAttack.iceShard:
-        final shot = ReturnHomeProjectile(
+        final shot = AdventureProjectile(
             position: _castOrigin,
             direction: _aimDirection(attack, stick),
             attack: attack);
         _projectiles.add(shot);
         _world.add(shot);
       case HomeAttack.flameBreath:
-        final breath = ReturnHomeFlameBreath(
+        final breath = AdventureFlameBreath(
             position: _castOrigin, direction: _aimDirection(attack, stick));
         _breaths.add(breath);
         _world.add(breath);
       case HomeAttack.fireBomb:
-        final bomb = ReturnHomeFireBomb(
+        final bomb = AdventureFireBomb(
             from: _castOrigin, target: _aimPoint(attack, stick));
         _bombs.add(bomb);
         _world.add(bomb);
       case HomeAttack.bolt:
-        final bolt = ReturnHomeBolt(
+        final bolt = AdventureBolt(
             position: _aimPoint(attack, stick), seed: _boltSeed++);
         _bolts.add(bolt);
         _world.add(bolt);
@@ -445,7 +445,7 @@ class ReturnHomeGame extends FlameGame {
         return _blinkWithDecoy(target);
       case HomeAttack.decoy:
         _decoy?.removeFromParent();
-        final decoy = ReturnHomeDecoy(
+        final decoy = AdventureDecoy(
             animations: _cat.animations!,
             center: _aimPoint(attack, stick),
             flip: _cat.facing < 0);
@@ -456,7 +456,7 @@ class ReturnHomeGame extends FlameGame {
         _timeAura.start();
       case HomeAttack.frostNova:
         final center = _catCenter;
-        _world.add(ReturnHomeFrostWave(position: center));
+        _world.add(AdventureFrostWave(position: center));
         for (final o in _spawner.obstacles) {
           if (_hidden(o)) continue;
           if (o.position.distanceTo(center) <= attack.radius + 10) {
@@ -472,7 +472,7 @@ class ReturnHomeGame extends FlameGame {
           _damageBoss(1, boss.core);
         }
       case HomeAttack.iceBridge:
-        final bridge = ReturnHomeIceBridge(
+        final bridge = AdventureIceBridge(
             origin: _catCenter, direction: _aimDirection(attack, stick));
         _bridges.add(bridge);
         _world.add(bridge);
@@ -482,7 +482,7 @@ class ReturnHomeGame extends FlameGame {
         final target = _aimPoint(attack, stick);
         var facing = target - _catCenter;
         if (facing.length2 < 1) facing = Vector2(_facing, 0);
-        final wall = ReturnHomeStoneWall(center: target, facing: facing);
+        final wall = AdventureStoneWall(center: target, facing: facing);
         _walls.add(wall);
         _world.add(wall);
       case HomeAttack.reflect:
@@ -499,7 +499,7 @@ class ReturnHomeGame extends FlameGame {
   void freezeOnLanding() {
     final center = _catCenter;
     const radius = 80.0;
-    _world.add(ReturnHomeFrostWave(position: center, radius: radius));
+    _world.add(AdventureFrostWave(position: center, radius: radius));
     for (final o in _spawner.obstacles) {
       if (!_hidden(o) && o.position.distanceTo(center) <= radius) {
         o.frozen = max(o.frozen, 1.2);
@@ -517,7 +517,7 @@ class ReturnHomeGame extends FlameGame {
 
   void extendCatEye() {
     _world.add(
-        ReturnHomeBurst(position: _catCenter, color: const Color(0xFFFFC782)));
+        AdventureBurst(position: _catCenter, color: const Color(0xFFFFC782)));
     if (catEyeTime <= 0 || _catEyeExtended) return;
     _catEyeExtended = true;
     catEyeTime += 2;
@@ -528,11 +528,11 @@ class ReturnHomeGame extends FlameGame {
   /// a short grace window so the cat is not hit while they scatter.
   void _roar() {
     final center = _catCenter;
-    _world.add(ReturnHomeRoarWave(position: center));
+    _world.add(AdventureRoarWave(position: center));
     for (final o in _spawner.obstacles) {
       if (o.position.distanceTo(center) <= roarRadius) {
         o.scare(center, roarPush);
-        if (reflectTime > 0 && o.kind == ReturnHomeObstacleKind.rock) {
+        if (reflectTime > 0 && o.kind == AdventureObstacleKind.rock) {
           _comboRocks[o] = 2.5;
           o.comboProjectile = true;
           _showCombo('GẦM PHẢN CHẤN!', o.position, const Color(0xFF8EE6CC));
@@ -643,19 +643,19 @@ class ReturnHomeGame extends FlameGame {
   }
 
   /// One point of damage; logs need two, everything else breaks at once.
-  void _hurt(ReturnHomeObstacle o) {
+  void _hurt(AdventureObstacle o) {
     GameAudio.instance.playGameplay(GameSound.homeImpact);
     o.damage += 1;
     if (o is DragonBrood) {
       if (o.damage >= 2) _destroy(o);
-    } else if (o.kind != ReturnHomeObstacleKind.log || o.damage >= 2) {
+    } else if (o.kind != AdventureObstacleKind.log || o.damage >= 2) {
       _destroy(o);
     }
   }
 
   void _resolveAttacks() {
     final boss = _boss;
-    for (final shot in List<ReturnHomeProjectile>.of(_projectiles)) {
+    for (final shot in List<AdventureProjectile>.of(_projectiles)) {
       if (!shot.icy) {
         final patch = _bombs
             .where((b) =>
@@ -680,7 +680,7 @@ class ReturnHomeGame extends FlameGame {
             ..interrupt();
           _damageBoss(shatter ? 3 : 1, shot.position);
           if (shatter) {
-            _world.add(ReturnHomeBurst(
+            _world.add(AdventureBurst(
                 position: shot.position.clone(),
                 color: const Color(0xFFBDE8FA)));
             _showCombo('PHÁ BĂNG!', shot.position, const Color(0xFFBDE8FA));
@@ -689,7 +689,7 @@ class ReturnHomeGame extends FlameGame {
           _damageBoss(2, shot.position);
           _projectiles.remove(shot);
           shot.removeFromParent();
-          _world.add(ReturnHomeBurst(
+          _world.add(AdventureBurst(
               position: shot.position.clone(),
               color: const Color(0xFFFF8A3A),
               fiery: true));
@@ -715,7 +715,7 @@ class ReturnHomeGame extends FlameGame {
         if (!shot.spent) continue;
         _projectiles.remove(shot);
         shot.removeFromParent();
-        _world.add(ReturnHomeBurst(
+        _world.add(AdventureBurst(
             position: shot.position.clone(), color: const Color(0xFFBDE8FA)));
         continue;
       }
@@ -723,14 +723,14 @@ class ReturnHomeGame extends FlameGame {
       if (hit == null && !shot.spent) continue;
       _projectiles.remove(shot);
       shot.removeFromParent();
-      _world.add(ReturnHomeBurst(
+      _world.add(AdventureBurst(
           position: shot.position.clone(),
           color: const Color(0xFFFF8A3A),
           fiery: true));
       if (hit != null) _hurt(hit);
     }
 
-    for (final breath in List<ReturnHomeFlameBreath>.of(_breaths)) {
+    for (final breath in List<AdventureFlameBreath>.of(_breaths)) {
       if (!breath.isMounted && !breath.blowing) {
         _breaths.remove(breath);
         continue;
@@ -748,12 +748,12 @@ class ReturnHomeGame extends FlameGame {
           (breath.covers(boss.aimPoint) || breath.covers(boss.core))) {
         _damageBoss(1, boss.aimPoint);
       }
-      for (final o in List<ReturnHomeObstacle>.of(_spawner.obstacles)) {
+      for (final o in List<AdventureObstacle>.of(_spawner.obstacles)) {
         if (!_hidden(o) && breath.covers(o.position)) _hurt(o);
       }
     }
 
-    for (final bomb in List<ReturnHomeFireBomb>.of(_bombs)) {
+    for (final bomb in List<AdventureFireBomb>.of(_bombs)) {
       if (!bomb.isMounted && bomb.landed) {
         _bombs.remove(bomb);
         continue;
@@ -765,13 +765,13 @@ class ReturnHomeGame extends FlameGame {
         // Only the blast hurts the dragon; the burning patch is for hazards.
         if (bomb.explodeNow) _damageBoss(bomb.empowered ? 6 : 3, boss.core);
       }
-      for (final o in List<ReturnHomeObstacle>.of(_spawner.obstacles)) {
+      for (final o in List<AdventureObstacle>.of(_spawner.obstacles)) {
         if (_hidden(o) || !bomb.covers(o.position)) continue;
         bomb.explodeNow ? _destroy(o) : _hurt(o);
       }
     }
 
-    for (final bolt in List<ReturnHomeBolt>.of(_bolts)) {
+    for (final bolt in List<AdventureBolt>.of(_bolts)) {
       if (!bolt.isMounted && bolt.struck) {
         _bolts.remove(bolt);
         continue;
@@ -787,8 +787,8 @@ class ReturnHomeGame extends FlameGame {
         markedHit = marked(boss.core);
         _damageBoss(markedHit ? 6 : 4, boss.core);
       }
-      for (final o in List<ReturnHomeObstacle>.of(_spawner.obstacles)) {
-        final inColumn = o.kind == ReturnHomeObstacleKind.bird &&
+      for (final o in List<AdventureObstacle>.of(_spawner.obstacles)) {
+        final inColumn = o.kind == AdventureObstacleKind.bird &&
             (o.position.x - p.x).abs() < 34 &&
             o.position.y < p.y;
         if (inGroundEllipse(o.position, p, boltRadius) || inColumn) {
@@ -810,7 +810,7 @@ class ReturnHomeGame extends FlameGame {
       bridge.frozeHazards = true;
       for (final o in _spawner.obstacles) {
         if (!_hidden(o) &&
-            o.kind != ReturnHomeObstacleKind.bird &&
+            o.kind != AdventureObstacleKind.bird &&
             bridge.covers(Offset(o.position.x, o.position.y))) {
           o.frozen = HomeAttack.iceShard.duration;
         }
@@ -822,9 +822,9 @@ class ReturnHomeGame extends FlameGame {
       if (!wall.standing) continue;
       for (final o in _spawner.obstacles) {
         final reach = switch (o.kind) {
-          ReturnHomeObstacleKind.rock => rockRadius,
-          ReturnHomeObstacleKind.crab => 16.0,
-          ReturnHomeObstacleKind.bird => 20.0,
+          AdventureObstacleKind.rock => rockRadius,
+          AdventureObstacleKind.crab => 16.0,
+          AdventureObstacleKind.bird => 20.0,
           _ => 0.0,
         };
         if (reach == 0) continue;
@@ -832,7 +832,7 @@ class ReturnHomeGame extends FlameGame {
         var normal = o.position - closest;
         final distance = normal.length;
         if (distance >= reach) continue;
-        if (o.kind == ReturnHomeObstacleKind.bird) {
+        if (o.kind == AdventureObstacleKind.bird) {
           if (!o.harmless) o.scare(wall.position, 0);
           continue;
         }
@@ -842,7 +842,7 @@ class ReturnHomeGame extends FlameGame {
         o.position += normal * (reach - distance);
         final into = o.velocity.dot(normal);
         if (into < 0) o.velocity -= normal * (1.8 * into);
-        if (o.kind == ReturnHomeObstacleKind.crab) o.velocity.y = -o.velocity.y;
+        if (o.kind == AdventureObstacleKind.crab) o.velocity.y = -o.velocity.y;
       }
     }
 
@@ -853,10 +853,10 @@ class ReturnHomeGame extends FlameGame {
       _decoy = null;
       decoy.removeFromParent();
       final center = decoy.lureCenter;
-      _world.add(ReturnHomeShadowStep(from: center, to: center));
+      _world.add(AdventureShadowStep(from: center, to: center));
       _world.add(
-          ReturnHomeBurst(position: center, color: const Color(0xFF7B5FC4)));
-      for (final o in List<ReturnHomeObstacle>.of(_spawner.obstacles)) {
+          AdventureBurst(position: center, color: const Color(0xFF7B5FC4)));
+      for (final o in List<AdventureObstacle>.of(_spawner.obstacles)) {
         if (o.position.distanceTo(center) <= HomeAttack.decoy.radius) {
           if (o is DragonBrood) {
             _destroy(o);
@@ -876,7 +876,7 @@ class ReturnHomeGame extends FlameGame {
   void _showCombo(String label, Vector2 at, Color color) {
     if (_comboNoticeCooldown > 0) return;
     _comboNoticeCooldown = .8;
-    _world.add(ReturnHomeDamageText(
+    _world.add(AdventureDamageText(
         position: at.clone() + Vector2(0, -38), text: label, color: color));
   }
 
@@ -902,7 +902,7 @@ class ReturnHomeGame extends FlameGame {
     }
   }
 
-  void _destroy(ReturnHomeObstacle o, {bool icy = false}) {
+  void _destroy(AdventureObstacle o, {bool icy = false}) {
     GameAudio.instance
         .playGameplay(icy ? GameSound.homeIce : GameSound.homeImpact);
     if (o is DragonBrood) o.dismiss();
@@ -911,15 +911,15 @@ class ReturnHomeGame extends FlameGame {
     _comboRocks.remove(o);
     o.comboProjectile = false;
     o.removeFromParent();
-    _world.add(ReturnHomeBurst(
+    _world.add(AdventureBurst(
       position: o.position.clone(),
       color: icy
           ? const Color(0xFFBDE8FA)
           : switch (o.kind) {
-              ReturnHomeObstacleKind.log => const Color(0xFF8A5A36),
-              ReturnHomeObstacleKind.crab => const Color(0xFFE0583F),
-              ReturnHomeObstacleKind.bird => const Color(0xFF4A5A73),
-              ReturnHomeObstacleKind.spring => const Color(0xFF8E979C),
+              AdventureObstacleKind.log => const Color(0xFF8A5A36),
+              AdventureObstacleKind.crab => const Color(0xFFE0583F),
+              AdventureObstacleKind.bird => const Color(0xFF4A5A73),
+              AdventureObstacleKind.spring => const Color(0xFF8E979C),
               _ => const Color(0xFF8D9690),
             },
     ));
@@ -930,7 +930,7 @@ class ReturnHomeGame extends FlameGame {
   void _startBoss(double cameraX) {
     GameAudio.instance.playGameplay(GameSound.bossRoar, priority: 2);
     final x = road.worldWidth - 236;
-    final dragon = ReturnHomeDragon(
+    final dragon = AdventureDragon(
         road: road,
         feet: Vector2(x, road.centerY(x) + road.halfWidth(x) * .1),
         onSound: (sound) => GameAudio.instance.playGameplay(sound,
@@ -956,7 +956,7 @@ class ReturnHomeGame extends FlameGame {
     if (dealt <= 0) return;
     GameAudio.instance.playGameplay(GameSound.homeImpact);
     if (dragon.evolving) _cat.invulnerable = max(_cat.invulnerable, .3);
-    _world.add(ReturnHomeDamageText(
+    _world.add(AdventureDamageText(
         position: at + Vector2(0, -24),
         text: '-${dealt.round()}',
         color: dealt > amount
@@ -1000,7 +1000,7 @@ class ReturnHomeGame extends FlameGame {
               : 1;
     // The dragon blocks the lane: the cat stays in the arena in front of it.
     final minX = _arenaLeft + 6;
-    final maxX = dragon.arenaBarrierX - ReturnHomeCat.hitboxLeft - 80;
+    final maxX = dragon.arenaBarrierX - AdventureCat.hitboxLeft - 80;
     if (dragon.evolving) {
       final boundaryX = max(minX,
           dragon.position.x - dragon.bodyRect.width * 2.3 - _cat.size.x / 2);
@@ -1022,7 +1022,7 @@ class ReturnHomeGame extends FlameGame {
           final inBand = (w.position.y - attack.laneY).abs() <
               w.length / 2 + DragonFlameLane.halfHeight;
           if (inBand && w.position.x < attack.right) {
-            final x = w.position.x + ReturnHomeStoneWall.thickness;
+            final x = w.position.x + AdventureStoneWall.thickness;
             stop = stop == null ? x : max(stop, x);
           }
         }
@@ -1047,13 +1047,13 @@ class ReturnHomeGame extends FlameGame {
         _cat.hitbox.overlaps(dragon.headRect)) {
       _scratchCooldown = .45;
       final head = dragon.headRect.center;
-      _world.add(ReturnHomeBurst(
+      _world.add(AdventureBurst(
           position: Vector2(head.dx, head.dy), color: const Color(0xFFFFF4DA)));
       _damageBoss(2.5, Vector2(head.dx, head.dy));
     }
   }
 
-  void _bossHitsCat(ReturnHomeDragon dragon) {
+  void _bossHitsCat(AdventureDragon dragon) {
     if (dragon.evolving) return;
     if (_cat.ignoresObstacles || _cat.invulnerable > 0 || _hitCooldown > 0) {
       return;
@@ -1101,7 +1101,7 @@ class ReturnHomeGame extends FlameGame {
 
   /// Logs are solid walls for normal movement and vanish landing.
   bool blockedByLog(Rect box) => _spawner.obstacles.any((obstacle) =>
-      obstacle.kind == ReturnHomeObstacleKind.log && obstacle.hits(box));
+      obstacle.kind == AdventureObstacleKind.log && obstacle.hits(box));
 
   @override
   Future<void> onLoad() async {
@@ -1115,24 +1115,24 @@ class ReturnHomeGame extends FlameGame {
     // Keep the whole landscape viewport visible; only its X center follows
     // the cat along the longer world.
     camera.viewfinder.position = Vector2(size.x / 2, size.y / 2);
-    world.add(ReturnHomeBackground(road: road));
-    final gate = ReturnHomeGate();
+    world.add(AdventureBackground(road: road));
+    final gate = AdventureGate();
     world.add(gate);
     world.add(gate.foreground);
     // One long crossing near the end of the stream stretch; the dry part
     // before it belongs to the crabs.
     for (final f in [.352]) {
-      final crossing = ReturnHomeCrossing(road: road, centerFraction: f);
+      final crossing = AdventureCrossing(road: road, centerFraction: f);
       _crossings.add(crossing);
       world.add(crossing);
     }
-    _cat = ReturnHomeCat();
+    _cat = AdventureCat();
     world.add(_cat);
     world.add(_aim);
     world.add(_magnet);
     world.add(_reflectAura);
     world.add(_timeAura);
-    _spawner = ReturnHomeSpawner(
+    _spawner = AdventureSpawner(
       road: road,
       world: world,
       // Keep hazard density constant however long the run is.
@@ -1144,14 +1144,14 @@ class ReturnHomeGame extends FlameGame {
         blocked: (x) =>
             _crossings.any((c) => x > c.safeBankX - 30 && x < c.right + 40));
     _addPickups(world);
-    _catEyeAura = ReturnHomeCatEyeAura(obstacles: _spawner.obstacles);
+    _catEyeAura = AdventureCatEyeAura(obstacles: _spawner.obstacles);
     world.add(_catEyeAura);
-    joystick = ReturnHomeJoystick(position: Vector2(92, size.y - 92));
+    joystick = AdventureJoystick(position: Vector2(92, size.y - 92));
     camera.viewport.add(joystick);
   }
 
   void _clearCrossing() {
-    for (final obstacle in List<ReturnHomeObstacle>.of(_spawner.obstacles)) {
+    for (final obstacle in List<AdventureObstacle>.of(_spawner.obstacles)) {
       if (!_nearCrossing(obstacle.position.x)) continue;
       _spawner.obstacles.remove(obstacle);
       obstacle.removeFromParent();
@@ -1169,10 +1169,9 @@ class ReturnHomeGame extends FlameGame {
         x += 155 + random.nextDouble() * 70) {
       if (_nearCrossing(x)) continue;
       final reach = road.halfWidth(x) - 18;
-      final pickup = ReturnHomePickup(
-        kind: i++ % 7 == 6
-            ? ReturnHomePickupKind.heart
-            : ReturnHomePickupKind.fish,
+      final pickup = AdventurePickup(
+        kind:
+            i++ % 7 == 6 ? AdventurePickupKind.heart : AdventurePickupKind.fish,
         position:
             Vector2(x, road.centerY(x) + (random.nextDouble() * 2 - 1) * reach),
       );
@@ -1240,7 +1239,7 @@ class ReturnHomeGame extends FlameGame {
           .toDouble();
     }
     camera.viewfinder.position = Vector2(cameraX, size.y / 2);
-    const start = ReturnHomeRoad.startX;
+    const start = AdventureRoad.startX;
     progress = ((_cat.position.x - start) / max(1.0, road.endX - start))
         .clamp(0.0, 1.0);
     if (road.hasPassedGate(_cat.hitbox) && bossDefeated) {
@@ -1274,8 +1273,8 @@ class ReturnHomeGame extends FlameGame {
       obstacle.updatePhysics(dt * (slow ? catEyeSlow : 1), lure);
     }
     // Iterate a copy: a respawn removes nearby rocks and birds from the list.
-    for (final obstacle in List<ReturnHomeObstacle>.of(_spawner.obstacles)) {
-      if (obstacle.kind == ReturnHomeObstacleKind.log) continue;
+    for (final obstacle in List<AdventureObstacle>.of(_spawner.obstacles)) {
+      if (obstacle.kind == AdventureObstacleKind.log) continue;
       if (obstacle is DragonBrood &&
           (!obstacle.hatched ||
               obstacle.dead ||
@@ -1292,7 +1291,7 @@ class ReturnHomeGame extends FlameGame {
         _reflect(obstacle);
         continue;
       }
-      if (obstacle.kind == ReturnHomeObstacleKind.spring) {
+      if (obstacle.kind == AdventureObstacleKind.spring) {
         if (!touching) {
           _contacts.remove(obstacle);
         } else if (obstacle.springT <= 0 &&
@@ -1330,13 +1329,13 @@ class ReturnHomeGame extends FlameGame {
   }
 
   /// Phản đòn: whatever touches the cat bounces off or breaks, no damage.
-  void _reflect(ReturnHomeObstacle o) {
+  void _reflect(AdventureObstacle o) {
     GameAudio.instance.playGameplay(GameSound.homeShield, priority: 1);
     _contacts.add(o);
     _reflectAura.flash();
-    if (o.kind == ReturnHomeObstacleKind.rock) {
+    if (o.kind == AdventureObstacleKind.rock) {
       o.scare(_catCenter, 460);
-      _world.add(ReturnHomeBurst(
+      _world.add(AdventureBurst(
           position: o.position.clone(), color: const Color(0xFF7FE0CF)));
       return;
     }
@@ -1353,8 +1352,8 @@ class ReturnHomeGame extends FlameGame {
 
   /// Rolling rocks that reach open water sink instead of rolling across it.
   void _sinkRocks() {
-    for (final o in List<ReturnHomeObstacle>.of(_spawner.obstacles)) {
-      if (o.kind != ReturnHomeObstacleKind.rock) continue;
+    for (final o in List<AdventureObstacle>.of(_spawner.obstacles)) {
+      if (o.kind != AdventureObstacleKind.rock) continue;
       final p = Offset(o.position.x, o.position.y);
       if (!_crossings.any((c) => c.isWater(p)) || _onIce(p)) continue;
       _spawner.obstacles.remove(o);
@@ -1405,9 +1404,9 @@ class ReturnHomeGame extends FlameGame {
   }
 
   void _collectPickups() {
-    for (final pickup in List<ReturnHomePickup>.of(_pickups)) {
+    for (final pickup in List<AdventurePickup>.of(_pickups)) {
       if (!pickup.hits(_cat.hitbox)) continue;
-      if (pickup.kind == ReturnHomePickupKind.fish) {
+      if (pickup.kind == AdventurePickupKind.fish) {
         fish += 1;
         GameAudio.instance.playGameplay(GameSound.homeFish);
       } else {
@@ -1463,23 +1462,23 @@ class ReturnHomeGame extends FlameGame {
     for (final f in const [0.0, -.5, .5, -.8, .8]) {
       final candidate = road.centerY(cx) + f * half - _cat.size.y / 2;
       final box = Rect.fromLTWH(
-          x + ReturnHomeCat.hitboxLeft,
-          candidate + ReturnHomeCat.hitboxTop,
-          ReturnHomeCat.hitboxWidth,
-          ReturnHomeCat.hitboxHeight);
+          x + AdventureCat.hitboxLeft,
+          candidate + AdventureCat.hitboxTop,
+          AdventureCat.hitboxWidth,
+          AdventureCat.hitboxHeight);
       final blocked = _spawner.obstacles.any((o) =>
-          o.kind != ReturnHomeObstacleKind.rock &&
-          o.kind != ReturnHomeObstacleKind.bird &&
-          o.kind != ReturnHomeObstacleKind.crab &&
+          o.kind != AdventureObstacleKind.rock &&
+          o.kind != AdventureObstacleKind.bird &&
+          o.kind != AdventureObstacleKind.crab &&
           o.hits(box.inflate(10)));
       if (!blocked) {
         y = candidate;
         break;
       }
     }
-    for (final o in List<ReturnHomeObstacle>.of(_spawner.obstacles)) {
-      final moving = o.kind == ReturnHomeObstacleKind.rock ||
-          o.kind == ReturnHomeObstacleKind.bird;
+    for (final o in List<AdventureObstacle>.of(_spawner.obstacles)) {
+      final moving = o.kind == AdventureObstacleKind.rock ||
+          o.kind == AdventureObstacleKind.bird;
       if (!moving || (o.position.x - cx).abs() > size.x * .6) continue;
       _spawner.obstacles.remove(o);
       o.removeFromParent();
@@ -1490,7 +1489,7 @@ class ReturnHomeGame extends FlameGame {
 
   /// World x as a share of the run, the same scale as [progress].
   double _runFraction(double x) {
-    const start = ReturnHomeRoad.startX;
+    const start = AdventureRoad.startX;
     return ((x - start) / max(1.0, road.endX - start)).clamp(0.0, 1.0);
   }
 
@@ -1508,7 +1507,7 @@ class ReturnHomeGame extends FlameGame {
     super.render(canvas);
     if (!isLoaded) return;
     paintTimeStopTint(canvas, Size(size.x, size.y), timeStopTime);
-    paintReturnHomeHud(
+    paintAdventureHud(
       canvas,
       size: Size(size.x, size.y),
       progress: progress,

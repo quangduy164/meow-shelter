@@ -14,8 +14,8 @@ export 'game_pressable.dart' show RoundGameButton;
 
 const _ink = DS.ink;
 
-class ReturnHomeHomeButton extends StatelessWidget {
-  const ReturnHomeHomeButton({super.key, required this.onPressed});
+class AdventureHomeButton extends StatelessWidget {
+  const AdventureHomeButton({super.key, required this.onPressed});
   final VoidCallback onPressed;
 
   @override
@@ -29,8 +29,8 @@ class ReturnHomeHomeButton extends StatelessWidget {
 }
 
 /// Skill button tinted per cat, with a cooldown sweep around the rim.
-class ReturnHomeSkillButton extends StatelessWidget {
-  const ReturnHomeSkillButton({
+class AdventureSkillButton extends StatelessWidget {
+  const AdventureSkillButton({
     super.key,
     required this.catType,
     required this.ready,
@@ -108,8 +108,8 @@ class _CooldownPainter extends CustomPainter {
 ///
 /// The drag is measured from where the finger went down, not from the button
 /// center, so an off-center press never jumps the aim.
-class ReturnHomeAimButton extends StatefulWidget {
-  const ReturnHomeAimButton({
+class AdventureAimButton extends StatefulWidget {
+  const AdventureAimButton({
     super.key,
     required this.label,
     required this.glyph,
@@ -150,10 +150,10 @@ class ReturnHomeAimButton extends StatefulWidget {
   final ValueChanged<bool>? onCancelHover;
 
   @override
-  State<ReturnHomeAimButton> createState() => _ReturnHomeAimButtonState();
+  State<AdventureAimButton> createState() => _AdventureAimButtonState();
 }
 
-class _ReturnHomeAimButtonState extends State<ReturnHomeAimButton> {
+class _AdventureAimButtonState extends State<AdventureAimButton> {
   /// Holding this long without moving opens the range preview.
   static const _holdDelay = Duration(milliseconds: 170);
 
@@ -255,7 +255,7 @@ class _ReturnHomeAimButtonState extends State<ReturnHomeAimButton> {
   }
 
   @override
-  void didUpdateWidget(covariant ReturnHomeAimButton old) {
+  void didUpdateWidget(covariant AdventureAimButton old) {
     super.didUpdateWidget(old);
     // The skill changed under a held finger: drop the aim.
     if (old.glyph != widget.glyph && _pointer != null) {
@@ -374,8 +374,8 @@ class _ReturnHomeAimButtonState extends State<ReturnHomeAimButton> {
 }
 
 /// The X that appears while a skill is held; drag onto it to cancel.
-class ReturnHomeCancelButton extends StatelessWidget {
-  const ReturnHomeCancelButton({super.key, required this.hot});
+class AdventureCancelButton extends StatelessWidget {
+  const AdventureCancelButton({super.key, required this.hot});
   final bool hot;
 
   @override
