@@ -87,6 +87,7 @@ class GameAudio with WidgetsBindingObserver {
   AudioPlayer? _music, _effect, _reel;
   bool _reeling = false;
   bool _foreground = true, _musicLoaded = false, _homeActive = false;
+  bool _exiting = false;
   Future<void> _pending = Future.value();
   Future<void> _effectPending = Future.value();
   Future<void> _warmup = Future.value();
@@ -99,6 +100,7 @@ class GameAudio with WidgetsBindingObserver {
   int _gameplaySoundUntil = 0, _gameplaySoundPriority = 0;
 
   void initialize(SharedPreferences preferences) {
+    _exiting = false;
     _preferences = preferences;
     final previousVolume = (preferences.getDouble('audio_volume') ??
             (preferences.getBool('audio_enabled') == false ? 0.0 : 1.0))
@@ -182,7 +184,7 @@ class GameAudio with WidgetsBindingObserver {
       return;
     }
     if (!_homeActive || !musicEnabled.value || musicVolume.value == 0) {
-      await _music?.pause();
+      await _music?.stop();
       return;
     }
     final music = _music ??= AudioPlayer()..audioCache = FlameAudio.audioCache;
@@ -196,14 +198,14 @@ class GameAudio with WidgetsBindingObserver {
         !_homeActive ||
         !musicEnabled.value ||
         musicVolume.value == 0) {
-      await music.pause();
+      await music.stop();
       return;
     }
     if (music.state != PlayerState.playing) await music.resume();
     if (!_foreground ||
         !_homeActive ||
         !musicEnabled.value ||
-        musicVolume.value == 0) await music.pause();
+        musicVolume.value == 0) await music.stop();
   }
 
   Future<void> _enqueueEffect(Future<void> Function() action) {
@@ -353,7 +355,7 @@ class GameAudio with WidgetsBindingObserver {
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    _foreground = state == AppLifecycleState.resumed;
+    _foreground = !_exiting && state == AppLifecycleState.resumed;
     if (!_foreground) {
       _effectRequest++;
       _reeling = false;
@@ -364,19 +366,28 @@ class GameAudio with WidgetsBindingObserver {
   }
 
   Future<void> _silence() => Future.wait([
-        if (_music != null) _music!.pause(),
+        // stop also abandons Android audio focus; pause can be restarted by
+        // the plugin's native focus-gained callback after the app has left.
+        if (_music != null) _music!.stop(),
         if (_effect != null) _effect!.stop(),
         if (_reel != null) _reel!.stop(),
       ].map((operation) => operation.catchError((Object error) {
             debugPrint('Could not silence audio: $error');
           })));
 
+  Future<void> stopForExit() async {
+    _exiting = true;
+    _foreground = false;
+    _homeActive = false;
+    _reeling = false;
+    _effectRequest++;
+    await _silence();
+  }
+
   Future<void> dispose() async {
     WidgetsBinding.instance.removeObserver(this);
-    _foreground = false;
-    _reeling = false;
+    await stopForExit();
     _preferences = null;
-    _effectRequest++;
     await _warmup;
     await _pending;
     await _effectPending;

@@ -121,7 +121,7 @@ class CampState {
   static late CampState instance;
   static const _key = 'camp_state_v1';
 
-  /// Affection needed for the skill-cooldown bonus in Adventure.
+  /// Affection needed for the bonded status in camp.
   static const bondedAffection = 10;
 
   final SharedPreferences preferences;

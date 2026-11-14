@@ -99,7 +99,6 @@ Dùng joystick dẫn mèo đầu đàn đến các nhóm mèo rồi đưa đàn 
 - Chạm để vuốt ve, kéo để bế mèo. Độ thân thiết được lưu theo loài.
 - Mua đồ trang trí và kéo thả để sắp xếp; vị trí được lưu lại.
 - Tiền hiển thị **bên trong Cửa hàng**, không nằm trên homepage hoặc thanh chính của trại.
-- Đạt ngưỡng thân thiết giúp giảm thời gian hồi kỹ năng chính trong Mèo phiêu lưu.
 
 ## Giao diện và âm thanh
 
@@ -138,6 +137,7 @@ lib/
 │   ├── meow_shelter_game.dart # Luồng chơi cứu hộ
 │   ├── cats/                 # Loài mèo, hoạt ảnh, luật bắt và kỹ năng
 │   ├── components/           # Mèo, cá, ổ, HUD và hướng dẫn cứu hộ
+│   ├── night_shift/          # Ca trực đêm: thẻ, cổ vật, trợ thủ và bản đồ
 │   ├── systems/              # Hệ thống mồi cá
 │   ├── world/                # Bố cục sân và phong cảnh bản đồ
 │   ├── adventure/          # Đường về nhà, bẫy, kỹ năng và boss

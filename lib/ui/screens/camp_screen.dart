@@ -881,8 +881,7 @@ class _BondBar extends StatelessWidget {
                       letterSpacing: 1)),
               const SizedBox(width: DS.spaceSm),
               const Expanded(
-                child: Text(
-                    'Chạm vào mèo để vuốt ve · đủ 10 ♥ thì kỹ năng hồi nhanh hơn',
+                child: Text('Chạm vào mèo để vuốt ve và tăng độ thân thiết',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(color: DS.soft, fontSize: DS.fontCaption)),
@@ -1011,7 +1010,7 @@ class _BondBar extends StatelessWidget {
                 const SizedBox(height: 1),
                 Text(
                     bonded
-                        ? 'Thân thiết · ${breed.homeSkill.label} -1s'
+                        ? 'Thân thiết ♥'
                         : '$love/${CampState.bondedAffection} ♥',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,

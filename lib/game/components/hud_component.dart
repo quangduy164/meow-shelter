@@ -3,10 +3,10 @@ import 'dart:math' as math;
 
 import 'package:flame/components.dart';
 import 'package:flame/game.dart';
-import 'package:flutter/animation.dart';
 import 'package:flutter/painting.dart';
 
 import '../../levels/level_goal.dart';
+import '../silver_token_art.dart';
 
 enum RoundStatus { playing, won, lost }
 
@@ -33,24 +33,25 @@ class HudComponent extends PositionComponent with HasGameRef<FlameGame> {
   /// tonight out of [totalCats].
   int night = 0;
   int tonight = 0;
+  int silver = 0;
+
+  /// Maps with extra HUD reserve space above transient notifications.
+  double notificationTop = 46;
 
   /// Calico helper running: every bed takes any cat, so beds glow.
   bool anyBed = false;
 
-  /// Tonight's boss flag, full rules (shown on the intro card) and short
+  /// Tonight's boss flag, full rules (opened with the information button) and short
   /// tags (shown as chips on the small mission card).
   bool bossNight = false;
   List<String> nightNotes = const [];
   List<String> nightTags = const [];
 
-  double _intro = 0;
   int _shownTonight = 0;
   double _pop = 0;
-  static const _introLength = 3.2;
 
-  /// Shows the big "night N" title card in the middle of the field.
+  /// Resets progress feedback for the new night.
   void startNight() {
-    _intro = _introLength;
     _shownTonight = 0;
     _pop = 0;
   }
@@ -77,7 +78,6 @@ class HudComponent extends PositionComponent with HasGameRef<FlameGame> {
     super.update(dt);
     _clock += dt;
     if (_toastTime > 0) _toastTime -= dt;
-    if (_intro > 0) _intro -= dt;
     if (_pop > 0) _pop -= dt;
     if (tonight != _shownTonight) {
       _shownTonight = tonight;
@@ -91,11 +91,10 @@ class HudComponent extends PositionComponent with HasGameRef<FlameGame> {
     if (status != RoundStatus.playing || isTutorial) return;
     if (anyBed) _drawBedGlow(canvas);
     final pill = _drawStatusPill(canvas);
-    _drawToast(canvas, pill.bottom + 6);
+    _drawToast(canvas, math.max(pill.bottom + 6, notificationTop));
     _drawGoals(canvas);
     if (night > 0) {
       _drawNightCard(canvas);
-      if (_intro > 0) _drawNightIntro(canvas);
     }
   }
 
@@ -105,9 +104,10 @@ class HudComponent extends PositionComponent with HasGameRef<FlameGame> {
     final lowTime = timed && secondsLeft <= 10;
     final parts = <(void Function(Canvas, Offset, Color), String, Color)>[
       if (timed) (_clockIcon, '${secondsLeft}s', lowTime ? _danger : _ink),
+      if (night > 0) (_silverIcon, '$silver', _ink),
       if (night == 0)
         (_pawIcon, isInfinite ? '$delivered' : '$delivered/$totalCats', _ink),
-      if (fishLeft != null)
+      if (fishLeft != null && night == 0)
         (_fishIcon, '$fishLeft', fishLeft == 0 ? _danger : _ink),
     ];
     final labels = [
@@ -115,24 +115,39 @@ class HudComponent extends PositionComponent with HasGameRef<FlameGame> {
         _text(text, DS.fontBody, color, bold: true)
     ];
     const iconW = 16.0, gap = 4.0, sep = 13.0, padX = 11.0, h = 28.0;
-    final width = labels.fold(0.0, (w, l) => w + iconW + gap + l.width) +
+    // Measure with the same font so 10 → 9 seconds stays stable on all devices.
+    final clockTemplate = _text('000s', DS.fontBody, _ink, bold: true);
+    final numberTemplate = _text('0000', DS.fontBody, _ink, bold: true);
+    final clockWidth = math.max(34.0, clockTemplate.width);
+    final numberWidth = math.max(38.0, numberTemplate.width);
+    clockTemplate.dispose();
+    numberTemplate.dispose();
+    final widths = [
+      for (var i = 0; i < labels.length; i++)
+        math.max(labels[i].width, timed && i == 0 ? clockWidth : numberWidth),
+    ];
+    final width = widths.fold(0.0, (w, value) => w + iconW + gap + value) +
         sep * (parts.length - 1) +
         padX * 2;
-    final pulse = lowTime ? 1 + math.sin(_clock * 9) * .04 : 1.0;
     final box = Rect.fromCenter(
         center: Offset(screen.x / 2, 12 + h / 2), width: width, height: h);
     canvas.save();
-    canvas.translate(box.center.dx, box.center.dy);
-    canvas.scale(pulse);
-    canvas.translate(-box.center.dx, -box.center.dy);
     final shape = RRect.fromRectAndRadius(box, const Radius.circular(14));
     canvas.drawRRect(shape.shift(const Offset(0, 2)),
         Paint()..color = const Color(0x44402616));
     canvas.drawRRect(shape, Paint()..color = const Color(0xF2FFF4DA));
+    if (lowTime && parts.isNotEmpty) {
+      canvas.drawRRect(
+          RRect.fromRectAndRadius(
+              Rect.fromLTWH(box.left + 4, box.top + 4,
+                  padX - 4 + iconW + gap + widths.first + sep / 2, h - 8),
+              const Radius.circular(9)),
+          Paint()..color = const Color(0x22C0503A));
+    }
     canvas.drawRRect(
         shape,
         Paint()
-          ..color = lowTime ? _danger : _wood
+          ..color = _wood
           ..style = PaintingStyle.stroke
           ..strokeWidth = 2);
     var x = box.left + padX;
@@ -140,8 +155,11 @@ class HudComponent extends PositionComponent with HasGameRef<FlameGame> {
       final (icon, _, color) = parts[i];
       icon(canvas, Offset(x + iconW / 2, box.center.dy), color);
       x += iconW + gap;
-      labels[i].paint(canvas, Offset(x, box.center.dy - labels[i].height / 2));
-      x += labels[i].width;
+      labels[i].paint(
+          canvas,
+          Offset(x + (widths[i] - labels[i].width) / 2,
+              box.center.dy - labels[i].height / 2));
+      x += widths[i];
       if (i < parts.length - 1) {
         canvas.drawLine(
             Offset(x + sep / 2, box.top + 7),
@@ -158,7 +176,7 @@ class HudComponent extends PositionComponent with HasGameRef<FlameGame> {
 
   /// Night-shift mission card, top right and compact: night number and
   /// count on one line, a segmented progress bar, and tiny twist chips.
-  /// The full rules live on the intro card at the start of the night.
+  /// The full rules are available through the information button.
   void _drawNightCard(Canvas canvas) {
     final screen = gameRef.size;
     const width = 132.0, pad = 7.0, barH = 7.0;
@@ -232,52 +250,6 @@ class HudComponent extends PositionComponent with HasGameRef<FlameGame> {
       tag.paint(canvas, Offset(x + 4, y + (tagH - tag.height) / 2));
       x += w + 3;
     }
-  }
-
-  /// Big title card at the start of each night, fading in and out.
-  void _drawNightIntro(Canvas canvas) {
-    final screen = gameRef.size;
-    final t = _introLength - _intro;
-    final alpha = math.min(t / .25, _intro / .5).clamp(0.0, 1.0);
-    final grow =
-        .85 + .15 * Curves.easeOutBack.transform(math.min(1.0, t / .4));
-    final title = _text('ĐÊM $night', 40, _gold.withOpacity(alpha), bold: true);
-    final boss = bossNight
-        ? _text('ĐÊM TRÙM!', DS.fontTitle,
-            const Color(0xFFFF8A80).withOpacity(alpha),
-            bold: true)
-        : null;
-    final goal = _text('Cứu $totalCats mèo trong ${secondsLeft}s', 20,
-        _cream.withOpacity(alpha),
-        bold: true);
-    final notes = [
-      for (final note in nightNotes)
-        _text(note, DS.fontBody, _cream.withOpacity(alpha * .9),
-            maxWidth: screen.x * .5)
-    ];
-    final lines = [title, if (boss != null) boss, goal, ...notes];
-    final width = lines.fold(0.0, (w, l) => math.max(w, l.width)) + 48;
-    final height = lines.fold(0.0, (h, l) => h + l.height + 4) + 28;
-    canvas.save();
-    canvas.translate(screen.x / 2, screen.y * .45);
-    canvas.scale(grow);
-    final box = RRect.fromRectAndRadius(
-        Rect.fromCenter(center: Offset.zero, width: width, height: height),
-        const Radius.circular(18));
-    canvas.drawRRect(
-        box, Paint()..color = Color.fromRGBO(36, 30, 60, .88 * alpha));
-    canvas.drawRRect(
-        box,
-        Paint()
-          ..color = _gold.withOpacity(alpha)
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = 3);
-    var y = -height / 2 + 14;
-    for (final line in lines) {
-      line.paint(canvas, Offset(-line.width / 2, y));
-      y += line.height + 4;
-    }
-    canvas.restore();
   }
 
   /// Gold frame pulsing round the field while any bed takes any cat.
@@ -387,6 +359,10 @@ class HudComponent extends PositionComponent with HasGameRef<FlameGame> {
     canvas.drawLine(c, c + const Offset(0, -4), stroke);
     canvas.drawLine(c, c + const Offset(3, 1.5), stroke);
   }
+
+  static void _silverIcon(Canvas canvas, Offset c, Color color) =>
+      paintSilverToken(
+          canvas, Rect.fromCenter(center: c, width: 20, height: 20));
 
   static void _moonIcon(Canvas canvas, Offset c, Color color) {
     final moon = Path.combine(

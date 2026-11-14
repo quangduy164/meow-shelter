@@ -19,13 +19,28 @@ void drawFish(Canvas canvas, Offset center) {
 
 class FishItemComponent extends PositionComponent with DragCallbacks {
   FishItemComponent(
-      {required this.enabled, required this.visible, required this.placeFish})
+      {required this.enabled,
+      required this.visible,
+      required this.placeFish,
+      this.remaining})
       : super(size: Vector2(64, 48), priority: 90);
 
   final bool Function() enabled;
   final bool Function() visible;
   final void Function(Vector2) placeFish;
+
+  /// Null means unlimited bait; otherwise shown directly on the drag source.
+  final int? Function()? remaining;
   Vector2? _preview;
+  TextPainter? _countLabel;
+  int? _lastCount;
+
+  @override
+  void onRemove() {
+    _countLabel?.dispose();
+    _countLabel = null;
+    super.onRemove();
+  }
 
   @override
   void onGameResize(Vector2 size) {
@@ -59,11 +74,43 @@ class FishItemComponent extends PositionComponent with DragCallbacks {
           ..style = PaintingStyle.stroke
           ..strokeWidth = 3);
     // Fish artwork spans -24..15 horizontally, including its tail.
+    final count = remaining?.call();
     canvas.save();
-    canvas.translate(size.x / 2, size.y / 2);
+    canvas.translate(count == null ? size.x / 2 : size.x * .4, size.y / 2);
     canvas.scale(0.75);
     drawFish(canvas, const Offset(4.5, 0));
     canvas.restore();
+    if (count != null) {
+      if (_lastCount != count || _countLabel == null) {
+        _countLabel?.dispose();
+        _lastCount = count;
+        _countLabel = TextPainter(
+          text: TextSpan(
+              text: '$count',
+              style: const TextStyle(
+                  color: Color(0xFFFFFAEE),
+                  fontSize: 11,
+                  fontWeight: FontWeight.w900)),
+          textDirection: TextDirection.ltr,
+        )..layout();
+      }
+      final center = Offset(size.x - 12, 12);
+      canvas.drawCircle(
+          center,
+          10.5,
+          Paint()
+            ..color =
+                count == 0 ? const Color(0xFFC0503A) : const Color(0xFF31586C));
+      canvas.drawCircle(
+          center,
+          10.5,
+          Paint()
+            ..color = const Color(0xFFFFEFCA)
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = 1.5);
+      final label = _countLabel!;
+      label.paint(canvas, center - Offset(label.width / 2, label.height / 2));
+    }
     final preview = _preview;
     if (preview != null) drawFish(canvas, Offset(preview.x, preview.y));
   }

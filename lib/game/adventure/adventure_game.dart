@@ -134,8 +134,7 @@ class AdventureGame extends FlameGame {
   void activateSkill() {
     if (!started || !skillReady || finished) return;
     skillReady = false;
-    skillCooldown = CatBreed.of(selectedCat).homeSkill.cooldown -
-        (CampState.instance.bonded(selectedCat) ? 1 : 0);
+    skillCooldown = CatBreed.of(selectedCat).homeSkill.cooldown;
     _cat.activateSkill();
     GameAudio.instance.playGameplay(
         switch (selectedCat) {

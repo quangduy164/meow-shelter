@@ -157,6 +157,22 @@ extension CatCatchBehaviour on CatComponent {
       !_isEscaping &&
       !catchWindow.canCatch;
 
+  /// Relics advance the normal multi-step rule; they never deliver a cat.
+  void advanceRescueStep() {
+    if (!canBless) return;
+    fishTarget = null;
+    _dodgeTime = 0;
+    _isVanishing = false;
+    _isTapTriggered = false;
+    _skillActive = false;
+    _velocityY = 0;
+    if (catType == 'calico') {
+      _play();
+    } else {
+      _eat();
+    }
+  }
+
   /// Night-shift blessing: the cat is full at once and ready to carry.
   void bless() {
     fishTarget = null;

@@ -1,5 +1,8 @@
+import 'dart:async';
+
 import '../design.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../../audio/game_audio.dart';
 import '../widgets/audio_settings_button.dart';
 
@@ -31,6 +34,15 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> with RouteAware {
+  bool _exiting = false;
+
+  Future<void> _exit() async {
+    if (_exiting) return;
+    _exiting = true;
+    await GameAudio.instance.stopForExit();
+    if (mounted) await SystemNavigator.pop();
+  }
+
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
@@ -65,40 +77,46 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
   }
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-        body: Stack(
-          fit: StackFit.expand,
-          children: [
-            const RepaintBoundary(
-                child: CustomPaint(painter: HomeBackgroundPainter())),
-            SafeArea(
-              child: Padding(
-                padding: const EdgeInsets.all(DS.spaceLg),
-                child: Center(
-                  child: FittedBox(
-                    fit: BoxFit.scaleDown,
-                    child: SizedBox(
-                      width: 820,
-                      height: 340,
-                      child: Row(
-                        children: [
-                          Expanded(child: _hero()),
-                          const SizedBox(width: DS.spaceXl),
-                          _modeGrid(),
-                          const SizedBox(width: DS.spaceXl),
-                        ],
+  Widget build(BuildContext context) => PopScope(
+        canPop: false,
+        onPopInvoked: (didPop) {
+          if (!didPop) unawaited(_exit());
+        },
+        child: Scaffold(
+          body: Stack(
+            fit: StackFit.expand,
+            children: [
+              const RepaintBoundary(
+                  child: CustomPaint(painter: HomeBackgroundPainter())),
+              SafeArea(
+                child: Padding(
+                  padding: const EdgeInsets.all(DS.spaceLg),
+                  child: Center(
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: SizedBox(
+                        width: 820,
+                        height: 340,
+                        child: Row(
+                          children: [
+                            Expanded(child: _hero()),
+                            const SizedBox(width: DS.spaceXl),
+                            _modeGrid(),
+                            const SizedBox(width: DS.spaceXl),
+                          ],
+                        ),
                       ),
                     ),
                   ),
                 ),
               ),
-            ),
-            const Positioned(
-              left: 12,
-              bottom: 10,
-              child: SafeArea(child: AudioSettingsButton()),
-            ),
-          ],
+              const Positioned(
+                left: 12,
+                bottom: 10,
+                child: SafeArea(child: AudioSettingsButton()),
+              ),
+            ],
+          ),
         ),
       );
 

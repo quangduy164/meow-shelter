@@ -9,11 +9,15 @@ class DarknessComponent extends PositionComponent with HasGameRef {
   DarknessComponent(
       {required this.lights,
       required this.visible,
-      this.shade = const Color(0xF0101828)})
+      this.shade = const Color(0xF0101828),
+      this.additionalLights})
       : super(priority: 80);
 
   /// Colour of the dark; a lighter shade keeps the scenery faintly visible.
   final Color shade;
+
+  /// Non-circular light sources erase their footprint from this dark layer.
+  final void Function(Canvas canvas, Size size)? additionalLights;
 
   final Iterable<(Offset, double)> Function() lights;
   final bool Function() visible;
@@ -48,6 +52,7 @@ class DarknessComponent extends PositionComponent with HasGameRef {
               1
             ]));
     }
+    additionalLights?.call(canvas, area.size);
     canvas.restore();
     // Faint fireflies so the dark field does not feel empty.
     for (var i = 0; i < 7; i++) {

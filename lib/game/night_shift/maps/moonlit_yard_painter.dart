@@ -1,126 +1,12 @@
 import 'dart:math' as math;
 import 'dart:ui' as ui;
-
 import 'package:flame/components.dart';
 import 'package:flame/events.dart';
 import 'package:flutter/painting.dart';
-
-import '../components/cat_component.dart';
-
-/// One lantern on the night yard. Tap to light it; it burns for a while,
-/// then needs a short rest before it can be lit again.
-class YardLantern {
-  YardLantern(this.spot);
-
-  /// Foot of the post, as fractions of the field.
-  final Offset spot;
-  double burn = 0, cool = 0, burnTotal = 1;
-  bool get lit => burn > 0;
-  bool get ready => burn <= 0 && cool <= 0;
-
-  /// Lamp centre in pixels; the light pool is centred here.
-  Offset lamp(Size size) =>
-      Offset(spot.dx * size.width, spot.dy * size.height - 40);
-}
-
-/// State of the moonlit backyard: lanterns, the drifting moonlight patch and
-/// the clouds that hide it. Cats in the light are calm and wait longer.
-class MoonlitYard {
-  /// Post spots in the order extra lanterns are added.
-  static const spots = [
-    Offset(.50, .40),
-    Offset(.27, .36),
-    Offset(.73, .36),
-    Offset(.31, .66),
-    Offset(.69, .66),
-  ];
-  static const restTime = 5.0;
-
-  final lanterns = <YardLantern>[];
-  double burnTime = 10, lightScale = 1;
-  bool fullMoon = false, thickClouds = false;
-  double _clock = 0, _moonShown = 1;
-
-  void setup(
-      {required int count,
-      required double burnTime,
-      required double lightScale,
-      required bool fullMoon,
-      required bool thickClouds}) {
-    this.burnTime = burnTime;
-    this.lightScale = lightScale;
-    this.fullMoon = fullMoon;
-    this.thickClouds = thickClouds;
-    _clock = 0;
-    _moonShown = 1;
-    lanterns
-      ..clear()
-      ..addAll([for (final spot in spots.take(count)) YardLantern(spot)]);
-  }
-
-  bool light(YardLantern lantern) {
-    if (!lantern.ready) return false;
-    lantern
-      ..burn = burnTime
-      ..burnTotal = burnTime;
-    return true;
-  }
-
-  /// Clouds cover the moon for part of every cycle (longer on cloudy nights).
-  bool get cloudy {
-    if (fullMoon) return false;
-    final period = thickClouds ? 12.0 : 16.0;
-    final covered = thickClouds ? 7.0 : 5.0;
-    return _clock % period >= period - covered;
-  }
-
-  /// 0..1 strength of the moonlight, fading as clouds pass.
-  double get moonShown => _moonShown;
-
-  void update(double dt) {
-    _clock += dt;
-    final target = cloudy ? 0.0 : 1.0;
-    _moonShown += (target - _moonShown).clamp(-dt, dt);
-    for (final lantern in lanterns) {
-      if (lantern.burn > 0) {
-        lantern.burn -= dt;
-        if (lantern.burn <= 0) lantern.cool = restTime;
-      } else if (lantern.cool > 0) {
-        lantern.cool -= dt;
-      }
-    }
-  }
-
-  /// The moonlight patch slowly drifts back and forth across the field.
-  Offset moonCenter(Size size) => Offset(
-      size.width * (.18 + .64 * (.5 + .5 * math.sin(_clock * .16))),
-      size.height * (.47 + .08 * math.sin(_clock * .23)));
-  double moonRadius(Size size) => size.height * .18;
-  double lanternRadius(Size size) => size.height * .22 * lightScale;
-
-  /// Whether [point] is inside lantern or moon light.
-  bool isLit(Offset point, Size size) {
-    if (_moonShown > .5 &&
-        (point - moonCenter(size)).distance <= moonRadius(size) * .85) {
-      return true;
-    }
-    final reach = lanternRadius(size) * .85;
-    return lanterns
-        .any((l) => l.lit && (point - l.lamp(size)).distance <= reach);
-  }
-
-  /// Light pools punched into the darkness layer.
-  Iterable<(Offset, double)> lights(Size size) sync* {
-    if (_moonShown > 0) yield (moonCenter(size), moonRadius(size) * _moonShown);
-    for (final lantern in lanterns) {
-      if (lantern.lit) {
-        // Dims a little in the last two seconds as a warning.
-        final fade = (lantern.burn / 2).clamp(.6, 1.0);
-        yield (lantern.lamp(size), lanternRadius(size) * fade);
-      }
-    }
-  }
-}
+import '../../components/cat_component.dart';
+import '../../../fishing/fishing_lighting.dart';
+import 'moonlit_yard.dart';
+import '../moonlight_art.dart';
 
 /// Night backyard scene: wooden fence, dark lawn, stepping stones, bushes
 /// and a porch along the bottom. Recorded once per size.
@@ -155,34 +41,38 @@ class MoonlitYardBackground extends PositionComponent {
 
   static void _paint(Canvas canvas, double w, double h) {
     final random = math.Random(7);
+    final lighting = FishingLighting(DateTime(2000, 1, 1, 22));
+    // Use the same sky and terrain lighting as a night at the fishing lake.
     // Sky strip with stars.
     final sky = Rect.fromLTWH(0, 0, w, h * .12);
     canvas.drawRect(
         sky,
         Paint()
           ..shader = ui.Gradient.linear(sky.topCenter, sky.bottomCenter,
-              const [Color(0xFF121A3A), Color(0xFF26315E)]));
+              [lighting.skyTop, lighting.skyBottom]));
     for (var i = 0; i < 30; i++) {
       canvas.drawCircle(
           Offset(random.nextDouble() * w, random.nextDouble() * h * .1),
           random.nextDouble() * 1.2 + .4,
           Paint()..color = const Color(0xCCFFF6D8));
     }
+    canvas.saveLayer(Offset.zero & Size(w, h),
+        Paint()..colorFilter = lighting.terrainFilter);
     // Lawn.
     final lawn = Rect.fromLTWH(0, h * .1, w, h * .9);
     canvas.drawRect(
         lawn,
         Paint()
           ..shader = ui.Gradient.linear(lawn.topCenter, lawn.bottomCenter,
-              const [Color(0xFF3C5E47), Color(0xFF2A4535)]));
+              const [Color(0xFF99BC80), Color(0xFF7CA665)]));
     // Mown stripes.
     for (var x = 0.0; x < w; x += 70) {
       canvas.drawRect(Rect.fromLTWH(x, h * .16, 35, h * .66),
           Paint()..color = const Color(0x0DFFFFFF));
     }
     // Fence.
-    final plank = Paint()..color = const Color(0xFF6B5240);
-    final dark = Paint()..color = const Color(0xFF4A382C);
+    final plank = Paint()..color = const Color(0xFFC0A078);
+    final dark = Paint()..color = const Color(0xFF9B7C59);
     canvas.drawRect(Rect.fromLTWH(0, h * .075, w, h * .012), dark);
     canvas.drawRect(Rect.fromLTWH(0, h * .13, w, h * .012), dark);
     for (var x = 4.0; x < w; x += 26) {
@@ -217,7 +107,7 @@ class MoonlitYardBackground extends PositionComponent {
     }
     // Grass tufts and tiny flowers.
     final tuft = Paint()
-      ..color = const Color(0xFF507A5C)
+      ..color = const Color(0xFFA7C88D)
       ..strokeWidth = 2
       ..strokeCap = StrokeCap.round;
     for (var i = 0; i < 60; i++) {
@@ -232,8 +122,8 @@ class MoonlitYardBackground extends PositionComponent {
       }
     }
     // Bushes on the sides.
-    final bush = Paint()..color = const Color(0xFF223C2D);
-    final bushLight = Paint()..color = const Color(0xFF2E4D3A);
+    final bush = Paint()..color = const Color(0xFF50764A);
+    final bushLight = Paint()..color = const Color(0xFF699858);
     for (final (x, y, r) in [
       (0.0, .78, 46.0),
       (.04, .9, 40.0),
@@ -245,15 +135,58 @@ class MoonlitYardBackground extends PositionComponent {
     }
     // Porch boards along the bottom.
     final porch = Rect.fromLTWH(0, h * .86, w, h * .14);
-    canvas.drawRect(porch, Paint()..color = const Color(0xFF6B4F3A));
+    canvas.drawRect(porch, Paint()..color = const Color(0xFFBE986E));
     final seam = Paint()
-      ..color = const Color(0xFF4F3828)
+      ..color = const Color(0xFF926F4C)
       ..strokeWidth = 1.5;
     for (var y = porch.top; y < h; y += 14) {
       canvas.drawLine(Offset(0, y), Offset(w, y), seam);
     }
     canvas.drawRect(Rect.fromLTWH(0, porch.top - 4, w, 5),
-        Paint()..color = const Color(0xFF8A6A50));
+        Paint()..color = const Color(0xFFD1B18A));
+    canvas.restore();
+  }
+}
+
+/// Warm light is painted on the lawn, below beds and cats, so a lit lamp
+/// remains visibly different even when the night scenery is already bright.
+class LanternLightComponent extends PositionComponent with HasGameRef {
+  LanternLightComponent(this.yard) : super(priority: -20);
+  final MoonlitYard yard;
+
+  @override
+  void render(Canvas canvas) {
+    final screen = gameRef.size.toSize();
+    for (final lantern in yard.lanterns) {
+      if (!lantern.lit && lantern.ember <= 0) continue;
+      final radius = yard.lanternRadius(screen) * (lantern.lit ? 1 : .75);
+      final center = lantern.lamp(screen);
+      final strength = lantern.lit
+          ? (lantern.burn / 2).clamp(.6, 1.0)
+          : .5 * (lantern.ember / 2).clamp(.2, 1.0);
+      canvas.drawCircle(
+        center,
+        radius,
+        Paint()
+          ..shader = ui.Gradient.radial(center, radius, [
+            const Color(0xFFFFD57A).withOpacity(.48 * strength),
+            const Color(0xFFFFD57A).withOpacity(.30 * strength),
+            const Color(0xFFFFD57A).withOpacity(0),
+          ], const [
+            0,
+            .65,
+            1
+          ]),
+      );
+      canvas.drawCircle(
+        center,
+        radius * .85,
+        Paint()
+          ..color = const Color(0xFFFFDF99).withOpacity(.4 * strength)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 1.5,
+      );
+    }
   }
 }
 
@@ -268,7 +201,7 @@ class MoonlitYardOverlay extends PositionComponent with HasGameRef {
   @override
   void render(Canvas canvas) {
     final screen = gameRef.size.toSize();
-    _moon(canvas, screen);
+    paintMoon(canvas, screen, yard.moon);
     for (final cat in cats()) {
       if (!cat.catchWindow.canCatch || cat.isCarried || cat.isDelivered) {
         continue;
@@ -282,33 +215,6 @@ class MoonlitYardOverlay extends PositionComponent with HasGameRef {
             ..color = const Color(0xCC74FF97)
             ..style = PaintingStyle.stroke
             ..strokeWidth = 2.5);
-    }
-  }
-
-  void _moon(Canvas canvas, Size screen) {
-    // Top left, clear of the status pill and the mission card.
-    final c = Offset(screen.width * .22, screen.height * .07);
-    final r = screen.height * .045;
-    final shown = yard.moonShown;
-    canvas.drawCircle(c, r * 2.2,
-        Paint()..color = Color.fromRGBO(255, 244, 200, .12 * shown));
-    canvas.drawCircle(c, r, Paint()..color = const Color(0xFFFFF4C8));
-    canvas.drawCircle(c + Offset(-r * .3, -r * .2), r * .2,
-        Paint()..color = const Color(0x22B8A060));
-    canvas.drawCircle(c + Offset(r * .35, r * .3), r * .14,
-        Paint()..color = const Color(0x22B8A060));
-    // Cloud slides over the moon while it is hidden.
-    final cover = 1 - shown;
-    if (cover <= 0) return;
-    final cloud = Paint()..color = Color.fromRGBO(70, 80, 115, .95 * cover);
-    final cx = c.dx + (1 - cover) * r * 3;
-    for (final (dx, dy, cr) in const [
-      (-1.1, .25, .7),
-      (-.3, -.1, .9),
-      (.6, .2, .75),
-      (1.3, .35, .55),
-    ]) {
-      canvas.drawCircle(Offset(cx + dx * r, c.dy + dy * r), cr * r, cloud);
     }
   }
 }

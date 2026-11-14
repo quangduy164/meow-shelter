@@ -20,13 +20,28 @@
   - `cat_catch_rule.dart`: catch-rule tuning numbers.
   - `cat_animations.dart`, `cat_state.dart`, `cat_dialogue.dart`.
 - `game/`: the rescue mode (Flame).
-  - `meow_shelter_game.dart`: round flow, rescues, stars, and the infinite
-    "night shift" (nights with a quota and clock, cards between nights).
-  - `night_shift.dart`: night-shift data: cards, run progress, helper skills
-    of camp cats (`CatAssist` is what cats read while a helper skill runs).
-    UI lives in `ui/widgets/night_shift_overlays.dart`. Night maps (`NightMap`)
-    are separate from rescue maps; `world/moonlit_yard.dart` is the backyard:
-    lanterns, drifting moonlight and clouds; cats are grabbed only in light.
+  - `meow_shelter_game.dart`: shared cat-catching engine, normal-level flow,
+    bait, beds and results. The night-shift controller is `game.night` and
+    is created only for infinite levels. `Random` can be injected for debugging.
+  - `night_shift/`: the independent night rules (see its README).
+    - `night_game.dart`: night lifecycle, objectives, card/shop transitions;
+      `NightPhase` is the current phase to inspect in the debugger.
+    - `night_run.dart`: run progress, silver wallet, purchases and card bonuses.
+    - `night_cards.dart`, `night_relics.dart`, `night_helpers.dart`: definitions.
+    - `night_relic_effects.dart`, `night_helper_effects.dart`: effect triggers.
+    - `night_scene.dart`: map contract and factory; new maps implement this.
+    - `maps/moonlit_yard.dart`: lantern/moon/cloud simulation;
+      `moonlit_yard_painter.dart`: artwork/components;
+      `moonlit_yard_scene.dart`: mounts the scene and handles its input.
+    - `maps/night_market.dart`, `night_market_scene.dart`,
+      `night_market_painter.dart`: market noise/traffic, scene input and art.
+      `moonlight.dart` / `moonlight_art.dart` are shared moon/cloud rules and art.
+      Night maps rotate; map-specific cards are offered for the next map.
+    UI is split into `night_setup_overlay.dart`, `night_cards_overlay.dart`,
+    `night_skill_bar.dart`, `night_info_overlay.dart`, `night_relic_shop.dart`.
+    Relic icons are shared through `night_relic_icon.dart`; stall artwork is
+    separate in `night_relic_stall_painter.dart`. No panel imports another
+    panel just to get artwork.
   - `components/cat_component.dart`: movement, dragging and escapes.
   - `components/cat_catch_behaviour.dart`: per-breed catch rules (part of the
     cat component library).
@@ -145,3 +160,11 @@
 
 Validation: `flutter analyze` and Android builds. Do not add project-local
 tools or test files.
+
+- Night-shift relics: `NightRun` owns a temporary silver wallet and up to three
+  relics. Each cleared night grants silver; after the free card on even nights,
+  `nightShop` opens before the next briefing. No run currency/relics are saved
+  to camp progress. `night_relic_shop.dart` displays prices and card synergies.
+  Embers extend lantern light; bell/charm advance one catch-rule step (never
+  auto-deliver); moon pouch has a 10s trigger cooldown; prism freezes catch
+  timers only in intersecting moon/lantern light.

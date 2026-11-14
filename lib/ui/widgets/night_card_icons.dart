@@ -2,7 +2,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
-import '../../game/night_shift.dart';
+import '../../game/night_shift/night_cards.dart';
 
 /// Hand-drawn badge art for each night-shift card, in the same chunky
 /// outlined style as the camp icons. Drawn on a 48x48 grid and scaled.
@@ -70,6 +70,16 @@ class _NightCardPainter extends CustomPainter {
         _crowd(canvas);
       case NightCard.hiddenFish:
         _hiddenFish(canvas);
+      case NightCard.quietSteps:
+        _quietSteps(canvas);
+      case NightCard.softWheels:
+        _softWheels(canvas);
+      case NightCard.backupPower:
+        _backupPower(canvas);
+      case NightCard.quietCorner:
+        _quietCorner(canvas);
+      case NightCard.busyMarket:
+        _busyMarket(canvas);
     }
   }
 
@@ -671,6 +681,93 @@ class _NightCardPainter extends CustomPainter {
         textDirection: TextDirection.ltr)
       ..layout();
     mark.paint(canvas, Offset(24 - mark.width / 2, 33 - mark.height / 2 + 1));
+  }
+
+  void _quietSteps(Canvas canvas) {
+    _shape(
+        canvas,
+        Path()
+          ..addRRect(RRect.fromRectAndRadius(
+              const Rect.fromLTWH(9, 26, 31, 13), const Radius.circular(6))),
+        const Color(0xFFA69BC4));
+    canvas.drawLine(const Offset(12, 34), const Offset(37, 34),
+        _line(1.5, const Color(0xFF74648F)));
+    _paw(canvas, const Offset(24, 22), 19, _orange);
+    _star(canvas, const Offset(38, 13), 3, _goldDark);
+  }
+
+  void _softWheels(Canvas canvas) {
+    _shape(
+        canvas, _oval(const Offset(24, 26), 29, 29), const Color(0xFF7A5E4B));
+    _shape(canvas, _oval(const Offset(24, 26), 20, 20), _woodLight, 1.5);
+    for (var i = 0; i < 6; i++) {
+      final a = i * math.pi / 3;
+      canvas.drawLine(const Offset(24, 26),
+          Offset(24 + math.cos(a) * 9, 26 + math.sin(a) * 9), _line(1.5));
+    }
+    _shape(
+        canvas,
+        Path()
+          ..moveTo(6, 13)
+          ..quadraticBezierTo(24, 1, 42, 13)
+          ..lineTo(39, 20)
+          ..quadraticBezierTo(24, 9, 9, 20)
+          ..close(),
+        const Color(0xFF8EBCA9),
+        1.6);
+    canvas.drawCircle(const Offset(24, 26), 3, _fill(_ink));
+  }
+
+  void _backupPower(Canvas canvas) {
+    _shape(
+        canvas,
+        Path()
+          ..addRRect(RRect.fromRectAndRadius(
+              const Rect.fromLTWH(12, 11, 25, 29), const Radius.circular(4))),
+        _blue);
+    _shape(canvas, Path()..addRect(const Rect.fromLTWH(19, 7, 11, 4)),
+        _woodLight, 1.5);
+    final bolt = Path()
+      ..moveTo(26, 14)
+      ..lineTo(17, 27)
+      ..lineTo(24, 27)
+      ..lineTo(21, 37)
+      ..lineTo(33, 22)
+      ..lineTo(26, 22)
+      ..close();
+    _shape(canvas, bolt, _gold, 1.3);
+  }
+
+  void _quietCorner(Canvas canvas) {
+    _catHead(canvas, const Offset(24, 25), 13, _woodLight);
+    canvas.drawArc(const Rect.fromLTWH(8, 8, 32, 35), math.pi, math.pi, false,
+        _line(5, const Color(0xFF7E9FA9)));
+    for (final x in const [9.0, 39.0]) {
+      _shape(
+          canvas,
+          Path()
+            ..addRRect(RRect.fromRectAndRadius(
+                Rect.fromCenter(center: Offset(x, 26), width: 8, height: 16),
+                const Radius.circular(4))),
+          const Color(0xFF8FB9B1),
+          1.5);
+    }
+  }
+
+  void _busyMarket(Canvas canvas) {
+    final cart = Path()
+      ..addRRect(RRect.fromRectAndRadius(
+          const Rect.fromLTWH(10, 22, 29, 13), const Radius.circular(2)));
+    _shape(canvas, cart, _woodLight);
+    canvas.drawLine(const Offset(5, 17), const Offset(11, 24), _line(3, _wood));
+    for (final x in const [16.0, 33.0]) {
+      _shape(canvas, _oval(Offset(x, 38), 8, 8), const Color(0xFF7C97A1), 1.5);
+    }
+    _shape(canvas, Path()..addRect(const Rect.fromLTWH(13, 13, 11, 9)), _orange,
+        1.5);
+    _shape(canvas, Path()..addRect(const Rect.fromLTWH(25, 10, 11, 12)), _blue,
+        1.5);
+    _star(canvas, const Offset(39, 12), 3, _gold);
   }
 
   @override

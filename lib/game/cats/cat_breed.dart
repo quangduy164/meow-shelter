@@ -60,7 +60,7 @@ class CatBreed {
     catchRule: CatCatchRule('Ham ăn',
         'Cho ăn 1 con cá. Ăn xong mèo ngủ khò rất lâu, cứ thong thả bế vào ổ.'),
     homeSkill:
-        CatHomeSkill('Bứt tốc lửa', SkillGlyph.sprint, Color(0xFFF08A3A), 5),
+        CatHomeSkill('Bứt tốc lửa', SkillGlyph.sprint, Color(0xFFF08A3A), 4),
     attacks: [HomeAttack.fireball, HomeAttack.flameBreath, HomeAttack.fireBomb],
   );
   static const black = CatBreed(
@@ -71,7 +71,7 @@ class CatBreed {
     catchRule: CatCatchRule(
         'Cô độc', 'Chỉ ăn cá ở chỗ vắng: quanh con cá không được có mèo khác.'),
     homeSkill:
-        CatHomeSkill('Hóa bóng', SkillGlyph.vanish, Color(0xFF6D5BA8), 9),
+        CatHomeSkill('Hóa bóng', SkillGlyph.vanish, Color(0xFF6D5BA8), 8),
     attacks: [HomeAttack.shadowStep, HomeAttack.decoy, HomeAttack.timeStop],
   );
   static const himalaya = CatBreed(
@@ -81,7 +81,7 @@ class CatBreed {
     bedAsset: 'Bed/bed-himalaya.png',
     catchRule: CatCatchRule(
         'Nhút nhát', 'Đặt cá cách xa mèo. Đặt sát quá mèo giật mình bỏ chạy.'),
-    homeSkill: CatHomeSkill('Lăn băng', SkillGlyph.roll, Color(0xFF3E9FB0), 6),
+    homeSkill: CatHomeSkill('Lăn băng', SkillGlyph.roll, Color(0xFF3E9FB0), 5),
     attacks: [HomeAttack.iceShard, HomeAttack.frostNova, HomeAttack.iceBridge],
   );
   static const scottish = CatBreed(
@@ -92,7 +92,7 @@ class CatBreed {
     catchRule:
         CatCatchRule('Kén ăn', 'Phải ăn đủ 2 con cá thì mèo mới chịu cho bế.'),
     homeSkill: CatHomeSkill(
-        'Khiên phản chấn', SkillGlyph.shield, Color(0xFF6B9E4E), 8),
+        'Khiên phản chấn', SkillGlyph.shield, Color(0xFF6B9E4E), 7),
     attacks: [HomeAttack.roar, HomeAttack.stoneWall, HomeAttack.reflect],
   );
   static const calico = CatBreed(
@@ -103,7 +103,7 @@ class CatBreed {
     catchRule: CatCatchRule('Ham chơi',
         'Không thèm cá! Chạm vào mèo 3 lần liền để chơi cùng, mèo mệt là bế được.'),
     homeSkill:
-        CatHomeSkill('Phúc lành', SkillGlyph.heal, Color(0xFFD9657B), 12),
+        CatHomeSkill('Phúc lành', SkillGlyph.heal, Color(0xFFD9657B), 11),
     attacks: [HomeAttack.magnet, HomeAttack.catEye, HomeAttack.bolt],
   );
 

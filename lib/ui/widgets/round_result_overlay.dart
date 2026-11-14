@@ -79,14 +79,14 @@ class _RoundResultOverlayState extends State<RoundResultOverlay>
   String get _subtitle {
     final level = _game.level;
     final rescued = _game.rescued;
-    final run = _game.run;
+    final run = _game.night?.run;
     if (run != null) {
       final camp = CampState.instance;
-      final record = _game.newRecord
+      final record = _game.night!.newRecord
           ? 'KỶ LỤC MỚI!'
           : 'Kỷ lục: đêm ${camp.bestNight} · ${camp.bestNightCats} mèo';
       return 'Trụ tới đêm ${run.night} · cứu ${run.totalRescued} mèo · '
-          '+${run.coins} xu\n$record';
+          '+${run.coins} xu\n${run.relics.length} cổ vật · Ngân quang còn lại: ${run.silver} (kết thúc lượt)\n$record';
     }
     if (level.isTutorial) return 'Bạn đã biết cách bắt mèo này rồi';
     if (_won) return 'Cứu đủ $rescued mèo · +${rescued * 5} xu';

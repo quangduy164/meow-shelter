@@ -1,0 +1,117 @@
+import 'dart:math';
+import 'night_cards.dart';
+import 'night_relics.dart';
+
+enum NightPhase { setup, briefing, playing, cards, shop, ended }
+
+/// Progress of one night-shift run: the current night, its quota and every
+/// bonus from the cards picked so far.
+class NightRun {
+  NightRun(this.helpers);
+
+  /// Camp cats brought along (one or two breed ids).
+  final List<String> helpers;
+  final cards = <NightCard>[];
+  int night = 1;
+  int rescuedTonight = 0, spawnedTonight = 0;
+  int totalRescued = 0, coins = 0;
+  int silver = 0, lastSilverReward = 0;
+  final relics = <NightRelic>[];
+  static const relicSlots = 3;
+
+  /// Separate run currency; never credited to the camp wallet.
+  void rewardSilver({required int secondsLeft, required bool clean}) {
+    final speedBonus = (4 * secondsLeft / seconds).floor().clamp(0, 4);
+    lastSilverReward =
+        ((12 + min(night * 2, 20) + speedBonus + (clean ? 3 : 0)) *
+                (1 + coinBonus))
+            .round();
+    silver += lastSilverReward;
+  }
+
+  List<NightRelic> relicOffer(Random random) =>
+      (NightRelic.values.where((r) => !relics.contains(r)).toList()
+            ..shuffle(random))
+          .take(3)
+          .toList();
+
+  bool buyRelic(NightRelic relic) {
+    if (relics.length >= relicSlots ||
+        relics.contains(relic) ||
+        silver < relic.price) {
+      return false;
+    }
+    silver -= relic.price;
+    relics.add(relic);
+    return true;
+  }
+
+  int count(NightCard card) => cards.where((c) => c == card).length;
+  bool has(NightCard card) => cards.contains(card);
+
+  // Card bonuses.
+  double get speed =>
+      pow(.88, count(NightCard.lazyLunch)) *
+      pow(1.15, count(NightCard.hotCoins)).toDouble();
+  double get grip => 1 + .35 * count(NightCard.warmHug);
+  double get ready => 1 + .35 * count(NightCard.patience);
+  double get lure => 1 + .35 * count(NightCard.scentedFish);
+  double get bedScale => 1 + .25 * count(NightCard.wideBeds);
+  int get extraFish => 4 * count(NightCard.fishBasket);
+  double get cooldownScale =>
+      pow(.75, count(NightCard.eagerHelpers)).toDouble();
+  double get coinBonus =>
+      count(NightCard.hotCoins) +
+      .5 *
+          (count(NightCard.nightWind) +
+              count(NightCard.crowd) +
+              count(NightCard.hiddenFish) +
+              count(NightCard.busyMarket));
+
+  // The night itself.
+  int get quota => min(3 + night, 12);
+
+  /// Cats on the field at once.
+  int get fieldSize =>
+      min(min(2 + night ~/ 2, 5) + count(NightCard.crowd), quota);
+  int get seconds => 22 + quota * 8 + 10 * count(NightCard.longNight);
+
+  /// Rotate maps between nights; card offers use the upcoming map.
+  NightMap mapFor(int night) =>
+      NightMap.values[(night - 1) % NightMap.values.length];
+  NightMap get map => mapFor(night);
+
+  // Backyard bonuses.
+  int get lanterns => 3 + count(NightCard.extraLantern);
+  double get lanternBurn =>
+      10 *
+      (1 + .5 * count(NightCard.longWick)) /
+      (has(NightCard.nightWind) ? 2 : 1);
+  double get lanternLight => 1 + .25 * count(NightCard.brightLantern);
+
+  /// Every fifth night ends with a boss cat.
+  bool get bossNight => night % 5 == 0;
+
+  /// Three cards for the night ahead on [next]: one general upgrade, one
+  /// card for that map and one deal, filled from the others when a group
+  /// has run out.
+  List<NightCard> offer(Random random, NightMap next) {
+    final open = NightCard.values
+        .where((c) => count(c) < c.limit && (c.map == null || c.map == next))
+        .toList()
+      ..shuffle(random);
+    final general = open.where((c) => !c.isDeal && c.map == null).toList();
+    final mapCards = open.where((c) => !c.isDeal && c.map != null).toList();
+    final deals = open.where((c) => c.isDeal).toList();
+    final picks = <NightCard>[
+      ...general.take(1),
+      ...mapCards.take(1),
+      ...deals.take(1),
+    ];
+    for (final card in [...general, ...mapCards, ...deals]) {
+      if (picks.length >= 3) break;
+      if (!picks.contains(card)) picks.add(card);
+    }
+    return picks;
+  }
+}

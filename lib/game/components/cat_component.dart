@@ -15,7 +15,7 @@ import '../../levels/level_config.dart';
 import '../cats/cat_skill.dart';
 import '../cats/cat_dialogue.dart';
 import '../cats/cat_catch_rule.dart';
-import '../night_shift.dart';
+import '../cats/cat_assist.dart';
 
 part 'cat_catch_behaviour.dart';
 
@@ -37,6 +37,7 @@ class CatComponent extends SpriteAnimationGroupComponent<CatState>
     this.onStartled,
     this.assist,
     this.inLight,
+    this.freezeInLight,
   })  : catchWindow = CatchWindow(
             readySeconds: level.readySeconds,
             gripSeconds: level.skillFor(catType) == CatSkill.slippery
@@ -58,6 +59,7 @@ class CatComponent extends SpriteAnimationGroupComponent<CatState>
   /// Whether the cat stands in lantern or moon light on the night yard.
   /// Lit cats are calm: no bolting, no tricks, and they wait twice as long.
   final bool Function(CatComponent cat)? inLight;
+  final bool Function(CatComponent cat)? freezeInLight;
   bool get _calm => assist?.calm == true || inLight?.call(this) == true;
 
   /// Big chapter boss: slower, but needs more fish or taps.
@@ -155,6 +157,15 @@ class CatComponent extends SpriteAnimationGroupComponent<CatState>
       canvas.drawOval(Rect.fromLTWH(6, size.y * .8, size.x - 12, 12),
           Paint()..color = const Color(0x8874FF97));
     }
+    if (freezeInLight?.call(this) == true &&
+        (catchWindow.canCatch || _isDragged)) {
+      canvas.drawOval(
+          Rect.fromLTWH(4, size.y * .8, size.x - 8, 14),
+          Paint()
+            ..color = const Color(0xFFCDA7FF)
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = 3);
+    }
     // Sheets are drawn to size: still poses big, moving poses ~80% of that.
     canvas.save();
     // Flip artwork only so input, bait and shelter checks share stable bounds.
@@ -188,6 +199,18 @@ class CatComponent extends SpriteAnimationGroupComponent<CatState>
       return;
     }
     _startle();
+  }
+
+  /// Environmental noise does not count as a mistake by the player.
+  void reactToNoise() {
+    if (!isLoaded ||
+        _calm ||
+        _isDragged ||
+        _isDelivered ||
+        _isDropWrong ||
+        _isEscaping) return;
+    _dodge();
+    _dialogue.say('Ồn quá!');
   }
 
   /// A bolt the player caused; counts against the "no startle" goal.
@@ -298,7 +321,7 @@ class CatComponent extends SpriteAnimationGroupComponent<CatState>
     }
     _skillCooldown -= dt;
     final wasReady = catchWindow.canCatch;
-    if (assist?.frozen != true) {
+    if (assist?.frozen != true && freezeInLight?.call(this) != true) {
       catchWindow.tick(inLight?.call(this) == true ? dt * .5 : dt);
     }
     if (_isDragged) {
