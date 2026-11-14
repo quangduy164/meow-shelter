@@ -81,6 +81,7 @@ class CampState {
       c.clear();
     }
     owned.clear();
+    catNames.clear();
     seenGuides.clear();
   }
 
@@ -89,6 +90,15 @@ class CampState {
     rescued.addAll(Map<String, int>.from(data['rescued'] as Map? ?? {}));
     affection.addAll(Map<String, int>.from(data['affection'] as Map? ?? {}));
     owned.addAll(List<String>.from(data['owned'] as List? ?? []));
+    final names = data['catNames'];
+    if (names is Map) {
+      for (final entry in names.entries) {
+        if (entry.key is String && entry.value is String) {
+          final name = (entry.value as String).trim();
+          if (name.isNotEmpty) catNames[entry.key as String] = name;
+        }
+      }
+    }
     final placed = data['placement'] as Map? ?? {};
     for (final e in placed.entries) {
       final xy = List<num>.from(e.value as List);
@@ -115,6 +125,27 @@ class CampState {
   final rescued = <String, int>{};
   final affection = <String, int>{};
   final owned = <String>{};
+  final catNames = <String, String>{};
+
+  String nameOf(String type) => catNames[type] ?? CatBreed.of(type).name;
+
+  Future<bool> renameCat(String type, String name) async {
+    if (!catPrices.containsKey(type) || !unlocked(type)) return false;
+    final previous = catNames[type];
+    final trimmed = name.trim();
+    if (trimmed.isEmpty) {
+      catNames.remove(type);
+    } else {
+      catNames[type] = trimmed;
+    }
+    if (await _save()) return true;
+    if (previous == null) {
+      catNames.remove(type);
+    } else {
+      catNames[type] = previous;
+    }
+    return false;
+  }
 
   /// Where the player dragged each decoration, as room fractions.
   final placement = <String, (double, double)>{};
@@ -169,12 +200,20 @@ class CampState {
       type == 'orange' || owned.contains(catItemId(type));
 
   /// Returns false when the player cannot afford the cat or already has it.
-  Future<bool> buyCat(String type) async {
-    final price = catPrices[type] ?? 0;
+  Future<bool> buyCat(String type, {String? name}) async {
+    final price = catPrices[type];
+    if (price == null) return false;
     if (unlocked(type) || coins < price) return false;
     coins -= price;
     owned.add(catItemId(type));
-    await _save();
+    final cleanName = name?.trim() ?? '';
+    if (cleanName.isNotEmpty) catNames[type] = cleanName;
+    if (!await _save()) {
+      coins += price;
+      owned.remove(catItemId(type));
+      catNames.remove(type);
+      return false;
+    }
     return true;
   }
 
@@ -227,6 +266,7 @@ class CampState {
         'rescued': rescued,
         'affection': affection,
         'owned': owned.toList(),
+        'catNames': catNames,
         'placement': {
           for (final e in placement.entries) e.key: [e.value.$1, e.value.$2]
         },

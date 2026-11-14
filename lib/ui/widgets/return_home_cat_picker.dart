@@ -62,30 +62,32 @@ class _ReturnHomeCatPickerState extends State<ReturnHomeCatPicker> {
   Widget build(BuildContext context) => Material(
         color: DS.selectionBackdrop,
         child: SafeArea(
-          child: Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 740, maxHeight: 320),
-              child: Padding(
-                padding: const EdgeInsets.all(DS.spaceMd),
-                child: Column(children: [
-                  Row(children: [
-                    RoundButton(
-                      glyph: GameGlyph.home,
-                      onPressed: _starting ? null : widget.onHome,
-                      size: 40,
-                    ),
-                    const SizedBox(width: DS.spaceSm),
-                    const Expanded(
-                      child: Text('CHỌN MÈO',
-                          style: TextStyle(
-                              color: DS.cream,
-                              fontSize: DS.fontTitle,
-                              fontWeight: FontWeight.w900,
-                              letterSpacing: 1)),
-                    ),
-                  ]),
-                  const SizedBox(height: DS.spaceSm),
-                  Expanded(
+          child: Padding(
+            padding: const EdgeInsets.all(DS.spaceMd),
+            child: Column(children: [
+              Row(children: [
+                RoundButton(
+                  glyph: GameGlyph.home,
+                  onPressed: _starting ? null : widget.onHome,
+                  size: 40,
+                ),
+                const Expanded(
+                  child: Text('CHỌN MÈO',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                          color: DS.cream,
+                          fontSize: DS.fontTitle,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: 1)),
+                ),
+                const SizedBox(width: 40),
+              ]),
+              const SizedBox(height: DS.spaceSm),
+              Expanded(
+                child: Center(
+                  child: ConstrainedBox(
+                    constraints:
+                        const BoxConstraints(maxWidth: 620, maxHeight: 260),
                     child: LayoutBuilder(builder: (context, box) {
                       final rosterWidth =
                           (box.maxWidth * .22).clamp(136.0, 148.0);
@@ -108,9 +110,9 @@ class _ReturnHomeCatPickerState extends State<ReturnHomeCatPicker> {
                           ]);
                     }),
                   ),
-                ]),
+                ),
               ),
-            ),
+            ]),
           ),
         ),
       );

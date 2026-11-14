@@ -294,6 +294,20 @@ LevelConfig tutorialLevelFor(String type) => type == 'orange'
         allowRun: false,
       );
 
+/// A completed round proves the breed is familiar, including older saves.
+/// Reading a guide alone does not replace hands-on practice.
+LevelConfig? requiredCatchTutorial(LevelConfig level, Map<String, int> stars) {
+  if (level.isTutorial) return null;
+  for (final type in level.catTypes.toSet()) {
+    final tutorial = tutorialLevelFor(type);
+    final learned = (stars['${tutorial.id}'] ?? 0) > 0 ||
+        gameLevels.any((played) =>
+            (stars['${played.id}'] ?? 0) > 0 && played.catTypes.contains(type));
+    if (!learned) return tutorial;
+  }
+  return null;
+}
+
 /// Winning is one star; each met goal adds one.
 /// Levels without goals (practice) give all three.
 int starsFor(LevelConfig level, RoundStats stats) => level.goals.isEmpty

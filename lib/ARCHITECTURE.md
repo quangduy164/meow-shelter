@@ -100,7 +100,8 @@
     layout notifications preserve the run, score and result overlay.
 - `fishing/`: fishing controller (rules, timing, saving catches).
 - `camp/`: the cat camp.
-  - `camp_state.dart`: coins, bought cats (`cat:<breed>` in owned), rescue counts, affection, owned and placed
+  - `camp_state.dart`: coins, bought cats (`cat:<breed>` in owned), optional
+    `catNames` by breed (fallback to breed name), rescue counts, affection, owned and placed
     decorations, level stars, seen guides. Saved with shared_preferences.
   - `camp_resident.dart`: what camp cats do (wander, play, nap, react).
   - `camp_room_painter.dart`, `camp_decor_painter.dart`: room and item art.
@@ -127,6 +128,11 @@
 ## Rules
 
 - UI does not own game rules; games talk to UI through overlays/callbacks.
+- Rescue entry uses `requiredCatchTutorial`: unfamiliar breeds open practice
+  before the requested round. Winning practice records its existing level stars;
+  Continue rechecks remaining breeds, then opens the requested round. Closing
+  unfinished practice does not mark it complete. Previously won rounds also
+  count as familiarity for older saves; merely reading a guide does not.
 - Draw cats in widgets only through `CatSprite` / `CatFace`.
 - Saves never crash the app: unreadable data is kept under `<key>_broken`
   and the game starts fresh; failed writes are logged with `debugPrint`.

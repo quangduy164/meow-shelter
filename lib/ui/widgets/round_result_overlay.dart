@@ -13,9 +13,13 @@ import '../../levels/levels.dart';
 /// its label underneath, and the next actions.
 class RoundResultOverlay extends StatefulWidget {
   const RoundResultOverlay(
-      {super.key, required this.game, required this.onHome});
+      {super.key,
+      required this.game,
+      required this.onHome,
+      this.nextLabel = 'MÀN TIẾP'});
   final MeowShelterGame game;
   final VoidCallback onHome;
+  final String nextLabel;
 
   @override
   State<RoundResultOverlay> createState() => _RoundResultOverlayState();
@@ -159,11 +163,11 @@ class _RoundResultOverlayState extends State<RoundResultOverlay>
                             ],
                             Expanded(
                               child: _ActionButton(
-                                  tooltip: next ? 'Màn tiếp' : 'Chơi lại',
+                                  tooltip: next ? widget.nextLabel : 'Chơi lại',
                                   icon: next
                                       ? Icons.arrow_forward_rounded
                                       : Icons.replay_rounded,
-                                  label: next ? 'MÀN TIẾP' : 'CHƠI LẠI',
+                                  label: next ? widget.nextLabel : 'CHƠI LẠI',
                                   primary: true,
                                   onPressed: next
                                       ? _game.onNextLevel!

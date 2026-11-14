@@ -2,6 +2,7 @@ import '../design.dart';
 import 'package:flame/game.dart';
 import 'package:flutter/material.dart';
 import '../../game/meow_shelter_game.dart';
+import '../../camp/camp_state.dart';
 import '../../levels/level_config.dart';
 import '../../levels/levels.dart';
 import '../widgets/cat_guide_overlay.dart';
@@ -20,34 +21,38 @@ class GameScreen extends StatefulWidget {
 
 class _GameScreenState extends State<GameScreen> {
   MeowShelterGame? _game;
-  late final _newCats = CatGuideOverlay.unseen(widget.level.catTypes);
-  bool _showAll = false;
+  late final _tutorial =
+      requiredCatchTutorial(widget.level, CampState.instance.levelStars);
+  late final _level = _tutorial ?? widget.level;
 
   @override
   Widget build(BuildContext context) {
     final index = gameLevels.indexWhere((level) => level.id == widget.level.id);
+    final nextLevel = _tutorial != null
+        ? widget.level
+        : index >= 0 && index < gameLevels.length - 1
+            ? gameLevels[index + 1]
+            : null;
     _game ??= MeowShelterGame(
-        level: widget.level,
-        onNextLevel: index >= 0 && index < gameLevels.length - 1
+        level: _level,
+        onNextLevel: nextLevel != null
             ? () => Navigator.of(context).pushReplacement(
                 MaterialPageRoute<void>(
-                    builder: (_) => GameScreen(level: gameLevels[index + 1])))
+                    builder: (_) => GameScreen(level: nextLevel)))
             : null);
     return Scaffold(
-      body: GameWidget<MeowShelterGame>(game: _game!, initialActiveOverlays: [
+      body: GameWidget<MeowShelterGame>(game: _game!, initialActiveOverlays: const [
         'home',
-        if (_newCats.isNotEmpty) 'catGuide',
       ], overlayBuilderMap: {
         'catGuide': (context, game) => _PausedGuide(
               game: game,
-              types:
-                  _showAll ? widget.level.catTypes.toSet().toList() : _newCats,
+              types: _level.catTypes.toSet().toList(),
               onDone: () {
                 game.overlays.remove('catGuide');
                 game.resumeEngine();
               },
               // No practice button inside a practice round itself.
-              onPractice: widget.level.isTutorial
+              onPractice: _level.isTutorial
                   ? null
                   : (type) => Navigator.of(context).push(
                       MaterialPageRoute<void>(
@@ -55,7 +60,9 @@ class _GameScreenState extends State<GameScreen> {
                               GameScreen(level: tutorialLevelFor(type)))),
             ),
         'roundResult': (context, game) => RoundResultOverlay(
-            game: game, onHome: () => Navigator.of(context).pop()),
+            game: game,
+            nextLabel: _tutorial != null ? 'TIẾP TỤC' : 'MÀN TIẾP',
+            onHome: () => Navigator.of(context).pop()),
         'home': (context, game) => SafeArea(
               child: Padding(
                 padding: const EdgeInsets.all(DS.spaceMd),
@@ -71,7 +78,6 @@ class _GameScreenState extends State<GameScreen> {
                     RoundButton(
                       icon: Icons.help_outline_rounded,
                       onPressed: () {
-                        _showAll = true;
                         game.overlays.add('catGuide');
                       },
                     ),
