@@ -59,6 +59,9 @@ class AdventureCat extends SpriteAnimationGroupComponent<CatState>
   /// The sprite's paws touch down this far below its top edge.
   static const double pawLine = 66;
 
+  /// Largest temporary lean past a curved lane edge while walking.
+  static const double laneCatchLimit = 8;
+
   Vector2 velocity = Vector2.zero();
   double _facing = 1;
 
@@ -164,13 +167,14 @@ class AdventureCat extends SpriteAnimationGroupComponent<CatState>
   /// Moves one axis at a time so the cat can slide along a log instead of
   /// passing through it or sticking on a diagonal input.
   void _moveAxis(Vector2 delta) {
+    if (delta.x == 0 && delta.y == 0) return;
     // Already overlapping a log (e.g. after a respawn): let the cat walk out
     // instead of freezing it in place.
     final wasBlocked = ignoresObstacles || game.blockedByLog(hitbox);
     final previous = position.clone();
     position += delta;
     position.x = position.x.clamp(AdventureRoad.startX, game.road.endX);
-    _clampToLane();
+    _clampToLane(soft: delta.x != 0);
     if (wasBlocked || !game.blockedByLog(hitbox)) return;
     position.setFrom(previous);
     if (delta.x != 0) velocity.x = 0;
@@ -178,12 +182,26 @@ class AdventureCat extends SpriteAnimationGroupComponent<CatState>
   }
 
   /// Paws stay on the road; the body may lean out over an edge.
-  void _clampToLane() {
+  ///
+  /// While walking along a curved edge, the lane catches the cat gradually
+  /// instead of snapping it each frame. Velocity into the edge is removed so
+  /// a held joystick does not keep shoving against the clamp.
+  void _clampToLane({bool soft = false}) {
     final road = game.road;
     final lane = road.halfWidth(_bodyCenterX);
     final center = road.centerY(_bodyCenterX);
-    position.y =
-        position.y.clamp(center - lane - size.y / 2, center + lane - pawLine);
+    final top = center - lane - size.y / 2;
+    final bottom = center + lane - pawLine;
+    final target = position.y.clamp(top, bottom).toDouble();
+    final correction = target - position.y;
+    if (correction == 0) return;
+    if (correction > 0 && velocity.y < 0) velocity.y = 0;
+    if (correction < 0 && velocity.y > 0) velocity.y = 0;
+    if (!soft || correction.abs() > laneCatchLimit) {
+      position.y = target;
+      return;
+    }
+    position.y += correction * .35;
   }
 
   void activateSkill() {

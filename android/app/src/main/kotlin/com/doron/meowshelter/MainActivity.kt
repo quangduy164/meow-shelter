@@ -1,4 +1,4 @@
-package com.example.meow_shelter
+package com.doron.meowshelter
 
 import io.flutter.embedding.android.FlutterActivity
 

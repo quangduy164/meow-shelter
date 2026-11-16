@@ -223,9 +223,9 @@ class GameAudio with WidgetsBindingObserver {
     final player = AudioPlayer()..audioCache = FlameAudio.audioCache;
     try {
       await player.setPlayerMode(PlayerMode.lowLatency);
-      await player.setAudioContext(const AudioContext(
+      await player.setAudioContext(AudioContext(
         android: AudioContextAndroid(audioFocus: AndroidAudioFocus.none),
-        iOS: AudioContextIOS(options: [AVAudioSessionOptions.mixWithOthers]),
+        iOS: AudioContextIOS(options: const {AVAudioSessionOptions.mixWithOthers}),
       ));
       await player.setReleaseMode(ReleaseMode.stop);
       await player.setSource(AssetSource('${sound.name}.wav'));
@@ -267,9 +267,9 @@ class GameAudio with WidgetsBindingObserver {
     await reel.setVolume(.22 * effectsVolume.value);
     if (reel.state == PlayerState.playing) return;
     await reel.setReleaseMode(ReleaseMode.loop);
-    await reel.setAudioContext(const AudioContext(
+    await reel.setAudioContext(AudioContext(
       android: AudioContextAndroid(audioFocus: AndroidAudioFocus.none),
-      iOS: AudioContextIOS(options: [AVAudioSessionOptions.mixWithOthers]),
+      iOS: AudioContextIOS(options: const {AVAudioSessionOptions.mixWithOthers}),
     ));
     await reel.setSource(AssetSource('fishingReel.wav'));
     if (!_foreground || !_reeling || effectsVolume.value == 0) return;

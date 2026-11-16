@@ -12,7 +12,7 @@ import '../moonlight_art.dart';
 import 'night_market.dart';
 import 'night_market_painter.dart';
 
-class NightMarketScene implements NightScene {
+class NightMarketScene extends NightScene {
   NightMarketScene(this.game, {required this.onFirstLight});
   final MeowShelterGame game;
   final void Function(Offset, double) onFirstLight;
@@ -30,10 +30,18 @@ class NightMarketScene implements NightScene {
   bool get cloudy => market.moon.cloudy;
   @override
   List<String> get rules => const [
-        'Độ ồn 100: mèo ngoài vùng sáng hoảng; bế mèo đang cầm vẫn an toàn'
+        'Sau xe đi qua có khoảng yên tĩnh: mèo ngoan hơn, độ ồn giảm nhanh. Xe có thể chở cá chưa ai nhận ở ven đường'
       ];
   @override
+  bool blocks(Rect bounds) => false;
+  @override
   void onMistake() => market.mistake();
+  @override
+  void onRescue() => market.onRescue();
+  @override
+  bool get peaceful => market.quietLeft > 0;
+  @override
+  bool get hasBaitInTransit => market.carryingFish;
   @override
   bool isLit(Offset point, Size size) => market.isLit(point, size);
   @override
@@ -90,7 +98,30 @@ class NightMarketScene implements NightScene {
 
   @override
   void update(double dt) {
-    if (market.update(dt)) {
+    final trips = market.cartTrips;
+    final alarm = market.update(dt);
+    final screen = game.size;
+    final cats = game.children.whereType<CatComponent>();
+    if (market.cartTrips > trips) {
+      final carried = market.carryingFish;
+      market.carryingFish = false;
+      if (carried) {
+        game.bait.place(Vector2(screen.x * .73, screen.y * .65), screen, cats,
+            free: true);
+      }
+      if (game.night!.run!.has(NightCard.cartFish)) {
+        for (var i = trips; i < market.cartTrips; i++) {
+          game.bait.place(Vector2(screen.x * .5, screen.y * .62), screen, cats,
+              free: true);
+        }
+      }
+    }
+    final progress = market.cartProgress;
+    if (progress != null && !market.carryingFish) {
+      market.carryingFish = game.bait.takeWaitingNear(
+          Vector2(-100 + (screen.x + 200) * progress, screen.y * .89), 65);
+    }
+    if (alarm) {
       GameAudio.instance.playRescue(GameSound.rescueNotice, important: true);
       for (final cat in game.children.whereType<CatComponent>()) {
         cat.reactToNoise();

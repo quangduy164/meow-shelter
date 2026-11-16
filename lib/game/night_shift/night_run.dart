@@ -15,7 +15,7 @@ class NightRun {
   int night = 1;
   int rescuedTonight = 0, spawnedTonight = 0;
   int totalRescued = 0, coins = 0;
-  int silver = 0, lastSilverReward = 0;
+  int silver = 0, lastSilverReward = 0, earnedMoonlight = 0;
   final relics = <NightRelic>[];
   static const relicSlots = 3;
 
@@ -24,10 +24,41 @@ class NightRun {
     final speedBonus = (4 * secondsLeft / seconds).floor().clamp(0, 4);
     lastSilverReward =
         ((12 + min(night * 2, 20) + speedBonus + (clean ? 3 : 0)) *
-                (1 + coinBonus))
+                (1 + moonlightBonus))
             .round();
-    silver += lastSilverReward;
+    earnMoonlight(lastSilverReward);
   }
+
+  void earnMoonlight(int amount) {
+    assert(amount >= 0);
+    silver += amount;
+    earnedMoonlight += amount;
+  }
+
+  double get afterglowSeconds => relics.contains(NightRelic.embers)
+      ? 4 +
+          2.0 *
+              (count(NightCard.longWick) +
+                  count(NightCard.backupPower) +
+                  count(NightCard.sturdyPlanks))
+      : 0;
+  int get bellTargets =>
+      min(3, 1 + count(NightCard.extraLantern) + count(NightCard.widePlanks));
+  double get bellReach =>
+      1 +
+      .25 * count(NightCard.brightLantern) +
+      (has(NightCard.railLights) ? .5 : 0);
+  double get lightRecharge =>
+      2 +
+      (has(NightCard.fullMoon) ? 2 : 0) +
+      count(NightCard.eagerHelpers).toDouble();
+  double get cloudRecharge => 3 + count(NightCard.eagerHelpers).toDouble();
+  double get chainWindow => 8 + 2.0 * count(NightCard.warmHug);
+  double get chainReach => 240 * (1 + .35 * count(NightCard.scentedFish));
+  int chainTargets(int chain) =>
+      chain < 2 ? 1 : 2 + (chain >= 3 && has(NightCard.patience) ? 1 : 0);
+  int get prismReward =>
+      3 + (has(NightCard.fullMoon) ? 2 : 0) + count(NightCard.hotCoins);
 
   List<NightRelic> relicOffer(Random random) =>
       (NightRelic.values.where((r) => !relics.contains(r)).toList()
@@ -46,6 +77,12 @@ class NightRun {
     return true;
   }
 
+  bool sellRelic(NightRelic relic) {
+    if (!relics.remove(relic)) return false;
+    silver += relic.sellPrice;
+    return true;
+  }
+
   int count(NightCard card) => cards.where((c) => c == card).length;
   bool has(NightCard card) => cards.contains(card);
 
@@ -60,13 +97,18 @@ class NightRun {
   int get extraFish => 4 * count(NightCard.fishBasket);
   double get cooldownScale =>
       pow(.75, count(NightCard.eagerHelpers)).toDouble();
-  double get coinBonus =>
-      count(NightCard.hotCoins) +
-      .5 *
-          (count(NightCard.nightWind) +
-              count(NightCard.crowd) +
+  // Map-specific contracts pay only on the map where their drawback applies.
+  double get moonlightBonus =>
+      .4 * count(NightCard.hotCoins) +
+      .25 *
+          (count(NightCard.crowd) +
               count(NightCard.hiddenFish) +
-              count(NightCard.busyMarket));
+              switch (map) {
+                NightMap.backyard =>
+                  count(NightCard.nightWind) + count(NightCard.fewerLanterns),
+                NightMap.marketAlley => count(NightCard.busyMarket),
+                NightMap.rooftops => count(NightCard.stormyRoof),
+              });
 
   // The night itself.
   int get quota => min(3 + night, 12);
@@ -74,15 +116,22 @@ class NightRun {
   /// Cats on the field at once.
   int get fieldSize =>
       min(min(2 + night ~/ 2, 5) + count(NightCard.crowd), quota);
-  int get seconds => 22 + quota * 8 + 10 * count(NightCard.longNight);
+  int get seconds => (22 + quota * 8) + 10 * count(NightCard.longNight);
 
-  /// Rotate maps between nights; card offers use the upcoming map.
+  /// Rotate rescue maps each night.
   NightMap mapFor(int night) =>
       NightMap.values[(night - 1) % NightMap.values.length];
   NightMap get map => mapFor(night);
 
+  double get lightTimeScale => map == NightMap.backyard
+      ? .5 / (1 + .5 * count(NightCard.restingLight))
+      : .5;
+  int get baitPortions =>
+      map == NightMap.rooftops && has(NightCard.sharedFish) ? 2 : 1;
+
   // Backyard bonuses.
-  int get lanterns => 3 + count(NightCard.extraLantern);
+  int get lanterns =>
+      3 + count(NightCard.extraLantern) - count(NightCard.fewerLanterns);
   double get lanternBurn =>
       10 *
       (1 + .5 * count(NightCard.longWick)) /

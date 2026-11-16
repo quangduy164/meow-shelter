@@ -102,12 +102,13 @@ class _GameScreenState extends State<GameScreen> {
                       ),
                     ],
                     const SizedBox(width: DS.spaceSm),
-                    RoundButton(
-                      icon: Icons.help_outline_rounded,
-                      onPressed: () {
-                        game.overlays.add('catGuide');
-                      },
-                    ),
+                    if (!_level.isInfinite)
+                      RoundButton(
+                        icon: Icons.help_outline_rounded,
+                        onPressed: () {
+                          game.overlays.add('catGuide');
+                        },
+                      ),
                   ]),
                 ),
               ),

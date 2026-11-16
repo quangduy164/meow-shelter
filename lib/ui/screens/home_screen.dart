@@ -178,19 +178,16 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
               onPressed: () => _open(const AdventureScreen()),
             ),
             _ModeTile(
-              title: 'CA TRỰC ĐÊM',
-              subtitle: CampState.instance.bestNight > 0
-                  ? 'Kỷ lục: đêm ${CampState.instance.bestNight}'
-                  : null,
-              icon: ModeIconKind.nightShift,
-              color: DS.modeNightShift,
-              onPressed: () => _open(const GameScreen(level: infiniteLevel)),
-            ),
-            _ModeTile(
               title: 'DẪN ĐÀN',
               icon: ModeIconKind.herd,
               color: DS.modeHerd,
               onPressed: () => _open(const HerdScreen()),
+            ),
+            _ModeTile(
+              title: 'CA TRỰC ĐÊM',
+              icon: ModeIconKind.nightShift,
+              color: DS.modeNightShift,
+              onPressed: () => _open(const GameScreen(level: infiniteLevel)),
             ),
             _ModeTile(
               title: 'TRẠI MÈO',
@@ -231,12 +228,8 @@ class _ModeTile extends StatelessWidget {
     required this.icon,
     required this.color,
     required this.onPressed,
-    this.subtitle,
   });
   final String title;
-
-  /// Small line under the title, e.g. a record.
-  final String? subtitle;
   final ModeIconKind icon;
   final Color color;
   final VoidCallback onPressed;
@@ -256,7 +249,7 @@ class _ModeTile extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               ModeIcon(kind: icon, size: 30, onColor: true),
-              SizedBox(height: subtitle == null ? DS.spaceSm : DS.spaceXs),
+              const SizedBox(height: DS.spaceSm),
               Text(title,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
@@ -266,14 +259,6 @@ class _ModeTile extends StatelessWidget {
                       fontSize: DS.fontButton,
                       fontWeight: FontWeight.w900,
                       letterSpacing: .2)),
-              if (subtitle != null)
-                Text(subtitle!,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                        color: Color(0xDDFFFFFF),
-                        fontSize: DS.fontCaption,
-                        fontWeight: FontWeight.w700)),
             ],
           ),
         ),

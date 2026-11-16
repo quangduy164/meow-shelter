@@ -23,11 +23,20 @@ class NightMarket {
   double _mistakeScale = 1, _trafficScale = 1, _quietRate = 1.5;
   double trafficPeriod = 16;
   int _lastCart = 0;
+  double quietLeft = 0, quietDuration = 4, cartDuration = 4;
+  int cartTrips = 0, closingBonus = 0;
+  bool carryingFish = false;
 
   void begin(NightRun run,
       {required bool thickClouds, required double afterglowSeconds}) {
     clock = noise = alarm = 0;
     _lastCart = 0;
+    cartTrips = 0;
+    quietLeft = 0;
+    carryingFish = false;
+    quietDuration = 4 + 2.0 * run.count(NightCard.afterHours);
+    cartDuration = run.has(NightCard.gentleCart) ? 6 : 4;
+    closingBonus = 8 * run.count(NightCard.closingBell);
     afterglow = afterglowSeconds;
     moon.reset(fullMoon: run.has(NightCard.fullMoon), thickClouds: thickClouds);
     lampDuration = (18 + 8 * run.count(NightCard.backupPower)) *
@@ -35,7 +44,8 @@ class NightMarket {
         (run.has(NightCard.nightWind) ? 2 : 1);
     lightScale = run.lanternLight;
     _mistakeScale = math.pow(.5, run.count(NightCard.quietSteps)).toDouble();
-    _trafficScale = math.pow(.7, run.count(NightCard.softWheels)).toDouble();
+    _trafficScale = math.pow(.7, run.count(NightCard.softWheels)).toDouble() *
+        (run.has(NightCard.gentleCart) ? .5 : 1);
     _quietRate = 1.5 + run.count(NightCard.quietCorner);
     trafficPeriod = run.has(NightCard.busyMarket) ? 12 : 16;
     lamps
@@ -54,8 +64,11 @@ class NightMarket {
     final alreadyLoud = noise >= 100;
     clock += dt;
     moon.update(dt);
+    cartTrips = (clock / trafficPeriod).floor();
+    quietLeft =
+        cartTrips > 0 ? math.max(0, quietDuration - clock % trafficPeriod) : 0;
     alarm = math.max(0, alarm - dt);
-    noise = math.max(0, noise - _quietRate * dt);
+    noise = math.max(0, noise - (_quietRate + (quietLeft > 0 ? 5 : 0)) * dt);
     final cart = ((clock + 2) / trafficPeriod).floor();
     if (cart > _lastCart) {
       noise =
@@ -80,6 +93,10 @@ class NightMarket {
     return true;
   }
 
+  void onRescue() {
+    if (quietLeft > 0) noise = math.max(0, noise - closingBonus);
+  }
+
   bool light(MarketLamp lamp) {
     if (lamp.lit || lamp.cool > 0) return false;
     lamp.burn = lampDuration;
@@ -88,9 +105,11 @@ class NightMarket {
 
   double get _phase => clock % trafficPeriod;
   bool get cartWarning =>
-      _phase >= trafficPeriod - 6 && _phase < trafficPeriod - 4;
-  double? get cartProgress =>
-      _phase >= trafficPeriod - 4 ? (_phase - trafficPeriod + 4) / 4 : null;
+      _phase >= trafficPeriod - cartDuration - 2 &&
+      _phase < trafficPeriod - cartDuration;
+  double? get cartProgress => _phase >= trafficPeriod - cartDuration
+      ? (_phase - trafficPeriod + cartDuration) / cartDuration
+      : null;
   double radius(Size size) => size.height * .2 * lightScale;
   bool lampLit(Offset point, Size size) => lamps.any((lamp) =>
       (lamp.lit || lamp.ember > 0) &&

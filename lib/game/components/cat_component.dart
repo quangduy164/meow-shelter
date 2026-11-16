@@ -33,8 +33,11 @@ class CatComponent extends SpriteAnimationGroupComponent<CatState>
     required this.level,
     this.isBlocked,
     this.terrainSpeed,
+    this.lureWaypoint,
     this.isBoss = false,
     this.onStartled,
+    this.onFed,
+    this.lightTimeScale = .5,
     this.assist,
     this.inLight,
     this.freezeInLight,
@@ -52,6 +55,8 @@ class CatComponent extends SpriteAnimationGroupComponent<CatState>
         );
 
   final String catType;
+  final void Function(CatComponent cat)? onFed;
+  final double lightTimeScale;
 
   /// Night-shift helper effects; null outside the night shift.
   final CatAssist? assist;
@@ -106,6 +111,9 @@ class CatComponent extends SpriteAnimationGroupComponent<CatState>
 
   final LevelConfig level;
   final bool Function(Vector2 position, Vector2 size)? isBlocked;
+
+  /// Map-specific route to bait. Null route waits until a bridge opens.
+  final Vector2? Function(CatComponent cat, Vector2 target)? lureWaypoint;
 
   /// Speed factor of the ground under the cat (mud on the pond map).
   final double Function(Vector2 center)? terrainSpeed;
@@ -322,7 +330,7 @@ class CatComponent extends SpriteAnimationGroupComponent<CatState>
     _skillCooldown -= dt;
     final wasReady = catchWindow.canCatch;
     if (assist?.frozen != true && freezeInLight?.call(this) != true) {
-      catchWindow.tick(inLight?.call(this) == true ? dt * .5 : dt);
+      catchWindow.tick(inLight?.call(this) == true ? dt * lightTimeScale : dt);
     }
     if (_isDragged) {
       if (catchWindow.grip <= 0) {
@@ -345,14 +353,22 @@ class CatComponent extends SpriteAnimationGroupComponent<CatState>
     }
     final target = fishTarget;
     if (target != null) {
-      final delta = target - (position + size / 2);
+      final waypoint =
+          lureWaypoint == null ? target : lureWaypoint!(this, target);
+      if (waypoint == null) {
+        _lureStuck = 0;
+        return;
+      }
+      final delta = waypoint - (position + size / 2);
       final distance = delta.length;
       final speed = catWalkSpeed * _pace * _terrain * (assist?.lure ?? 1);
-      if (distance <= speed * dt + 4) {
+      if (waypoint == target && distance <= speed * dt + 4) {
         fishTarget = null;
         _lureStuck = 0;
         _eat();
-      } else if (_steer(delta / distance, speed * dt)) {
+      } else if (distance < .1) {
+        _lureStuck = 0;
+      } else if (_steer(delta / distance, min(distance, speed * dt))) {
         _lureStuck = 0;
       } else if ((_lureStuck += dt) > 2.5) {
         // shortcut: a fish nobody can reach is dropped, not refunded.

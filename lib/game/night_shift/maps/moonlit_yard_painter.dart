@@ -148,6 +148,30 @@ class MoonlitYardBackground extends PositionComponent {
   }
 }
 
+/// Short ground echoes, never a second full moonbeam.
+void paintMoonEchoes(Canvas canvas, Size field, MoonlitYard yard,
+    {bool erase = false}) {
+  for (final echo in yard.echoes) {
+    final center =
+        Offset(echo.point.dx * field.width, echo.point.dy * field.height);
+    final fade = (echo.left / math.max(yard.echoDuration, .1)).clamp(0.0, 1.0);
+    canvas.save();
+    canvas.translate(center.dx, center.dy);
+    canvas.scale(field.width * .065, field.height * .08);
+    canvas.drawCircle(
+        Offset.zero,
+        1,
+        Paint()
+          ..blendMode = erase ? BlendMode.dstOut : BlendMode.srcOver
+          ..shader = ui.Gradient.radial(Offset.zero, 1, [
+            Color.fromRGBO(erase ? 0 : 165, erase ? 0 : 224, erase ? 0 : 226,
+                (erase ? .6 : .14) * fade),
+            const Color(0x00000000),
+          ]));
+    canvas.restore();
+  }
+}
+
 /// Warm light is painted on the lawn, below beds and cats, so a lit lamp
 /// remains visibly different even when the night scenery is already bright.
 class LanternLightComponent extends PositionComponent with HasGameRef {
@@ -157,6 +181,7 @@ class LanternLightComponent extends PositionComponent with HasGameRef {
   @override
   void render(Canvas canvas) {
     final screen = gameRef.size.toSize();
+    paintMoonEchoes(canvas, screen, yard);
     for (final lantern in yard.lanterns) {
       if (!lantern.lit && lantern.ember <= 0) continue;
       final radius = yard.lanternRadius(screen) * (lantern.lit ? 1 : .75);

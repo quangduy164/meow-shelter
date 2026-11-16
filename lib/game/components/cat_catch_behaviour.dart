@@ -7,6 +7,7 @@ part of 'cat_component.dart';
 extension CatCatchBehaviour on CatComponent {
   /// Per-breed bait rules; see [CatCatchRule].
   bool acceptsBait(Vector2 point, Iterable<CatComponent> cats) =>
+      (lureWaypoint == null || lureWaypoint!(this, point) != null) &&
       switch (catType) {
         'calico' => false,
         'himalaya' => (_center - point).length >= _shyDistance,
@@ -130,6 +131,7 @@ extension CatCatchBehaviour on CatComponent {
 
   void _eat() {
     _meals += 1;
+    onFed?.call(this);
     if (_meals < _mealsNeeded) {
       GameAudio.instance.playRescue(GameSound.catEat);
       _dialogue

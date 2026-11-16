@@ -1,3 +1,4 @@
+import '../../components/fish_item_component.dart';
 import 'dart:math' as math;
 import 'dart:ui' as ui;
 import 'package:flame/components.dart';
@@ -265,6 +266,11 @@ class NightMarketAtmosphere extends PositionComponent with HasGameRef {
             Rect.fromLTWH(bar.left, bar.top, 170 * market.noise / 100, 4),
             const Radius.circular(2)),
         Paint()..color = color);
+    if (market.quietLeft > 0 && market.alarm <= 0) {
+      _text(canvas, 'YÊN TĨNH ${market.quietLeft.ceil()}s · CỨU MÈO LÚC NÀY',
+          Offset(screen.width / 2, 81), const Color(0xFF9FE1C1),
+          centered: true);
+    }
     if (market.cartWarning || market.alarm > 0) {
       _text(
           canvas,
@@ -342,6 +348,7 @@ class NightMarketAtmosphere extends PositionComponent with HasGameRef {
         Paint()..color = const Color(0xFF607B82));
     canvas.drawOval(const Rect.fromLTWH(-86, -48, 28, 8),
         Paint()..color = const Color(0xFFA99067));
+    if (market.carryingFish) drawFish(canvas, const Offset(10, -54));
     canvas.restore();
   }
 

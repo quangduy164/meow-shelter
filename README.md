@@ -48,9 +48,13 @@ Nút **Bắt đầu** tiếp tục tiến trình; **Chọn màn** mở danh sác
 
 `CatchWindow` mặc định cho 1 giây để bắt đầu bế và 3 giây giữ mèo. Cấu hình màn và hành vi riêng có thể thay đổi thời gian thực tế.
 
-### Cứu hộ vô hạn
+### Ca trực đêm
 
-Chế độ cứu hộ riêng dùng `infiniteLevel`, dành cho việc tiếp tục cứu mèo thay vì đi theo chuỗi màn của các chương.
+**Ca trực đêm** là chế độ riêng trên trang chủ, dùng `infiniteLevel`.
+Cứu mèo, qua đêm và phối hợp cổ vật để kiếm **Nguyệt quang**, mua/bán cổ vật trong lượt.
+Cứu mèo mỗi đêm trên các bản đồ luân phiên, chọn thẻ và ghép combo cổ vật/trợ thủ; xu trại là thưởng phụ 5/mèo.
+Thẻ riêng tạo dư sáng/đèn nối tiếp ở Sân sau, xe chở cá/khoảng yên tĩnh ở Chợ,
+cầu đôi/mâm cá chung ở Mái nhà. Thẻ chung hỗ trợ hồi kỹ năng, hoàn cá và cứu liên tiếp.
 
 ### Câu cá
 

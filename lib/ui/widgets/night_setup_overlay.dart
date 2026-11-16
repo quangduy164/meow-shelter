@@ -89,8 +89,7 @@ class _NightSetupOverlayState extends State<NightSetupOverlay> {
             ]),
             const SizedBox(height: DS.spaceXs),
             const Text(
-                'Mỗi đêm cứu đủ mèo trước khi trời sáng, rồi chọn 1 thẻ. '
-                'Chọn tối đa 2 trợ thủ. Qua mỗi 2 đêm ghé tiệm cổ vật bằng Ngân quang.',
+                'Cứu đủ mèo trước trời sáng, rồi chọn 1 thẻ. Cứu mèo +2 Nguyệt quang, qua đêm thưởng thêm. Chọn tối đa 2 trợ thủ. Qua mỗi 2 đêm ghé tiệm cổ vật.',
                 textAlign: TextAlign.center,
                 style: TextStyle(color: DS.cream, fontSize: DS.fontCaption)),
             const SizedBox(height: DS.spaceSm),
@@ -113,7 +112,7 @@ class _NightSetupOverlayState extends State<NightSetupOverlay> {
                 icon: const Icon(Icons.nights_stay_rounded),
                 label: Text(_picked.isEmpty
                     ? 'CHỌN ÍT NHẤT 1 MÈO'
-                    : 'VÀO CA TRỰC · ${_picked.map(camp.nameOf).join(' + ')}'),
+                    : 'BẮT ĐẦU · ${_picked.map(camp.nameOf).join(' + ')}'),
               ),
             ),
           ]),

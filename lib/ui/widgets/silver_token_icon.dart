@@ -7,7 +7,7 @@ class SilverTokenIcon extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Semantics(
-        label: 'Ngân quang',
+        label: 'Nguyệt quang',
         image: true,
         child: SizedBox.square(
             dimension: size,

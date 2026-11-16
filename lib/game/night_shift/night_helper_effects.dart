@@ -72,12 +72,13 @@ class NightHelperEffects {
     assist
       ..pace = _effects.containsKey('scottish') ? .5 : 1
       ..lure = night.run?.lure ?? 1
-      ..calm = _effects.containsKey('black')
+      ..calm = _effects.containsKey('black') || night.scene.peaceful
       ..frozen = _effects.containsKey('orange');
     night.game.hud.anyBed = _effects.containsKey('calico');
   }
 
   void update(double dt) {
+    _syncAssist();
     for (final type in cooldowns.keys.toList()) {
       cooldowns[type] = max(0, cooldowns[type]! - dt);
     }

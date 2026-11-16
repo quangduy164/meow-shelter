@@ -172,6 +172,9 @@ class MeowShelterGame extends FlameGame {
       isBoss: boss,
       isBlocked: _isMapBlocked,
       terrainSpeed: _terrainSpeed,
+      lureWaypoint: night?.lureWaypoint,
+      onFed: night?.cardEffects.onFed,
+      lightTimeScale: night?.run?.lightTimeScale ?? .5,
       onStartled: (_) {
         stats.startles += 1;
         night?.onMistake();
@@ -253,7 +256,8 @@ class MeowShelterGame extends FlameGame {
   void update(double dt) {
     super.update(dt);
     if (!isLoaded || paused || hud.status != RoundStatus.playing) return;
-    bait.update(children.whereType<CatComponent>());
+    bait.update(children.whereType<CatComponent>(), dt: dt);
+    if (bait.limited) hud.fishLeft = bait.fishCount;
     _mapClock += dt;
     if (night != null) {
       night!.update(dt);
@@ -309,6 +313,10 @@ class MeowShelterGame extends FlameGame {
 
   void _placeFish(Vector2 point) {
     if (!canPlaceFish) return;
+    if (night?.allowsBait(point) == false) {
+      hud.showBanner(['Chỉ đặt cá trong vùng đánh dấu trên mái giữa'], 1.5);
+      return;
+    }
     final reach = Vector2(catWidth, catHeight);
     if (_isMapBlocked(point - reach / 2, reach)) {
       hud.showBanner(['Mèo không tới được chỗ này'], 1.5);
@@ -323,6 +331,7 @@ class MeowShelterGame extends FlameGame {
 
   /// No fish left, none on the ground, and someone still needs a meal.
   bool get outOfFish {
+    if (night?.scene.hasBaitInTransit == true) return false;
     if (!bait.limited || bait.fishCount > 0 || bait.hasBaitOut) {
       return false;
     }
@@ -386,6 +395,8 @@ class MeowShelterGame extends FlameGame {
   bool _isMapBlocked(Vector2 position, Vector2 size) {
     final bounds = Rect.fromLTWH(position.x / this.size.x,
         position.y / this.size.y, size.x / this.size.x, size.y / this.size.y);
+    final night = this.night;
+    if (night != null) return night.blocks(bounds);
     return _map.blockersAt(_mapClock).any(bounds.overlaps);
   }
 
@@ -404,6 +415,8 @@ class MeowShelterGame extends FlameGame {
   }
 
   Vector2 _randomCatPosition() {
+    final nightSpot = night?.spawnPosition(Vector2(catWidth, catHeight));
+    if (nightSpot != null) return nightSpot;
     for (var i = 0;; i++) {
       final x =
           size.x * .22 + random.nextDouble() * max(0, size.x * .56 - catWidth);

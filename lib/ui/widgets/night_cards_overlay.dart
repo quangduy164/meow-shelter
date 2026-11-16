@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../audio/game_audio.dart';
 import '../../game/night_shift/night_game.dart';
 import '../../game/night_shift/night_cards.dart';
+import '../../game/night_shift/night_relics.dart';
 import '../design.dart';
 import 'night_card_icons.dart';
 import 'silver_token_icon.dart';
@@ -29,7 +30,7 @@ class NightCardsOverlay extends StatelessWidget {
               child: Material(
                 color: Colors.transparent,
                 child: Column(mainAxisSize: MainAxisSize.min, children: [
-                  Text('TRỜI SÁNG! QUA ĐÊM ${run.night}',
+                  Text('HOÀN THÀNH ĐÊM ${run.night}',
                       style: const TextStyle(
                           color: DS.cream,
                           fontSize: DS.fontTitle,
@@ -37,7 +38,7 @@ class NightCardsOverlay extends StatelessWidget {
                           letterSpacing: 1,
                           shadows: [Shadow(color: DS.ink, blurRadius: 4)])),
                   Text(
-                      'Đã cứu ${run.totalRescued} mèo · ${run.coins} xu · '
+                      'Đã cứu ${run.totalRescued} mèo · '
                       'đêm tiếp: ${run.mapFor(run.night + 1).title}',
                       style: const TextStyle(
                           color: DS.gold,
@@ -47,7 +48,7 @@ class NightCardsOverlay extends StatelessWidget {
                     const SilverTokenIcon(size: 22),
                     const SizedBox(width: 4),
                     Text(
-                        '+${run.lastSilverReward} · Ví: ${run.silver}'
+                        'Qua đêm +${run.lastSilverReward} Nguyệt quang · Ví: ${run.silver}'
                         '${run.night.isEven ? ' · Chọn thẻ xong ghé cửa hàng' : ''}',
                         style: const TextStyle(
                             color: DS.cream, fontSize: DS.fontBody)),
@@ -68,9 +69,15 @@ class NightCardsOverlay extends StatelessWidget {
                   ]),
                   if (taken.isNotEmpty) ...[
                     const SizedBox(height: DS.spaceMd),
-                    Text('Đang có: ${taken.join(' · ')}',
-                        style: const TextStyle(
-                            color: DS.cream, fontSize: DS.fontCaption)),
+                    SizedBox(
+                      width: 536,
+                      child: Text('Đang có: ${taken.join(' · ')}',
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                              color: DS.cream, fontSize: DS.fontCaption)),
+                    ),
                   ],
                 ]),
               ),
@@ -83,6 +90,11 @@ class NightCardsOverlay extends StatelessWidget {
 
   Widget _card(NightCard card) {
     final deal = card.isDeal;
+    final combos = [
+      ...game.run!.relics.where((r) => r.cardCombos.containsKey(card)),
+      ...NightRelic.values.where((r) =>
+          !game.run!.relics.contains(r) && r.cardCombos.containsKey(card)),
+    ];
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: DS.spaceXs),
       child: InkWell(
@@ -93,7 +105,7 @@ class NightCardsOverlay extends StatelessWidget {
         },
         child: Container(
           width: 168,
-          height: 200,
+          height: 292,
           padding: const EdgeInsets.all(DS.spaceSm),
           decoration: BoxDecoration(
             color: deal ? const Color(0xFF3A2A4A) : DS.cream,
@@ -118,7 +130,7 @@ class NightCardsOverlay extends StatelessWidget {
                     fontWeight: FontWeight.w900,
                     letterSpacing: 1)),
             const SizedBox(height: DS.spaceXs),
-            NightCardIcon(card, size: 64),
+            NightCardIcon(card, size: 54),
             const SizedBox(height: DS.spaceXs),
             Text(card.title,
                 textAlign: TextAlign.center,
@@ -133,6 +145,23 @@ class NightCardsOverlay extends StatelessWidget {
                     color: deal ? const Color(0xFF9BE3B0) : DS.success,
                     fontSize: DS.fontCaption,
                     fontWeight: FontWeight.w800)),
+            if (combos.isNotEmpty) ...[
+              const SizedBox(height: DS.spaceXs),
+              Text(
+                  'Ghép ${combos.first.title}: ${combos.first.cardCombos[card]}',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                      color: deal ? DS.cream : DS.soft,
+                      fontSize: 10,
+                      fontWeight: FontWeight.w700)),
+            ],
+            if (combos.isEmpty && card.comboHint != null) ...[
+              const SizedBox(height: DS.spaceXs),
+              Text(card.comboHint!,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                      color: deal ? DS.cream : DS.soft, fontSize: 10)),
+            ],
             if (card.cost != null) ...[
               const SizedBox(height: DS.space2),
               Text('Đổi lại: ${card.cost}',

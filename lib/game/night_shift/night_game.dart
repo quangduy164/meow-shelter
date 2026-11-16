@@ -1,6 +1,6 @@
-import 'dart:async';
 import 'dart:math';
 import 'package:flame/components.dart';
+import 'package:flutter/painting.dart';
 import '../../audio/game_audio.dart';
 import '../../camp/camp_state.dart';
 import '../../levels/level_config.dart';
@@ -14,6 +14,7 @@ import 'night_cards.dart';
 import 'night_relics.dart';
 import '../cats/cat_assist.dart';
 import 'night_relic_effects.dart';
+import 'night_card_effects.dart';
 import 'night_helper_effects.dart';
 
 /// Owns the night-shift rules; MeowShelterGame only hosts shared cats/fields.
@@ -27,7 +28,8 @@ class NightGame {
   late final helperEffects = NightHelperEffects(this);
   CatAssist get assist => helperEffects.assist;
   Map<String, double> get helperCooldown => helperEffects.cooldowns;
-  late NightScene scene;
+  NightScene? _scene;
+  NightScene get scene => _scene!;
   double get lanternBurn => scene.lanternBurn;
   bool _thickClouds = false, _bedTwist = false;
   List<NightCard> cardOffer = const [];
@@ -35,10 +37,28 @@ class NightGame {
   int _nightStartles = 0, _nightWrongDrops = 0;
   double _secondAccumulator = 0;
   late final relicEffects = NightRelicEffects(this);
+  late final cardEffects = NightCardEffects(this);
   bool newRecord = false;
   int get nightSecondsLeft => game.hud.secondsLeft;
   List<String> get nightRules => List.unmodifiable(game.hud.nightNotes);
   bool get acceptsAnyBed => helperEffects.acceptsAnyBed;
+  bool blocks(Rect bounds) => scene.blocks(bounds);
+  bool allowsBait(Vector2 point) =>
+      scene.allowsBait(point.toOffset(), game.size.toSize());
+  Vector2? lureWaypoint(CatComponent cat, Vector2 target) {
+    final point = scene.lureWaypoint(
+        cat.position.toOffset() & cat.size.toSize(),
+        target.toOffset(),
+        game.size.toSize());
+    return point == null ? null : Vector2(point.dx, point.dy);
+  }
+
+  Vector2? spawnPosition(Vector2 catSize) {
+    final point =
+        scene.spawnPosition(game.size.toSize(), catSize.toSize(), random);
+    return point == null ? null : Vector2(point.dx, point.dy);
+  }
+
   void onMistake() {
     if (phase == NightPhase.playing) scene.onMistake();
   }
@@ -48,6 +68,8 @@ class NightGame {
   bool freezesCat(CatComponent cat) => relicEffects.freezesCat(cat);
 
   void reset() {
+    // Queued scene components are absent from game.children while paused.
+    _scene?.remove();
     for (final name in [
       'nightInfo',
       'nightCards',
@@ -59,7 +81,7 @@ class NightGame {
     run = NightRun(helpers);
     phase = NightPhase.setup;
     helperEffects.reset();
-    scene = createNightScene(run!.map, game,
+    _scene = createNightScene(run!.map, game,
         onFirstLight: relicEffects.onFirstLight);
     _recentTypes.clear();
     cardOffer = const [];
@@ -84,9 +106,11 @@ class NightGame {
     run.totalRescued += 1;
     game.hud.tonight = run.rescuedTonight;
     relicEffects.onRescue(cat);
-    final bonus = (5 * run.coinBonus).round();
-    run.coins += 5 + bonus;
-    if (bonus > 0) unawaited(CampState.instance.addCoins(bonus));
+    cardEffects.onRescue(cat);
+    scene.onRescue();
+    run.coins += 5; // Camp rescue pays this small, fixed side reward.
+    run.earnMoonlight(2);
+    game.hud.silver = run.silver;
     if (run.rescuedTonight >= run.quota) {
       _endNight();
     } else {
@@ -169,6 +193,7 @@ class NightGame {
     _nightStartles = game.stats.startles;
     _nightWrongDrops = game.stats.wrongDrops;
     relicEffects.resetNight();
+    cardEffects.resetNight();
     run
       ..rescuedTonight = 0
       ..spawnedTonight = 0;
@@ -179,16 +204,16 @@ class NightGame {
       shelter.position = center - shelter.size / 2;
     }
     // Introduce each map once before adding random night twists.
-    var twist = night <= NightMap.values.length ? 0 : random.nextInt(4);
+    var twist = run.night <= NightMap.values.length ? 0 : random.nextInt(4);
     if (twist == 1 && run.has(NightCard.fullMoon)) twist = 0;
     if (twist == 2 && run.has(NightCard.nailedBeds)) twist = 0;
     _thickClouds = twist == 1;
     _bedTwist = twist == 2;
     if (scene.map != run.map) {
       scene.remove();
-      scene = createNightScene(run.map, game,
+      _scene = createNightScene(run.map, game,
           onFirstLight: relicEffects.onFirstLight);
-      scene.mount();
+      mountScene();
     }
     scene.begin(run,
         thickClouds: _thickClouds,
@@ -197,7 +222,10 @@ class NightGame {
     var fish = twist == 3 ? 6 : 0;
     if (run.has(NightCard.hiddenFish)) fish = fish == 0 ? 8 : min(fish, 8);
     if (fish > 0) fish += run.extraFish;
-    game.bait.reset(limit: fish);
+    game.bait.reset(
+        limit: fish,
+        portions: run.baitPortions,
+        refundAfter: run.has(NightCard.fishReserve) ? 12 : 0);
     game.hud
       ..notificationTop = scene.notificationTop
       ..fishLeft = game.bait.limited ? game.bait.fishCount : null
@@ -227,6 +255,11 @@ class NightGame {
       ]
       ..startNight();
     _fillField();
+    if (run.has(NightCard.preparedBait)) {
+      game.bait.place(Vector2(game.size.x * .5, game.size.y * .5), game.size,
+          game.children.whereType<CatComponent>(),
+          free: true);
+    }
     phase = NightPhase.setup;
     if (!game.overlays.isActive('nightSetup')) openNightInfo();
   }
@@ -256,6 +289,7 @@ class NightGame {
 
   /// Quota met: bank the night bonus and offer the cards.
   void _endNight() {
+    if (phase != NightPhase.playing) return;
     phase = NightPhase.cards;
     final run = this.run!;
     GameAudio.instance.playRescue(GameSound.rescueMilestone, important: true);
@@ -264,9 +298,6 @@ class NightGame {
         clean: game.stats.startles == _nightStartles &&
             game.stats.wrongDrops == _nightWrongDrops);
     game.hud.silver = run.silver;
-    final bonus = (5 * run.night * (1 + run.coinBonus)).round();
-    run.coins += bonus;
-    unawaited(CampState.instance.addCoins(bonus));
     game.bait.reset();
     helperEffects.beginNight();
     cardOffer = run.offer(random, run.mapFor(run.night + 1));
@@ -314,6 +345,16 @@ class NightGame {
     return true;
   }
 
+  bool sellRelic(NightRelic relic) {
+    final run = this.run;
+    if (run == null || phase != NightPhase.shop || !run.sellRelic(relic)) {
+      return false;
+    }
+    game.hud.silver = run.silver;
+    GameAudio.instance.playRescue(GameSound.rescueMilestone, important: true);
+    return true;
+  }
+
   void leaveNightShop() {
     if (phase != NightPhase.shop) return;
     game.overlays.remove('nightShop');
@@ -335,6 +376,7 @@ class NightGame {
     scene.update(dt);
     relicEffects.update(dt, cloudsStarted: !wasCloudy && scene.cloudy);
     helperEffects.update(dt);
+    cardEffects.update(dt);
     if (_bedTwist) game.updateMovingBeds(dt);
     if (game.outOfFish) {
       game.lostReason = 'HẾT CÁ RỒI!';
@@ -342,7 +384,7 @@ class NightGame {
       return;
     }
     _secondAccumulator += dt;
-    if (_secondAccumulator >= 1) {
+    while (_secondAccumulator >= 1 && phase == NightPhase.playing) {
       _secondAccumulator -= 1;
       game.hud.secondsLeft -= 1;
       if (game.hud.secondsLeft == 10) {

@@ -80,7 +80,137 @@ class _NightCardPainter extends CustomPainter {
         _quietCorner(canvas);
       case NightCard.busyMarket:
         _busyMarket(canvas);
+      case NightCard.sturdyPlanks:
+        _sturdyPlanks(canvas);
+      case NightCard.quickCarpenter:
+        _quickCarpenter(canvas);
+      case NightCard.widePlanks:
+        _widePlanks(canvas);
+      case NightCard.railLights:
+        _railLights(canvas);
+      case NightCard.stormyRoof:
+        _stormyRoof(canvas);
+      case NightCard.lanternRelay:
+      case NightCard.moonEcho:
+      case NightCard.restingLight:
+      case NightCard.fewerLanterns:
+      case NightCard.cartFish:
+      case NightCard.gentleCart:
+      case NightCard.afterHours:
+      case NightCard.closingBell:
+      case NightCard.pairedBridges:
+      case NightCard.lastStep:
+      case NightCard.sharedFish:
+      case NightCard.autoBridge:
+      case NightCard.relayRescue:
+      case NightCard.fishReserve:
+      case NightCard.rescueRhythm:
+      case NightCard.preparedBait:
+      case NightCard.nurturingMeal:
+        _newFeature(canvas);
     }
+  }
+
+  void _newFeature(Canvas canvas) {
+    switch (card) {
+      case NightCard.lanternRelay:
+        _extraLantern(canvas);
+        _arrow(canvas, const Offset(9, 18), const Offset(37, 18));
+      case NightCard.moonEcho:
+        _fullMoon(canvas);
+        for (var i = 0; i < 3; i++) {
+          canvas.drawOval(
+              Rect.fromCenter(
+                  center: Offset(14 + i * 10, 36), width: 12, height: 5),
+              _fill(_blue.withOpacity(.3 + i * .2)));
+        }
+      case NightCard.restingLight:
+        _warmHug(canvas);
+        _featureSpark(canvas, const Offset(35, 12), 6, _gold);
+      case NightCard.fewerLanterns:
+        _extraLantern(canvas);
+        canvas.drawLine(
+            const Offset(9, 38), const Offset(38, 9), _line(4, _pink));
+      case NightCard.cartFish:
+      case NightCard.gentleCart:
+        _softWheels(canvas);
+        if (card == NightCard.cartFish) {
+          _fish(canvas, const Offset(25, 17), 24, _blue);
+        } else {
+          canvas.drawArc(const Rect.fromLTWH(8, 8, 31, 24), math.pi, math.pi,
+              false, _line(2, _blue));
+        }
+      case NightCard.afterHours:
+        _longNight(canvas);
+        _featureSpark(canvas, const Offset(36, 34), 5, _blue);
+      case NightCard.closingBell:
+        _extraLantern(canvas);
+        canvas.drawArc(const Rect.fromLTWH(6, 11, 36, 22), math.pi, math.pi,
+            false, _line(2, _blue));
+      case NightCard.pairedBridges:
+        _widePlanks(canvas);
+        _arrow(canvas, const Offset(10, 11), const Offset(38, 11));
+      case NightCard.lastStep:
+        _sturdyPlanks(canvas);
+        canvas.drawCircle(const Offset(35, 12), 7, _fill(_gold));
+        canvas.drawLine(const Offset(35, 7), const Offset(35, 14), _line(2));
+      case NightCard.autoBridge:
+        _quickCarpenter(canvas);
+        canvas.drawArc(const Rect.fromLTWH(6, 6, 36, 36), 0, math.pi * 1.5,
+            false, _line(2.4, _blue));
+      case NightCard.sharedFish:
+        canvas.drawOval(const Rect.fromLTWH(7, 25, 35, 14), _fill(_woodLight));
+        canvas.drawOval(const Rect.fromLTWH(7, 25, 35, 14), _line(2));
+        _fish(canvas, const Offset(23, 20), 26, _blue);
+        canvas.drawLine(
+            const Offset(23, 14), const Offset(23, 25), _line(1.5, _cream));
+      case NightCard.relayRescue:
+        _eagerHelpers(canvas);
+        _featureSpark(canvas, const Offset(36, 12), 6, _gold);
+      case NightCard.fishReserve:
+        _fish(canvas, const Offset(25, 25), 29, _blue);
+        canvas.drawArc(const Rect.fromLTWH(6, 7, 35, 34), math.pi * .7,
+            math.pi * 1.3, false, _line(2.5, _goldDark));
+        _arrow(canvas, const Offset(12, 12), const Offset(7, 23));
+      case NightCard.rescueRhythm:
+        _fish(canvas, const Offset(20, 29), 23, _blue);
+        _featureSpark(canvas, const Offset(33, 15), 9, _gold);
+        _featureSpark(canvas, const Offset(13, 11), 4, _gold);
+      case NightCard.preparedBait:
+        _fishBasket(canvas);
+        _featureSpark(canvas, const Offset(35, 12), 7, _blue);
+      case NightCard.nurturingMeal:
+        _fish(canvas, const Offset(24, 27), 27, _blue);
+        for (final x in [12.0, 24.0, 36.0]) {
+          _featureSpark(canvas, Offset(x, 12), 4, _pink);
+        }
+      default:
+        break;
+    }
+  }
+
+  void _featureSpark(Canvas canvas, Offset center, double radius, Color color) {
+    final path = Path();
+    for (var i = 0; i < 8; i++) {
+      final angle = i * math.pi / 4;
+      final r = radius * (i.isEven ? 1 : .35);
+      final p = center + Offset(math.cos(angle) * r, math.sin(angle) * r);
+      if (i == 0) {
+        path.moveTo(p.dx, p.dy);
+      } else {
+        path.lineTo(p.dx, p.dy);
+      }
+    }
+    path.close();
+    _shape(canvas, path, color, 1.2);
+  }
+
+  void _arrow(Canvas canvas, Offset from, Offset to) {
+    canvas.drawLine(from, to, _line(2.5, _goldDark));
+    final direction = (from - to) / (from - to).distance;
+    final normal = Offset(-direction.dy, direction.dx);
+    canvas.drawLine(to, to + direction * 6 + normal * 4, _line(2.5, _goldDark));
+    canvas.drawLine(to, to + direction * 6 - normal * 4, _line(2.5, _goldDark));
   }
 
   // ---- shared bits -------------------------------------------------------
@@ -768,6 +898,64 @@ class _NightCardPainter extends CustomPainter {
     _shape(canvas, Path()..addRect(const Rect.fromLTWH(25, 10, 11, 12)), _blue,
         1.5);
     _star(canvas, const Offset(39, 12), 3, _gold);
+  }
+
+  void _plank(Canvas canvas, Rect r, {Color color = _woodLight}) {
+    _shape(
+        canvas,
+        Path()..addRRect(RRect.fromRectAndRadius(r, const Radius.circular(3))),
+        color,
+        1.6);
+    for (var x = r.left + 6; x < r.right; x += 8) {
+      canvas.drawLine(
+          Offset(x, r.top + 2), Offset(x, r.bottom - 2), _line(1, _wood));
+    }
+  }
+
+  void _sturdyPlanks(Canvas canvas) {
+    _plank(canvas, const Rect.fromLTWH(7, 18, 34, 12));
+    for (final x in const [13.0, 35.0]) {
+      _shape(canvas, _oval(Offset(x, 24), 5, 5), const Color(0xFF8E8E8E), 1.2);
+    }
+  }
+
+  void _quickCarpenter(Canvas canvas) {
+    _plank(canvas, const Rect.fromLTWH(8, 25, 30, 10));
+    canvas.drawLine(
+        const Offset(14, 12), const Offset(34, 23), _line(5, _wood));
+    _shape(canvas, Path()..addRect(const Rect.fromLTWH(29, 7, 13, 9)),
+        const Color(0xFF9DA9AC), 1.5);
+    _star(canvas, const Offset(10, 13), 3, _gold);
+  }
+
+  void _widePlanks(Canvas canvas) {
+    _plank(canvas, const Rect.fromLTWH(10, 15, 28, 21));
+    final arrow = _line(2.4, _goldDark);
+    for (final y in const [10.0, 40.0]) {
+      canvas.drawLine(Offset(24, y), Offset(24, y == 10 ? 15 : 35), arrow);
+    }
+  }
+
+  void _railLights(Canvas canvas) {
+    _plank(canvas, const Rect.fromLTWH(7, 25, 34, 10));
+    canvas.drawLine(const Offset(8, 20), const Offset(40, 20), _line(2, _wood));
+    for (final x in const [12.0, 24.0, 36.0]) {
+      canvas.drawCircle(Offset(x, 17), 5, _fill(const Color(0x55FFE08A)));
+      canvas.drawCircle(Offset(x, 17), 2.4, _fill(_gold));
+    }
+  }
+
+  void _stormyRoof(Canvas canvas) {
+    _plank(canvas, const Rect.fromLTWH(14, 27, 27, 10));
+    final gust = _line(2.4, const Color(0xFFCFE3FF));
+    for (final y in const [12.0, 20.0, 28.0]) {
+      canvas.drawPath(
+          Path()
+            ..moveTo(6, y)
+            ..quadraticBezierTo(20, y - 5, 34, y),
+          gust);
+    }
+    _pill(canvas, const Rect.fromLTWH(26, 7, 17, 9), '½');
   }
 
   @override

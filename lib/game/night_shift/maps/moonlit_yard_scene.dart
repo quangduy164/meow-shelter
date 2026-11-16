@@ -12,7 +12,7 @@ import '../moonlight_art.dart';
 import 'moonlit_yard.dart';
 import 'moonlit_yard_painter.dart';
 
-class MoonlitYardScene implements NightScene {
+class MoonlitYardScene extends NightScene {
   MoonlitYardScene(this.game, {required this.onFirstLight});
   final MeowShelterGame game;
   final void Function(Offset, double) onFirstLight;
@@ -24,7 +24,14 @@ class MoonlitYardScene implements NightScene {
   @override
   NightMap get map => NightMap.backyard;
   @override
-  List<String> get rules => const [];
+  List<String> get rules => [
+        if (game.night!.run!.has(NightCard.moonEcho))
+          'Đốm trăng màu xanh nhạt còn sáng sau khi vệt trăng đi qua',
+        if (game.night!.run!.has(NightCard.lanternRelay))
+          'Bật đèn sẽ nối thêm thời gian cho đèn gần nhất đang sáng',
+      ];
+  @override
+  bool blocks(Rect bounds) => false;
   @override
   void onMistake() {}
   @override
@@ -69,7 +76,11 @@ class MoonlitYardScene implements NightScene {
         lightScale: run.lanternLight,
         fullMoon: run.has(NightCard.fullMoon),
         thickClouds: thickClouds,
-        emberDuration: afterglowSeconds);
+        emberDuration: afterglowSeconds,
+        echoDuration: run.has(NightCard.moonEcho)
+            ? 1 + 2.0 * run.count(NightCard.moonEcho)
+            : 0,
+        linkSeconds: 2.0 * run.count(NightCard.lanternRelay));
     game.removeAll(_lanterns);
     _lanterns
       ..clear()
@@ -98,8 +109,10 @@ class MoonlitYardScene implements NightScene {
     }
   }
 
-  void _eraseMoonlight(Canvas canvas, Size size) =>
-      paintMoonlitField(canvas, size, yard.moon);
+  void _eraseMoonlight(Canvas canvas, Size size) {
+    paintMoonlitField(canvas, size, yard.moon);
+    paintMoonEchoes(canvas, size, yard, erase: true);
+  }
 
   void _tapLantern(YardLantern lantern) {
     if (game.hud.status != RoundStatus.playing || game.paused) {

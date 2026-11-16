@@ -238,7 +238,7 @@ abstract final class DS {
       minimumSize: const Size.square(touchTarget),
       iconSize: iconMd,
     )),
-    dialogTheme: DialogTheme(
+    dialogTheme: ThemeData().dialogTheme.copyWith(
       backgroundColor: cream,
       surfaceTintColor: Colors.transparent,
       shape: dialogShape,
