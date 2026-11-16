@@ -169,7 +169,9 @@ class HerdRound {
         size.y <= 0 ||
         field.x <= 0 ||
         field.y <= 0 ||
-        field == size) return;
+        field == size) {
+      return;
+    }
     final sx = size.x / field.x, sy = size.y / field.y;
     void scale(Vector2 point) {
       point.x *= sx;
@@ -504,7 +506,9 @@ class HerdRound {
             at.y < 72 ||
             at.y > field.y - 30 ||
             _onHazardLane(at) ||
-            cats.any((cat) => cat.position.distanceTo(at) < 25))) continue;
+            cats.any((cat) => cat.position.distanceTo(at) < 25))) {
+          continue;
+        }
         spots = proposed;
         break;
       }
@@ -549,7 +553,9 @@ class HerdRound {
     for (final ball in balls) {
       if ((at.y - ball.from.y).abs() < 29 &&
           at.x > ball.from.x - 29 &&
-          at.x < ball.to.x + 29) return true;
+          at.x < ball.to.x + 29) {
+        return true;
+      }
     }
     return false;
   }
@@ -590,7 +596,9 @@ class HerdRound {
         if (at.x < 24 ||
             at.x > field.x - 24 ||
             at.y < 72 ||
-            at.y > field.y - 30) continue;
+            at.y > field.y - 30) {
+          continue;
+        }
         if (!map.blocked(at, field) && !(avoidThinIce && onThinIce(at))) {
           return at;
         }

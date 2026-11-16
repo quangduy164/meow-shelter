@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import '../../game/night_shift/night_cards.dart';
 import '../../game/night_shift/night_relics.dart';
 import 'night_card_icons.dart';

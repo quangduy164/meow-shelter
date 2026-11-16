@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 import '../../collection/fish_species.dart';
 import 'fishing_fish_art.dart';

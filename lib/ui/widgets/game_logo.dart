@@ -1,5 +1,5 @@
 import '../design.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 import '../home_theme.dart';
 import 'santa_hat_painter.dart';

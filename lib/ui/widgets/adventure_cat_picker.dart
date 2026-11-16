@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 import '../../audio/game_audio.dart';
 import '../../game/cats/cat_breed.dart';
@@ -149,7 +149,7 @@ class _AdventureCatPickerState extends State<AdventureCatPicker> {
                   size: 30,
                   background: selected
                       ? const Color(0xFFFFDFA6)
-                      : breed.color.withOpacity(.25)),
+                      : breed.color.withValues(alpha: .25)),
               const SizedBox(width: DS.spaceXs),
               Expanded(
                 child: Text(breed.name,
@@ -210,7 +210,10 @@ class _AdventureCatPickerState extends State<AdventureCatPicker> {
                   gradient: LinearGradient(
                       begin: Alignment.topCenter,
                       end: Alignment.bottomCenter,
-                      colors: [color.withOpacity(.1), color.withOpacity(.3)]),
+                      colors: [
+                        color.withValues(alpha: .1),
+                        color.withValues(alpha: .3)
+                      ]),
                   borderRadius: BorderRadius.circular(DS.radiusLg),
                 ),
                 child: Stack(clipBehavior: Clip.none, children: [
@@ -221,7 +224,7 @@ class _AdventureCatPickerState extends State<AdventureCatPicker> {
                     child: Container(
                         height: 8,
                         decoration: BoxDecoration(
-                            color: color.withOpacity(.22),
+                            color: color.withValues(alpha: .22),
                             borderRadius:
                                 BorderRadius.circular(DS.radiusCard))),
                   ),

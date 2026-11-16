@@ -1,5 +1,5 @@
 import '../design.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter/services.dart';
 import 'fishing_tool_art.dart';
 import 'paw_loader.dart';

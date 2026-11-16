@@ -1,6 +1,6 @@
 import 'dart:math' as math;
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 /// Detailed art for each camp decoration, drawn in a 60x60 box with the item
 /// standing on the bottom edge. Every item has a soft floor shadow, a lit and a

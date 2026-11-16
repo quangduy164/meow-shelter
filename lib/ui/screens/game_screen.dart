@@ -1,6 +1,6 @@
 import '../design.dart';
 import 'package:flame/game.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import '../../game/meow_shelter_game.dart';
 import '../../camp/camp_state.dart';
 import '../../levels/level_config.dart';

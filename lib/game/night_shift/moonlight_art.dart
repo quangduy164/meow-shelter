@@ -22,7 +22,7 @@ void _paintBeam(Canvas canvas, Size screen, Moonlight moon,
     final strength = moon.shown * (erase ? .38 : .065);
     Color color(double opacity) => erase
         ? Color.fromRGBO(0, 0, 0, opacity)
-        : const Color(0xFFCEE8E4).withOpacity(opacity);
+        : const Color(0xFFCEE8E4).withValues(alpha: opacity);
     canvas.drawPath(
       moon.beam(screen, widthScale: width),
       Paint()

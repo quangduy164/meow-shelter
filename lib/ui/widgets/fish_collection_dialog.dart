@@ -1,5 +1,5 @@
 import 'dart:math' as math;
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import '../../collection/fish_collection.dart';
 import '../../collection/fish_species.dart';
 import 'fishing_fish_art.dart';
@@ -106,17 +106,17 @@ class _RarityOrnament extends CustomPainter {
         halo,
         Paint()
           ..shader = RadialGradient(colors: [
-            light.withOpacity(.16 + level * .025),
-            light.withOpacity(0),
+            light.withValues(alpha: .16 + level * .025),
+            light.withValues(alpha: 0),
           ]).createShader(halo));
     final pen = Paint()
-      ..color = light.withOpacity(.9)
+      ..color = light.withValues(alpha: .9)
       ..style = PaintingStyle.stroke
       ..strokeWidth = level >= 3 ? 1.5 : 1;
     if (level >= 3) {
       canvas.drawRRect(
           RRect.fromRectAndRadius(rect.deflate(3), const Radius.circular(6)),
-          pen..color = light.withOpacity(.55));
+          pen..color = light.withValues(alpha: .55));
     }
     // Corner filigree grows more elaborate with rarity.
     for (final dx in [-1.0, 1.0]) {
@@ -153,7 +153,8 @@ class _RarityOrnament extends CustomPainter {
             ..lineTo(sweep - size.height * .4 + 4, size.height)
             ..lineTo(sweep - size.height * .4 - 22, size.height)
             ..close(),
-          Paint()..color = Colors.white.withOpacity(level == 4 ? .08 : .05));
+          Paint()
+            ..color = Colors.white.withValues(alpha: level == 4 ? .08 : .05));
       for (var i = 0; i < level + 1; i++) {
         final a = i * 2.4;
         final p = Offset(size.width * (.12 + .76 * (.5 + .5 * math.sin(a))),
@@ -169,7 +170,7 @@ class _RarityOrnament extends CustomPainter {
               ..quadraticBezierTo(p.dx - 1, p.dy + 1, p.dx - r, p.dy)
               ..quadraticBezierTo(p.dx - 1, p.dy - 1, p.dx, p.dy - r)
               ..close(),
-            Paint()..color = light.withOpacity(.8 * pulse));
+            Paint()..color = light.withValues(alpha: .8 * pulse));
       }
     }
     if (level == 4) {
@@ -229,7 +230,7 @@ class _RarityTag extends StatelessWidget {
                           Color.lerp(color, Colors.black, .2)!
                         ]),
           boxShadow: level >= 3
-              ? [BoxShadow(color: color.withOpacity(.25), blurRadius: 5)]
+              ? [BoxShadow(color: color.withValues(alpha: .25), blurRadius: 5)]
               : null,
           borderRadius: BorderRadius.circular(DS.radiusSm),
           border: Border.all(color: color)),
@@ -436,7 +437,7 @@ class _FishTile extends StatelessWidget {
           boxShadow: level > 0
               ? [
                   BoxShadow(
-                      color: tone.withOpacity(selected ? .3 : .15),
+                      color: tone.withValues(alpha: selected ? .3 : .15),
                       blurRadius: 4.0 + level * 2,
                       spreadRadius: selected ? 1 : 0)
                 ]
@@ -540,7 +541,7 @@ class _DetailPanel extends StatelessWidget {
           border: Border.all(
               color: level > 0 ? tone : DS.wood, width: level > 0 ? 4 : 2),
           boxShadow: level > 0
-              ? [BoxShadow(color: tone.withOpacity(.2), blurRadius: 10)]
+              ? [BoxShadow(color: tone.withValues(alpha: .2), blurRadius: 10)]
               : null),
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         Expanded(

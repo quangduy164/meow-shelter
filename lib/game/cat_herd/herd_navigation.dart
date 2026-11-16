@@ -36,7 +36,9 @@ class HerdNavigation {
             v.x > size.x - 24 ||
             v.y < 66 ||
             v.y > size.y - 30 ||
-            map.blocked(v, size)) continue;
+            map.blocked(v, size)) {
+          continue;
+        }
         _corners.add(v);
       }
     }

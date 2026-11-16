@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 import '../../audio/game_audio.dart';
 import '../design.dart';
@@ -110,8 +110,8 @@ class _GamePressableState extends State<GamePressable> {
                           widget.onPressed!();
                         }
                       : null,
-                  focusColor: DS.gold.withOpacity(.3),
-                  hoverColor: DS.cream.withOpacity(.12),
+                  focusColor: DS.gold.withValues(alpha: .3),
+                  hoverColor: DS.cream.withValues(alpha: .12),
                   child: IconTheme.merge(
                     data: IconThemeData(color: enabled ? DS.ink : DS.mutedText),
                     child: DefaultTextStyle.merge(

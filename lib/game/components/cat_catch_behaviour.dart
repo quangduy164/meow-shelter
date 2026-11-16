@@ -102,10 +102,10 @@ extension CatCatchBehaviour on CatComponent {
                 fontWeight: FontWeight.w600)),
         textDirection: TextDirection.ltr,
         textAlign: TextAlign.center)
-      ..layout(maxWidth: min(154, gameRef.size.x - 32));
+      ..layout(maxWidth: min(154, game.size.x - 32));
     final width = text.width + 16;
     final left = (size.x / 2 - width / 2)
-        .clamp(8 - position.x, gameRef.size.x - position.x - width - 8);
+        .clamp(8 - position.x, game.size.x - position.x - width - 8);
     final below = position.y < text.height + 34;
     final top = below ? size.y + 8 : -text.height - 20;
     final bubble = Rect.fromLTWH(left, top, width, text.height + 12);

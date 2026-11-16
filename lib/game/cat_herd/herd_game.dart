@@ -53,7 +53,9 @@ class HerdGame extends FlameGame {
   void _cacheScenery(Size viewport) {
     if (_background != null &&
         _cachedMap == round.map &&
-        _cachedSize == viewport) return;
+        _cachedSize == viewport) {
+      return;
+    }
     _background?.dispose();
     _home?.dispose();
     final background = ui.PictureRecorder();

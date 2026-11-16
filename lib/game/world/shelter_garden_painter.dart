@@ -86,7 +86,9 @@ class ShelterGardenPainter extends CustomPainter {
       // Keep the playable lawn quiet and the five shelter positions clear.
       if (x > 160 && x < 840 && y < 430) continue;
       if ((x < 205 || x > 795) &&
-          ((y > 133 && y < 205) || (y > 317 && y < 409))) continue;
+          ((y > 133 && y < 205) || (y > 317 && y < 409))) {
+        continue;
+      }
       canvas.drawPath(
           Path()
             ..moveTo(x - 3, y)

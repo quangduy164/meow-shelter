@@ -1,5 +1,5 @@
 import '../design.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 enum ModeIconKind { catchCat, fishing, nightShift, adventure, camp, herd }
 
@@ -77,7 +77,7 @@ class _ModeIconPainter extends CustomPainter {
 
   Paint get _white => Paint()..color = Colors.white;
   Paint _ink(Color color) =>
-      Paint()..color = Color.lerp(color, DS.ink, .48)!.withOpacity(.88);
+      Paint()..color = Color.lerp(color, DS.ink, .48)!.withValues(alpha: .88);
   Paint _stroke(Color color, double width) => Paint()
     ..color = color
     ..style = PaintingStyle.stroke
@@ -115,7 +115,7 @@ class _ModeIconPainter extends CustomPainter {
           ..lineTo(c.dx, c.dy + 7 * s)
           ..close(),
         ink);
-    final whisker = _stroke(ink.color.withOpacity(.65), .9 * s);
+    final whisker = _stroke(ink.color.withValues(alpha: .65), .9 * s);
     canvas.drawLine(
         c + Offset(-7 * s, 6 * s), c + Offset(-13 * s, 5 * s), whisker);
     canvas.drawLine(
@@ -153,7 +153,7 @@ class _ModeIconPainter extends CustomPainter {
     _shape(canvas, fish, color);
     canvas.drawCircle(const Offset(17, 28), 2.2, _ink(color));
     canvas.drawArc(Rect.fromCircle(center: const Offset(24, 31), radius: 6),
-        -1.1, 2.2, false, _stroke(color.withOpacity(.75), 1.6));
+        -1.1, 2.2, false, _stroke(color.withValues(alpha: .75), 1.6));
     final bubble = _stroke(Colors.white, 1.6);
     canvas.drawCircle(const Offset(39, 12), 3, bubble);
     canvas.drawCircle(const Offset(45, 8), 1.8, bubble);
@@ -188,7 +188,7 @@ class _ModeIconPainter extends CustomPainter {
         Paint()..color = const Color(0x33000000));
     canvas.drawRRect(lantern, _white);
     canvas.drawRRect(
-        lantern.deflate(3.2), Paint()..color = color.withOpacity(.2));
+        lantern.deflate(3.2), Paint()..color = color.withValues(alpha: .2));
     canvas.drawRRect(lantern, _stroke(Color.lerp(color, DS.ink, .35)!, 1.3));
   }
 
@@ -200,7 +200,7 @@ class _ModeIconPainter extends CustomPainter {
     canvas.drawPath(
         road.shift(const Offset(0, 2)), _stroke(const Color(0x33000000), 9));
     canvas.drawPath(road, _stroke(Colors.white, 9));
-    final dash = _stroke(color.withOpacity(.7), 1.8);
+    final dash = _stroke(color.withValues(alpha: .7), 1.8);
     for (final segment in road.computeMetrics()) {
       for (var d = 4.0; d < segment.length; d += 8) {
         canvas.drawPath(segment.extractPath(d, d + 3), dash);
@@ -244,8 +244,8 @@ class _ModeIconPainter extends CustomPainter {
     canvas.drawRRect(
         RRect.fromRectAndRadius(
             const Rect.fromLTWH(23, 34, 10, 12), const Radius.circular(4)),
-        Paint()..color = color.withOpacity(.82));
-    final window = Paint()..color = color.withOpacity(.28);
+        Paint()..color = color.withValues(alpha: .82));
+    final window = Paint()..color = color.withValues(alpha: .28);
     canvas.drawRRect(
         RRect.fromRectAndRadius(
             const Rect.fromLTWH(18, 29, 7, 6), const Radius.circular(1.5)),

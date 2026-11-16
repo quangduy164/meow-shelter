@@ -174,13 +174,13 @@ void paintMoonEchoes(Canvas canvas, Size field, MoonlitYard yard,
 
 /// Warm light is painted on the lawn, below beds and cats, so a lit lamp
 /// remains visibly different even when the night scenery is already bright.
-class LanternLightComponent extends PositionComponent with HasGameRef {
+class LanternLightComponent extends PositionComponent with HasGameReference {
   LanternLightComponent(this.yard) : super(priority: -20);
   final MoonlitYard yard;
 
   @override
   void render(Canvas canvas) {
-    final screen = gameRef.size.toSize();
+    final screen = game.size.toSize();
     paintMoonEchoes(canvas, screen, yard);
     for (final lantern in yard.lanterns) {
       if (!lantern.lit && lantern.ember <= 0) continue;
@@ -194,9 +194,9 @@ class LanternLightComponent extends PositionComponent with HasGameRef {
         radius,
         Paint()
           ..shader = ui.Gradient.radial(center, radius, [
-            const Color(0xFFFFD57A).withOpacity(.48 * strength),
-            const Color(0xFFFFD57A).withOpacity(.30 * strength),
-            const Color(0xFFFFD57A).withOpacity(0),
+            const Color(0xFFFFD57A).withValues(alpha: .48 * strength),
+            const Color(0xFFFFD57A).withValues(alpha: .30 * strength),
+            const Color(0xFFFFD57A).withValues(alpha: 0),
           ], const [
             0,
             .65,
@@ -207,7 +207,7 @@ class LanternLightComponent extends PositionComponent with HasGameRef {
         center,
         radius * .85,
         Paint()
-          ..color = const Color(0xFFFFDF99).withOpacity(.4 * strength)
+          ..color = const Color(0xFFFFDF99).withValues(alpha: .4 * strength)
           ..style = PaintingStyle.stroke
           ..strokeWidth = 1.5,
       );
@@ -217,7 +217,7 @@ class LanternLightComponent extends PositionComponent with HasGameRef {
 
 /// Drawn over the darkness: the moon in the sky with passing clouds, and a
 /// green ring on every ready cat standing in the light (calm, slow timer).
-class MoonlitYardOverlay extends PositionComponent with HasGameRef {
+class MoonlitYardOverlay extends PositionComponent with HasGameReference {
   MoonlitYardOverlay({required this.yard, required this.cats})
       : super(priority: 84);
   final MoonlitYard yard;
@@ -225,7 +225,7 @@ class MoonlitYardOverlay extends PositionComponent with HasGameRef {
 
   @override
   void render(Canvas canvas) {
-    final screen = gameRef.size.toSize();
+    final screen = game.size.toSize();
     paintMoon(canvas, screen, yard.moon);
     for (final cat in cats()) {
       if (!cat.catchWindow.canCatch || cat.isCarried || cat.isDelivered) {
@@ -245,7 +245,8 @@ class MoonlitYardOverlay extends PositionComponent with HasGameRef {
 }
 
 /// A lantern post. Tapping the lamp lights it.
-class LanternComponent extends PositionComponent with HasGameRef, TapCallbacks {
+class LanternComponent extends PositionComponent
+    with HasGameReference, TapCallbacks {
   LanternComponent({required this.lantern, required this.onTapLantern})
       : super(size: Vector2(44, 64), priority: 86);
   final YardLantern lantern;

@@ -22,7 +22,7 @@ part 'cat_catch_behaviour.dart';
 /// A draggable cat. The game decides whether the cat was dropped in its
 /// matching shelter through [onDrop].
 class CatComponent extends SpriteAnimationGroupComponent<CatState>
-    with HasGameRef<FlameGame>, DragCallbacks, TapCallbacks {
+    with HasGameReference<FlameGame>, DragCallbacks, TapCallbacks {
   CatComponent({
     required Vector2 position,
     required this.catType,
@@ -191,7 +191,7 @@ class CatComponent extends SpriteAnimationGroupComponent<CatState>
   @override
   Future<void> onLoad() async {
     await super.onLoad();
-    animations = await loadCatAnimations(gameRef.images, catType);
+    animations = await loadCatAnimations(game.images, catType);
     _direction = _random.nextBool() ? 1 : -1;
     _pickNextAction();
   }
@@ -216,7 +216,9 @@ class CatComponent extends SpriteAnimationGroupComponent<CatState>
         _isDragged ||
         _isDelivered ||
         _isDropWrong ||
-        _isEscaping) return;
+        _isEscaping) {
+      return;
+    }
     _dodge();
     _dialogue.say('Ồn quá!');
   }
@@ -415,7 +417,7 @@ class CatComponent extends SpriteAnimationGroupComponent<CatState>
     if (_isEscaping) {
       position.x += _direction * catDashSpeed * 1.35 * dt;
       final hasLeftScreen = (_direction < 0 && position.x + size.x < 0) ||
-          (_direction > 0 && position.x > gameRef.size.x);
+          (_direction > 0 && position.x > game.size.x);
       if (hasLeftScreen) {
         onEscaped(this);
         removeFromParent();
@@ -506,7 +508,7 @@ class CatComponent extends SpriteAnimationGroupComponent<CatState>
   }
 
   void _clampPosition() {
-    final gameSize = gameRef.size;
+    final gameSize = game.size;
     if (position.x <= 0) {
       position.x = 0;
       _direction = 1;
@@ -594,7 +596,7 @@ class CatComponent extends SpriteAnimationGroupComponent<CatState>
   void _startEscape() {
     _isEscaping = true;
     _velocityY = 0;
-    _direction = position.x + size.x / 2 < gameRef.size.x / 2 ? -1 : 1;
+    _direction = position.x + size.x / 2 < game.size.x / 2 ? -1 : 1;
     _setState(CatState.dashEscape);
   }
 

@@ -315,7 +315,9 @@ class AdventureCat extends SpriteAnimationGroupComponent<CatState>
         canvas.drawCircle(
             Offset(size.x / 2 - facing * (8 + t * 24), 58 - t * 18),
             2 + 3 * (1 - t),
-            Paint()..color = const Color(0xFFFFA447).withOpacity((1 - t) * .7));
+            Paint()
+              ..color =
+                  const Color(0xFFFFA447).withValues(alpha: (1 - t) * .7));
       }
     }
     if (phasing) {
@@ -328,7 +330,8 @@ class AdventureCat extends SpriteAnimationGroupComponent<CatState>
                     p.x + size.x / 2, p.y + 51 - sin(_shadowClock * 5 + i) * 3),
                 width: 12 + fade * 17,
                 height: 8 + fade * 13),
-            Paint()..color = const Color(0xFF9E78DF).withOpacity(fade * .3));
+            Paint()
+              ..color = const Color(0xFF9E78DF).withValues(alpha: fade * .3));
       }
       canvas.drawOval(
           Rect.fromCenter(

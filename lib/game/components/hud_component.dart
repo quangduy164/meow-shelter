@@ -19,7 +19,7 @@ const _danger = Color(0xFFC0503A);
 
 /// Compact round HUD: one status pill at the top (time · cats · fish),
 /// a small mission card in the top-right corner and short toasts.
-class HudComponent extends PositionComponent with HasGameRef<FlameGame> {
+class HudComponent extends PositionComponent with HasGameReference<FlameGame> {
   HudComponent() : super(priority: 100);
 
   int delivered = 0;
@@ -99,7 +99,7 @@ class HudComponent extends PositionComponent with HasGameRef<FlameGame> {
   }
 
   Rect _drawStatusPill(Canvas canvas) {
-    final screen = gameRef.size;
+    final screen = game.size;
     final timed = !isInfinite || night > 0;
     final lowTime = timed && secondsLeft <= 10;
     final parts = <(void Function(Canvas, Offset, Color), String, Color)>[
@@ -178,7 +178,7 @@ class HudComponent extends PositionComponent with HasGameRef<FlameGame> {
   /// count on one line, a segmented progress bar, and tiny twist chips.
   /// The full rules are available through the information button.
   void _drawNightCard(Canvas canvas) {
-    final screen = gameRef.size;
+    final screen = game.size;
     const width = 132.0, pad = 7.0, barH = 7.0;
     const inner = width - pad * 2;
     final head = _text('ĐÊM $night', DS.fontBody, _ink, bold: true);
@@ -229,7 +229,8 @@ class HudComponent extends PositionComponent with HasGameRef<FlameGame> {
         canvas.drawRRect(
             r.inflate(_pop * 5),
             Paint()
-              ..color = const Color(0xFF6DBE63).withOpacity(_pop / .35 * .5));
+              ..color =
+                  const Color(0xFF6DBE63).withValues(alpha: _pop / .35 * .5));
       }
     }
     y += barH;
@@ -254,12 +255,12 @@ class HudComponent extends PositionComponent with HasGameRef<FlameGame> {
 
   /// Gold frame pulsing round the field while any bed takes any cat.
   void _drawBedGlow(Canvas canvas) {
-    final screen = gameRef.size;
+    final screen = game.size;
     final alpha = .35 + math.sin(_clock * 6) * .15;
     canvas.drawRect(
         Rect.fromLTWH(0, 0, screen.x, screen.y).deflate(3),
         Paint()
-          ..color = _gold.withOpacity(alpha)
+          ..color = _gold.withValues(alpha: alpha)
           ..style = PaintingStyle.stroke
           ..strokeWidth = 6);
   }
@@ -268,10 +269,10 @@ class HudComponent extends PositionComponent with HasGameRef<FlameGame> {
     if (_toastTime <= 0 || _toast.isEmpty) return;
     final fade = (_toastTime.clamp(0.0, .35) / .35);
     final rise = (1 - fade) * -4;
-    final screen = gameRef.size;
+    final screen = game.size;
     var y = top + rise;
     for (final line in _toast) {
-      final label = _text(line, DS.fontCaption, _cream.withOpacity(fade),
+      final label = _text(line, DS.fontCaption, _cream.withValues(alpha: fade),
           bold: true, maxWidth: screen.x * .5);
       final box = RRect.fromRectAndRadius(
           Rect.fromCenter(
@@ -290,7 +291,7 @@ class HudComponent extends PositionComponent with HasGameRef<FlameGame> {
   void _drawGoals(Canvas canvas) {
     final current = stats?.call();
     if (goals.isEmpty || current == null) return;
-    final screen = gameRef.size;
+    final screen = game.size;
     const rowH = 17.0, padX = 8.0, padY = 6.0;
     final rows = [
       for (final goal in goals) (goal, _goalFailed(goal, current)),

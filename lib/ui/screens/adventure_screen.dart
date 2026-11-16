@@ -1,5 +1,5 @@
 import 'package:flame/game.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'dart:async';
 import 'dart:math';
 
@@ -157,7 +157,7 @@ class _VictoryOverlay extends StatelessWidget {
                   padding: const EdgeInsets.symmetric(
                       horizontal: DS.spaceMd, vertical: DS.spaceSm),
                   decoration: BoxDecoration(
-                    color: DS.gold.withOpacity(.4),
+                    color: DS.gold.withValues(alpha: .4),
                     borderRadius: BorderRadius.circular(DS.radiusMd),
                     border: Border.all(color: DS.goldEdge),
                   ),
@@ -570,7 +570,7 @@ class _ComboHelpDialogState extends State<_ComboHelpDialog> {
               width: 32,
               height: 32,
               decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(.18),
+                  color: Colors.white.withValues(alpha: .18),
                   borderRadius: BorderRadius.circular(DS.radiusSm)),
               child:
                   Center(child: SkillGlyphView(step.attack.glyph, size: 25))),

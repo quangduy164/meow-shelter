@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import '../../game/silver_token_art.dart';
 
 class SilverTokenIcon extends StatelessWidget {

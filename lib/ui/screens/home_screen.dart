@@ -1,7 +1,7 @@
 import 'dart:async';
 
 import '../design.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter/services.dart';
 import '../../audio/game_audio.dart';
 import '../widgets/audio_settings_button.dart';
@@ -79,7 +79,7 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
   @override
   Widget build(BuildContext context) => PopScope(
         canPop: false,
-        onPopInvoked: (didPop) {
+        onPopInvokedWithResult: (didPop, _) {
           if (!didPop) unawaited(_exit());
         },
         child: Scaffold(

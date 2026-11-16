@@ -228,7 +228,8 @@ void paintGrassDetail(
                 width: 26 + random.nextDouble() * 30,
                 height: 7 + random.nextDouble() * 5),
             Paint()
-              ..color = (random.nextBool() ? dark : light).withOpacity(.35));
+              ..color =
+                  (random.nextBool() ? dark : light).withValues(alpha: .35));
       } else if (roll < .78) {
         _tuft(
             canvas,
@@ -301,7 +302,7 @@ void paintRoadDetail(Canvas canvas, AdventureRoad road, BiomeTone tone) {
                     Rect.fromCenter(
                         center: Offset(x + ox, y), width: 14, height: 10),
                     const Radius.circular(4)),
-                Paint()..color = dark.withOpacity(.22));
+                Paint()..color = dark.withValues(alpha: .22));
             canvas.drawRRect(
                 RRect.fromRectAndRadius(
                     Rect.fromCenter(
@@ -309,7 +310,7 @@ void paintRoadDetail(Canvas canvas, AdventureRoad road, BiomeTone tone) {
                         width: 11,
                         height: 7),
                     const Radius.circular(3)),
-                Paint()..color = light.withOpacity(.18));
+                Paint()..color = light.withValues(alpha: .18));
           }
         }
       case AdventureScenery.lane:
@@ -319,14 +320,14 @@ void paintRoadDetail(Canvas canvas, AdventureRoad road, BiomeTone tone) {
               Offset(x, c - half * .9),
               Offset(x, c + half * .9),
               Paint()
-                ..color = dark.withOpacity(.25)
+                ..color = dark.withValues(alpha: .25)
                 ..strokeWidth = 1.5);
         }
         canvas.drawLine(
             Offset(x, c),
             Offset(x + 9, road.centerY(x + 9)),
             Paint()
-              ..color = dark.withOpacity(.12)
+              ..color = dark.withValues(alpha: .12)
               ..strokeWidth = 1.2);
       default:
         // Dirt: two soft wheel ruts and scattered pebbles.
@@ -335,7 +336,7 @@ void paintRoadDetail(Canvas canvas, AdventureRoad road, BiomeTone tone) {
               Offset(x, c + half * rut),
               Offset(x + 9, road.centerY(x + 9) + road.halfWidth(x + 9) * rut),
               Paint()
-                ..color = dark.withOpacity(.13)
+                ..color = dark.withValues(alpha: .13)
                 ..strokeWidth = 5
                 ..strokeCap = StrokeCap.round);
         }
@@ -343,9 +344,9 @@ void paintRoadDetail(Canvas canvas, AdventureRoad road, BiomeTone tone) {
           final p = Offset(x + random.nextDouble() * 9,
               c + (random.nextDouble() * 2 - 1) * half * .85);
           final r = 1.2 + random.nextDouble() * 1.8;
-          canvas.drawCircle(p, r, Paint()..color = dark.withOpacity(.45));
+          canvas.drawCircle(p, r, Paint()..color = dark.withValues(alpha: .45));
           canvas.drawCircle(p - Offset(r * .3, r * .3), r * .45,
-              Paint()..color = light.withOpacity(.6));
+              Paint()..color = light.withValues(alpha: .6));
         }
     }
   }

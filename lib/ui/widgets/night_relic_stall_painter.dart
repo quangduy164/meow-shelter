@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 /// Wooden moon-market booth on a 740×370 canvas.
 class RelicStallPainter extends CustomPainter {

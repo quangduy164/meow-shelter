@@ -1,6 +1,6 @@
 import '../design.dart';
 import 'dart:math' as math;
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import '../../fishing/fishing_controller.dart';
 import '../../collection/fish_species.dart';
 
@@ -295,7 +295,7 @@ class FishingPainter extends CustomPainter {
     final paint = Paint()
       ..color = Color.lerp(
               const Color(0xFFFFC247), const Color(0xFFFF554C), strength)!
-          .withOpacity(blink)
+          .withValues(alpha: blink)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 3
       ..strokeCap = StrokeCap.round

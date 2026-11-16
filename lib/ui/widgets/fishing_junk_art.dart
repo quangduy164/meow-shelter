@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import '../../collection/fish_species.dart';
 
 class FishingJunkArt extends CustomPainter {

@@ -272,7 +272,9 @@ class NightGame {
         game.overlays.isActive('nightSetup') ||
         game.overlays.isActive('nightCards') ||
         game.overlays.isActive('nightShop') ||
-        game.overlays.isActive('catGuide')) return;
+        game.overlays.isActive('catGuide')) {
+      return;
+    }
     phase = NightPhase.briefing;
     game.pauseEngine();
     game.overlays.remove('nightSkills');
@@ -339,7 +341,9 @@ class NightGame {
     if (run == null ||
         phase != NightPhase.shop ||
         !shopOffer.contains(relic) ||
-        !run.buyRelic(relic)) return false;
+        !run.buyRelic(relic)) {
+      return false;
+    }
     game.hud.silver = run.silver;
     GameAudio.instance.playRescue(GameSound.rescueMilestone, important: true);
     return true;

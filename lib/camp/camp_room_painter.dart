@@ -1,6 +1,6 @@
 import 'dart:math' as math;
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 /// The cat camp seen from inside a cosy room: patterned wallpaper, a window
 /// on the garden, a sofa and shelf against the wall and a wooden floor.

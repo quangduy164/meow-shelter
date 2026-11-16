@@ -1,5 +1,5 @@
 import 'dart:async';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import '../../camp/camp_state.dart';
 import '../../game/night_shift/night_game.dart';
 import '../design.dart';
@@ -59,7 +59,7 @@ class _NightSkillBarState extends State<NightSkillBar> {
                   decoration: BoxDecoration(
                       color: game.effectLeft(type) > 0
                           ? DS.gold
-                          : DS.cream.withOpacity(.9),
+                          : DS.cream.withValues(alpha: .9),
                       borderRadius: BorderRadius.circular(DS.radiusSm)),
                   child: Text(
                       game.effectLeft(type) > 0

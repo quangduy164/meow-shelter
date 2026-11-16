@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 import '../skill_glyph.dart';
 import 'cat_catch_rule.dart';
@@ -25,7 +25,6 @@ class CatBreed {
     required this.id,
     required this.name,
     required this.color,
-    required this.bedAsset,
     required this.catchRule,
     required this.homeSkill,
     required this.attacks,
@@ -39,7 +38,6 @@ class CatBreed {
 
   /// Accent colour for buttons and fallbacks.
   final Color color;
-  final String bedAsset;
   final CatCatchRule catchRule;
   final CatHomeSkill homeSkill;
 
@@ -56,7 +54,6 @@ class CatBreed {
     id: 'orange',
     name: 'Mèo cam',
     color: Color(0xFFF4A34E),
-    bedAsset: 'Bed/bed-orange.png',
     catchRule: CatCatchRule('Ham ăn',
         'Cho ăn 1 con cá. Ăn xong mèo ngủ khò rất lâu, cứ thong thả bế vào ổ.'),
     homeSkill:
@@ -67,7 +64,6 @@ class CatBreed {
     id: 'black',
     name: 'Mèo đen',
     color: Color(0xFF536066),
-    bedAsset: 'Bed/bed-scottish.png',
     catchRule: CatCatchRule(
         'Cô độc', 'Chỉ ăn cá ở chỗ vắng: quanh con cá không được có mèo khác.'),
     homeSkill:
@@ -78,7 +74,6 @@ class CatBreed {
     id: 'himalaya',
     name: 'Himalaya',
     color: Color(0xFFDCC7A7),
-    bedAsset: 'Bed/bed-himalaya.png',
     catchRule: CatCatchRule(
         'Nhút nhát', 'Đặt cá cách xa mèo. Đặt sát quá mèo giật mình bỏ chạy.'),
     homeSkill: CatHomeSkill('Lăn băng', SkillGlyph.roll, Color(0xFF3E9FB0), 5),
@@ -88,7 +83,6 @@ class CatBreed {
     id: 'scottish',
     name: 'Scottish',
     color: Color(0xFFB77E64),
-    bedAsset: 'Bed/bed-scottish.png',
     catchRule:
         CatCatchRule('Kén ăn', 'Phải ăn đủ 2 con cá thì mèo mới chịu cho bế.'),
     homeSkill: CatHomeSkill(
@@ -99,7 +93,6 @@ class CatBreed {
     id: 'calico',
     name: 'Tam thể',
     color: Color(0xFFE8A86B),
-    bedAsset: 'Bed/bed-calico.png',
     catchRule: CatCatchRule('Ham chơi',
         'Không thèm cá! Chạm vào mèo 3 lần liền để chơi cùng, mèo mệt là bế được.'),
     homeSkill:

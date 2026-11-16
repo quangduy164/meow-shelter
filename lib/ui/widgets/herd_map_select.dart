@@ -1,5 +1,5 @@
 import 'package:flame/components.dart' show Vector2;
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 import '../../game/cat_herd/herd_map.dart';
 import '../../game/cat_herd/herd_round.dart';

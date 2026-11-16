@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import '../../audio/game_audio.dart';
 import '../../camp/camp_state.dart';
 import '../../game/cats/cat_breed.dart';

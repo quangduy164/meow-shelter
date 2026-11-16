@@ -1,7 +1,7 @@
 import 'game_pressable.dart';
 import 'dart:math' as math;
 import 'dart:ui' as ui;
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import '../design.dart';
 import 'game_glyphs.dart';
 import '../../game/components/hud_component.dart';

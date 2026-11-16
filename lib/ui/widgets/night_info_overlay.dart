@@ -1,6 +1,6 @@
 import 'dart:math' as math;
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 import '../../game/night_shift/night_run.dart';
 import '../../game/night_shift/night_cards.dart';
@@ -87,7 +87,7 @@ class NightInfoOverlay extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(7),
             decoration: BoxDecoration(
-                color: DS.gold.withOpacity(.15), shape: BoxShape.circle),
+                color: DS.gold.withValues(alpha: .15), shape: BoxShape.circle),
             child:
                 const Icon(Icons.nights_stay_rounded, color: DS.gold, size: 26),
           ),

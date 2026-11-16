@@ -380,13 +380,17 @@ class AdventureGame extends FlameGame {
         point.y = point.y.clamp(cy - lane - _cat.size.y / 2 + hitCenterY,
             cy + lane - AdventureCat.pawLine + hitCenterY);
         if (point.distanceTo(center) > HomeAttack.decoy.radius ||
-            !_blinkValid(point)) continue;
+            !_blinkValid(point)) {
+          continue;
+        }
         final box = Rect.fromCenter(
             center: Offset(point.x, point.y),
             width: AdventureCat.hitboxWidth,
             height: AdventureCat.hitboxHeight);
         if (_spawner.obstacles
-            .any((o) => !_hidden(o) && !o.harmless && o.hits(box))) continue;
+            .any((o) => !_hidden(o) && !o.harmless && o.hits(box))) {
+          continue;
+        }
         return point;
       }
     }

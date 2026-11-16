@@ -2,7 +2,7 @@ import 'dart:async';
 import 'dart:math';
 import 'dart:ui' as ui;
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 import '../../audio/game_audio.dart';
@@ -1155,7 +1155,7 @@ class _CampCatsPainter extends CustomPainter {
   static const double _tagHeight = 20;
 
   static final _spritePaint = Paint()..filterQuality = FilterQuality.medium;
-  static final _tagPaint = Paint()..color = DS.cream.withOpacity(.92);
+  static final _tagPaint = Paint()..color = DS.cream.withValues(alpha: .92);
 
   /// Same footprint as the old widget: an 80px-wide name row over the sprite,
   /// with the sprite centred on the cat's room position.

@@ -3,7 +3,7 @@ import '../widgets/game_surfaces.dart';
 import 'dart:async';
 import 'dart:math' as math;
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter/scheduler.dart';
 
 import '../../collection/fish_collection.dart';

@@ -200,12 +200,12 @@ void paintNightMarket(Canvas canvas, Size size) {
   canvas.restore();
 }
 
-class MarketLightPools extends PositionComponent with HasGameRef {
+class MarketLightPools extends PositionComponent with HasGameReference {
   MarketLightPools(this.market) : super(priority: -20);
   final NightMarket market;
   @override
   void render(Canvas canvas) {
-    final screen = gameRef.size.toSize();
+    final screen = game.size.toSize();
     for (final lamp in market.lamps) {
       if (!lamp.lit && lamp.ember <= 0) continue;
       final c = lamp.center(screen);
@@ -216,8 +216,8 @@ class MarketLightPools extends PositionComponent with HasGameRef {
           r,
           Paint()
             ..shader = ui.Gradient.radial(c, r, [
-              const Color(0xFFFFD992).withOpacity(.44 * strength),
-              const Color(0xFFFFD992).withOpacity(.24 * strength),
+              const Color(0xFFFFD992).withValues(alpha: .44 * strength),
+              const Color(0xFFFFD992).withValues(alpha: .24 * strength),
               const Color(0x00FFD992),
             ], const [
               0,
@@ -235,12 +235,12 @@ class MarketLightPools extends PositionComponent with HasGameRef {
   }
 }
 
-class NightMarketAtmosphere extends PositionComponent with HasGameRef {
+class NightMarketAtmosphere extends PositionComponent with HasGameReference {
   NightMarketAtmosphere(this.market) : super(priority: 84);
   final NightMarket market;
   @override
   void render(Canvas canvas) {
-    final screen = gameRef.size.toSize();
+    final screen = game.size.toSize();
     paintMoon(canvas, screen, market.moon);
     _traffic(canvas, screen);
     final danger = market.noise >= 75 || market.alarm > 0;
@@ -285,11 +285,12 @@ class NightMarketAtmosphere extends PositionComponent with HasGameRef {
       canvas.drawRect(
           (Offset.zero & screen).deflate(2),
           Paint()
-            ..color = const Color(0xFFEA9A84).withOpacity(market.alarm / 5)
+            ..color =
+                const Color(0xFFEA9A84).withValues(alpha: market.alarm / 5)
             ..style = PaintingStyle.stroke
             ..strokeWidth = 4);
     }
-    for (final cat in gameRef.children.whereType<CatComponent>()) {
+    for (final cat in game.children.whereType<CatComponent>()) {
       if (!cat.catchWindow.canCatch || cat.isCarried || cat.isDelivered) {
         continue;
       }
@@ -367,7 +368,7 @@ class NightMarketAtmosphere extends PositionComponent with HasGameRef {
 }
 
 class MarketLampComponent extends PositionComponent
-    with HasGameRef, TapCallbacks {
+    with HasGameReference, TapCallbacks {
   MarketLampComponent(this.lamp, this.market, {required this.onTapLamp})
       : super(size: Vector2(42, 66), priority: 86);
   final MarketLamp lamp;

@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 import 'responsive.dart';
 
@@ -239,13 +239,13 @@ abstract final class DS {
       iconSize: iconMd,
     )),
     dialogTheme: ThemeData().dialogTheme.copyWith(
-      backgroundColor: cream,
-      surfaceTintColor: Colors.transparent,
-      shape: dialogShape,
-      titleTextStyle: title,
-      contentTextStyle: bodyText,
-      insetPadding: const EdgeInsets.all(spaceLg),
-    ),
+          backgroundColor: cream,
+          surfaceTintColor: Colors.transparent,
+          shape: dialogShape,
+          titleTextStyle: title,
+          contentTextStyle: bodyText,
+          insetPadding: const EdgeInsets.all(spaceLg),
+        ),
     tooltipTheme: TooltipThemeData(
       decoration: BoxDecoration(
           color: ink, borderRadius: BorderRadius.circular(radiusSm)),

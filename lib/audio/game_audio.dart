@@ -205,7 +205,9 @@ class GameAudio with WidgetsBindingObserver {
     if (!_foreground ||
         !_homeActive ||
         !musicEnabled.value ||
-        musicVolume.value == 0) await music.stop();
+        musicVolume.value == 0) {
+      await music.stop();
+    }
   }
 
   Future<void> _enqueueEffect(Future<void> Function() action) {
@@ -224,8 +226,9 @@ class GameAudio with WidgetsBindingObserver {
     try {
       await player.setPlayerMode(PlayerMode.lowLatency);
       await player.setAudioContext(AudioContext(
-        android: AudioContextAndroid(audioFocus: AndroidAudioFocus.none),
-        iOS: AudioContextIOS(options: const {AVAudioSessionOptions.mixWithOthers}),
+        android: const AudioContextAndroid(audioFocus: AndroidAudioFocus.none),
+        iOS: AudioContextIOS(
+            options: const {AVAudioSessionOptions.mixWithOthers}),
       ));
       await player.setReleaseMode(ReleaseMode.stop);
       await player.setSource(AssetSource('${sound.name}.wav'));
@@ -268,8 +271,9 @@ class GameAudio with WidgetsBindingObserver {
     if (reel.state == PlayerState.playing) return;
     await reel.setReleaseMode(ReleaseMode.loop);
     await reel.setAudioContext(AudioContext(
-      android: AudioContextAndroid(audioFocus: AndroidAudioFocus.none),
-      iOS: AudioContextIOS(options: const {AVAudioSessionOptions.mixWithOthers}),
+      android: const AudioContextAndroid(audioFocus: AndroidAudioFocus.none),
+      iOS:
+          AudioContextIOS(options: const {AVAudioSessionOptions.mixWithOthers}),
     ));
     await reel.setSource(AssetSource('fishingReel.wav'));
     if (!_foreground || !_reeling || effectsVolume.value == 0) return;
@@ -335,7 +339,9 @@ class GameAudio with WidgetsBindingObserver {
           !_foreground ||
           effectsVolume.value == 0 ||
           request != _effectRequest ||
-          _rescueClock.elapsedMilliseconds - requested > 200) return;
+          _rescueClock.elapsedMilliseconds - requested > 200) {
+        return;
+      }
       await _effect?.stop();
       if (request != _effectRequest ||
           !_foreground ||
@@ -347,7 +353,9 @@ class GameAudio with WidgetsBindingObserver {
       if (request != _effectRequest ||
           !_foreground ||
           effectsVolume.value == 0 ||
-          _rescueClock.elapsedMilliseconds - requested > 200) return;
+          _rescueClock.elapsedMilliseconds - requested > 200) {
+        return;
+      }
       await effect.resume();
       if (!_foreground || effectsVolume.value == 0) await effect.stop();
     }));

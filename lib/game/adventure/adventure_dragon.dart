@@ -687,7 +687,7 @@ class AdventureDragon extends PositionComponent {
           halo,
           Paint()
             ..shader = RadialGradient(colors: [
-              const Color(0xFFFFEBD2).withOpacity(flash * .45),
+              const Color(0xFFFFEBD2).withValues(alpha: flash * .45),
               const Color(0x00FFEBD2),
             ]).createShader(halo));
     }
@@ -871,8 +871,8 @@ class AdventureDragon extends PositionComponent {
 
   void _paintAscendedTurnedBody(Canvas canvas, double opacity) {
     final front = sin(_bodyYaw) > 0;
-    canvas.saveLayer(
-        null, Paint()..color = const Color(0xFFFFFFFF).withOpacity(opacity));
+    canvas.saveLayer(null,
+        Paint()..color = const Color(0xFFFFFFFF).withValues(alpha: opacity));
     canvas.translate(15, -8);
     canvas.rotate(_bodyTurn);
     canvas.translate(-15 + cos(_bodyYaw) * _bodyOffset.x,
@@ -999,9 +999,10 @@ class AdventureDragon extends PositionComponent {
 
   Color _c(Color base) {
     var c = base;
-    if (_evolution > 0 && base.red > base.green * 1.25) {
-      final evolved =
-          base.green > 120 ? const Color(0xFFD36B3E) : const Color(0xFFA64157);
+    if (_evolution > 0 && base.r > base.g * 1.25) {
+      final evolved = base.g * 255 > 120
+          ? const Color(0xFFD36B3E)
+          : const Color(0xFFA64157);
       c = Color.lerp(c, evolved, .65 * _evolution)!;
     }
     if (frozen > 0) c = Color.lerp(c, const Color(0xFFBFE6FF), .45)!;
@@ -1093,7 +1094,7 @@ class AdventureDragon extends PositionComponent {
           path,
           Paint()
             ..color = (layer.$1 == 1 ? const Color(0xFFFFE49A) : color)
-                .withOpacity(layer.$2 * _evolution * pulse)
+                .withValues(alpha: layer.$2 * _evolution * pulse)
             ..style = PaintingStyle.stroke
             ..strokeWidth = layer.$1
             ..strokeJoin = StrokeJoin.round
@@ -1126,7 +1127,7 @@ class AdventureDragon extends PositionComponent {
             ..lineTo(x, y - 6 * growth)
             ..lineTo(x + width, y),
           Paint()
-            ..color = const Color(0xFFFFBC70).withOpacity(growth * .8)
+            ..color = const Color(0xFFFFBC70).withValues(alpha: growth * .8)
             ..style = PaintingStyle.stroke
             ..strokeWidth = 1.5);
       _magma(
@@ -1175,8 +1176,8 @@ class AdventureDragon extends PositionComponent {
               width: radius * 2,
               height: radius * .55),
           Paint()
-            ..color =
-                const Color(0xFFFFAC78).withOpacity((1 - cycle) * fade * .65)
+            ..color = const Color(0xFFFFAC78)
+                .withValues(alpha: (1 - cycle) * fade * .65)
             ..style = PaintingStyle.stroke
             ..strokeWidth = 2 + charge);
     }
@@ -1192,7 +1193,7 @@ class AdventureDragon extends PositionComponent {
           Paint()
             ..color =
                 (i.isEven ? const Color(0xFFFFD99B) : const Color(0xFFF994C4))
-                    .withOpacity((1 - life) * fade * (.35 + .65 * charge))
+                    .withValues(alpha: (1 - life) * fade * (.35 + .65 * charge))
             ..strokeWidth = 1.5 + i % 3
             ..strokeCap = StrokeCap.round);
     }
@@ -1207,7 +1208,7 @@ class AdventureDragon extends PositionComponent {
             from,
             to,
             Paint()
-              ..color = const Color(0xFFFFE5AD).withOpacity(burst * .65)
+              ..color = const Color(0xFFFFE5AD).withValues(alpha: burst * .65)
               ..strokeWidth = 2 + burst * 2
               ..strokeCap = StrokeCap.round);
       }
@@ -1690,12 +1691,14 @@ class AdventureDragon extends PositionComponent {
       _paintOriginalBody(canvas);
       return;
     }
-    canvas.saveLayer(
-        null, Paint()..color = const Color(0xFFFFFFFF).withOpacity(_evolution));
+    canvas.saveLayer(null,
+        Paint()..color = const Color(0xFFFFFFFF).withValues(alpha: _evolution));
     _paintAscendedBody(canvas);
     canvas.restore();
-    canvas.saveLayer(null,
-        Paint()..color = const Color(0xFFFFFFFF).withOpacity(1 - _evolution));
+    canvas.saveLayer(
+        null,
+        Paint()
+          ..color = const Color(0xFFFFFFFF).withValues(alpha: 1 - _evolution));
     _paintOriginalBody(canvas);
     canvas.restore();
   }
@@ -1777,8 +1780,11 @@ class AdventureDragon extends PositionComponent {
     if (_evolution <= 0) {
       _paintArmorPlates(canvas, _breath);
     } else if (_evolution < 1) {
-      canvas.saveLayer(null,
-          Paint()..color = const Color(0xFFFFFFFF).withOpacity(1 - _evolution));
+      canvas.saveLayer(
+          null,
+          Paint()
+            ..color =
+                const Color(0xFFFFFFFF).withValues(alpha: 1 - _evolution));
       _paintArmorPlates(canvas, _breath);
       canvas.restore();
     }
@@ -2208,7 +2214,7 @@ class AdventureDragon extends PositionComponent {
               points[3],
               o + const Offset(9, -7),
             ], true),
-          Paint()..color = const Color(0xFFFFEAC0).withOpacity(.65));
+          Paint()..color = const Color(0xFFFFEAC0).withValues(alpha: .65));
       for (var i = 0; i < 3; i++) {
         final t = .2 + i * .2;
         final top = Offset.lerp(points[1], points[3], t)!;
@@ -2217,7 +2223,7 @@ class AdventureDragon extends PositionComponent {
             top,
             bottom,
             Paint()
-              ..color = const Color(0xFF98623A).withOpacity(.7)
+              ..color = const Color(0xFF98623A).withValues(alpha: .7)
               ..strokeWidth = 1.3);
       }
       if (g > 0) {
@@ -2659,7 +2665,7 @@ class DragonDive extends DragonAttack {
       canvas.drawOval(
           groundEllipse(spot, radius * (1 + k)),
           Paint()
-            ..color = const Color(0xFFFFCF85).withOpacity(1 - k)
+            ..color = const Color(0xFFFFCF85).withValues(alpha: 1 - k)
             ..style = PaintingStyle.stroke
             ..strokeWidth = 5 * (1 - k) + 1);
       for (var i = 0; i < 10; i++) {
@@ -2668,7 +2674,9 @@ class DragonDive extends DragonAttack {
             Offset(spot.x + cos(a) * radius * k,
                 spot.y + sin(a) * radius * k * .5 - 12 * k),
             3 * (1 - k) + 1,
-            Paint()..color = const Color(0xFFC6A980).withOpacity((1 - k) * .7));
+            Paint()
+              ..color =
+                  const Color(0xFFC6A980).withValues(alpha: (1 - k) * .7));
       }
     }
   }

@@ -5,7 +5,7 @@ import 'package:flame/components.dart';
 
 /// Lights-off layer for dark levels: the field is night-dark except for
 /// soft pools of light at [lights] (fish, beds and cats that are ready).
-class DarknessComponent extends PositionComponent with HasGameRef {
+class DarknessComponent extends PositionComponent with HasGameReference {
   DarknessComponent(
       {required this.lights,
       required this.visible,
@@ -32,7 +32,7 @@ class DarknessComponent extends PositionComponent with HasGameRef {
   @override
   void render(Canvas canvas) {
     if (!visible()) return;
-    final area = Offset.zero & Size(gameRef.size.x, gameRef.size.y);
+    final area = Offset.zero & Size(game.size.x, game.size.y);
     canvas.saveLayer(area, Paint());
     canvas.drawRect(area, Paint()..color = shade);
     for (final (center, radius) in lights()) {
@@ -57,8 +57,8 @@ class DarknessComponent extends PositionComponent with HasGameRef {
     // Faint fireflies so the dark field does not feel empty.
     for (var i = 0; i < 7; i++) {
       final t = _clock * .4 + i * 1.7;
-      final p = Offset(gameRef.size.x * (.1 + .8 * ((i * .37 + (t * .13)) % 1)),
-          gameRef.size.y * (.25 + .45 * (.5 + .5 * _wave(t * 1.3 + i))));
+      final p = Offset(game.size.x * (.1 + .8 * ((i * .37 + (t * .13)) % 1)),
+          game.size.y * (.25 + .45 * (.5 + .5 * _wave(t * 1.3 + i))));
       final glow = .4 + .6 * (.5 + .5 * _wave(t * 3 + i * 2));
       canvas.drawCircle(
           p, 5, Paint()..color = Color.fromRGBO(255, 236, 140, .18 * glow));

@@ -77,7 +77,7 @@ void paintPuffyCloud(Canvas canvas, Offset center, double width,
   }
   // 4. A few soft creases where puffs meet, for depth.
   final crease = Paint()
-    ..color = palette.shade.withOpacity(.45)
+    ..color = palette.shade.withValues(alpha: .45)
     ..style = PaintingStyle.stroke
     ..strokeWidth = w * .012
     ..strokeCap = StrokeCap.round;
@@ -137,7 +137,7 @@ void paintLeafyTree(Canvas canvas, Offset base, double height,
   canvas.clipPath(trunk);
   canvas.drawRect(
       Rect.fromLTRB(base.dx + h * .008, crown.dy, base.dx + h * .12, base.dy),
-      Paint()..color = palette.bark.withOpacity(.55));
+      Paint()..color = palette.bark.withValues(alpha: .55));
   final bark = Paint()
     ..color = palette.bark
     ..style = PaintingStyle.stroke
@@ -190,14 +190,14 @@ void paintLeafyTree(Canvas canvas, Offset base, double height,
   // on the leaves rather than separate balls.
   canvas.save();
   canvas.clipPath(midShape);
-  final light = Paint()..color = palette.leafLight.withOpacity(.9);
+  final light = Paint()..color = palette.leafLight.withValues(alpha: .9);
   for (final (c, r) in blobs) {
     final rel = c - crown;
     if (rel.dx > radius * .35 || rel.dy > radius * .25) continue;
     canvas.drawCircle(c + shift * 2.6, r * .62, light);
   }
   // Darker clumps between them break up the crown into leaf masses.
-  final inner = Paint()..color = palette.leafDark.withOpacity(.35);
+  final inner = Paint()..color = palette.leafDark.withValues(alpha: .35);
   for (var i = 1; i < blobs.length; i += 3) {
     final (c, r) = blobs[i];
     canvas.drawCircle(

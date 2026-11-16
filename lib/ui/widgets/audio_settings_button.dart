@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 import '../../audio/game_audio.dart';
 import '../design.dart';
@@ -16,7 +16,7 @@ class AudioSettingsButton extends StatelessWidget {
             width: 34,
             height: 34,
             decoration: BoxDecoration(
-              color: DS.cream.withOpacity(.92),
+              color: DS.cream.withValues(alpha: .92),
               shape: BoxShape.circle,
               border: Border.all(color: DS.wood, width: DS.borderSubtle),
             ),
@@ -146,7 +146,7 @@ class _AudioSettingsDialog extends StatelessWidget {
         Switch(
           value: value,
           onChanged: onChanged,
-          activeColor: DS.goldEdge,
+          activeThumbColor: DS.goldEdge,
           activeTrackColor: DS.gold,
           materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
         ),

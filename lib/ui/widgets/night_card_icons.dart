@@ -1,6 +1,6 @@
 import 'dart:math' as math;
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 import '../../game/night_shift/night_cards.dart';
 
@@ -122,7 +122,7 @@ class _NightCardPainter extends CustomPainter {
           canvas.drawOval(
               Rect.fromCenter(
                   center: Offset(14 + i * 10, 36), width: 12, height: 5),
-              _fill(_blue.withOpacity(.3 + i * .2)));
+              _fill(_blue.withValues(alpha: .3 + i * .2)));
         }
       case NightCard.restingLight:
         _warmHug(canvas);

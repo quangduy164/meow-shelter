@@ -162,14 +162,14 @@ void paintRooftops(Canvas canvas, Size size) {
       Paint()..color = const Color(0xFF223747));
 }
 
-class RooftopAtmosphere extends PositionComponent with HasGameRef {
+class RooftopAtmosphere extends PositionComponent with HasGameReference {
   RooftopAtmosphere(this.roof) : super(priority: 84);
   final RooftopBridges roof;
   @override
   void render(Canvas canvas) {
-    final screen = gameRef.size.toSize();
+    final screen = game.size.toSize();
     paintMoon(canvas, screen, roof.moon);
-    for (final cat in gameRef.children.whereType<CatComponent>()) {
+    for (final cat in game.children.whereType<CatComponent>()) {
       if (!cat.catchWindow.canCatch || cat.isCarried || cat.isDelivered) {
         continue;
       }
@@ -187,7 +187,7 @@ class RooftopAtmosphere extends PositionComponent with HasGameRef {
 }
 
 class RoofBridgeComponent extends PositionComponent
-    with HasGameRef, TapCallbacks {
+    with HasGameReference, TapCallbacks {
   RoofBridgeComponent(this.bridge, this.roof, {required this.onTapBridge})
       : super(priority: -15);
   final RoofBridge bridge;
@@ -207,7 +207,7 @@ class RoofBridgeComponent extends PositionComponent
 
   @override
   void render(Canvas canvas) {
-    final screen = gameRef.size.toSize();
+    final screen = game.size.toSize();
     final screenRect = roof.bridgeRect(bridge, screen);
     final rect = screenRect.shift(Offset(-position.x, -position.y));
     final active = bridge.active;

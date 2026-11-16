@@ -1,6 +1,6 @@
 import 'dart:math' as math;
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 import '../design.dart';
 
@@ -45,8 +45,8 @@ class _GlyphPainter extends CustomPainter {
       ..strokeJoin = StrokeJoin.round;
 
     // Soft drop shadow, then the line itself.
-    canvas.drawPath(
-        path.shift(Offset(0, s * .035)), stroke(color.withOpacity(.16), width));
+    canvas.drawPath(path.shift(Offset(0, s * .035)),
+        stroke(color.withValues(alpha: .16), width));
     canvas.drawPath(path, stroke(color, width));
     if (glyph == GameGlyph.back) {
       // Small open arrow head on the left end of the curve.
@@ -55,7 +55,7 @@ class _GlyphPainter extends CustomPainter {
         ..lineTo(s * .24, s * .42)
         ..lineTo(s * .44, s * .62);
       canvas.drawPath(head.shift(Offset(0, s * .035)),
-          stroke(color.withOpacity(.16), width));
+          stroke(color.withValues(alpha: .16), width));
       canvas.drawPath(head, stroke(color, width));
     }
     if (glyph == GameGlyph.home) {

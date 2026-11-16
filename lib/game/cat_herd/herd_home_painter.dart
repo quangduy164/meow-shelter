@@ -52,7 +52,7 @@ void _door(Canvas c, Color wood, Color edge) {
   _box(c, const Rect.fromLTWH(-13, -7, 26, 30), edge, 12);
   _box(c, const Rect.fromLTWH(-10, -4, 20, 27), wood, 10);
   for (final x in [-5.0, 0.0, 5.0]) {
-    _line(c, Offset(x, 1), Offset(x, 21), edge.withOpacity(.45), 1);
+    _line(c, Offset(x, 1), Offset(x, 21), edge.withValues(alpha: .45), 1);
   }
   c.drawCircle(
       const Offset(6, 11), 1.6, Paint()..color = const Color(0xFFFFDC7D));

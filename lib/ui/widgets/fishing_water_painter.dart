@@ -1,6 +1,6 @@
 import 'dart:math' as math;
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 import '../../fishing/fishing_controller.dart';
 import '../../fishing/fishing_lighting.dart';
@@ -127,7 +127,8 @@ class FishingWaterPainter extends CustomPainter {
               width: (9 + t * 62) * (.75 + shimmer.abs() * .25),
               height: 1.5 + t * 1.5),
           Paint()
-            ..color = lighting.reflection.withOpacity(opacity * (1 - t) * .8));
+            ..color =
+                lighting.reflection.withValues(alpha: opacity * (1 - t) * .8));
     }
     canvas.restore();
   }

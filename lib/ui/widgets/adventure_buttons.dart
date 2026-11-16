@@ -2,7 +2,7 @@ import '../design.dart';
 import 'dart:async';
 import 'dart:math' as math;
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 import '../../game/cats/cat_breed.dart';
 import '../../game/skill_glyph.dart';

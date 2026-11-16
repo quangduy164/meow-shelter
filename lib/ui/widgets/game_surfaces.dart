@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 import '../design.dart';
 
@@ -136,7 +136,7 @@ class GameBadge extends StatelessWidget {
         padding: const EdgeInsets.symmetric(
             horizontal: DS.spaceSm, vertical: DS.spaceXs),
         decoration: BoxDecoration(
-            color: color.withOpacity(.12),
+            color: color.withValues(alpha: .12),
             borderRadius: BorderRadius.circular(DS.radiusSm)),
         child: Text(label,
             style: DS.microText

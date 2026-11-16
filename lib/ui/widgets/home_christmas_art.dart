@@ -204,7 +204,8 @@ void paintWinterShelter(Canvas canvas, Offset door) {
     final x = -65.0 + i * 13;
     final y = -120 + x.abs() * .72;
     final c = i.isEven ? const Color(0xFFFFD585) : const Color(0xFFFF9290);
-    canvas.drawCircle(Offset(x, y), 6, Paint()..color = c.withOpacity(.15));
+    canvas.drawCircle(
+        Offset(x, y), 6, Paint()..color = c.withValues(alpha: .15));
     canvas.drawCircle(Offset(x, y), 2, Paint()..color = c);
   }
   // Snow-lined doorstep joins the end of the trail.
@@ -287,7 +288,8 @@ void _paintChristmasTree(Canvas canvas, Offset base) {
       final x = -half * .65 + half * 1.31 * t;
       final y = bottom - 23 + 30 * t * (1 - t);
       final c = j.isEven ? const Color(0xFFFFDB8B) : const Color(0xFFFFA29B);
-      canvas.drawCircle(Offset(x, y), 6, Paint()..color = c.withOpacity(.13));
+      canvas.drawCircle(
+          Offset(x, y), 6, Paint()..color = c.withValues(alpha: .13));
       canvas.drawCircle(Offset(x, y), 1.8, Paint()..color = c);
     }
     // Glass baubles with a tiny reflected highlight.
@@ -396,7 +398,7 @@ void paintHomeChristmas(Canvas canvas, double width) {
           ..color = const Color(0xFF234F48)
           ..strokeWidth = 2);
     canvas.drawCircle(
-        Offset(x, y + 14), 12, Paint()..color = color.withOpacity(.12));
+        Offset(x, y + 14), 12, Paint()..color = color.withValues(alpha: .12));
     canvas.drawOval(
         Rect.fromCenter(center: Offset(x, y + 14), width: 7, height: 11),
         Paint()..color = color);
@@ -410,11 +412,14 @@ void paintHomeChristmas(Canvas canvas, double width) {
   for (var i = 0; i < 85; i++) {
     final p = Offset(random.nextDouble() * width, random.nextDouble() * 600);
     final r = 1.2 + random.nextDouble() * 2.1;
-    canvas.drawCircle(p, r,
-        Paint()..color = cream.withOpacity(.35 + random.nextDouble() * .5));
+    canvas.drawCircle(
+        p,
+        r,
+        Paint()
+          ..color = cream.withValues(alpha: .35 + random.nextDouble() * .5));
     if (i % 13 == 0) {
       final pen = Paint()
-        ..color = cream.withOpacity(.7)
+        ..color = cream.withValues(alpha: .7)
         ..strokeWidth = 1.3;
       for (var arm = 0; arm < 3; arm++) {
         final a = arm * math.pi / 3;

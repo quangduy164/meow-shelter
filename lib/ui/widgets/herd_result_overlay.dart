@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 import '../../game/cat_herd/herd_round.dart';
 import '../design.dart';
@@ -112,7 +112,7 @@ class HerdResultOverlay extends StatelessWidget {
                       padding: const EdgeInsets.symmetric(
                           horizontal: DS.spaceSm, vertical: DS.spaceSm),
                       decoration: BoxDecoration(
-                        color: color.withOpacity(.08),
+                        color: color.withValues(alpha: .08),
                         borderRadius: BorderRadius.circular(DS.radiusMd),
                       ),
                       child: Row(children: [

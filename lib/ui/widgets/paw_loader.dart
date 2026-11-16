@@ -1,6 +1,6 @@
 import 'dart:math';
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 import '../design.dart';
 
@@ -84,7 +84,7 @@ class _PawTrailPainter extends CustomPainter {
       canvas.rotate(angle + pi / 2);
       // A small "press" as the paw lands.
       canvas.scale(.8 + .2 * appear);
-      _paw(canvas, paw, color.withOpacity(color.opacity * opacity));
+      _paw(canvas, paw, color.withValues(alpha: color.a * opacity));
       canvas.restore();
     }
   }
