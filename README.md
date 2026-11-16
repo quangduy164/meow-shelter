@@ -10,11 +10,12 @@ Game chăm sóc và giải cứu mèo viết bằng **Flutter** và **Flame**. N
 | --- | --- |
 | Flutter / Dart | Giao diện, điều hướng và vòng đời ứng dụng |
 | Flame `^1.20.0` | Game loop, sprite animation, camera và component |
-| `shared_preferences` `2.3.3` | Lưu tiến trình, bộ sưu tập và thiết lập |
-| `flame_audio` `2.10.0` | Nhạc nền và hiệu ứng âm thanh |
+| `material_ui` `^1.11.0` | Thư viện Material dùng cho Flutter mới |
+| `shared_preferences` `^2.5.6` | Lưu tiến trình, bộ sưu tập và thiết lập |
+| `flame_audio` `^2.12.2` | Nhạc nền và hiệu ứng âm thanh |
 | `CustomPainter` / `Canvas` | Phong cảnh, vật cản, icon và hiệu ứng kỹ năng |
 
-Repo có cấu hình **Android** và **iOS**. Môi trường đang dùng Flutter **3.22.3**, Dart **3.4.4**; giới hạn Dart trong `pubspec.yaml` là `>=3.4.4 <4.0.0`. Chưa có cấu hình Web hoặc desktop trong repo.
+Repo có cấu hình **Android** và **iOS**. Môi trường đã kiểm tra dùng Flutter **3.50.0**, Dart **3.14.0**; giới hạn Dart trong `pubspec.yaml` là `>=3.4.4 <4.0.0`. Chưa có cấu hình Web hoặc desktop trong repo.
 
 ## Cài đặt và chạy
 
@@ -125,7 +126,9 @@ Sau khi đổi hãy **Hot Restart**. Mũ Noel được vẽ bằng `Canvas/Path`
 
 ### Âm thanh
 
-Nút âm thanh trên homepage cho phép chỉnh âm lượng và nhạc nền. `GameAudio` dùng chung cho các màn, lưu thiết lập và tạm dừng âm thanh khi ứng dụng ra nền. Tệp âm thanh nằm trong `assets/audio/`.
+Nút cài đặt trên homepage cho phép chỉnh nhạc nền, hiệu ứng và rung. `GameAudio` dùng chung cho các màn, lưu thiết lập và dừng nhạc khi ứng dụng ra nền hoặc thoát. Tệp âm thanh nằm trong `assets/audio/`.
+
+`background.mp3` được nén MP3 stereo 128 kbps, 44,1 kHz để giảm dung lượng phát hành.
 
 ## Cấu trúc mã nguồn
 
@@ -170,16 +173,16 @@ lib/
 | Khu vực và rải bẫy | `lib/game/adventure/adventure_road.dart`, `lib/game/adventure/adventure_spawner.dart` |
 | Thêm/sửa màn cứu hộ | `lib/levels/` |
 | Bản đồ và luật Dẫn đàn | `lib/game/cat_herd/herd_map.dart`, `lib/game/cat_herd/herd_round.dart` |
-| Giá mèo, đồ trang trí, ngưỡng thân thiết | `lib/camp/camp_state.dart` |
+| Giá mèo, tên mèo, đồ trang trí, ngưỡng thân thiết | `lib/camp/camp_state.dart` |
 | Loài cá và tỉ lệ gặp | `lib/collection/fish_species.dart` |
 
 ## Dữ liệu lưu trên máy
 
 | Khóa lưu | Nội dung |
 | --- | --- |
-| `camp_state_v1` | Xu, mèo đã mua, số lần cứu, thân thiết, đồ trang trí và vị trí, sao từng màn, hướng dẫn đã xem |
+| `camp_state_v1` | Xu, mèo đã mua, tên mèo, số lần cứu, thân thiết, đồ trang trí và vị trí, sao từng màn, hướng dẫn đã xem, kỷ lục ca đêm |
 | `fish_collection_species_v1` | Số lượng đã câu theo từng loài cá/đồ thất lạc |
-| `audio_volume`, `audio_music_enabled` | Âm lượng và trạng thái bật nhạc nền |
+| `audio_music_volume`, `audio_effects_volume`, `audio_music_enabled`, `vibration_enabled` | Thiết lập nhạc nền, hiệu ứng và rung |
 
 Dữ liệu JSON không đọc được được giữ lại dưới khóa có hậu tố `_broken`, sau đó phần dữ liệu tương ứng khởi tạo lại. Gỡ ứng dụng hoặc xóa dữ liệu ứng dụng có thể làm mất tiến trình; hiện chưa có chức năng xuất/nhập bản lưu hoặc đồng bộ đám mây.
 
@@ -192,16 +195,34 @@ flutter build apk --debug
 
 APK debug nằm tại `build/app/outputs/flutter-apk/app-debug.apk`.
 
-Tạo APK release hoặc Android App Bundle:
+### Ký và build bản release
 
-```sh
-flutter build apk --release
-flutter build appbundle --release
+Application ID Android là `com.doron.meowshelter`. Bản release dùng khóa upload trong:
+
+- `android/upload-keystore.jks`
+- `android/key.properties`
+
+Cả hai file chỉ nằm trên máy và đã được `.gitignore` bỏ qua. **Hãy sao lưu chúng ở nơi an toàn.** Nếu mất khóa upload, bạn phải yêu cầu Google Play đặt lại khóa trước khi phát hành cập nhật. Không gửi hai file này cho người khác hoặc đưa lên repo.
+
+`key.properties` có dạng:
+
+```properties
+storePassword=<mật khẩu keystore>
+keyPassword=<mật khẩu khóa>
+keyAlias=upload
+storeFile=../upload-keystore.jks
 ```
 
-- APK: `build/app/outputs/flutter-apk/app-release.apk`.
-- App Bundle: `build/app/outputs/bundle/release/app-release.aab`.
-- Cấu hình Android hiện dùng application ID `com.example.meow_shelter` và **release vẫn ký bằng debug key**. Cần đặt application ID và signing riêng trước khi phát hành.
-- Repo hiện dùng Android Gradle Plugin 7.3.0, Kotlin 1.7.10 và Gradle 7.6.3. Khi đổi Flutter/JDK, kiểm tra tương thích của bộ công cụ này.
+Build release sẽ dừng ngay nếu thiếu `key.properties`, để tránh tạo bản phát hành ký bằng debug key.
+
+```sh
+flutter build appbundle --release
+flutter build apk --release
+```
+
+- App Bundle để upload Google Play: `build/app/outputs/bundle/release/app-release.aab`.
+- APK release để thử cài đặt: `build/app/outputs/flutter-apk/app-release.apk`.
+- Android hiện dùng AGP 9.3.1, Kotlin Android 2.4.20, Gradle 9.5.0, `compileSdk` và `targetSdk` 36.
+- Tăng `version` trong `pubspec.yaml` trước mỗi lần upload. Ví dụ `1.0.1+2`: `1.0.1` là phiên bản hiển thị, `2` là mã phiên bản Android và phải lớn hơn lần upload trước.
 
 Hiện repo chưa có bộ kiểm thử tự động được lưu sẵn. Ngoài phân tích tĩnh và build, nên chơi thử thao tác kéo/bế mèo, kỹ năng và vùng va chạm, qua suối, tìm đường của đàn, mua/lưu đồ trong trại, âm thanh và giao diện ở nhiều tỉ lệ màn hình.

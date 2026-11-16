@@ -29,8 +29,8 @@ class RoundResultOverlay extends StatefulWidget {
 
 class _RoundResultOverlayState extends State<RoundResultOverlay>
     with TickerProviderStateMixin {
-  late final AnimationController _sprite;
-  late final AnimationController _reveal;
+  AnimationController? _sprite;
+  AnimationController? _reveal;
   late final ui.Image _portrait;
   late final int _frameCount;
 
@@ -42,6 +42,7 @@ class _RoundResultOverlayState extends State<RoundResultOverlay>
   @override
   void initState() {
     super.initState();
+    if (!_won) return;
     final type = _game.level.bossType ?? _game.level.catTypes.first;
     final folder = '${type[0].toUpperCase()}${type.substring(1)}';
     _portrait = _game.images
@@ -59,8 +60,8 @@ class _RoundResultOverlayState extends State<RoundResultOverlay>
 
   @override
   void dispose() {
-    _sprite.dispose();
-    _reveal.dispose();
+    _sprite?.dispose();
+    _reveal?.dispose();
     super.dispose();
   }
 
@@ -128,7 +129,7 @@ class _RoundResultOverlayState extends State<RoundResultOverlay>
                             _Portrait(
                                 image: _portrait,
                                 frames: _frameCount,
-                                animation: _sprite,
+                                animation: _sprite!,
                                 won: _won),
                             const SizedBox(width: DS.spaceLg),
                             Expanded(
@@ -156,7 +157,7 @@ class _RoundResultOverlayState extends State<RoundResultOverlay>
                           ]),
                           if (_scored) ...[
                             const SizedBox(height: DS.spaceMd),
-                            _StarRow(game: _game, reveal: _reveal),
+                            _StarRow(game: _game, reveal: _reveal!),
                           ],
                           const SizedBox(height: DS.spaceMd),
                           Row(children: [
@@ -239,27 +240,9 @@ class _RoundResultOverlayState extends State<RoundResultOverlay>
     return reason;
   }
 
-  String get _retryHint {
-    final reason = _game.lostReason;
-    if (reason.contains('HẾT CÁ')) {
-      return 'Thả cá gần đường mèo đi và chờ mèo ăn trước khi đặt thêm.';
-    }
-    if (_game.level.isInfinite) {
-      return 'Mỗi lượt là một bộ thẻ mới. Thử ghép cổ vật theo bản đồ để đi xa hơn.';
-    }
-    return 'Ưu tiên mèo đã sẵn sàng trước khi thanh chờ bế cạn.';
-  }
-
   Widget _lossScreen(BuildContext context) {
     final run = _game.night?.run;
     final night = run != null;
-    final camp = night ? CampState.instance : null;
-    final done = night ? run.rescuedTonight : _game.rescued;
-    final quota = night ? run.quota : _game.hud.totalCats;
-    final dawn = _game.lostReason.contains('TRỜI SÁNG') ||
-        _game.lostReason.contains('HẾT GIỜ');
-    const navy = Color(0xFF26394E);
-    const muted = Color(0xFFB7C7D5);
     return BlockSemantics(
       child: Stack(fit: StackFit.expand, children: [
         const ModalBarrier(dismissible: false, color: Color(0xCE101D2B)),
@@ -269,247 +252,87 @@ class _RoundResultOverlayState extends State<RoundResultOverlay>
             child: Center(
               child: FittedBox(
                 fit: BoxFit.scaleDown,
-                child: TweenAnimationBuilder<double>(
-                  tween: Tween(begin: 0, end: 1),
-                  duration: DS.overlayDuration,
-                  curve: Curves.easeOutCubic,
-                  builder: (_, value, child) => Opacity(
-                      opacity: value,
-                      child: Transform.translate(
-                          offset: Offset(0, 12 * (1 - value)), child: child)),
-                  child: Material(
-                    color: DS.cream,
-                    elevation: 14,
-                    shadowColor: Colors.black54,
-                    borderRadius: BorderRadius.circular(DS.radiusXl),
-                    clipBehavior: Clip.antiAlias,
-                    child: SizedBox(
-                      width: 650,
-                      height: 304,
-                      child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            Container(
-                              width: 190,
-                              padding:
-                                  const EdgeInsets.fromLTRB(18, 17, 18, 16),
-                              decoration: const BoxDecoration(
-                                  gradient: LinearGradient(
-                                      begin: Alignment.topLeft,
-                                      end: Alignment.bottomRight,
-                                      colors: [navy, Color(0xFF415972)])),
-                              child: Column(children: [
-                                Row(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      Icon(
-                                          dawn
-                                              ? Icons.wb_twilight_rounded
-                                              : Icons.nights_stay_rounded,
-                                          color: const Color(0xFFFFD99A),
-                                          size: 18),
-                                      const SizedBox(width: 5),
-                                      Text(
-                                          night
-                                              ? 'CA TRỰC ĐÊM'
-                                              : 'KẾT THÚC MÀN',
-                                          style: const TextStyle(
-                                              color: Color(0xFFFFD99A),
-                                              fontSize: 10,
-                                              fontWeight: FontWeight.w900,
-                                              letterSpacing: 1)),
-                                    ]),
-                                const Spacer(),
-                                _Portrait(
-                                    image: _portrait,
-                                    frames: _frameCount,
-                                    animation: _sprite,
-                                    won: false),
-                                const SizedBox(height: 12),
-                                Semantics(
-                                    liveRegion: true,
-                                    child: Text(_lossHeading,
-                                        textAlign: TextAlign.center,
-                                        maxLines: 3,
-                                        overflow: TextOverflow.ellipsis,
-                                        style: const TextStyle(
-                                            color: DS.cream,
-                                            fontSize: 21,
-                                            height: 1.15,
-                                            fontWeight: FontWeight.w900))),
-                                const SizedBox(height: 7),
-                                Text(
-                                    night
-                                        ? 'Ca trực dừng ở đêm ${run.night}'
-                                        : 'Thử lại khi bạn sẵn sàng',
-                                    textAlign: TextAlign.center,
-                                    style: const TextStyle(
-                                        color: muted,
-                                        fontSize: 11,
-                                        height: 1.3)),
-                                const Spacer(),
-                                Container(
-                                    height: 3,
-                                    width: 34,
-                                    decoration: BoxDecoration(
-                                        color: const Color(0xFFDAAC70),
-                                        borderRadius:
-                                            BorderRadius.circular(3))),
-                              ]),
-                            ),
-                            Expanded(
-                              child: Padding(
-                                padding:
-                                    const EdgeInsets.fromLTRB(20, 16, 20, 14),
-                                child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Row(children: [
-                                        Expanded(
-                                            child: Text(
-                                                night
-                                                    ? 'KẾT QUẢ CA TRỰC'
-                                                    : _header,
-                                                maxLines: 1,
-                                                overflow: TextOverflow.ellipsis,
-                                                style: DS.captionText.copyWith(
-                                                    letterSpacing: .8,
-                                                    fontWeight:
-                                                        FontWeight.w900))),
-                                        if (night && _game.night!.newRecord)
-                                          Container(
-                                              padding:
-                                                  const EdgeInsets.symmetric(
-                                                      horizontal: 7,
-                                                      vertical: 3),
-                                              decoration: BoxDecoration(
-                                                  color: DS.selectedFill,
-                                                  borderRadius:
-                                                      BorderRadius.circular(6)),
-                                              child: const Row(
-                                                  mainAxisSize:
-                                                      MainAxisSize.min,
-                                                  children: [
-                                                    Icon(Icons.star_rounded,
-                                                        color: DS.goldEdge,
-                                                        size: 12),
-                                                    SizedBox(width: 3),
-                                                    Text('KỶ LỤC MỚI',
-                                                        style: TextStyle(
-                                                            color: DS.goldEdge,
-                                                            fontSize: 9,
-                                                            fontWeight:
-                                                                FontWeight
-                                                                    .w900)),
-                                                  ])),
-                                      ]),
-                                      const SizedBox(height: 8),
-                                      Text(
-                                          night
-                                              ? 'Bạn đã đưa ${run.totalRescued} mèo về nhà'
-                                              : 'Đã cứu $done / $quota mèo',
-                                          style: DS.displayText
-                                              .copyWith(fontSize: 19)),
-                                      const SizedBox(height: 10),
-                                      Row(children: [
-                                        _resultStat(
-                                            Icons.nights_stay_rounded,
-                                            night
-                                                ? '${run.night}'
-                                                : '${math.max(0, quota - done)}',
-                                            night
-                                                ? 'ĐÊM ĐẠT TỚI'
-                                                : 'MÈO CÒN LẠI'),
-                                        const SizedBox(width: 8),
-                                        _resultStat(
-                                            Icons.pets_rounded,
-                                            night
-                                                ? '${run.totalRescued}'
-                                                : '$done',
-                                            'MÈO ĐÃ CỨU'),
-                                        const SizedBox(width: 8),
-                                        _resultStat(
-                                            night ? null : Icons.toll_rounded,
-                                            night
-                                                ? '${run.earnedMoonlight}'
-                                                : '${_game.level.isTutorial ? 0 : done * 5}',
-                                            night ? 'NGUYỆT QUANG' : 'XU NHẬN'),
-                                      ]),
-                                      const SizedBox(height: 10),
-                                      Row(children: [
-                                        Text(
-                                            night
-                                                ? 'Đêm ${run.night} chưa hoàn thành'
-                                                : 'Tiến trình màn',
-                                            style: DS.captionText),
-                                        const Spacer(),
-                                        Text('$done / $quota mèo',
-                                            style: DS.captionText.copyWith(
-                                                fontWeight: FontWeight.w900)),
-                                      ]),
-                                      const SizedBox(height: 5),
-                                      ClipRRect(
-                                          borderRadius:
-                                              BorderRadius.circular(4),
-                                          child: LinearProgressIndicator(
-                                              value: quota > 0
-                                                  ? (done / quota).clamp(0, 1)
-                                                  : 0,
-                                              minHeight: 6,
-                                              color: DS.success,
-                                              backgroundColor:
-                                                  DS.surfaceMuted)),
-                                      const SizedBox(height: 8),
-                                      Text(
-                                          night
-                                              ? 'Kỷ lục: đêm ${camp!.bestNight} · ${camp.bestNightCats} mèo  •  Thưởng phụ: ${run.coins} xu'
-                                              : _game.level.isTutorial
-                                                  ? 'Màn tập không tính xu. Bạn có thể thử lại ngay.'
-                                                  : 'Mèo đã cứu và xu nhận được vẫn được ghi nhận.',
-                                          style: DS.microText,
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis),
-                                      if (night) ...[
-                                        const SizedBox(height: 3),
-                                        Text(
-                                            '${run.relics.length} cổ vật · Ví còn ${run.silver} Nguyệt quang, đặt lại khi chơi lại',
-                                            style: DS.microText,
-                                            maxLines: 1,
-                                            overflow: TextOverflow.ellipsis),
-                                      ],
-                                      const Spacer(),
-                                      Text(_retryHint,
-                                          maxLines: 2,
-                                          overflow: TextOverflow.ellipsis,
-                                          style: DS.captionText
-                                              .copyWith(height: 1.25)),
-                                      const SizedBox(height: 10),
-                                      Row(children: [
-                                        Expanded(
-                                            flex: 2,
-                                            child: _ActionButton(
-                                                tooltip: 'Về trang chủ',
-                                                icon: Icons.home_rounded,
-                                                label: 'TRANG CHỦ',
-                                                onPressed: widget.onHome)),
-                                        const SizedBox(width: 10),
-                                        Expanded(
-                                            flex: 3,
-                                            child: _ActionButton(
-                                                tooltip: 'Bắt đầu lượt mới',
-                                                icon: Icons.replay_rounded,
-                                                label: night
-                                                    ? 'CA TRỰC MỚI'
-                                                    : 'CHƠI LẠI',
-                                                primary: true,
-                                                onPressed: _game.restartRound)),
-                                      ]),
-                                    ]),
-                              ),
-                            ),
-                          ]),
-                    ),
+                child: Material(
+                  color: DS.cream,
+                  elevation: 10,
+                  shadowColor: Colors.black54,
+                  borderRadius: BorderRadius.circular(DS.radiusCard),
+                  child: Container(
+                    width: 440,
+                    padding: const EdgeInsets.all(20),
+                    child: Column(mainAxisSize: MainAxisSize.min, children: [
+                      Text(_header,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: DS.captionText.copyWith(
+                              letterSpacing: 1, fontWeight: FontWeight.w800)),
+                      const SizedBox(height: 8),
+                      Semantics(
+                          liveRegion: true,
+                          child: Text(_lossHeading,
+                              textAlign: TextAlign.center,
+                              style: DS.displayText
+                                  .copyWith(fontSize: 24, height: 1.15))),
+                      const SizedBox(height: 18),
+                      Row(children: [
+                        if (night) ...[
+                          _resultStat(Icons.nights_stay_rounded, '${run.night}',
+                              'ĐÊM ĐẠT TỚI'),
+                          const SizedBox(width: 8),
+                        ],
+                        _resultStat(
+                            Icons.pets_rounded,
+                            night
+                                ? '${run.totalRescued}'
+                                : '${_game.rescued}/${_game.hud.totalCats}',
+                            'MÈO ĐÃ CỨU'),
+                        const SizedBox(width: 8),
+                        _resultStat(
+                            night ? null : Icons.toll_rounded,
+                            night
+                                ? '${run.earnedMoonlight}'
+                                : '${_game.level.isTutorial ? 0 : _game.rescued * 5}',
+                            night ? 'NGUYỆT QUANG' : 'XU NHẬN'),
+                      ]),
+                      if (night) ...[
+                        const SizedBox(height: 10),
+                        Text('Thưởng phụ: +${run.coins} xu',
+                            style: DS.captionText
+                                .copyWith(fontWeight: FontWeight.w800)),
+                      ],
+                      if (night && _game.night!.newRecord) ...[
+                        const SizedBox(height: 10),
+                        const Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(Icons.star_rounded,
+                                  color: DS.goldEdge, size: 15),
+                              SizedBox(width: 4),
+                              Text('KỶ LỤC MỚI',
+                                  style: TextStyle(
+                                      color: DS.goldEdge,
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.w900)),
+                            ]),
+                      ],
+                      const SizedBox(height: 18),
+                      Row(children: [
+                        Expanded(
+                            child: _ActionButton(
+                                tooltip: 'Về trang chủ',
+                                icon: Icons.home_rounded,
+                                label: 'TRANG CHỦ',
+                                onPressed: widget.onHome)),
+                        const SizedBox(width: 10),
+                        Expanded(
+                            child: _ActionButton(
+                                tooltip: 'Chơi lại',
+                                icon: Icons.replay_rounded,
+                                label: 'CHƠI LẠI',
+                                primary: true,
+                                onPressed: _game.restartRound)),
+                      ]),
+                    ]),
                   ),
                 ),
               ),

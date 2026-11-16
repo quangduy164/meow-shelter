@@ -45,13 +45,12 @@ android {
 
     buildTypes {
         release {
-            // Falls back to debug keys when key.properties is missing (local testing only;
-            // Play Console rejects debug-signed bundles).
-            signingConfig = if (keystorePropertiesFile.exists()) {
-                signingConfigs.getByName("release")
-            } else {
-                signingConfigs.getByName("debug")
+            if (!keystorePropertiesFile.exists()) {
+                throw GradleException(
+                    "Missing android/key.properties. Restore the release keystore before building release."
+                )
             }
+            signingConfig = signingConfigs.getByName("release")
         }
     }
 }

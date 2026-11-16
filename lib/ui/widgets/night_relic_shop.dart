@@ -25,127 +25,144 @@ class _NightRelicShopState extends State<NightRelicShop> {
       child: Stack(fit: StackFit.expand, children: [
         const ModalBarrier(dismissible: false, color: Color(0xD9111D30)),
         SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.all(DS.spaceMd),
-            child: Center(
-              child: FittedBox(
-                fit: BoxFit.scaleDown,
-                child: Material(
-                  color: Colors.transparent,
-                  child: Column(mainAxisSize: MainAxisSize.min, children: [
-                    SizedBox(
-                      width: 740,
-                      height: 410,
-                      child: Stack(children: [
-                        const Positioned.fill(
-                            child: CustomPaint(painter: RelicStallPainter())),
-                        const Positioned(
-                          left: 170,
-                          right: 170,
-                          top: 22,
-                          child: Text('CỔ VẬT DƯỚI TRĂNG',
-                              textAlign: TextAlign.center,
-                              style: TextStyle(
-                                  color: DS.cream,
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w900,
-                                  letterSpacing: 1.2)),
-                        ),
-                        Positioned(
-                          top: 77,
-                          left: 48,
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 8, vertical: 3),
-                            decoration: BoxDecoration(
-                                color: const Color(0xEE243953),
-                                borderRadius: BorderRadius.circular(15),
-                                border:
-                                    Border.all(color: const Color(0xFF9CBBD4))),
-                            child:
-                                Row(mainAxisSize: MainAxisSize.min, children: [
-                              const SilverTokenIcon(size: 25),
-                              const SizedBox(width: 5),
-                              Text('${run.silver} Nguyệt quang',
-                                  style: const TextStyle(
-                                      color: Color(0xFFE1F3FF),
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w900)),
-                            ]),
-                          ),
-                        ),
-                        const Positioned(
-                            top: 87,
-                            right: 50,
-                            child: Text('Giữ tên cổ vật để xem đầy đủ combo',
+          child: LayoutBuilder(builder: (context, box) {
+            final compact = box.maxHeight < 420;
+            final boardHeight = compact ? 330.0 : 410.0;
+            final itemTop = compact ? 94.0 : 111.0;
+            final itemHeight = compact ? 166.0 : 215.0;
+            final bagTop = compact ? 271.0 : 355.0;
+            return Padding(
+              padding: const EdgeInsets.all(DS.spaceMd),
+              child: Center(
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Material(
+                    color: Colors.transparent,
+                    child: Column(mainAxisSize: MainAxisSize.min, children: [
+                      SizedBox(
+                        width: 740,
+                        height: boardHeight,
+                        child: Stack(children: [
+                          const Positioned.fill(
+                              child: CustomPaint(painter: RelicStallPainter())),
+                          const Positioned(
+                            left: 170,
+                            right: 170,
+                            top: 22,
+                            child: Text('CỔ VẬT DƯỚI TRĂNG',
+                                textAlign: TextAlign.center,
                                 style: TextStyle(
-                                    color: Color(0xFFE4CFA3), fontSize: 10))),
-                        Positioned(
-                          top: 111,
-                          left: 48,
-                          right: 48,
-                          height: 215,
-                          child: Row(
-                              crossAxisAlignment: CrossAxisAlignment.stretch,
-                              children: [
-                                for (final relic in game.shopOffer)
-                                  Expanded(child: _item(relic)),
-                              ]),
-                        ),
-                        Positioned(
-                          left: 42,
-                          top: 355,
-                          width: 450,
-                          child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                    'TÚI CỔ VẬT  ${run.relics.length}/${NightRun.relicSlots}',
-                                    style: const TextStyle(
-                                        color: Color(0xFFFFD68E),
-                                        fontSize: 10,
-                                        fontWeight: FontWeight.w900,
-                                        letterSpacing: .7)),
-                                const SizedBox(height: 3),
-                                Row(children: [
-                                  for (var i = 0; i < NightRun.relicSlots; i++)
-                                    Expanded(
-                                      child: Padding(
-                                        padding:
-                                            const EdgeInsets.only(right: 5),
-                                        child: _inventorySlot(i),
-                                      ),
-                                    ),
-                                ]),
-                              ]),
-                        ),
-                        Positioned(
-                          top: 358,
-                          right: 42,
-                          width: 172,
-                          height: 38,
-                          child: ElevatedButton.icon(
-                            style: DS.primary,
-                            onPressed: game.leaveNightShop,
-                            icon: const Icon(Icons.arrow_forward_rounded,
-                                size: 18),
-                            label: Text('ĐI TIẾP · ĐÊM ${run.night + 1}',
-                                style: const TextStyle(
-                                    fontSize: 11, fontWeight: FontWeight.w900)),
+                                    color: DS.cream,
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w900,
+                                    letterSpacing: 1.2)),
                           ),
-                        ),
-                      ]),
-                    ),
-                    const SizedBox(height: 5),
-                    const Text(
-                        'Bán cổ vật nhận lại 50% giá mua · Mất hiệu ứng và combo của món đã bán',
-                        style:
-                            TextStyle(color: Color(0xFFB7C8DF), fontSize: 10)),
-                  ]),
+                          Positioned(
+                            top: compact ? 64 : 77,
+                            left: 48,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 8, vertical: 3),
+                              decoration: BoxDecoration(
+                                  color: const Color(0xEE243953),
+                                  borderRadius: BorderRadius.circular(15),
+                                  border: Border.all(
+                                      color: const Color(0xFF9CBBD4))),
+                              child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    const SilverTokenIcon(size: 25),
+                                    const SizedBox(width: 5),
+                                    Text('${run.silver} Nguyệt quang',
+                                        style: const TextStyle(
+                                            color: Color(0xFFE1F3FF),
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w900)),
+                                  ]),
+                            ),
+                          ),
+                          Positioned(
+                              top: compact ? 73 : 87,
+                              right: 50,
+                              child: const Text(
+                                  'Giữ tên cổ vật để xem đầy đủ combo',
+                                  style: TextStyle(
+                                      color: Color(0xFFE4CFA3), fontSize: 10))),
+                          Positioned(
+                            top: itemTop,
+                            left: 48,
+                            right: 48,
+                            height: itemHeight,
+                            child: Row(
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: [
+                                  for (final relic in game.shopOffer)
+                                    Expanded(
+                                        child: _item(relic,
+                                            compact: compact,
+                                            height: itemHeight)),
+                                ]),
+                          ),
+                          Positioned(
+                            left: 42,
+                            top: bagTop,
+                            width: 450,
+                            child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                      'TÚI CỔ VẬT  ${run.relics.length}/${NightRun.relicSlots}',
+                                      style: const TextStyle(
+                                          color: Color(0xFFFFD68E),
+                                          fontSize: 10,
+                                          fontWeight: FontWeight.w900,
+                                          letterSpacing: .7)),
+                                  const SizedBox(height: 3),
+                                  Row(children: [
+                                    for (var i = 0;
+                                        i < NightRun.relicSlots;
+                                        i++)
+                                      Expanded(
+                                        child: Padding(
+                                          padding:
+                                              const EdgeInsets.only(right: 5),
+                                          child: _inventorySlot(i),
+                                        ),
+                                      ),
+                                  ]),
+                                ]),
+                          ),
+                          Positioned(
+                            top: bagTop + 3,
+                            right: 42,
+                            width: 172,
+                            height: 38,
+                            child: ElevatedButton.icon(
+                              style: DS.primary,
+                              onPressed: game.leaveNightShop,
+                              icon: const Icon(Icons.arrow_forward_rounded,
+                                  size: 18),
+                              label: Text('ĐI TIẾP · ĐÊM ${run.night + 1}',
+                                  style: const TextStyle(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w900)),
+                            ),
+                          ),
+                        ]),
+                      ),
+                      if (!compact) ...[
+                        const SizedBox(height: 5),
+                        const Text(
+                            'Bán cổ vật nhận lại 50% giá mua · Mất hiệu ứng và combo của món đã bán',
+                            style: TextStyle(
+                                color: Color(0xFFB7C8DF), fontSize: 10)),
+                      ],
+                    ]),
+                  ),
                 ),
               ),
-            ),
-          ),
+            );
+          }),
         ),
       ]),
     );
@@ -214,14 +231,15 @@ class _NightRelicShopState extends State<NightRelicShop> {
     );
   }
 
-  Widget _item(NightRelic relic) {
+  Widget _item(NightRelic relic,
+      {required bool compact, required double height}) {
     final run = widget.game.run!;
     final bought = run.relics.contains(relic);
     final full = run.relics.length >= NightRun.relicSlots;
     final afford = run.silver >= relic.price;
     final combos = relic.comboCards.where(run.has).toList();
     return Container(
-      height: 215,
+      height: height,
       margin: const EdgeInsets.symmetric(horizontal: 4),
       padding: const EdgeInsets.fromLTRB(8, 5, 8, 4),
       decoration: BoxDecoration(
@@ -232,8 +250,9 @@ class _NightRelicShopState extends State<NightRelicShop> {
       ),
       child: Column(children: [
         Opacity(
-            opacity: bought ? .4 : 1, child: NightRelicIcon(relic, size: 40)),
-        const SizedBox(height: 4),
+            opacity: bought ? .4 : 1,
+            child: NightRelicIcon(relic, size: compact ? 30 : 40)),
+        SizedBox(height: compact ? 2 : 4),
         Tooltip(
           message: relic.details,
           child: Text(relic.title,
@@ -242,6 +261,8 @@ class _NightRelicShopState extends State<NightRelicShop> {
         const SizedBox(height: 3),
         Text(relic.description,
             textAlign: TextAlign.center,
+            maxLines: compact ? 2 : null,
+            overflow: compact ? TextOverflow.ellipsis : null,
             style: DS.captionText.copyWith(height: 1.15)),
         const SizedBox(height: 3),
         Text(
@@ -249,6 +270,8 @@ class _NightRelicShopState extends State<NightRelicShop> {
                 ? '${combos.first.title}: ${relic.cardCombos[combos.first]}'
                 : 'Ghép ${relic.comboCards.first.title}: ${relic.cardCombos.values.first}',
             textAlign: TextAlign.center,
+            maxLines: compact ? 2 : null,
+            overflow: compact ? TextOverflow.ellipsis : null,
             style: TextStyle(
                 color: combos.isNotEmpty ? DS.success : DS.soft,
                 fontSize: 10,
@@ -256,7 +279,7 @@ class _NightRelicShopState extends State<NightRelicShop> {
         const Spacer(),
         SizedBox(
           width: double.infinity,
-          height: 28,
+          height: compact ? 26 : 28,
           child: ElevatedButton(
             style: DS.primary,
             onPressed: bought || full || !afford

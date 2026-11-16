@@ -512,17 +512,23 @@ class _ShopBarState extends State<_ShopBar> {
             ]),
           ),
           Expanded(
-            child: ListView(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.fromLTRB(
-                  DS.spaceSm, DS.spaceXs, DS.spaceSm, DS.spaceSm),
-              children: _tab == null
-                  ? [
-                      for (final breed in CatBreed.all)
-                        if (breed.id != 'orange') _catCard(breed)
-                    ]
-                  : [for (final item in items) _card(item)],
-            ),
+            child: LayoutBuilder(builder: (context, box) {
+              final count =
+                  _tab == null ? CatBreed.all.length - 1 : items.length;
+              final width = _campCardWidth(box.maxWidth, count,
+                  preferred: _tab == null ? 190 : 176);
+              return ListView(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.fromLTRB(
+                    DS.spaceSm, DS.spaceXs, DS.spaceSm, DS.spaceSm),
+                children: _tab == null
+                    ? [
+                        for (final breed in CatBreed.all)
+                          if (breed.id != 'orange') _catCard(breed, width)
+                      ]
+                    : [for (final item in items) _card(item, width)],
+              );
+            }),
           ),
         ]),
       ),
@@ -555,12 +561,12 @@ class _ShopBarState extends State<_ShopBar> {
   }
 
   /// A breed for sale: face, catch trait and price.
-  Widget _catCard(CatBreed breed) {
+  Widget _catCard(CatBreed breed, double width) {
     final owned = camp.unlocked(breed.id);
     final price = CampState.catPrices[breed.id] ?? 0;
     final afford = camp.coins >= price;
     return Container(
-      width: 190,
+      width: width,
       margin: const EdgeInsets.only(right: DS.spaceSm),
       padding: const EdgeInsets.all(DS.spaceXs),
       decoration: BoxDecoration(
@@ -655,11 +661,11 @@ class _ShopBarState extends State<_ShopBar> {
     );
   }
 
-  Widget _card(CampDecoration item) {
+  Widget _card(CampDecoration item, double width) {
     final owned = camp.owned.contains(item.id);
     final afford = camp.coins >= item.price;
     return Container(
-      width: 176,
+      width: width,
       margin: const EdgeInsets.only(right: DS.spaceSm),
       padding: const EdgeInsets.all(DS.spaceXs),
       decoration: BoxDecoration(
@@ -895,27 +901,31 @@ class _BondBar extends StatelessWidget {
             ]),
           ),
           Expanded(
-            child: ListView(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.fromLTRB(
-                  DS.spaceSm, 0, DS.spaceSm, DS.spaceSm),
-              children: [
-                for (final breed in CatBreed.all) _card(camp, breed),
-              ],
-            ),
+            child: LayoutBuilder(builder: (context, box) {
+              final width = _campCardWidth(box.maxWidth, CatBreed.all.length,
+                  preferred: 190);
+              return ListView(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.fromLTRB(
+                    DS.spaceSm, 0, DS.spaceSm, DS.spaceSm),
+                children: [
+                  for (final breed in CatBreed.all) _card(camp, breed, width),
+                ],
+              );
+            }),
           ),
         ]),
       ),
     );
   }
 
-  Widget _card(CampState camp, CatBreed breed) {
+  Widget _card(CampState camp, CatBreed breed, double width) {
     final unlocked = camp.unlocked(breed.id);
     final love =
         (camp.affection[breed.id] ?? 0).clamp(0, CampState.bondedAffection);
     final bonded = camp.bonded(breed.id);
     return Container(
-      width: 190,
+      width: width,
       margin: const EdgeInsets.only(right: DS.spaceSm),
       padding: const EdgeInsets.all(DS.spaceXs),
       decoration: BoxDecoration(
@@ -999,14 +1009,22 @@ class _BondBar extends StatelessWidget {
                 ])
               else ...[
                 // Ten small hearts fill up as affection grows.
-                Wrap(spacing: 1, children: [
-                  for (var i = 0; i < CampState.bondedAffection; i++)
-                    Icon(Icons.favorite_rounded,
-                        size: 10,
-                        color: i < love
-                            ? const Color(0xFFE85D6F)
-                            : const Color(0x33A8323F)),
-                ]),
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.centerLeft,
+                  child: Row(mainAxisSize: MainAxisSize.min, children: [
+                    for (var i = 0; i < CampState.bondedAffection; i++)
+                      Padding(
+                        padding: EdgeInsets.only(
+                            right: i == CampState.bondedAffection - 1 ? 0 : 1),
+                        child: Icon(Icons.favorite_rounded,
+                            size: 10,
+                            color: i < love
+                                ? const Color(0xFFE85D6F)
+                                : const Color(0x33A8323F)),
+                      ),
+                  ]),
+                ),
                 const SizedBox(height: 1),
                 Text(
                     bonded
@@ -1025,6 +1043,16 @@ class _BondBar extends StatelessWidget {
       ]),
     );
   }
+}
+
+/// Shows only whole cards in the current width; extra cards stay scrollable.
+double _campCardWidth(double available, int count,
+    {required double preferred}) {
+  const gap = DS.spaceSm;
+  final usable = max(1.0, available - DS.spaceSm * 2);
+  final visible =
+      ((usable + gap) / (preferred + gap)).floor().clamp(1, max(1, count));
+  return max(150.0, (usable - gap * (visible - 1)) / visible);
 }
 
 /// A bought decoration in the room. Dragging it rebuilds only this widget;

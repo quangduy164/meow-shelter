@@ -90,6 +90,10 @@ class GameAudio with WidgetsBindingObserver {
   bool _exiting = false;
   Future<void> _pending = Future.value();
   Future<void> _effectPending = Future.value();
+  // One operation chain per sound so a slow sound never delays another.
+  final _effectChains = <GameSound, Future<void>>{};
+  final _effectStops = <GameSound, Timer>{};
+  final _effectVolumes = <AudioPlayer, double>{};
   Future<void> _warmup = Future.value();
   final _effectPlayers = <GameSound, Future<AudioPlayer>>{};
   int _effectRequest = 0;
@@ -174,8 +178,8 @@ class GameAudio with WidgetsBindingObserver {
     await _enqueueEffect(() async {
       if (!_foreground || effectsVolume.value == 0) {
         await _effect?.stop();
-      } else {
-        await _effect?.setVolume(.4 * effectsVolume.value);
+      } else if (_effect != null) {
+        await _applyEffectVolume(_effect!);
       }
     });
     await _syncReel();
@@ -232,6 +236,7 @@ class GameAudio with WidgetsBindingObserver {
       ));
       await player.setReleaseMode(ReleaseMode.stop);
       await player.setSource(AssetSource('${sound.name}.wav'));
+      await _applyEffectVolume(player);
       return player;
     } catch (_) {
       _effectPlayers.remove(sound);
@@ -317,47 +322,62 @@ class GameAudio with WidgetsBindingObserver {
     play(sound);
   }
 
+  bool get _effectsAudible =>
+      _preferences != null && _foreground && effectsVolume.value > 0;
+
+  // Only touches the platform when the volume really changed.
+  Future<void> _applyEffectVolume(AudioPlayer player) async {
+    final volume = .4 * effectsVolume.value;
+    if (_effectVolumes[player] == volume) return;
+    _effectVolumes[player] = volume;
+    await player.setVolume(volume);
+  }
+
+  Future<void> _onEffectChain(GameSound sound, Future<void> Function() action) {
+    final next = (_effectChains[sound] ?? Future.value())
+        .then((_) => action())
+        .catchError((Object error) {
+      debugPrint('Sound effect unavailable: $error');
+    });
+    _effectChains[sound] = next;
+    return next;
+  }
+
   void play(GameSound sound) {
-    if (_preferences == null || effectsVolume.value == 0 || !_foreground) {
-      return;
-    }
+    if (!_effectsAudible) return;
     final requested = _rescueClock.elapsedMilliseconds;
     if (sound == GameSound.click && requested < _gameplaySoundUntil) return;
     final request = ++_effectRequest;
-    unawaited(_enqueueEffect(() async {
-      if (effectsVolume.value == 0 ||
-          !_foreground ||
-          request != _effectRequest) {
-        return;
-      }
-      if (sound == GameSound.click &&
-          _rescueClock.elapsedMilliseconds < _gameplaySoundUntil) {
-        return;
-      }
-      final effect = await _effectPlayer(sound);
-      if (_preferences == null ||
-          !_foreground ||
-          effectsVolume.value == 0 ||
+    unawaited(_onEffectChain(sound, () async {
+      bool stale() =>
+          !_effectsAudible ||
           request != _effectRequest ||
-          _rescueClock.elapsedMilliseconds - requested > 200) {
-        return;
-      }
-      await _effect?.stop();
-      if (request != _effectRequest ||
-          !_foreground ||
-          effectsVolume.value == 0) {
-        return;
+          _rescueClock.elapsedMilliseconds - requested > 200;
+      if (stale()) return;
+      final effect = await _effectPlayer(sound);
+      if (stale()) return;
+      _effectStops.remove(sound)?.cancel();
+      // Low-latency players never report completion, so a player that was
+      // started before must be stopped before it can start again.
+      if (effect.state == PlayerState.playing) await effect.stop();
+      final previous = _effect;
+      if (previous != null && previous != effect) {
+        // Another player: stopping it must not hold this sound back.
+        unawaited(previous.stop().catchError((Object _) {}));
       }
       _effect = effect;
-      await effect.setVolume(.4 * effectsVolume.value);
-      if (request != _effectRequest ||
-          !_foreground ||
-          effectsVolume.value == 0 ||
-          _rescueClock.elapsedMilliseconds - requested > 200) {
-        return;
-      }
+      // Same method channel, so the volume lands before resume.
+      unawaited(_applyEffectVolume(effect).catchError((Object _) {}));
+      if (stale()) return;
       await effect.resume();
-      if (!_foreground || effectsVolume.value == 0) await effect.stop();
+      // Reset the player after the clip ends so the next play needs one
+      // platform call instead of two. Effects are all shorter than 1.3s.
+      _effectStops[sound] = Timer(const Duration(milliseconds: 1300), () {
+        _effectStops.remove(sound);
+        unawaited(_onEffectChain(sound, () async {
+          if (effect.state == PlayerState.playing) await effect.stop();
+        }));
+      });
     }));
   }
 
@@ -399,6 +419,13 @@ class GameAudio with WidgetsBindingObserver {
     await _warmup;
     await _pending;
     await _effectPending;
+    for (final timer in _effectStops.values) {
+      timer.cancel();
+    }
+    _effectStops.clear();
+    await Future.wait(_effectChains.values);
+    _effectChains.clear();
+    _effectVolumes.clear();
     await _music?.dispose();
     for (final player in _effectPlayers.values.toList()) {
       await (await player).dispose();

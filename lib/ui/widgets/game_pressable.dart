@@ -101,7 +101,13 @@ class _GamePressableState extends State<GamePressable> {
                 ),
                 child: InkWell(
                   customBorder: border,
-                  onTapDown: enabled ? (_) => _setDown(true) : null,
+                  onTapDown: enabled
+                      ? (_) {
+                          // Click on touch, not on release, so it feels instant.
+                          GameAudio.instance.play(GameSound.click);
+                          _setDown(true);
+                        }
+                      : null,
                   onTapUp: enabled ? (_) => _setDown(false) : null,
                   onTapCancel: () => _setDown(false),
                   onTap: enabled
