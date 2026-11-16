@@ -10,6 +10,7 @@ import '../../audio/game_audio.dart';
 import '../../camp/camp_state.dart';
 import '../../camp/camp_room_painter.dart';
 import '../../camp/camp_resident.dart';
+import '../../camp/camp_social.dart';
 import '../../game/cats/cat_breed.dart';
 import '../widgets/cat_sprite.dart';
 import '../../camp/camp_decor_painter.dart';
@@ -30,6 +31,7 @@ class CampScreen extends StatefulWidget {
 class _CampScreenState extends State<CampScreen>
     with SingleTickerProviderStateMixin {
   final _random = Random();
+  late final _social = CampSocial(_random);
   final _cats = <CampResident>[];
   late final Ticker _tick;
   late final Timer _clock;
@@ -116,6 +118,7 @@ class _CampScreenState extends State<CampScreen>
       for (final cat in _cats) {
         cat.update(dt, _random, _toys);
       }
+      _social.update(dt, _cats);
       // Back to front, so lower cats are drawn over (and hit before) higher.
       _cats.sort((a, b) => a.y.compareTo(b.y));
       _animation.value++;
@@ -1208,8 +1211,14 @@ class _CampCatsPainter extends CustomPainter {
       frames = CampAct.idle.frames;
       frame = 0;
     }
-    final dst =
-        Rect.fromCenter(center: c, width: spriteSize, height: spriteSize);
+    var dst = Rect.fromCenter(center: c, width: spriteSize, height: spriteSize);
+    if (cat.sleeping) {
+      // Slow breathing: the body swells a little, feet stay on the floor.
+      final breath = 1 + .03 * sin(cat.clock * 2.2);
+      dst = Rect.fromLTRB(
+          dst.left, dst.bottom - spriteSize * breath, dst.right, dst.bottom);
+      _snore(canvas, c, cat.clock, cat.facingLeft);
+    }
     if (image == null) {
       if (missing.contains(path)) {
         canvas.drawCircle(c, spriteSize / 2, Paint()..color = breed.color);
@@ -1226,6 +1235,31 @@ class _CampCatsPainter extends CustomPainter {
       canvas.restore();
     } else {
       canvas.drawImageRect(image, src, dst, _spritePaint);
+    }
+  }
+
+  static final _zPaint = Paint()
+    ..style = PaintingStyle.stroke
+    ..strokeWidth = 2
+    ..strokeCap = StrokeCap.round
+    ..strokeJoin = StrokeJoin.round;
+
+  /// Three "z"s drifting up from the sleeping cat's head, fading in and out.
+  void _snore(Canvas canvas, Offset c, double clock, bool left) {
+    final side = left ? -1.0 : 1.0;
+    for (var i = 0; i < 3; i++) {
+      final t = (clock * .45 + i / 3) % 1;
+      final s = 5 + t * 5;
+      final o =
+          c + Offset(side * (12 + t * 14) - s / 2, -spriteSize * .32 - t * 24);
+      _zPaint.color = DS.ink.withValues(alpha: .85 * sin(pi * t));
+      canvas.drawPath(
+          Path()
+            ..moveTo(o.dx, o.dy)
+            ..lineTo(o.dx + s, o.dy)
+            ..lineTo(o.dx, o.dy + s)
+            ..lineTo(o.dx + s, o.dy + s),
+          _zPaint);
     }
   }
 

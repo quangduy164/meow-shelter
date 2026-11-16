@@ -28,12 +28,25 @@ const campToyActs = {
   'yarn': CampAct.celebrate, // bats the yarn around
   'post': CampAct.dash, // scratches and pounces off the post
   'bowl': CampAct.idle, // sits and watches the fish
-  'bed': CampAct.idle, // naps
+  'bed': CampAct.idle, // naps (see [campNapToys])
   'house': CampAct.idle,
   'rug': CampAct.idle,
   'sofa': CampAct.idle,
   'flowers': CampAct.idle, // sits and sniffs the flowers
   'lamp': CampAct.idle,
+};
+
+/// Soft spots where a cat falls asleep instead of just sitting.
+const campNapToys = {'bed', 'sofa', 'rug'};
+
+/// Idle-sheet frame where each breed has its eyes closed. There is no sleep
+/// sheet yet, so a nap holds this frame, breathes and puffs "z"s.
+const campSleepFrames = {
+  'orange': 2,
+  'black': 3,
+  'himalaya': 1,
+  'scottish': 2,
+  'calico': 1,
 };
 
 /// A cat living in the room. It wanders, runs zoomies, plays with owned
@@ -55,18 +68,46 @@ class CampResident {
   bool facingLeft = false;
   bool held = false;
 
+  /// Napping: drawn with the closed-eye idle frame, breathing and "z"s.
+  bool sleeping = false;
+  bool _arriveSleep = false;
+
+  /// The toy this cat is sitting at, if it walked to one and stayed.
+  String? atToy;
+  String? _toyGoing;
+  void Function()? _onArrive;
+
   static const minX = .06, maxX = .94, minY = .64, maxY = .9;
 
-  int get frame => (_anim * act.fps).floor() % act.frames;
+  int get frame => sleeping
+      ? campSleepFrames[type] ?? 0
+      : (_anim * act.fps).floor() % act.frames;
+
+  /// Seconds into the current action; drives breathing and the "z"s.
+  double get clock => _anim;
   bool get moving => _tx != null;
+  double? get targetX => _tx;
+  double? get targetY => _ty;
+
+  /// Seconds left in the current action.
+  double get remaining => _timer;
+
+  /// Not busy: may start something new with another cat.
+  bool get free =>
+      !held &&
+      !sleeping &&
+      _onArrive == null &&
+      (act == CampAct.idle || act == CampAct.walk);
 
   void _play(CampAct a, double time) {
+    sleeping = false;
     act = a;
     _anim = 0;
     _timer = time;
   }
 
   void _goTo(double tx, double ty, CampAct how, double speed) {
+    atToy = null;
     final left = tx < x;
     _tx = tx.clamp(minX, maxX);
     _ty = ty.clamp(minY, maxY);
@@ -95,8 +136,15 @@ class CampResident {
         y = ty;
         _tx = _ty = null;
         _play(_arrive, _arriveTime);
+        sleeping = _arriveSleep;
+        _arriveSleep = false;
+        atToy = _toyGoing;
+        _toyGoing = null;
         _arrive = CampAct.idle;
         _arriveTime = 1.5 + random.nextDouble() * 3;
+        final arrived = _onArrive;
+        _onArrive = null;
+        arrived?.call();
       } else {
         x += dx / dist * step;
         y += dy / dist * step / 2;
@@ -113,14 +161,20 @@ class CampResident {
   }
 
   void _decide(Random random, List<(String, double, double)> toys) {
+    atToy = null; // whatever it was doing at a toy is over
     final roll = random.nextDouble();
     if (toys.isNotEmpty && roll < .35) {
       // Visit a toy and use it.
       final (id, toyX, toyY) = toys[random.nextInt(toys.length)];
       _arrive = campToyActs[id] ?? CampAct.idle;
-      _arriveTime = id == 'bed' || id == 'sofa' || id == 'rug'
-          ? 5 + random.nextDouble() * 4
-          : _arrive.length * 3;
+      _arriveSleep = campNapToys.contains(id);
+      _toyGoing = id;
+      _arriveTime = _arriveSleep
+          ? 6 + random.nextDouble() * 5
+          // The picky Scottish lingers over its food.
+          : id == 'bowl' && type == 'scottish'
+              ? 8 + random.nextDouble() * 4
+              : _arrive.length * 3;
       _goTo(toyX + (random.nextDouble() - .5) * .04, toyY + .02, CampAct.walk,
           .07);
     } else if (roll < .5) {
@@ -133,6 +187,10 @@ class CampResident {
       x = minX + random.nextDouble() * (maxX - minX);
     } else if (roll < .66) {
       _play(CampAct.celebrate, CampAct.celebrate.length * 2);
+    } else if (roll < .72) {
+      // A short nap right where it is.
+      _play(CampAct.idle, 5 + random.nextDouble() * 4);
+      sleeping = true;
     } else {
       double target;
       do {
@@ -143,15 +201,63 @@ class CampResident {
     }
   }
 
+  // ---- Used by [CampSocial] to make cats react to each other. ----
+
+  /// Stops and plays [a] once (or for [time]), optionally facing [faceX].
+  void react(CampAct a, {double? time, double? faceX}) {
+    _tx = _ty = null;
+    _onArrive = null;
+    atToy = null;
+    if (faceX != null) facingLeft = faceX < x;
+    _play(a, time ?? a.length);
+  }
+
+  /// Walks (or runs) to a spot and calls [onArrive] there.
+  void approach(double tx, double ty,
+      {CampAct how = CampAct.walk,
+      double speed = .07,
+      String? toy,
+      void Function()? onArrive}) {
+    _arrive = CampAct.idle;
+    _arriveTime = 1.5;
+    _arriveSleep = false;
+    _goTo(tx, ty, how, speed);
+    _toyGoing = toy;
+    _onArrive = onArrive;
+  }
+
+  /// Falls asleep right here for [time] seconds.
+  void nap(double time) {
+    react(CampAct.idle, time: time);
+    sleeping = true;
+  }
+
+  /// Keeps sleeping a bit longer (a friend just lay down next to it).
+  void sleepOn(double time) {
+    if (sleeping) _timer = max(_timer, time);
+  }
+
+  /// The black cat's trick: vanish and reappear at a new spot.
+  void appearAt(double nx, double ny, {required double faceX}) {
+    react(CampAct.vanish);
+    x = nx.clamp(minX, maxX);
+    y = ny.clamp(minY, maxY);
+    facingLeft = faceX < x;
+  }
+
   /// Petting: the cat stops and celebrates.
   void pet() {
     heart = 1.4;
     _tx = _ty = null;
+    _onArrive = null;
     _play(CampAct.celebrate, CampAct.celebrate.length * 2);
   }
 
   void pickUp() {
+    sleeping = false;
     held = true;
+    _onArrive = null;
+    atToy = null;
     _tx = _ty = null;
     act = CampAct.held;
   }
