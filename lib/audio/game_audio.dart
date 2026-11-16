@@ -66,6 +66,7 @@ enum GameSound {
 // error_003, question_001, confirmation_002/004, back_002.
 // https://opengameart.org/content/interface-sounds
 // Adventure: edited BigSoundBank CC0 1340 (fire), 2205 (ice), 0486 (growl),
+// 0339 (Coin in cup #1, https://bigsoundbank.com/coin-in-cup-1-s0339.html),
 // plus the above water/cat recordings and Kenney Interface Sounds (CC0):
 // drop_004, pluck_001, scroll_003, glass_002, minimize_002, question_002,
 // bong_001 and confirmation_001/002/003/004.

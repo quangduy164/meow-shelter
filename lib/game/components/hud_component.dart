@@ -33,6 +33,7 @@ class HudComponent extends PositionComponent with HasGameReference<FlameGame> {
   /// tonight out of [totalCats].
   int night = 0;
   int tonight = 0;
+  String arrivalHint = '';
   int silver = 0;
 
   /// Maps with extra HUD reserve space above transient notifications.
@@ -190,7 +191,13 @@ class HudComponent extends PositionComponent with HasGameReference<FlameGame> {
     ];
     const tagH = 13.0;
     final headH = math.max(head.height, count.height);
-    final height = pad + headH + 4 + barH + (tags.isEmpty ? 0 : 5 + tagH) + pad;
+    final height = pad +
+        headH +
+        4 +
+        barH +
+        (arrivalHint.isEmpty ? 0 : 15) +
+        (tags.isEmpty ? 0 : 5 + tagH) +
+        pad;
     final box = Rect.fromLTWH(screen.x - width - 10, 10, width, height);
     final shape = RRect.fromRectAndRadius(box, const Radius.circular(10));
     canvas.drawRRect(shape.shift(const Offset(0, 2)),
@@ -234,6 +241,12 @@ class HudComponent extends PositionComponent with HasGameReference<FlameGame> {
       }
     }
     y += barH;
+    if (arrivalHint.isNotEmpty) {
+      final hint = _text(arrivalHint, DS.fontMicro, _ink);
+      hint.paint(canvas, Offset(box.left + pad, y + 3));
+      hint.dispose();
+      y += 15;
+    }
     if (tags.isEmpty) return;
     y += 5;
     var x = box.left + pad;

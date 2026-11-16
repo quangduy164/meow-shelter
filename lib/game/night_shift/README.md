@@ -46,7 +46,7 @@ vào cây nguồn của dự án.
 
 ## Hẻm chợ đêm
 
-Đêm lẻ ở sân sau, đêm chẵn ở hẻm chợ. Lần đầu gặp mỗi bản đồ không có luật phụ
+Luân phiên Sân sau → Hẻm chợ → Mái nhà → Kho hàng. Lần đầu gặp mỗi bản đồ không có luật phụ
 ngẫu nhiên. `night_market.dart` giữ độ ồn, xe đẩy và đèn; `night_market_scene.dart`
 nhận thao tác, xử lý báo động; `night_market_painter.dart` vẽ sạp hàng và xe.
 
@@ -123,4 +123,55 @@ sau đó hồi 6 giây. Vẫn có thể bế mèo qua khe như trước.
   trần 3 lần thời gian chờ gốc. Hiệu ứng bữa ăn từ cổ vật cũng phát lan tỏa.
 - Logic thẻ chung: `night_card_effects.dart`; phần ăn và hoàn cá:
   `../systems/bait_system.dart`. Map không hợp lệ không được chào thẻ riêng;
-  thẻ chung có giá trị trên cả ba map. Mọi tiền thưởng mới là Nguyệt quang.
+  Kho hàng không chào thẻ bế/ổ/Chăm sóc lan tỏa. Thẻ đã có vẫn dùng khi quay lại
+  các map phù hợp. Mọi tiền thưởng mới là Nguyệt quang.
+
+## Biến thể và nhịp mèo
+
+`night_variants.dart` định nghĩa 3 biến thể/map và lịch cấp mèo `NightArrivalPlan`.
+Bốn đêm đầu dùng map chuẩn và bù mèo ngay như trước. Từ đêm 5, chọn ngẫu nhiên
+biến thể khác lần trước của cùng map và nhịp khác đêm trước; đặt lại khi chơi lại.
+
+- Sân sau: đèn tản sang hai bên/cuối sân, hoặc đèn chéo + trăng hẹp 72%, quét 1.5 lần.
+  Thẻ đèn, số đèn và dư sáng vẫn áp dụng trên layout mới. `Moonlight.reset` luôn
+  đặt lại tốc độ/độ rộng/pha để không mang biến thể trăng sang map khác.
+- Chợ: chuẩn 16s/chuyến; cao điểm 11/17/10/18s; từng cụm 9/9/20s và đổi hướng.
+  Chợ đông nhân chu kỳ 0.75, nhưng luôn có tối thiểu 2.5s ngoài thời gian xe qua.
+  Vẽ xe, nhặt cá, báo trước, phát ồn và yên tĩnh đều dùng cùng lịch chuyến.
+- Mái nhà: chuẩn hai hàng; so le y=0.30/0.56 và 0.40/0.66; sửa chữa khóa một
+  cầu 10s đầu đêm, vẫn có cầu còn lại cùng phía. Cầu đôi ghép theo hàng logic,
+  không so tọa độ y; cầu đang sửa không được mở bởi Cầu đôi hay thao tác chạm.
+  Vẫn sinh mèo ngẫu nhiên cả ba mái, cá chỉ đặt mái giữa.
+- Nhịp rải đều: đầu 2, mỗi 3s thêm 1. Từng đợt: đầu 3, mỗi 9s thêm 3,
+  trần sân tăng 1. Dồn nhịp: đầu 1, sau 6s thêm 3, sau 3s thêm 1 và lặp lại.
+  Mọi đợt đều chịu trần sân và tổng chỉ tiêu. Đợt bị dồn khi sân đầy sẽ chờ chỗ.
+  Cứu sạch sân rút thời gian tới đợt chưa được cấp xuống tối đa 2s.
+- Lịch không chạy khi xem hướng dẫn, chọn thẻ hay shop. HUD ghi đếm ngược,
+  chờ chỗ hoặc đã đủ mèo; hướng dẫn đêm ghi biến thể và nhịp trước khi chạy giờ.
+- Biến cố mây/ổ chỉ được rút từ các lựa chọn không bị thẻ miễn nhiễm, thay vì
+  rút trúng rồi biến thành đêm trống. Không đổi giá cổ vật hay sức mạnh thẻ.
+
+## Kho hàng
+
+Map thứ tư dùng lồng cho mọi giống mèo, kể cả tam thể. Kéo cá vào một ngăn trống,
+chờ mèo vào trọn và tín hiệu xanh rồi chạm lồng/nút CHỐT NGAY. Mèo tự về trại;
+không bế và không vẽ ổ. Đóng sớm/chậm làm mèo rút ra, mất mồi; lồng nghỉ 4s.
+Trùm nán lại 1.2s thay vì 1.8s. Chỉ thò đầu 0.8s, sau đó vào lồng 1s.
+
+- Logic thời điểm/ngăn: `maps/warehouse_traps.dart`; nhận thao tác, quản lý mèo
+  và cá: `maps/warehouse_traps_scene.dart`; nền và lồng: `maps/warehouse_traps_painter.dart`.
+- Ba biến thể: ba lồng ngang, lồng so le, lồng giữa bảo trì 8s.
+- Cửa êm giảm bán kính hoảng 50% mỗi cấp; Hai ngăn cho 6 ngăn chốt riêng;
+  Mồi sâu kéo dài lúc vào 25% và nán thêm 0.6s/cấp; Dây giật chung chốt cả
+  ngăn cùng hàng của lồng kế nếu đang có mèo, vẫn phải canh đúng cả hai.
+- Cá thơm tăng tốc tới lồng. Chuẩn bị kỹ cho 1 mồi miễn phí. Cá dự trữ hoàn
+  mồi đã trả mà chưa có mèo nhận sau 12s. Đêm giới hạn cá có tối thiểu chỉ tiêu
+  + 2 mồi trước thưởng Giỏ cá, tránh thiếu mồi bắt buộc ngay từ đầu.
+- Trợ thủ: cam giữ cửa sổ chốt 6s; tai cụp làm cửa sổ hao chậm một nửa 6s;
+  đen giữ mèo bình tĩnh 8s; tam thể cho chốt từ 70% lúc vào trong 10s;
+  Himalaya làm 2 mèo tin mồi, lần vào lồng kế nán thêm 2s.
+- Chuông đèn/Túi trăng kích hoạt lần đặt mồi đầu mỗi ngăn; Chuông/Bùa làm mèo
+  gần tin mồi. Lăng kính giữ cửa sổ chốt khi lồng giao ánh trăng, thưởng giao
+  sáng như cũ. Tiếp sức/Cứu đúng nhịp và thưởng Nguyệt quang/xu vẫn áp dụng.
+- `trapCapture` vô hiệu thao tác bế/chơi trên mèo Kho hàng; `trapManaged` chỉ
+  dừng AI khi cảnh đang dẫn mèo vào lồng. Map khác giữ luật giống mèo cũ.

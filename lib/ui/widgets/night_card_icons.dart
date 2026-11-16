@@ -90,6 +90,11 @@ class _NightCardPainter extends CustomPainter {
         _railLights(canvas);
       case NightCard.stormyRoof:
         _stormyRoof(canvas);
+      case NightCard.quietDoors:
+      case NightCard.twinCages:
+      case NightCard.deepBait:
+      case NightCard.linkedDoors:
+        _trapCard(canvas);
       case NightCard.lanternRelay:
       case NightCard.moonEcho:
       case NightCard.restingLight:
@@ -108,6 +113,26 @@ class _NightCardPainter extends CustomPainter {
       case NightCard.preparedBait:
       case NightCard.nurturingMeal:
         _newFeature(canvas);
+    }
+  }
+
+  void _trapCard(Canvas canvas) {
+    final box = RRect.fromRectAndRadius(
+        const Rect.fromLTWH(7, 14, 34, 25), const Radius.circular(4));
+    canvas.drawRRect(box, _fill(_woodLight));
+    canvas.drawRRect(box, _line(2.3));
+    for (var x = 13.0; x < 40; x += 7) {
+      canvas.drawLine(Offset(x, 16), Offset(x, 37), _line(1.3));
+    }
+    if (card == NightCard.deepBait) {
+      _fish(canvas, const Offset(27, 27), 21, _blue);
+    } else if (card == NightCard.twinCages) {
+      canvas.drawLine(
+          const Offset(24, 15), const Offset(24, 38), _line(4, _goldDark));
+    } else if (card == NightCard.linkedDoors) {
+      _arrow(canvas, const Offset(8, 9), const Offset(39, 9));
+    } else {
+      _featureSpark(canvas, const Offset(34, 12), 7, _blue);
     }
   }
 

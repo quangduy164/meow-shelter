@@ -1,6 +1,7 @@
 import 'package:material_ui/material_ui.dart';
 
 import 'responsive.dart';
+import 'widgets/paw_page_transition.dart';
 
 export 'responsive.dart';
 
@@ -77,6 +78,13 @@ abstract final class DS {
   static const fastDuration = Duration(milliseconds: 120);
   static const transitionDuration = Duration(milliseconds: 220);
   static const overlayDuration = Duration(milliseconds: 260);
+
+  /// Paw shutter between screens, drawn in [pageTransitionColor].
+  static const pageTransitionDuration = Duration(milliseconds: 380);
+  static const pageTransitionColor = Color(0xFF24170D);
+
+  /// Loading cover fading away once a game is ready.
+  static const loadingFadeDuration = Duration(milliseconds: 200);
   static const cardShadow = [
     BoxShadow(color: shadowColor, blurRadius: 8, offset: Offset(0, 4)),
   ];
@@ -206,6 +214,10 @@ abstract final class DS {
   /// Material controls and custom game controls share the same foundation.
   static final theme = ThemeData(
     useMaterial3: true,
+    pageTransitionsTheme: const PageTransitionsTheme(builders: {
+      TargetPlatform.android: PawPageTransitionsBuilder(),
+      TargetPlatform.iOS: PawPageTransitionsBuilder(),
+    }),
     fontFamily: 'Roboto',
     textTheme: textTheme,
     colorScheme: const ColorScheme.light(

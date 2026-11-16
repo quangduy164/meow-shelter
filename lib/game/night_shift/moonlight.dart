@@ -5,8 +5,17 @@ import 'package:flutter/painting.dart';
 class Moonlight {
   double _clock = 0, shown = 1;
   bool fullMoon = false, thickClouds = false;
+  double sweepSpeed = 1, beamWidth = 1, startPhase = 0;
 
-  void reset({required bool fullMoon, required bool thickClouds}) {
+  void reset(
+      {required bool fullMoon,
+      required bool thickClouds,
+      double sweepSpeed = 1,
+      double beamWidth = 1,
+      double startPhase = 0}) {
+    this.sweepSpeed = sweepSpeed;
+    this.beamWidth = beamWidth;
+    this.startPhase = startPhase;
     this.fullMoon = fullMoon;
     this.thickClouds = thickClouds;
     _clock = 0;
@@ -27,13 +36,16 @@ class Moonlight {
 
   Offset source(Size size) => Offset(size.width * .22, size.height * .07);
   Offset foot(Size size) => Offset(
-      size.width * (.18 + .64 * (.5 + .5 * math.sin(_clock * .16))),
+      size.width *
+          (.18 +
+              .64 *
+                  (.5 + .5 * math.sin(_clock * .16 * sweepSpeed + startPhase))),
       size.height * .8);
   Offset center(Size size) => Offset.lerp(source(size), foot(size), .73)!;
 
   Path beam(Size size, {double widthScale = 1}) {
     final start = source(size), end = foot(size);
-    final halfWidth = size.width * .14 * widthScale;
+    final halfWidth = size.width * .14 * widthScale * beamWidth;
     return Path()
       ..moveTo(start.dx - 5, start.dy)
       ..lineTo(end.dx - halfWidth, end.dy)

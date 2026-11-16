@@ -17,7 +17,7 @@ All measurements below are design units, scaled by `UiScaleBox`.
 | Controls | `controlHeight` 40, `compactHeight` 32; round/icon actions use `touchTarget` 48 |
 | Raised depth | `buttonDepth` 4; home feature buttons use `featureDepth` 6 |
 | Width limits | `dialogWidth` 600, `wideDialogWidth` 860, `resultWidth` 500; always constrain to available space |
-| Motion | `pressDuration` 70 ms, `fastDuration` 120 ms, `transitionDuration` 220 ms, `overlayDuration` 260 ms |
+| Motion | `pressDuration` 70 ms, `fastDuration` 120 ms, `transitionDuration` 220 ms, `overlayDuration` 260 ms, `pageTransitionDuration` 380 ms (paw-shaped shutter in `pageTransitionColor`, `PawPageTransitionsBuilder`; game screens sit under `GameLoadingCurtain`, which shows `GameLoading` in the same colour and fades out over `loadingFadeDuration` 200 ms) |
 | Elevation | `cardShadow` for panels, `controlShadow` for raised controls |
 
 `DS.theme` also defines Material buttons, icon buttons, dialogs, chips,

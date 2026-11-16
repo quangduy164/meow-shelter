@@ -102,7 +102,7 @@ class NightInfoOverlay extends StatelessWidget {
                         fontSize: 18,
                         fontWeight: FontWeight.w900,
                         letterSpacing: 1)),
-                Text(run.map.title,
+                Text('${run.map.title} · ${run.variant.title}',
                     style: const TextStyle(color: _muted, fontSize: 12)),
               ],
             ),
@@ -204,47 +204,73 @@ class NightInfoOverlay extends StatelessWidget {
         ]),
       );
 
-  Widget _howToPlay() => Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _label('CÁCH CHƠI', Icons.touch_app_rounded),
-          const SizedBox(height: DS.spaceSm),
-          _step(
-              Icons.pets_rounded,
-              const Color(0xFFEBDCCD),
-              'Dụ mèo → bế vào ổ',
-              'Cho ăn hoặc chơi đến khi sẵn sàng. Bế được ở mọi nơi.'),
-          _step(
-              run.map == NightMap.rooftops
-                  ? Icons.horizontal_rule_rounded
-                  : Icons.lightbulb_rounded,
-              const Color(0xFFFFE7AC),
-              switch (run.map) {
-                NightMap.marketAlley => 'Bật đèn đường',
-                NightMap.rooftops => 'Hạ cầu ván',
-                NightMap.backyard => 'Chạm để thắp đèn',
-              },
-              run.map == NightMap.rooftops
-                  ? 'Ván mở ${lanternBurn.round()}s. Hết giờ thì cần chờ kéo lại.'
-                  : 'Sáng ${lanternBurn.round()}s · nguội 5s. Vùng vàng giúp mèo ngoan và chờ bế lâu hơn.'),
-          _step(
-              Icons.nights_stay_rounded,
-              const Color(0xFFDCE9FF),
-              switch (run.map) {
-                NightMap.marketAlley => 'Giữ hẻm yên tĩnh',
-                NightMap.rooftops => 'Nối các mái nhà',
-                NightMap.backyard => 'Vùng sáng giúp mèo ngoan',
-              },
-              switch (run.map) {
-                NightMap.marketAlley =>
-                  'Xe và lỗi gây ồn. Sau xe: mèo ngoan, ồn giảm nhanh. Thả cá chưa ai nhận sát đường để xe chở sang điểm dừng.',
-                NightMap.rooftops =>
-                  'Chỉ thả cá ở vùng đánh dấu trên mái giữa. Mở cầu phía có mèo để chúng sang ăn; cá chờ khi cầu đóng.',
-                NightMap.backyard =>
-                  'Không giở chiêu mới; thanh chờ/bế chậm một nửa. Mây che trăng thì vệt sáng tắt.',
-              }),
-        ],
-      );
+  Widget _howToPlay() => run.map == NightMap.warehouse
+      ? Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _label('BẮT BẰNG LỒNG', Icons.touch_app_rounded),
+            const SizedBox(height: DS.spaceSm),
+            _step(
+                Icons.set_meal_rounded,
+                const Color(0xFFFFE7AC),
+                'Đặt mồi trong lồng',
+                'Kéo cá vào ngăn trống để dụ mèo. Cá thơm tăng tốc mèo vào; mọi giống mèo đều dùng lồng.'),
+            _step(
+                Icons.visibility_rounded,
+                const Color(0xFFDCE9FF),
+                'Quan sát mèo vào',
+                'Thò đầu chưa bắt được. Chờ ngăn sáng xanh và chữ CHỐT NGAY; trùm nán lại ngắn hơn.'),
+            _step(
+                Icons.lock_rounded,
+                const Color(0xFFEBDCCD),
+                'Chạm lồng để chốt',
+                'Bắt được tự chuyển về trại, không cần bế. Đóng hụt hoặc chậm: mèo rút ra, lồng chờ 4s.'),
+          ],
+        )
+      : Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _label('CÁCH CHƠI', Icons.touch_app_rounded),
+            const SizedBox(height: DS.spaceSm),
+            _step(
+                Icons.pets_rounded,
+                const Color(0xFFEBDCCD),
+                'Dụ mèo → bế vào ổ',
+                'Cho ăn hoặc chơi đến khi sẵn sàng. Bế được ở mọi nơi.'),
+            _step(
+                run.map == NightMap.rooftops
+                    ? Icons.horizontal_rule_rounded
+                    : Icons.lightbulb_rounded,
+                const Color(0xFFFFE7AC),
+                switch (run.map) {
+                  NightMap.marketAlley => 'Bật đèn đường',
+                  NightMap.rooftops => 'Hạ cầu ván',
+                  NightMap.warehouse => 'Đặt mồi trong lồng',
+                  NightMap.backyard => 'Chạm để thắp đèn',
+                },
+                run.map == NightMap.rooftops
+                    ? 'Ván mở ${lanternBurn.round()}s. Hết giờ thì cần chờ kéo lại.'
+                    : 'Sáng ${lanternBurn.round()}s · nguội 5s. Vùng vàng giúp mèo ngoan và chờ bế lâu hơn.'),
+            _step(
+                Icons.nights_stay_rounded,
+                const Color(0xFFDCE9FF),
+                switch (run.map) {
+                  NightMap.marketAlley => 'Giữ hẻm yên tĩnh',
+                  NightMap.rooftops => 'Nối các mái nhà',
+                  NightMap.warehouse => 'Chờ mèo vào trọn lồng',
+                  NightMap.backyard => 'Vùng sáng giúp mèo ngoan',
+                },
+                switch (run.map) {
+                  NightMap.marketAlley =>
+                    'Xe và lỗi gây ồn. Sau xe: mèo ngoan, ồn giảm nhanh. Thả cá chưa ai nhận sát đường để xe chở sang điểm dừng.',
+                  NightMap.rooftops =>
+                    'Chỉ thả cá ở vùng đánh dấu trên mái giữa. Mở cầu phía có mèo để chúng sang ăn; cá chờ khi cầu đóng.',
+                  NightMap.warehouse => 'Chạm khi tín hiệu xanh để cứu mèo.',
+                  NightMap.backyard =>
+                    'Không giở chiêu mới; thanh chờ/bế chậm một nửa. Mây che trăng thì vệt sáng tắt.',
+                }),
+          ],
+        );
 
   Widget _label(String title, IconData icon) => Row(children: [
         Icon(icon, color: DS.goldEdge, size: 17),

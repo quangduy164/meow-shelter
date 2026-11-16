@@ -71,6 +71,7 @@ class MoonlitYardScene extends NightScene {
   void begin(NightRun run,
       {required bool thickClouds, required double afterglowSeconds}) {
     yard.setup(
+        variant: run.variant,
         count: run.lanterns,
         burnTime: run.lanternBurn,
         lightScale: run.lanternLight,

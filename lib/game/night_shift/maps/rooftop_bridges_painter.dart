@@ -211,6 +211,31 @@ class RoofBridgeComponent extends PositionComponent
     final screenRect = roof.bridgeRect(bridge, screen);
     final rect = screenRect.shift(Offset(-position.x, -position.y));
     final active = bridge.active;
+    if (bridge.repair > 0) {
+      canvas.drawRRect(RRect.fromRectAndRadius(rect, const Radius.circular(6)),
+          Paint()..color = const Color(0xAA5D4B40));
+      for (var x = rect.left + 5; x < rect.right; x += 15) {
+        canvas.drawLine(
+            Offset(x, rect.top + 3),
+            Offset(x + 8, rect.bottom - 3),
+            Paint()
+              ..color = const Color(0xFFFFC879)
+              ..strokeWidth = 3);
+      }
+      final text = TextPainter(
+          text: TextSpan(
+              text: 'SỬA ${bridge.repair.ceil()}s',
+              style: const TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w900,
+                  color: Color(0xFFFFE4AC))),
+          textDirection: TextDirection.ltr)
+        ..layout();
+      text.paint(canvas,
+          Offset(rect.center.dx - text.width / 2, rect.top - text.height - 3));
+      text.dispose();
+      return;
+    }
     if (active) {
       canvas.drawRRect(
           RRect.fromRectAndRadius(rect.inflate(12), const Radius.circular(10)),

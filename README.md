@@ -55,7 +55,14 @@ Nút **Bắt đầu** tiếp tục tiến trình; **Chọn màn** mở danh sác
 Cứu mèo, qua đêm và phối hợp cổ vật để kiếm **Nguyệt quang**, mua/bán cổ vật trong lượt.
 Cứu mèo mỗi đêm trên các bản đồ luân phiên, chọn thẻ và ghép combo cổ vật/trợ thủ; xu trại là thưởng phụ 5/mèo.
 Thẻ riêng tạo dư sáng/đèn nối tiếp ở Sân sau, xe chở cá/khoảng yên tĩnh ở Chợ,
-cầu đôi/mâm cá chung ở Mái nhà. Thẻ chung hỗ trợ hồi kỹ năng, hoàn cá và cứu liên tiếp.
+cầu đôi/mâm cá chung ở Mái nhà. Kho hàng xuất hiện ở đêm 4: đặt mồi trong lồng,
+chờ tín hiệu xanh rồi chạm chốt cửa, tự cứu mèo mà không cần bế. Bốn thẻ riêng:
+Cửa êm, Hai ngăn, Mồi sâu và Dây giật chung.
+Thẻ chung hỗ trợ hồi kỹ năng, hoàn cá và cứu liên tiếp.
+
+Từ đêm 5, mỗi map có các biến thể đèn/trăng, lịch xe, cầu hoặc lồng so le/bảo trì,
+kết hợp nhịp mèo rải đều, từng đợt hoặc dồn nhịp. Hướng dẫn báo trước điều kiện,
+HUD đếm ngược đợt tới; bốn đêm đầu giữ nhịp làm quen.
 
 ### Câu cá
 

@@ -7,6 +7,7 @@ import '../../game/adventure/adventure_game.dart';
 import '../../game/adventure/adventure_hud.dart';
 import '../../game/cats/cat_breed.dart';
 import '../design.dart';
+import '../widgets/paw_loader.dart';
 import '../widgets/cat_sprite.dart';
 import '../widgets/adventure_buttons.dart';
 import '../widgets/game_glyphs.dart';
@@ -56,34 +57,36 @@ class _AdventureScreenState extends State<AdventureScreen> {
   Widget build(BuildContext context) {
     _game.hudPadding = MediaQuery.paddingOf(context);
     return Scaffold(
-      body: GameWidget<AdventureGame>(
-        game: _game,
-        overlayBuilderMap: {
-          'chooseCat': (context, game) => AdventureCatPicker(
-              initialCat: game.selectedCat,
-              onStart: game.chooseCat,
-              onHome: () => Navigator.of(context).pop(),
-              onHelp: (type) => _showComboHelp(context, selectedCat: type)),
-          'skill': (context, game) => _SkillButton(game: game),
-          'victory': (context, game) => _VictoryOverlay(game: game),
-          'exit': (context, game) => SafeArea(
-                child: Align(
-                  alignment: Alignment.topRight,
-                  child: Padding(
-                    padding: const EdgeInsets.all(DS.spaceMd),
-                    child: Row(mainAxisSize: MainAxisSize.min, children: [
-                      _ComboHelpButton(
-                          onPressed: () => _showComboHelp(context)),
-                      const SizedBox(width: DS.spaceSm),
-                      AdventureHomeButton(
-                          onPressed: () => Navigator.of(context).pop()),
-                    ]),
+      body: GameLoadingCurtain(
+          game: _game,
+          child: GameWidget<AdventureGame>(
+            game: _game,
+            overlayBuilderMap: {
+              'chooseCat': (context, game) => AdventureCatPicker(
+                  initialCat: game.selectedCat,
+                  onStart: game.chooseCat,
+                  onHome: () => Navigator.of(context).pop(),
+                  onHelp: (type) => _showComboHelp(context, selectedCat: type)),
+              'skill': (context, game) => _SkillButton(game: game),
+              'victory': (context, game) => _VictoryOverlay(game: game),
+              'exit': (context, game) => SafeArea(
+                    child: Align(
+                      alignment: Alignment.topRight,
+                      child: Padding(
+                        padding: const EdgeInsets.all(DS.spaceMd),
+                        child: Row(mainAxisSize: MainAxisSize.min, children: [
+                          _ComboHelpButton(
+                              onPressed: () => _showComboHelp(context)),
+                          const SizedBox(width: DS.spaceSm),
+                          AdventureHomeButton(
+                              onPressed: () => Navigator.of(context).pop()),
+                        ]),
+                      ),
+                    ),
                   ),
-                ),
-              ),
-        },
-        initialActiveOverlays: const ['exit', 'chooseCat'],
-      ),
+            },
+            initialActiveOverlays: const ['exit', 'chooseCat'],
+          )),
     );
   }
 }

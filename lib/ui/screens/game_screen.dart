@@ -5,6 +5,7 @@ import '../../game/meow_shelter_game.dart';
 import '../../camp/camp_state.dart';
 import '../../levels/level_config.dart';
 import '../../levels/levels.dart';
+import '../widgets/paw_loader.dart';
 import '../widgets/cat_guide_overlay.dart';
 import '../widgets/round_button.dart';
 import '../widgets/game_glyphs.dart';
@@ -46,74 +47,78 @@ class _GameScreenState extends State<GameScreen> {
                     builder: (_) => GameScreen(level: nextLevel)))
             : null);
     return Scaffold(
-      body: GameWidget<MeowShelterGame>(game: _game!, initialActiveOverlays: [
-        'home',
-        // The night shift starts by choosing helper cats.
-        if (_level.isInfinite) 'nightSetup',
-      ], overlayBuilderMap: {
-        'nightSetup': (context, game) => NightSetupOverlay(
-            game: game.night!, onHome: () => Navigator.of(context).pop()),
-        'nightCards': (context, game) => NightCardsOverlay(game: game.night!),
-        'nightShop': (context, game) => NightRelicShop(game: game.night!),
-        'nightInfo': (context, game) => NightInfoOverlay(
-              run: game.night!.run!,
-              secondsLeft: game.night!.nightSecondsLeft,
-              rules: game.night!.nightRules,
-              lanternBurn: game.night!.lanternBurn,
-              onClose: game.night!.closeNightInfo,
-            ),
-        'nightSkills': (context, game) => NightSkillBar(game: game.night!),
-        'catGuide': (context, game) => _PausedGuide(
-              game: game,
-              types: _level.catTypes.toSet().toList(),
-              onDone: () {
-                game.overlays.remove('catGuide');
-                game.resumeEngine();
-              },
-              // No practice button inside a practice round itself.
-              onPractice: _level.isTutorial
-                  ? null
-                  : (type) => Navigator.of(context).push(
-                      MaterialPageRoute<void>(
-                          builder: (_) =>
-                              GameScreen(level: tutorialLevelFor(type)))),
-            ),
-        'roundResult': (context, game) => RoundResultOverlay(
-            game: game,
-            nextLabel: _tutorial != null ? 'TIẾP TỤC' : 'MÀN TIẾP',
-            onHome: () => Navigator.of(context).pop()),
-        'home': (context, game) => SafeArea(
-              child: Padding(
-                padding: const EdgeInsets.all(DS.spaceMd),
-                child: Align(
-                  alignment: Alignment.topLeft,
-                  child: Row(mainAxisSize: MainAxisSize.min, children: [
-                    RoundButton(
-                      glyph: GameGlyph.home,
-                      tooltip: 'Về chọn màn',
-                      onPressed: () => Navigator.of(context).pop(),
-                    ),
-                    if (_level.isInfinite) ...[
-                      const SizedBox(width: DS.spaceSm),
-                      RoundButton(
-                        icon: Icons.info_outline_rounded,
-                        tooltip: 'Nhiệm vụ và hướng dẫn đêm này',
-                        onPressed: game.night!.openNightInfo,
-                      ),
-                    ],
-                    const SizedBox(width: DS.spaceSm),
-                    if (!_level.isInfinite)
-                      RoundButton(
-                        icon: Icons.help_outline_rounded,
-                        onPressed: () {
-                          game.overlays.add('catGuide');
-                        },
-                      ),
-                  ]),
+      body: GameLoadingCurtain(
+          game: _game!,
+          child:
+              GameWidget<MeowShelterGame>(game: _game!, initialActiveOverlays: [
+            'home',
+            // The night shift starts by choosing helper cats.
+            if (_level.isInfinite) 'nightSetup',
+          ], overlayBuilderMap: {
+            'nightSetup': (context, game) => NightSetupOverlay(
+                game: game.night!, onHome: () => Navigator.of(context).pop()),
+            'nightCards': (context, game) =>
+                NightCardsOverlay(game: game.night!),
+            'nightShop': (context, game) => NightRelicShop(game: game.night!),
+            'nightInfo': (context, game) => NightInfoOverlay(
+                  run: game.night!.run!,
+                  secondsLeft: game.night!.nightSecondsLeft,
+                  rules: game.night!.nightRules,
+                  lanternBurn: game.night!.lanternBurn,
+                  onClose: game.night!.closeNightInfo,
                 ),
-              ),
-            ),
-      }),
+            'nightSkills': (context, game) => NightSkillBar(game: game.night!),
+            'catGuide': (context, game) => _PausedGuide(
+                  game: game,
+                  types: _level.catTypes.toSet().toList(),
+                  onDone: () {
+                    game.overlays.remove('catGuide');
+                    game.resumeEngine();
+                  },
+                  // No practice button inside a practice round itself.
+                  onPractice: _level.isTutorial
+                      ? null
+                      : (type) => Navigator.of(context).push(
+                          MaterialPageRoute<void>(
+                              builder: (_) =>
+                                  GameScreen(level: tutorialLevelFor(type)))),
+                ),
+            'roundResult': (context, game) => RoundResultOverlay(
+                game: game,
+                nextLabel: _tutorial != null ? 'TIẾP TỤC' : 'MÀN TIẾP',
+                onHome: () => Navigator.of(context).pop()),
+            'home': (context, game) => SafeArea(
+                  child: Padding(
+                    padding: const EdgeInsets.all(DS.spaceMd),
+                    child: Align(
+                      alignment: Alignment.topLeft,
+                      child: Row(mainAxisSize: MainAxisSize.min, children: [
+                        RoundButton(
+                          glyph: GameGlyph.home,
+                          tooltip: 'Về chọn màn',
+                          onPressed: () => Navigator.of(context).pop(),
+                        ),
+                        if (_level.isInfinite) ...[
+                          const SizedBox(width: DS.spaceSm),
+                          RoundButton(
+                            icon: Icons.info_outline_rounded,
+                            tooltip: 'Nhiệm vụ và hướng dẫn đêm này',
+                            onPressed: game.night!.openNightInfo,
+                          ),
+                        ],
+                        const SizedBox(width: DS.spaceSm),
+                        if (!_level.isInfinite)
+                          RoundButton(
+                            icon: Icons.help_outline_rounded,
+                            onPressed: () {
+                              game.overlays.add('catGuide');
+                            },
+                          ),
+                      ]),
+                    ),
+                  ),
+                ),
+          })),
     );
   }
 }

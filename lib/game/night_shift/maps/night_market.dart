@@ -3,6 +3,7 @@ import 'package:flutter/painting.dart';
 import '../moonlight.dart';
 import '../night_cards.dart';
 import '../night_run.dart';
+import '../night_variants.dart';
 
 class MarketLamp {
   MarketLamp(this.spot);
@@ -21,8 +22,17 @@ class NightMarket {
   double clock = 0, noise = 0, alarm = 0;
   double lampDuration = 18, lightScale = 1, afterglow = 0;
   double _mistakeScale = 1, _trafficScale = 1, _quietRate = 1.5;
-  double trafficPeriod = 16;
-  int _lastCart = 0;
+  final _tripEnds = <double>[];
+  int _noiseIndex = 0;
+  bool alternateDirections = false;
+  double get _tripStart => cartTrips == 0 ? 0 : _tripEnds[cartTrips - 1];
+  double get trafficPeriod => _tripEnds[cartTrips] - _tripStart;
+  bool get cartFromRight => alternateDirections && cartTrips.isOdd;
+  double cartX(double width) {
+    final progress = cartProgress ?? 0;
+    return -100 + (width + 200) * (cartFromRight ? 1 - progress : progress);
+  }
+
   double quietLeft = 0, quietDuration = 4, cartDuration = 4;
   int cartTrips = 0, closingBonus = 0;
   bool carryingFish = false;
@@ -30,7 +40,8 @@ class NightMarket {
   void begin(NightRun run,
       {required bool thickClouds, required double afterglowSeconds}) {
     clock = noise = alarm = 0;
-    _lastCart = 0;
+    _noiseIndex = 0;
+    _tripEnds.clear();
     cartTrips = 0;
     quietLeft = 0;
     carryingFish = false;
@@ -47,7 +58,20 @@ class NightMarket {
     _trafficScale = math.pow(.7, run.count(NightCard.softWheels)).toDouble() *
         (run.has(NightCard.gentleCart) ? .5 : 1);
     _quietRate = 1.5 + run.count(NightCard.quietCorner);
-    trafficPeriod = run.has(NightCard.busyMarket) ? 12 : 16;
+    final periods = switch (run.variant) {
+      NightVariant.marketRush => const [11.0, 17.0, 10.0, 18.0],
+      NightVariant.marketConvoy => const [9.0, 9.0, 20.0],
+      _ => const [16.0],
+    };
+    alternateDirections = run.variant == NightVariant.marketConvoy;
+    var total = 0.0;
+    for (var i = 0; total < run.seconds + 30; i++) {
+      total += math.max(
+          cartDuration + 2.5,
+          periods[i % periods.length] *
+              (run.has(NightCard.busyMarket) ? .75 : 1));
+      _tripEnds.add(total);
+    }
     lamps
       ..clear()
       ..addAll([
@@ -64,16 +88,21 @@ class NightMarket {
     final alreadyLoud = noise >= 100;
     clock += dt;
     moon.update(dt);
-    cartTrips = (clock / trafficPeriod).floor();
+    while (cartTrips < _tripEnds.length - 1 && clock >= _tripEnds[cartTrips]) {
+      cartTrips++;
+    }
     quietLeft =
-        cartTrips > 0 ? math.max(0, quietDuration - clock % trafficPeriod) : 0;
+        cartTrips > 0 ? math.max(0, quietDuration - (clock - _tripStart)) : 0;
     alarm = math.max(0, alarm - dt);
     noise = math.max(0, noise - (_quietRate + (quietLeft > 0 ? 5 : 0)) * dt);
-    final cart = ((clock + 2) / trafficPeriod).floor();
-    if (cart > _lastCart) {
-      noise =
-          (noise + 42 * _trafficScale * (cart - _lastCart)).clamp(0.0, 100.0);
-      _lastCart = cart;
+    var passed = 0;
+    while (_noiseIndex < _tripEnds.length &&
+        clock >= _tripEnds[_noiseIndex] - cartDuration / 2) {
+      _noiseIndex++;
+      passed++;
+    }
+    if (passed > 0) {
+      noise = (noise + 42 * _trafficScale * passed).clamp(0.0, 100.0);
     }
     for (final lamp in lamps) {
       if (lamp.lit) {
@@ -103,7 +132,7 @@ class NightMarket {
     return true;
   }
 
-  double get _phase => clock % trafficPeriod;
+  double get _phase => clock - _tripStart;
   bool get cartWarning =>
       _phase >= trafficPeriod - cartDuration - 2 &&
       _phase < trafficPeriod - cartDuration;

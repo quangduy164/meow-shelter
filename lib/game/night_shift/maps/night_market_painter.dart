@@ -309,10 +309,11 @@ class NightMarketAtmosphere extends PositionComponent with HasGameReference {
   void _traffic(Canvas canvas, Size screen) {
     final progress = market.cartProgress;
     if (progress == null) return;
-    final x = -100 + (screen.width + 200) * progress;
+    final x = market.cartX(screen.width);
     final y = screen.height * .89;
     canvas.save();
     canvas.translate(x, y);
+    if (market.cartFromRight) canvas.scale(-1, 1);
     for (final dx in const [-25.0, 25.0]) {
       canvas.drawCircle(
           Offset(dx, 10), 9, Paint()..color = const Color(0xFF1F303A));

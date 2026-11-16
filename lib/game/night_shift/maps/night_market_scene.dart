@@ -118,8 +118,8 @@ class NightMarketScene extends NightScene {
     }
     final progress = market.cartProgress;
     if (progress != null && !market.carryingFish) {
-      market.carryingFish = game.bait.takeWaitingNear(
-          Vector2(-100 + (screen.x + 200) * progress, screen.y * .89), 65);
+      market.carryingFish = game.bait
+          .takeWaitingNear(Vector2(market.cartX(screen.x), screen.y * .89), 65);
     }
     if (alarm) {
       GameAudio.instance.playRescue(GameSound.rescueNotice, important: true);

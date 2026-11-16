@@ -170,6 +170,7 @@ class MeowShelterGame extends FlameGame {
       catType: type,
       level: catLevel,
       isBoss: boss,
+      trapCapture: night?.scene.usesTraps ?? false,
       isBlocked: _isMapBlocked,
       terrainSpeed: _terrainSpeed,
       lureWaypoint: night?.lureWaypoint,
@@ -196,6 +197,7 @@ class MeowShelterGame extends FlameGame {
     for (final shelter in placements) {
       final component = ShelterZoneComponent(
         catType: shelter.type,
+        visible: () => night?.scene.usesTraps != true,
         label: shelter.label,
         size: bedSize,
         position: level.isTutorial
@@ -313,6 +315,13 @@ class MeowShelterGame extends FlameGame {
 
   void _placeFish(Vector2 point) {
     if (!canPlaceFish) return;
+    if (night?.scene.usesTraps == true) {
+      if (night!.scene.placeBait(point.toOffset())) {
+        stats.fishUsed++;
+        if (bait.limited) hud.fishLeft = bait.fishCount;
+      }
+      return;
+    }
     if (night?.allowsBait(point) == false) {
       hud.showBanner(['Chỉ đặt cá trong vùng đánh dấu trên mái giữa'], 1.5);
       return;
@@ -332,6 +341,11 @@ class MeowShelterGame extends FlameGame {
   /// No fish left, none on the ground, and someone still needs a meal.
   bool get outOfFish {
     if (night?.scene.hasBaitInTransit == true) return false;
+    if (night?.scene.usesTraps == true) {
+      return bait.limited &&
+          bait.fishCount <= 0 &&
+          night!.run!.rescuedTonight < night!.run!.quota;
+    }
     if (!bait.limited || bait.fishCount > 0 || bait.hasBaitOut) {
       return false;
     }

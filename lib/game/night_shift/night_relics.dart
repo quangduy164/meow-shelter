@@ -9,7 +9,8 @@ enum NightRelic {
     NightCard.lanternRelay: 'Kéo dài đèn trước khi chuyển sang dư sáng',
     NightCard.lastStep: 'Giữ cầu đến khi qua hết, rồi mới dư sáng',
   }),
-  bell('Chuông đèn', 26, 'Lần đầu mở mỗi đèn/cầu: 1 mèo gần đó tiến 1 bước.', {
+  bell('Chuông đèn', 26,
+      'Lần đầu mở đèn/cầu hoặc đặt mồi mỗi ngăn lồng: giúp 1 mèo gần đó.', {
     NightCard.extraLantern: '+1 mèo nhận chuông/cấp (tối đa 3)',
     NightCard.widePlanks: '+1 mèo nhận chuông/cấp (tối đa 3)',
     NightCard.brightLantern: '+25% tầm chuông mỗi cấp',
@@ -17,13 +18,16 @@ enum NightRelic {
     NightCard.pairedBridges: 'Hai cầu mở lần đầu đều phát nhịp chuông',
     NightCard.autoBridge: 'Lần tự mở lại phát thêm nhịp chuông',
   }),
-  moonPouch('Túi trăng', 28,
-      'Mở đèn/cầu lần đầu: hồi trợ thủ 2s. Mây tới: hồi 3s (cách 10s).', {
-    NightCard.fullMoon: 'Nhịp mở đèn/cầu hồi thêm 2s',
-    NightCard.eagerHelpers: 'Mỗi nhịp hồi thêm 1s mỗi cấp',
-    NightCard.relayRescue: 'Thêm hồi trợ thủ mỗi lần cứu mèo',
-    NightCard.autoBridge: 'Lần cầu tự mở lại cũng phát nhịp hồi',
-  }),
+  moonPouch(
+      'Túi trăng',
+      28,
+      'Mở đèn/cầu hoặc mồi ngăn lồng lần đầu: hồi trợ thủ 2s. Mây tới: hồi 3s (cách 10s).',
+      {
+        NightCard.fullMoon: 'Nhịp mở đèn/cầu hồi thêm 2s',
+        NightCard.eagerHelpers: 'Mỗi nhịp hồi thêm 1s mỗi cấp',
+        NightCard.relayRescue: 'Thêm hồi trợ thủ mỗi lần cứu mèo',
+        NightCard.autoBridge: 'Lần cầu tự mở lại cũng phát nhịp hồi',
+      }),
   feastCharm('Bùa liên hoàn', 34,
       'Cứu trong sáng: mèo gần tiến 1 bước. Nối trong 8s: tác động 2 mèo.', {
     NightCard.warmHug: '+2s nối chuỗi mỗi cấp',
@@ -32,12 +36,15 @@ enum NightRelic {
     NightCard.rescueRhythm: 'Cùng nối chuỗi cứu để kiếm Nguyệt quang',
     NightCard.nurturingMeal: 'Nhịp ăn do Bùa cũng kéo dài chờ bế cho mèo gần',
   }),
-  prism('Lăng kính', 38,
-      'Giao trăng và đèn: giữ thanh chờ/bế. Cứu tại đó: +3 Nguyệt quang.', {
-    NightCard.fullMoon: '+2 Nguyệt quang mỗi lần cứu ở giao sáng',
-    NightCard.hotCoins: '+1 Nguyệt quang mỗi cấp ở giao sáng',
-    NightCard.moonEcho: 'Đốm trăng giao đèn cũng kích hoạt Lăng kính',
-  });
+  prism(
+      'Lăng kính',
+      38,
+      'Giao trăng và đèn/lồng: giữ thanh chờ/bế hoặc chốt lồng. Cứu tại đó: +3 Nguyệt quang.',
+      {
+        NightCard.fullMoon: '+2 Nguyệt quang mỗi lần cứu ở giao sáng',
+        NightCard.hotCoins: '+1 Nguyệt quang mỗi cấp ở giao sáng',
+        NightCard.moonEcho: 'Đốm trăng giao đèn cũng kích hoạt Lăng kính',
+      });
 
   const NightRelic(this.title, this.price, this.description, this.cardCombos);
   final String title, description;
@@ -54,7 +61,8 @@ enum NightRelic {
   String get relicCombo => switch (this) {
         NightRelic.embers =>
           'Dư sáng vẫn nối chuỗi Bùa và giao sáng Lăng kính.',
-        NightRelic.bell => 'Túi trăng: cùng kích hoạt khi mở đèn/cầu.',
+        NightRelic.bell =>
+          'Túi trăng: cùng kích hoạt khi mở đèn/cầu hoặc mồi lồng lần đầu.',
         NightRelic.moonPouch => 'Chuông đèn: vừa tiến bước vừa hồi trợ thủ.',
         NightRelic.feastCharm =>
           'Lăng kính: chuỗi từ 3 thưởng thêm 2 Nguyệt quang.',

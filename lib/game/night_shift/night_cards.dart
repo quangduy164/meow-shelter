@@ -4,7 +4,8 @@ enum NightMap {
       'Chạm đèn lồng để thắp; mèo trong vùng sáng không giở chiêu'),
   marketAlley('Hẻm chợ đêm',
       'Giữ độ ồn dưới 100; vùng đèn bảo vệ mèo khi xe đẩy đi qua'),
-  rooftops('Mái nhà', 'Đặt cá ở mái giữa; hạ cầu để mèo hai mái bên sang ăn');
+  rooftops('Mái nhà', 'Đặt cá ở mái giữa; hạ cầu để mèo hai mái bên sang ăn'),
+  warehouse('Kho hàng', 'Đặt mồi trong lồng; chờ tín hiệu xanh rồi chốt cửa');
 
   const NightMap(this.title, this.rule);
   final String title, rule;
@@ -30,7 +31,7 @@ enum NightCard {
   crowd('Nhà đông vui', '+25% Nguyệt quang qua đêm',
       cost: 'Thêm 1 mèo trên sân', limit: 2),
   hiddenFish('Giấu cá', '+25% Nguyệt quang qua đêm',
-      cost: 'Mỗi đêm chỉ có 8 cá', limit: 1),
+      cost: '8 cá/đêm; Kho hàng: chỉ tiêu + 2 cá', limit: 1),
   // Backyard cards: only offered before a night on that map.
   longWick('Bấc dài', 'Đèn lồng cháy lâu hơn 50%',
       limit: 2, map: NightMap.backyard),
@@ -91,7 +92,16 @@ enum NightCard {
   preparedBait('Chuẩn bị kỹ', 'Đầu đêm có sẵn 1 cá miễn phí trên sân',
       limit: 1),
   nurturingMeal('Chăm sóc lan tỏa', 'Mỗi bữa ăn: mèo gần chờ bế thêm 2s/cấp',
-      limit: 2);
+      limit: 2),
+  quietDoors('Cửa êm', 'Đóng hụt: vùng hoảng nhỏ hơn 50%/cấp',
+      limit: 2, map: NightMap.warehouse),
+  twinCages('Hai ngăn', 'Mỗi lồng có 2 ngăn, chốt từng ngăn riêng',
+      limit: 1, map: NightMap.warehouse),
+  deepBait('Mồi sâu', 'Mèo vào chậm hơn 25%, nán lại thêm 0.6s/cấp',
+      limit: 2, map: NightMap.warehouse),
+  linkedDoors(
+      'Dây giật chung', 'Chốt thêm ngăn cùng hàng của lồng kế tiếp nếu có mèo',
+      limit: 1, map: NightMap.warehouse);
 
   const NightCard(this.title, this.perk, {this.cost, this.limit = 3, this.map});
   final String title, perk;
@@ -103,6 +113,11 @@ enum NightCard {
   /// How many times this card can be taken in one run.
   final int limit;
   bool get isDeal => cost != null;
+  bool availableOn(NightMap next) =>
+      (map == null || map == next) &&
+      (next != NightMap.warehouse ||
+          !const [warmHug, patience, wideBeds, nailedBeds, nurturingMeal]
+              .contains(this));
   String? get comboHint => switch (this) {
         lanternRelay => 'Ghép Bấc dài để giữ nhiều đèn sáng cùng lúc.',
         moonEcho => 'Ghép Lăng kính: đốm trăng vẫn tạo giao sáng.',
@@ -122,6 +137,10 @@ enum NightCard {
         rescueRhythm => 'Vòng tay ấm kéo dài cửa sổ nối chuỗi thêm 2s/cấp.',
         preparedBait => 'Ghép Cá thơm để bắt đầu đêm nhanh hơn.',
         nurturingMeal => 'Ghép Cá thơm để tăng tầm lan tỏa 35%/cấp.',
+        quietDoors => 'Ghép trợ thủ mèo đen để hạn chế mèo gần giật mình.',
+        twinCages => 'Ghép Dây giật chung để canh nhiều ngăn cùng lúc.',
+        deepBait => 'Ghép Cá thơm để bù thời gian dẫn mèo vào lồng.',
+        linkedDoors => 'Ghép Mồi sâu để hai mèo cùng ở trong cửa sổ chốt.',
         _ => null,
       };
 }

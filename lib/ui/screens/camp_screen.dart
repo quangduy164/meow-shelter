@@ -513,9 +513,7 @@ class _ShopBarState extends State<_ShopBar> {
           ),
           Expanded(
             child: LayoutBuilder(builder: (context, box) {
-              final count =
-                  _tab == null ? CatBreed.all.length - 1 : items.length;
-              final width = _campCardWidth(box.maxWidth, count,
+              final width = _campCardWidth(box.maxWidth,
                   preferred: _tab == null ? 190 : 176);
               return ListView(
                 scrollDirection: Axis.horizontal,
@@ -587,25 +585,13 @@ class _ShopBarState extends State<_ShopBar> {
             mainAxisAlignment: MainAxisAlignment.center,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Same two-row height as a decoration card, so it fits the
-              // short shop bar: name · trait on one line, then the button.
-              Text.rich(
-                  TextSpan(children: [
-                    TextSpan(
-                        text: breed.name,
-                        style: const TextStyle(
-                            color: DS.ink,
-                            fontWeight: FontWeight.w900,
-                            fontSize: DS.fontBody)),
-                    TextSpan(
-                        text: ' · ${breed.catchRule.trait}',
-                        style: const TextStyle(
-                            color: DS.soft,
-                            fontWeight: FontWeight.w600,
-                            fontSize: DS.fontCaption)),
-                  ]),
+              Text(breed.name,
                   maxLines: 1,
-                  overflow: TextOverflow.ellipsis),
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                      color: DS.ink,
+                      fontWeight: FontWeight.w900,
+                      fontSize: DS.fontBody)),
               const SizedBox(height: DS.spaceXs),
               SizedBox(
                 height: 26,
@@ -902,8 +888,7 @@ class _BondBar extends StatelessWidget {
           ),
           Expanded(
             child: LayoutBuilder(builder: (context, box) {
-              final width = _campCardWidth(box.maxWidth, CatBreed.all.length,
-                  preferred: 190);
+              final width = _campCardWidth(box.maxWidth, preferred: 190);
               return ListView(
                 scrollDirection: Axis.horizontal,
                 padding: const EdgeInsets.fromLTRB(
@@ -1045,14 +1030,10 @@ class _BondBar extends StatelessWidget {
   }
 }
 
-/// Shows only whole cards in the current width; extra cards stay scrollable.
-double _campCardWidth(double available, int count,
-    {required double preferred}) {
-  const gap = DS.spaceSm;
-  final usable = max(1.0, available - DS.spaceSm * 2);
-  final visible =
-      ((usable + gap) / (preferred + gap)).floor().clamp(1, max(1, count));
-  return max(150.0, (usable - gap * (visible - 1)) / visible);
+/// Cards keep their designed width; only a very narrow screen shrinks them.
+double _campCardWidth(double available, {required double preferred}) {
+  final usable = available - DS.spaceSm * 2;
+  return min(preferred, max(150.0, usable));
 }
 
 /// A bought decoration in the room. Dragging it rebuilds only this widget;

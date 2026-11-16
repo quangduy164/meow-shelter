@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 import 'package:flutter/painting.dart';
 import '../moonlight.dart';
+import '../night_variants.dart';
 
 /// One lantern on the night yard. Tap to light it; it burns for a while,
 /// then needs a short rest before it can be lit again.
@@ -53,7 +54,8 @@ class MoonlitYard {
       required bool thickClouds,
       double emberDuration = 0,
       double echoDuration = 0,
-      double linkSeconds = 0}) {
+      double linkSeconds = 0,
+      NightVariant variant = NightVariant.yardNormal}) {
     this.echoDuration = echoDuration;
     this.linkSeconds = linkSeconds;
     echoes.clear();
@@ -63,10 +65,32 @@ class MoonlitYard {
     this.lightScale = lightScale;
     this.fullMoon = fullMoon;
     this.thickClouds = thickClouds;
-    moon.reset(fullMoon: fullMoon, thickClouds: thickClouds);
+    moon.reset(
+        fullMoon: fullMoon,
+        thickClouds: thickClouds,
+        sweepSpeed: variant == NightVariant.yardSweep ? 1.5 : 1,
+        beamWidth: variant == NightVariant.yardSweep ? .72 : 1,
+        startPhase: variant == NightVariant.yardSpread ? -math.pi / 2 : 0);
+    final layout = switch (variant) {
+      NightVariant.yardSpread => const [
+          Offset(.22, .38),
+          Offset(.78, .38),
+          Offset(.50, .72),
+          Offset(.28, .65),
+          Offset(.72, .65)
+        ],
+      NightVariant.yardSweep => const [
+          Offset(.27, .36),
+          Offset(.5, .54),
+          Offset(.73, .72),
+          Offset(.73, .36),
+          Offset(.27, .72)
+        ],
+      _ => spots,
+    };
     lanterns
       ..clear()
-      ..addAll([for (final spot in spots.take(count)) YardLantern(spot)]);
+      ..addAll([for (final spot in layout.take(count)) YardLantern(spot)]);
   }
 
   bool light(YardLantern lantern) {

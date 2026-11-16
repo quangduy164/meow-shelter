@@ -1,6 +1,7 @@
 import 'dart:math';
 import 'night_cards.dart';
 import 'night_relics.dart';
+import 'night_variants.dart';
 
 enum NightPhase { setup, briefing, playing, cards, shop, ended }
 
@@ -13,6 +14,8 @@ class NightRun {
   final List<String> helpers;
   final cards = <NightCard>[];
   int night = 1;
+  NightVariant variant = NightVariant.yardNormal;
+  NightArrival arrival = NightArrival.steady;
   int rescuedTonight = 0, spawnedTonight = 0;
   int totalRescued = 0, coins = 0;
   int silver = 0, lastSilverReward = 0, earnedMoonlight = 0;
@@ -108,6 +111,7 @@ class NightRun {
                   count(NightCard.nightWind) + count(NightCard.fewerLanterns),
                 NightMap.marketAlley => count(NightCard.busyMarket),
                 NightMap.rooftops => count(NightCard.stormyRoof),
+                NightMap.warehouse => 0,
               });
 
   // The night itself.
@@ -146,7 +150,7 @@ class NightRun {
   /// has run out.
   List<NightCard> offer(Random random, NightMap next) {
     final open = NightCard.values
-        .where((c) => count(c) < c.limit && (c.map == null || c.map == next))
+        .where((c) => count(c) < c.limit && c.availableOn(next))
         .toList()
       ..shuffle(random);
     final general = open.where((c) => !c.isDeal && c.map == null).toList();

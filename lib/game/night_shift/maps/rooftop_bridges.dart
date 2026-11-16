@@ -3,15 +3,17 @@ import 'package:flutter/painting.dart';
 import '../moonlight.dart';
 import '../night_cards.dart';
 import '../night_run.dart';
+import '../night_variants.dart';
 
 class RoofBridge {
-  RoofBridge(this.gap, this.y);
+  RoofBridge(this.gap, this.y, [this.row = 0]);
+  final int row;
   final int gap;
   final double y;
-  double open = 0, cool = 0, ember = 0;
+  double open = 0, cool = 0, ember = 0, repair = 0;
   bool firstOpen = true, autoUsed = false;
   bool get active => open > 0 || ember > 0;
-  bool get ready => open <= 0 && cool <= 0;
+  bool get ready => open <= 0 && cool <= 0 && repair <= 0;
 }
 
 /// Rooftops are separated by gaps. Cats can walk across only while a plank is
@@ -92,8 +94,17 @@ class RooftopBridges {
       ..clear()
       ..addAll([
         for (var gap = 0; gap < gaps.length; gap++)
-          for (final y in const [.34, .58]) RoofBridge(gap, y),
+          for (var row = 0; row < 2; row++)
+            RoofBridge(
+                gap,
+                run.variant == NightVariant.roofStaggered
+                    ? (gap == 0 ? const [.30, .56] : const [.40, .66])[row]
+                    : const [.34, .58][row],
+                row),
       ]);
+    if (run.variant == NightVariant.roofRepair) {
+      bridges[(run.night ~/ 3) % bridges.length].repair = 10;
+    }
   }
 
   bool lower(RoofBridge bridge, {bool auto = false}) {
@@ -102,7 +113,7 @@ class RooftopBridges {
     opened.add((bridge, auto));
     if (paired) {
       final other =
-          bridges.firstWhere((b) => b.gap != bridge.gap && b.y == bridge.y);
+          bridges.firstWhere((b) => b.gap != bridge.gap && b.row == bridge.row);
       if (other.ready) {
         other.open = math.min(openTime, 6);
         opened.add((other, false));
@@ -114,6 +125,7 @@ class RooftopBridges {
   void update(double dt, {Iterable<Rect> occupied = const []}) {
     moon.update(dt);
     for (final bridge in bridges) {
+      bridge.repair = math.max(0, bridge.repair - dt);
       if (bridge.open > 0) {
         if (lastStep &&
             occupied.any((bounds) {

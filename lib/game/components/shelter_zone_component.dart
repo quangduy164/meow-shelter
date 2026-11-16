@@ -12,13 +12,16 @@ class ShelterZoneComponent extends PositionComponent {
     required super.position,
     required super.size,
     required this.catType,
+    this.visible,
   }) : super(priority: -10);
 
   final String catType;
+  final bool Function()? visible;
   final String label;
 
   @override
   void render(Canvas canvas) {
+    if (visible?.call() == false) return;
     super.render(canvas);
     final color = switch (catType) {
       'orange' => const Color(0xFFF5AF4D),

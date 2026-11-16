@@ -152,6 +152,7 @@ extension CatCatchBehaviour on CatComponent {
 
   /// Whether the Himalaya helper's blessing can fill this cat up now.
   bool get canBless =>
+      !trapManaged &&
       isLoaded &&
       !_isDelivered &&
       !_isDragged &&
@@ -162,6 +163,10 @@ extension CatCatchBehaviour on CatComponent {
   /// Relics advance the normal multi-step rule; they never deliver a cat.
   void advanceRescueStep() {
     if (!canBless) return;
+    if (trapCapture) {
+      bless();
+      return;
+    }
     fishTarget = null;
     _dodgeTime = 0;
     _isVanishing = false;

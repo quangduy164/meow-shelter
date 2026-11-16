@@ -16,6 +16,7 @@ import '../cats/cat_assist.dart';
 import 'night_relic_effects.dart';
 import 'night_card_effects.dart';
 import 'night_helper_effects.dart';
+import 'night_variants.dart';
 
 /// Owns the night-shift rules; MeowShelterGame only hosts shared cats/fields.
 class NightGame {
@@ -39,6 +40,9 @@ class NightGame {
   late final relicEffects = NightRelicEffects(this);
   late final cardEffects = NightCardEffects(this);
   bool newRecord = false;
+  final _lastVariants = <NightMap, NightVariant>{};
+  NightArrival? _lastArrival;
+  NightArrivalPlan? _arrivals;
   int get nightSecondsLeft => game.hud.secondsLeft;
   List<String> get nightRules => List.unmodifiable(game.hud.nightNotes);
   bool get acceptsAnyBed => helperEffects.acceptsAnyBed;
@@ -84,6 +88,9 @@ class NightGame {
     _scene = createNightScene(run!.map, game,
         onFirstLight: relicEffects.onFirstLight);
     _recentTypes.clear();
+    _lastVariants.clear();
+    _lastArrival = null;
+    _arrivals = null;
     cardOffer = const [];
     shopOffer = const [];
     newRecord = false;
@@ -114,6 +121,8 @@ class NightGame {
     if (run.rescuedTonight >= run.quota) {
       _endNight();
     } else {
+      _arrivals!.onRescue(run.rescuedTonight);
+      if (run.spawnedTonight == run.rescuedTonight) _arrivals!.callSoon();
       _fillField();
     }
   }
@@ -171,7 +180,9 @@ class NightGame {
     // Counted from the run, not from game.children: removals and additions are
     // only applied on the next tick.
     var onField = run.spawnedTonight - run.rescuedTonight;
-    while (onField < run.fieldSize && run.spawnedTonight < run.quota) {
+    final arrivals = _arrivals!;
+    while (
+        onField < arrivals.fieldCap && run.spawnedTonight < arrivals.released) {
       run.spawnedTonight += 1;
       onField += 1;
       // The last cat of a boss night is the boss.
@@ -190,6 +201,22 @@ class NightGame {
   void beginNight() {
     final run = this.run!;
     final night = run.night;
+    run.variant = night <= NightMap.values.length
+        ? NightVariant.normal(run.map)
+        : NightVariant.choose(run.map, random,
+            previous: _lastVariants[run.map]);
+    _lastVariants[run.map] = run.variant;
+    final patterns =
+        NightArrival.values.where((p) => p != _lastArrival).toList();
+    run.arrival = night <= NightMap.values.length
+        ? NightArrival.steady
+        : patterns[random.nextInt(patterns.length)];
+    _lastArrival = run.arrival;
+    _arrivals = NightArrivalPlan(
+        style: run.arrival,
+        quota: run.quota,
+        capacity: run.fieldSize,
+        intro: night <= NightMap.values.length);
     _nightStartles = game.stats.startles;
     _nightWrongDrops = game.stats.wrongDrops;
     relicEffects.resetNight();
@@ -204,9 +231,15 @@ class NightGame {
       shelter.position = center - shelter.size / 2;
     }
     // Introduce each map once before adding random night twists.
-    var twist = run.night <= NightMap.values.length ? 0 : random.nextInt(4);
-    if (twist == 1 && run.has(NightCard.fullMoon)) twist = 0;
-    if (twist == 2 && run.has(NightCard.nailedBeds)) twist = 0;
+    final twists = [
+      0,
+      if (!run.has(NightCard.fullMoon)) 1,
+      if (run.map != NightMap.warehouse && !run.has(NightCard.nailedBeds)) 2,
+      3
+    ];
+    final twist = night <= NightMap.values.length
+        ? 0
+        : twists[random.nextInt(twists.length)];
     _thickClouds = twist == 1;
     _bedTwist = twist == 2;
     if (scene.map != run.map) {
@@ -221,6 +254,8 @@ class NightGame {
     game.resetBedTimer();
     var fish = twist == 3 ? 6 : 0;
     if (run.has(NightCard.hiddenFish)) fish = fish == 0 ? 8 : min(fish, 8);
+    // Every warehouse rescue needs one bait, including calico cats.
+    if (fish > 0 && scene.usesTraps) fish = max(fish, run.quota + 2);
     if (fish > 0) fish += run.extraFish;
     game.bait.reset(
         limit: fish,
@@ -239,6 +274,10 @@ class NightGame {
       ..bossNight = run.bossNight
       ..nightNotes = [
         '${run.map.title}: ${run.map.rule}',
+        if (night > NightMap.values.length)
+          '${run.variant.title}: ${run.variant.description}',
+        if (night > NightMap.values.length)
+          'Nhịp ${run.arrival.title.toLowerCase()}: ${run.arrival.description}',
         ...scene.rules,
         if (night == 1) 'Mèo trong vùng sáng ngoan hơn, chờ bế lâu gấp đôi',
         if (_thickClouds) 'Mây dày: trăng bị che lâu hơn',
@@ -248,20 +287,38 @@ class NightGame {
         if (run.bossNight) 'Con mèo cuối cùng là mèo trùm',
       ]
       ..nightTags = [
+        if (night > NightMap.values.length) run.variant.title,
         if (_thickClouds) 'Mây dày',
         if (_bedTwist) 'Ổ dời chỗ',
         if (game.bait.limited) '${game.bait.fishCount} cá',
         if (run.bossNight) 'Có trùm',
       ]
       ..startNight();
+    _updateArrivalHint();
     _fillField();
     if (run.has(NightCard.preparedBait)) {
-      game.bait.place(Vector2(game.size.x * .5, game.size.y * .5), game.size,
-          game.children.whereType<CatComponent>(),
-          free: true);
+      if (scene.usesTraps) {
+        scene.prepareBait();
+      } else {
+        game.bait.place(Vector2(game.size.x * .5, game.size.y * .5), game.size,
+            game.children.whereType<CatComponent>(),
+            free: true);
+      }
     }
     phase = NightPhase.setup;
     if (!game.overlays.isActive('nightSetup')) openNightInfo();
+  }
+
+  void _updateArrivalHint() {
+    final run = this.run!;
+    final arrivals = _arrivals!;
+    game.hud.arrivalHint = run.night <= NightMap.values.length
+        ? ''
+        : run.spawnedTonight >= run.quota
+            ? 'Đã tới đủ mèo'
+            : run.spawnedTonight < arrivals.released
+                ? 'Đợt tới chờ chỗ'
+                : 'Đợt tới: ${arrivals.remaining.ceil()}s';
   }
 
   /// Opens the briefing at night start or from the information button.
@@ -376,6 +433,9 @@ class NightGame {
 
   void update(double dt) {
     if (phase != NightPhase.playing) return;
+    _arrivals!.update(dt);
+    _fillField();
+    _updateArrivalHint();
     final wasCloudy = scene.cloudy;
     scene.update(dt);
     relicEffects.update(dt, cloudsStarted: !wasCloudy && scene.cloudy);

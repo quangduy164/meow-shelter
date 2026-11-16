@@ -6,6 +6,7 @@ import 'night_run.dart';
 import 'maps/moonlit_yard_scene.dart';
 import 'maps/night_market_scene.dart';
 import 'maps/rooftop_bridges_scene.dart';
+import 'maps/warehouse_traps_scene.dart';
 
 /// Each map owns its scenery, resource timers and lit-area rules.
 abstract class NightScene {
@@ -17,6 +18,9 @@ abstract class NightScene {
   void onMistake();
   void onRescue() {}
   bool get peaceful => false;
+  bool get usesTraps => false;
+  bool placeBait(Offset point, {bool free = false}) => false;
+  void prepareBait() {}
   bool get hasBaitInTransit => false;
   void mount();
   void remove();
@@ -46,4 +50,6 @@ NightScene createNightScene(NightMap map, MeowShelterGame game,
         NightMarketScene(game, onFirstLight: onFirstLight),
       NightMap.rooftops =>
         RooftopBridgesScene(game, onFirstLight: onFirstLight),
+      NightMap.warehouse =>
+        WarehouseTrapsScene(game, onFirstLight: onFirstLight),
     };

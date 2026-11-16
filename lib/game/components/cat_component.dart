@@ -38,6 +38,7 @@ class CatComponent extends SpriteAnimationGroupComponent<CatState>
     this.onStartled,
     this.onFed,
     this.lightTimeScale = .5,
+    this.trapCapture = false,
     this.assist,
     this.inLight,
     this.freezeInLight,
@@ -55,6 +56,8 @@ class CatComponent extends SpriteAnimationGroupComponent<CatState>
         );
 
   final String catType;
+  final bool trapCapture;
+  bool trapManaged = false;
   final void Function(CatComponent cat)? onFed;
   final double lightTimeScale;
 
@@ -81,6 +84,7 @@ class CatComponent extends SpriteAnimationGroupComponent<CatState>
   Vector2? fishTarget;
   double _dodgeTime = 0;
   bool get canLure =>
+      !trapCapture &&
       isLoaded &&
       !_isDelivered &&
       !_isDragged &&
@@ -152,7 +156,7 @@ class CatComponent extends SpriteAnimationGroupComponent<CatState>
 
   @override
   void render(Canvas canvas) {
-    if (catchWindow.canCatch || _isDragged) {
+    if (!trapCapture && (catchWindow.canCatch || _isDragged)) {
       final fraction =
           _isDragged ? catchWindow.gripFraction : catchWindow.readyFraction;
       canvas.drawRect(Rect.fromLTWH(8, 0, size.x - 16, 6),
@@ -165,7 +169,8 @@ class CatComponent extends SpriteAnimationGroupComponent<CatState>
       canvas.drawOval(Rect.fromLTWH(6, size.y * .8, size.x - 12, 12),
           Paint()..color = const Color(0x8874FF97));
     }
-    if (freezeInLight?.call(this) == true &&
+    if (!trapCapture &&
+        freezeInLight?.call(this) == true &&
         (catchWindow.canCatch || _isDragged)) {
       canvas.drawOval(
           Rect.fromLTWH(4, size.y * .8, size.x - 8, 14),
@@ -184,7 +189,7 @@ class CatComponent extends SpriteAnimationGroupComponent<CatState>
     super.render(canvas);
     canvas.restore();
     if (isBoss) _drawCrown(canvas);
-    _drawProgress(canvas);
+    if (!trapCapture) _drawProgress(canvas);
     _drawDialogue(canvas);
   }
 
@@ -196,10 +201,43 @@ class CatComponent extends SpriteAnimationGroupComponent<CatState>
     _pickNextAction();
   }
 
+  void enterTrap() {
+    trapManaged = true;
+    catchWindow.clear();
+    fishTarget = null;
+    _isVanishing = _isTapTriggered = _skillActive = false;
+    _setState(CatState.walk);
+  }
+
+  void positionInTrap(Vector2 spot, {required bool walking}) {
+    if (walking && (spot.x - position.x).abs() > .01) {
+      _direction = spot.x > position.x ? 1 : -1;
+    }
+    position.setFrom(spot);
+    final next = walking ? CatState.walk : CatState.idle;
+    if (_state != next) _setState(next);
+  }
+
+  void leaveTrap({bool startled = false}) {
+    trapManaged = false;
+    if (startled) {
+      _dodge();
+    } else {
+      _pickNextAction();
+    }
+  }
+
+  void rescueFromTrap() {
+    if (_isDelivered || _deliveredNotified) return;
+    _isDelivered = _deliveredNotified = true;
+    onDelivered(this);
+    removeFromParent();
+  }
+
   @override
   void onTapDown(TapDownEvent event) {
     super.onTapDown(event);
-    if (!isPlaying() || catchWindow.canCatch) return;
+    if (trapCapture || !isPlaying() || catchWindow.canCatch) return;
     if (level.isTutorial && catType != 'calico') return;
     if (_isDragged || _isDropWrong || _isDelivered || _isEscaping) return;
     if (catType == 'calico') {
@@ -251,7 +289,7 @@ class CatComponent extends SpriteAnimationGroupComponent<CatState>
   @override
   void onDragStart(DragStartEvent event) {
     super.onDragStart(event);
-    if (!isPlaying() || _isDropWrong || _isDelivered) return;
+    if (trapCapture || !isPlaying() || _isDropWrong || _isDelivered) return;
 
     if (!catchWindow.grab()) {
       if (_dodgeTime <= 0 && !level.isTutorial) _startle();
@@ -325,6 +363,7 @@ class CatComponent extends SpriteAnimationGroupComponent<CatState>
     if (!isPlaying()) return;
     super.update(dt);
     _dialogue.update(dt);
+    if (trapManaged) return;
     if (_playTimer > 0) {
       _playTimer -= dt;
       if (_playTimer <= 0) _playTaps = 0;

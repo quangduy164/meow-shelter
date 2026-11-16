@@ -31,6 +31,11 @@ class BaitSystem {
 
   bool get hasBaitOut => positions.isNotEmpty;
   bool get canPlace => !limited || fishCount > 0;
+  bool spend() {
+    if (!canPlace) return false;
+    if (limited) fishCount--;
+    return true;
+  }
 
   void reset({int limit = 0, int portions = 1, double refundAfter = 0}) {
     limited = limit > 0;

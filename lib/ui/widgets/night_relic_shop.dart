@@ -17,6 +17,7 @@ class NightRelicShop extends StatefulWidget {
 }
 
 class _NightRelicShopState extends State<NightRelicShop> {
+  NightRelic? _selectedRelic;
   @override
   Widget build(BuildContext context) {
     final game = widget.game;
@@ -148,6 +149,20 @@ class _NightRelicShopState extends State<NightRelicShop> {
                                       fontWeight: FontWeight.w900)),
                             ),
                           ),
+                          if (_selectedRelic != null &&
+                              run.relics.contains(_selectedRelic)) ...[
+                            Positioned.fill(
+                              child: GestureDetector(
+                                behavior: HitTestBehavior.opaque,
+                                onTap: () =>
+                                    setState(() => _selectedRelic = null),
+                                child:
+                                    const ColoredBox(color: Color(0x44000000)),
+                              ),
+                            ),
+                            _relicPopover(_selectedRelic!,
+                                boardHeight: boardHeight, bagTop: bagTop),
+                          ],
                         ]),
                       ),
                       if (!compact) ...[
@@ -200,9 +215,7 @@ class _NightRelicShopState extends State<NightRelicShop> {
               side: const BorderSide(color: Color(0xFFB48B60)),
             ),
           ),
-          onPressed: () {
-            if (widget.game.sellRelic(relic)) setState(() {});
-          },
+          onPressed: () => setState(() => _selectedRelic = relic),
           child: Row(children: [
             NightRelicIcon(relic, size: 25),
             const SizedBox(width: 4),
@@ -215,19 +228,106 @@ class _NightRelicShopState extends State<NightRelicShop> {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(fontSize: 9)),
-                  Row(children: [
-                    Text('Bán +${relic.sellPrice}',
-                        style: const TextStyle(
-                            fontSize: 10, fontWeight: FontWeight.w900)),
-                    const SizedBox(width: 2),
-                    const SilverTokenIcon(size: 13),
-                  ]),
+                  const Text('Xem hiệu ứng',
+                      style: TextStyle(fontSize: 9, color: Color(0xFFE0C69D))),
                 ],
               ),
             ),
           ]),
         ),
       ),
+    );
+  }
+
+  Widget _relicPopover(NightRelic relic,
+      {required double boardHeight, required double bagTop}) {
+    final index = widget.game.run!.relics.indexOf(relic);
+    final anchor = 42.0 + index * 150 + 72.5;
+    final left = (anchor - 150).clamp(24.0, 416.0);
+    return Positioned(
+      left: left,
+      bottom: boardHeight - bagTop + 10,
+      width: 300,
+      height: 225,
+      child: Stack(clipBehavior: Clip.none, children: [
+        Positioned(
+          left: anchor - left - 6,
+          bottom: -6,
+          child: Transform.rotate(
+              angle: .785398,
+              child: Container(
+                  width: 12,
+                  height: 12,
+                  decoration: const BoxDecoration(
+                      color: DS.cream,
+                      border: Border(
+                          right: BorderSide(color: DS.wood, width: 2),
+                          bottom: BorderSide(color: DS.wood, width: 2))))),
+        ),
+        Material(
+          color: DS.cream,
+          elevation: 12,
+          shadowColor: Colors.black54,
+          borderRadius: BorderRadius.circular(12),
+          child: Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: DS.wood, width: 2)),
+            child:
+                Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Row(children: [
+                NightRelicIcon(relic, size: 28),
+                const SizedBox(width: 7),
+                Expanded(child: Text(relic.title, style: DS.headingText)),
+                SizedBox(
+                    width: 28,
+                    height: 28,
+                    child: IconButton(
+                        padding: EdgeInsets.zero,
+                        tooltip: 'Đóng thông tin',
+                        onPressed: () => setState(() => _selectedRelic = null),
+                        icon: const Icon(Icons.close_rounded, size: 18))),
+              ]),
+              const SizedBox(height: 8),
+              Expanded(
+                child: SingleChildScrollView(
+                  child: Text(relic.details,
+                      style:
+                          DS.captionText.copyWith(color: DS.ink, height: 1.4)),
+                ),
+              ),
+              const SizedBox(height: 7),
+              const Text('Bán sẽ mất hiệu ứng và combo của món này.',
+                  style: TextStyle(color: DS.soft, fontSize: 9)),
+              const SizedBox(height: 6),
+              SizedBox(
+                width: double.infinity,
+                height: 34,
+                child: ElevatedButton(
+                  style: DS.primary,
+                  onPressed: () {
+                    if (widget.game.sellRelic(relic)) {
+                      setState(() => _selectedRelic = null);
+                    }
+                  },
+                  child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(Icons.sell_rounded, size: 16),
+                        const SizedBox(width: 5),
+                        Text('BÁN · +${relic.sellPrice}',
+                            style: const TextStyle(
+                                fontSize: 12, fontWeight: FontWeight.w900)),
+                        const SizedBox(width: 4),
+                        const SilverTokenIcon(size: 20),
+                      ]),
+                ),
+              ),
+            ]),
+          ),
+        ),
+      ]),
     );
   }
 

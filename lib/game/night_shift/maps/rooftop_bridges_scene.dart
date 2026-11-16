@@ -92,7 +92,11 @@ class RooftopBridgesScene extends NightScene {
     if (game.paused || game.hud.status != RoundStatus.playing) return;
     if (!roof.lower(bridge)) {
       if (!bridge.active) {
-        game.hud.showBanner(['Cầu ván đang được kéo lại'], 1.2);
+        game.hud.showBanner([
+          bridge.repair > 0
+              ? 'Cầu đang sửa · ${bridge.repair.ceil()}s'
+              : 'Cầu ván đang được kéo lại'
+        ], 1.2);
       }
       return;
     }
