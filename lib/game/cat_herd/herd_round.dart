@@ -21,6 +21,17 @@ class HerdCat {
   /// Seconds left shivering after falling through thin ice.
   double chill = 0;
   bool facingLeft = false;
+  HerdTrait trait = HerdTrait.normal;
+
+  /// Sleepy cats: wake progress 0..1; awake once it reaches 1.
+  double wake = 0;
+  bool get awake => trait != HerdTrait.sleepy || wake >= 1;
+
+  /// Curious cats: seconds until the next run-off, the run-off time left
+  /// and where it is heading.
+  double itch = 0, distracted = 0;
+  final wanderTo = Vector2.zero();
+  bool introduced = false;
 }
 
 class HerdPatrol {
@@ -199,6 +210,9 @@ class HerdRound {
     for (final splash in splashes) {
       scale(splash.at);
     }
+    for (final cat in cats) {
+      scale(cat.wanderTo);
+    }
     field.setFrom(size);
   }
 
@@ -226,7 +240,10 @@ class HerdRound {
     landingTime = max(0, landingTime - dt);
     final wasSliding = map.contains(map.slopes, leader, field);
     final oldLeaderX = leader.x;
-    final step = _groundStep(leader, velocity, direction * 115, dt);
+    final heavy = chain.any((c) => c.trait == HerdTrait.chubby)
+        ? HerdTraits.chubbyLeaderFactor
+        : 1.0;
+    final step = _groundStep(leader, velocity, direction * 115 * heavy, dt);
     // Sample every <= 4 units, so tail spacing is independent of frame rate.
     final parts = max(1, (step.length / 4).ceil());
     for (var i = 0; i < parts; i++) {
@@ -245,6 +262,7 @@ class HerdRound {
     final leaderDx = leader.x - oldLeaderX;
     if (leaderDx.abs() > .001) leaderFacingLeft = leaderDx < 0;
     if (trail.length > 600) trail.removeRange(600, trail.length);
+    _wakeSleepers(dt);
     for (final cat in cats) {
       cat.scared = max(0, cat.scared - dt);
       cat.hop = max(0, cat.hop - dt);
@@ -255,6 +273,8 @@ class HerdRound {
           cat.scared == 0 &&
           cat.overheat == 0 &&
           cat.chill == 0 &&
+          cat.distracted == 0 &&
+          cat.awake &&
           cat.position.distanceTo(leader) < 29 &&
           _clearLine(cat.position, leader)) {
         cat.following = true;
@@ -263,7 +283,14 @@ class HerdRound {
         chain.add(cat);
         onSound?.call(
             !wasUnlocked && homeUnlocked ? HerdSound.ready : HerdSound.joined);
-        if (!isTutorial) {
+        if (cat.trait == HerdTrait.curious) {
+          cat.itch =
+              HerdTraits.itchMin + random.nextDouble() * HerdTraits.itchSpread;
+        }
+        if (cat.trait != HerdTrait.normal && !cat.introduced) {
+          cat.introduced = true;
+          message(_introduce(cat.trait), 3.5);
+        } else if (!isTutorial) {
           message(homeUnlocked
               ? 'Đủ bạn rồi! Về nhà hoặc ghé cụm thưởng'
               : 'Đàn có ${chain.length}/$minimumToHome bạn để mở nhà');
@@ -278,7 +305,12 @@ class HerdRound {
       final before = cat.position.x;
       final delta = target - cat.position;
       final desired = delta.length > 1
-          ? delta.normalized() * min(145.0, delta.length * 7)
+          ? delta.normalized() *
+              min(
+                  cat.trait == HerdTrait.chubby
+                      ? HerdTraits.chubbySpeed
+                      : 145.0,
+                  delta.length * 7)
           : Vector2.zero();
       final sliding = map.contains(map.slopes, cat.position, field);
       _move(cat.position, _groundStep(cat.position, cat.velocity, desired, dt));
@@ -291,6 +323,7 @@ class HerdRound {
       final dx = cat.position.x - before;
       if (dx.abs() > .001) cat.facingLeft = dx < 0;
     }
+    if (!ended) _wander(dt);
     if (immune == 0) {
       for (final patrol in patrols) {
         if (patrol.trafficLight && map.green(time)) continue;
@@ -315,15 +348,111 @@ class HerdRound {
         cat.home = true;
         cat.following = false;
       }
+      final golden = chain.where((c) => c.trait == HerdTrait.golden).length;
       delivered += count;
-      score += count * 10 + count * (count - 1) * 2;
+      score += count * 10 +
+          count * (count - 1) * 2 +
+          golden * HerdTraits.goldenBonus;
       chain.clear();
       trail.clear();
       trail.add(leader.clone());
-      message('Đã dẫn $count bạn về nhà!');
+      message(golden > 0
+          ? 'Đã dẫn $count bạn về nhà! Bé Vàng +${HerdTraits.goldenBonus * golden} điểm'
+          : 'Đã dẫn $count bạn về nhà!');
     }
     assert(delivered + cats.where((c) => !c.home).length == catCount);
     assert(chain.toSet().length == chain.length);
+  }
+
+  String _introduce(HerdTrait trait) => switch (trait) {
+        HerdTrait.chubby => map.thinIce.isNotEmpty
+            ? 'Bé Mập vào đàn! Đi chậm, lên băng mỏng nặng bằng hai bé'
+            : map.kind == HerdMapKind.dunes
+                ? 'Bé Mập vào đàn! Đi chậm và mau nóng hơn'
+                : 'Bé Mập vào đàn! Cả đàn đi chậm lại một chút',
+        HerdTrait.curious =>
+          'Bé Tò Mò vào đàn! Thấy dấu ! là bé sắp chạy theo bướm',
+        HerdTrait.sleepy => 'Bé Ngủ Say dậy rồi! Đi thôi',
+        HerdTrait.golden =>
+          'Bé Vàng vào đàn! Đưa bé về nhà để được thêm ${HerdTraits.goldenBonus} điểm',
+        HerdTrait.normal => '',
+      };
+
+  /// The leader must stay beside a sleepy cat until it wakes up.
+  void _wakeSleepers(double dt) {
+    for (final cat in cats) {
+      if (cat.awake || cat.home || cat.following) continue;
+      final near = cat.position.distanceTo(leader) < 29 &&
+          _clearLine(cat.position, leader);
+      if (near && cat.wake == 0 && !isTutorial) {
+        message('Bé Ngủ Say đang ngáy... đứng cạnh để gọi bé dậy');
+      }
+      cat.wake = near
+          ? min(1, cat.wake + dt / HerdTraits.wakeSeconds)
+          : max(0, cat.wake - HerdTraits.dozeRate * dt);
+    }
+  }
+
+  /// Curious followers run off after a butterfly now and then.
+  void _wander(double dt) {
+    for (final cat in cats) {
+      if (cat.distracted > 0 && !cat.following) {
+        cat.distracted = max(0, cat.distracted - dt);
+        final delta = cat.wanderTo - cat.position;
+        if (delta.length > 2) {
+          final before = cat.position.x;
+          _move(
+              cat.position,
+              delta.normalized() *
+                  min(delta.length, HerdTraits.wanderSpeed * dt));
+          cat.facingLeft = cat.position.x < before;
+        }
+      }
+    }
+    for (final cat in chain.toList()) {
+      if (cat.trait != HerdTrait.curious) continue;
+      if (onThinIce(cat.position) ||
+          map.chuteAt(cat.position, field) != null ||
+          leader.distanceTo(home) < 110) {
+        continue;
+      }
+      cat.itch = max(0, cat.itch - dt);
+      if (cat.itch > 0) continue;
+      final spot = _wanderSpot(cat.position);
+      if (spot == null) {
+        cat.itch = 1;
+        continue;
+      }
+      chain.remove(cat);
+      cat.following = false;
+      cat.velocity.setZero();
+      cat.hop = .5;
+      cat.distracted = HerdTraits.wanderSeconds;
+      cat.wanderTo.setFrom(spot);
+      onSound?.call(HerdSound.scattered);
+      message('Bé Tò Mò chạy theo bướm rồi! Quay lại đón bé nhé');
+    }
+  }
+
+  Vector2? _wanderSpot(Vector2 from) {
+    final start = random.nextInt(12);
+    for (var i = 0; i < 12; i++) {
+      final angle = (start + i) * pi / 6;
+      final at =
+          from + Vector2(cos(angle), sin(angle)) * HerdTraits.wanderDistance;
+      if (at.x < 30 ||
+          at.x > field.x - 30 ||
+          at.y < 75 ||
+          at.y > field.y - 35 ||
+          map.blocked(at, field) ||
+          onThinIce(at) ||
+          map.chuteAt(at, field) != null ||
+          !_clearLine(from, at)) {
+        continue;
+      }
+      return at;
+    }
+    return null;
   }
 
   bool shaded(Vector2 at) => map.contains(map.shade, at, field);
@@ -353,7 +482,11 @@ class HerdRound {
       final cat = chain[i];
       cat.heat = shaded(cat.position)
           ? max(0, cat.heat - HerdHeat.coolRate * dt)
-          : cat.heat + HerdHeat.sunRate * (1 + i * HerdHeat.tailBonus) * dt;
+          : cat.heat +
+              HerdHeat.sunRate *
+                  (1 + i * HerdHeat.tailBonus) *
+                  (cat.trait == HerdTrait.chubby ? HerdTraits.chubbyHeat : 1) *
+                  dt;
     }
     final fainted = chain.where((cat) => cat.heat >= 1).toList();
     for (final cat in fainted) {
@@ -399,7 +532,12 @@ class HerdRound {
               sheet.contains(cat.position.toOffset()) &&
               onThinIce(cat.position))
           .toList();
-      final extra = riders.length - HerdThinIce.safeLoad;
+      final load = riders.fold<int>(
+          0,
+          (sum, cat) =>
+              sum +
+              (cat.trait == HerdTrait.chubby ? HerdTraits.chubbyIceWeight : 1));
+      final extra = load - HerdThinIce.safeLoad;
       final previousCrack = iceCrack[z];
       iceCrack[z] = extra > 0
           ? iceCrack[z] + extra * HerdThinIce.crackRate * dt
@@ -517,7 +655,11 @@ class HerdRound {
       }
       for (final spot in spots) {
         final id = cats.length;
-        cats.add(HerdCat(id, types[id % types.length], spot, group: group));
+        final cat = HerdCat(id, types[id % types.length], spot, group: group);
+        if (spot == spots.last && group < map.specials.length) {
+          cat.trait = map.specials[group];
+        }
+        cats.add(cat);
       }
     }
   }

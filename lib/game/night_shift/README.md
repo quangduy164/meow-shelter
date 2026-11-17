@@ -175,3 +175,17 @@ Trùm nán lại 1.2s thay vì 1.8s. Chỉ thò đầu 0.8s, sau đó vào lồn
   sáng như cũ. Tiếp sức/Cứu đúng nhịp và thưởng Nguyệt quang/xu vẫn áp dụng.
 - `trapCapture` vô hiệu thao tác bế/chơi trên mèo Kho hàng; `trapManaged` chỉ
   dừng AI khi cảnh đang dẫn mèo vào lồng. Map khác giữ luật giống mèo cũ.
+
+## Vườn lau
+
+Map thứ năm. Mèo vào sân sẽ trốn ngay trong năm bụi lau, không hiện và không
+nhận chạm. Mèo đổi sang bụi kề sau vài giây, để lại vết chân vàng từ bụi cũ
+sang bụi mới. Chạm đúng bụi: mèo lộ ra cạnh bụi, đã no và sẵn sàng bế vào ổ.
+Chạm hụt: bụi nghỉ 1.5s, mèo ở bụi kề đổi chỗ. Kéo cá vào bụi trống để sau 1.2s
+dụ một mèo ở bụi kề vào đó.
+
+- Logic: `maps/reed_garden.dart`; gắn mèo, chạm, cá: `maps/reed_garden_scene.dart`;
+  vẽ nền, bụi và vết: `maps/reed_garden_painter.dart`.
+- Biến thể: Lau tĩnh; Gió lau đổi bụi nhanh hơn; Sương lau vết tan nhanh nhưng
+  cá dụ được mèo cách hai bụi.
+- Thẻ riêng: Dấu chân sương, Lau lặng gió, Rẽ lau nhẹ, Chuông lau.

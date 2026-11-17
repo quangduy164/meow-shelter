@@ -10,11 +10,12 @@ enum TrapPhase {
   peeking,
   entering,
   inside,
+  closing,
   leaving,
   cooling
 }
 
-enum TrapEvent { fed, escaped }
+enum TrapEvent { fed, captured, escaped }
 
 class TrapSlot {
   TrapSlot(this.cage, this.lane, this.area);
@@ -23,13 +24,22 @@ class TrapSlot {
   TrapPhase phase = TrapPhase.open;
   bool baited = false, paid = false, chimed = false;
   double elapsed = 0, baitAge = 0, hold = 1.8, cool = 0;
+  bool get opensRight => lane == 1;
   bool get occupied => phase != TrapPhase.open && phase != TrapPhase.cooling;
   bool get canBait => phase == TrapPhase.open && !baited;
+  bool get showsFish =>
+      baited ||
+      phase == TrapPhase.approaching ||
+      phase == TrapPhase.peeking ||
+      phase == TrapPhase.entering ||
+      phase == TrapPhase.inside;
 }
 
 /// Trap timing owns no sprites or wallet. The scene connects cats and currency.
 class WarehouseTraps {
+  static const closeSeconds = .75;
   final slots = <TrapSlot>[];
+  final cages = <Rect>[];
   double entrySeconds = 1.0, holdBonus = 0, scareRadius = 130;
   bool linked = false;
   int lanes = 1;
@@ -41,15 +51,21 @@ class WarehouseTraps {
     scareRadius =
         130 * math.pow(.5, run.count(NightCard.quietDoors)).toDouble();
     final centers = run.variant == NightVariant.warehouseStaggered
-        ? const [Offset(.2, .43), Offset(.5, .60), Offset(.8, .43)]
-        : const [Offset(.2, .55), Offset(.5, .55), Offset(.8, .55)];
+        ? const [Offset(.17, .47), Offset(.5, .61), Offset(.83, .47)]
+        : const [Offset(.17, .54), Offset(.5, .54), Offset(.83, .54)];
     slots.clear();
+    cages.clear();
     for (var cage = 0; cage < centers.length; cage++) {
       final c = centers[cage];
+      final rect = Rect.fromCenter(center: c, width: .22, height: .24);
+      cages.add(rect);
       for (var lane = 0; lane < lanes; lane++) {
-        final rect = Rect.fromLTWH(
-            c.dx - .13 + lane * .26 / lanes, c.dy - .11, .26 / lanes, .22);
-        final slot = TrapSlot(cage, lane, rect);
+        final width = rect.width / lanes;
+        final slot = TrapSlot(
+            cage,
+            lane,
+            Rect.fromLTWH(
+                rect.left + lane * width, rect.top, width, rect.height));
         if (run.variant == NightVariant.warehouseService && cage == 1) {
           slot.phase = TrapPhase.cooling;
           slot.cool = 8;
@@ -59,6 +75,8 @@ class WarehouseTraps {
     }
   }
 
+  bool blocks(Rect bounds) =>
+      cages.any((cage) => cage.inflate(.012).overlaps(bounds));
   TrapSlot? at(Offset point, Size field) => slots
       .where((s) => s.area
           .contains(Offset(point.dx / field.width, point.dy / field.height)))
@@ -83,14 +101,28 @@ class WarehouseTraps {
     slot.elapsed = 0;
   }
 
+  bool shut(TrapSlot slot, {bool forgiving = false}) {
+    if (!catchable(slot, forgiving: forgiving)) return false;
+    slot.phase = TrapPhase.closing;
+    slot.elapsed = 0;
+    return true;
+  }
+
   double progress(TrapSlot slot) => switch (slot.phase) {
         TrapPhase.peeking => .22,
         TrapPhase.entering =>
           .22 + .78 * (slot.elapsed / entrySeconds).clamp(0, 1),
-        TrapPhase.inside => 1,
+        TrapPhase.inside || TrapPhase.closing => 1,
         TrapPhase.leaving => 1 - (slot.elapsed / .8).clamp(0, 1),
         _ => 0,
       };
+  double fishLeft(TrapSlot slot) => slot.phase == TrapPhase.inside
+      ? 1 - (slot.elapsed / slot.hold).clamp(0, 1)
+      : 1;
+  double doorClosed(TrapSlot slot) => slot.phase == TrapPhase.closing
+      ? (slot.elapsed / .18).clamp(0, 1).toDouble()
+      : 0;
+
   List<(TrapSlot, TrapEvent)> update(double dt,
       {bool frozen = false,
       double windowScale = 1,
@@ -116,6 +148,7 @@ class WarehouseTraps {
         TrapPhase.peeking => .8,
         TrapPhase.entering => entrySeconds,
         TrapPhase.inside => slot.hold,
+        TrapPhase.closing => closeSeconds,
         _ => .8,
       };
       if (slot.elapsed < duration) continue;
@@ -128,6 +161,9 @@ class WarehouseTraps {
           events.add((slot, TrapEvent.fed));
         case TrapPhase.inside:
           slot.phase = TrapPhase.leaving;
+        case TrapPhase.closing:
+          reset(slot);
+          events.add((slot, TrapEvent.captured));
         case TrapPhase.leaving:
           reset(slot);
           events.add((slot, TrapEvent.escaped));
@@ -154,7 +190,7 @@ class WarehouseTraps {
     if (linked) {
       final other = slots.firstWhere(
           (s) => s.cage == (selected.cage + 1) % 3 && s.lane == selected.lane);
-      if (other.occupied) yield other;
+      if (other.occupied && other.phase != TrapPhase.closing) yield other;
     }
   }
 }

@@ -76,7 +76,7 @@ class CampState {
   }
 
   void _reset() {
-    coins = 0;
+    coins = startingCoins;
     for (final c in [rescued, affection, placement, levelStars]) {
       c.clear();
     }
@@ -125,7 +125,9 @@ class CampState {
   static const bondedAffection = 10;
 
   final SharedPreferences preferences;
-  int coins = 0;
+  /// Coins a brand-new save starts with: enough for a first cat or toys.
+  static const startingCoins = 150;
+  int coins = startingCoins;
   final rescued = <String, int>{};
   final affection = <String, int>{};
   final owned = <String>{};

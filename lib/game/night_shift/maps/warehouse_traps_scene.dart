@@ -18,6 +18,7 @@ class _TrapCat {
   _TrapCat(this.cat) : size = cat.size.clone();
   final CatComponent cat;
   final Vector2 size;
+  final route = <Vector2>[];
 }
 
 class WarehouseTrapsScene extends NightScene {
@@ -27,7 +28,7 @@ class WarehouseTrapsScene extends NightScene {
   final traps = WarehouseTraps();
   final moon = Moonlight();
   final _parts = <Component>[];
-  final _doors = <WarehouseDoor>[];
+  final _cages = <Component>[];
   final _cats = <TrapSlot, _TrapCat>{};
   NightRun get run => game.night!.run!;
   @override
@@ -50,21 +51,37 @@ class WarehouseTrapsScene extends NightScene {
   @override
   void onMistake() {}
   @override
-  bool blocks(Rect bounds) => false;
+  bool blocks(Rect bounds) => traps.blocks(bounds);
   @override
   bool allowsBait(Offset point, Size field) => traps.at(point, field) != null;
+  @override
+  Offset? spawnPosition(Size field, Size cat, math.Random random) {
+    for (var i = 0; i < 40; i++) {
+      final point = Offset(random.nextDouble() * (field.width - cat.width),
+          field.height * (.2 + random.nextDouble() * .5));
+      if (!traps.blocks(Rect.fromLTWH(
+          point.dx / field.width,
+          point.dy / field.height,
+          cat.width / field.width,
+          cat.height / field.height))) {
+        return point;
+      }
+    }
+    return Offset(field.width * .04, field.height * .2);
+  }
+
   @override
   bool isLit(Offset point, Size size) =>
       moon.contains(point, size) || _cageLit(point, size);
   bool _cageLit(Offset point, Size size) => traps.slots.any((s) =>
       (s.baited || s.occupied || s.cool > 0) &&
-      Rect.fromLTWH(s.area.left * size.width, s.area.top * size.height,
-              s.area.width * size.width, s.area.height * size.height)
-          .inflate(22)
-          .contains(point));
+      _pixels(s.area).inflate(22).contains(point));
   @override
   bool overlappingLights(Offset point, Size size) =>
       moon.contains(point, size) && _cageLit(point, size);
+
+  Rect _pixels(Rect r) => Rect.fromLTWH(r.left * game.size.x,
+      r.top * game.size.y, r.width * game.size.x, r.height * game.size.y);
 
   @override
   void mount() {
@@ -88,9 +105,9 @@ class WarehouseTrapsScene extends NightScene {
       actor.cat.leaveTrap();
     }
     _cats.clear();
-    game.removeAll([..._parts, ..._doors]);
+    game.removeAll([..._parts, ..._cages]);
     _parts.clear();
-    _doors.clear();
+    _cages.clear();
   }
 
   @override
@@ -98,25 +115,24 @@ class WarehouseTrapsScene extends NightScene {
       {required bool thickClouds, required double afterglowSeconds}) {
     traps.begin(run);
     moon.reset(fullMoon: run.has(NightCard.fullMoon), thickClouds: thickClouds);
-    game.removeAll(_doors);
-    _doors.clear();
-    _doors.addAll([
-      for (final slot in traps.slots)
+    game.removeAll(_cages);
+    _cages.clear();
+    for (final slot in traps.slots) {
+      _cages.addAll([
+        WarehouseCageBack(slot, traps),
         WarehouseDoor(slot, traps,
             onClose: close,
             canClose: (s) =>
-                traps.catchable(s, forgiving: game.night!.acceptsAnyBed))
-    ]);
-    game.addAll(_doors);
+                traps.catchable(s, forgiving: game.night!.acceptsAnyBed)),
+      ]);
+    }
+    game.addAll(_cages);
   }
 
   @override
   void prepareBait() {
     final slot = traps.slots.firstWhere((s) => s.canBait);
-    placeBait(
-        Offset(slot.area.center.dx * game.size.x,
-            slot.area.center.dy * game.size.y),
-        free: true);
+    placeBait(_pixels(slot.area).center, free: true);
   }
 
   @override
@@ -136,29 +152,78 @@ class WarehouseTrapsScene extends NightScene {
     GameAudio.instance.playRescue(GameSound.baitDrop);
     if (!slot.chimed) {
       slot.chimed = true;
-      onFirstLight(
-          Offset(slot.area.center.dx * game.size.x,
-              slot.area.center.dy * game.size.y),
-          game.size.x * .16);
+      onFirstLight(_pixels(slot.area).center, game.size.x * .16);
     }
     return true;
   }
 
-  Vector2 _entry(TrapSlot s, CatComponent cat) => Vector2(
-      s.area.left * game.size.x - cat.size.x * .6,
-      s.area.center.dy * game.size.y - cat.size.y / 2);
-  Vector2 _inside(TrapSlot s, CatComponent cat) => Vector2(
-      (s.area.left + s.area.width * (run.has(NightCard.deepBait) ? .64 : .55)) *
-              game.size.x -
-          cat.size.x / 2,
-      s.area.center.dy * game.size.y - cat.size.y / 2);
+  Vector2 _entry(TrapSlot s, CatComponent cat) {
+    final area = _pixels(s.area);
+    final x = s.opensRight
+        ? area.right + game.size.x * .014
+        : area.left - cat.size.x - game.size.x * .014;
+    return Vector2(x, area.bottom - cat.size.y * .92);
+  }
+
+  Vector2 _inside(TrapSlot s, CatComponent cat) {
+    final area = _pixels(s.area);
+    final depth = run.has(NightCard.deepBait) ? .67 : .58;
+    final center = s.opensRight
+        ? area.right - area.width * depth
+        : area.left + area.width * depth;
+    return Vector2(center - cat.size.x / 2, area.bottom - cat.size.y * .92);
+  }
+
+  bool _clear(Vector2 from, Vector2 to, Vector2 size) {
+    final steps = math.max(1, ((to - from).length / 8).ceil());
+    for (var i = 0; i <= steps; i++) {
+      final p = from + (to - from) * (i / steps);
+      if (traps.blocks(Rect.fromLTWH(p.x / game.size.x, p.y / game.size.y,
+          size.x / game.size.x, size.y / game.size.y))) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  List<Vector2> _route(CatComponent cat, Vector2 target) {
+    final start = cat.position.clone();
+    final yTop = game.size.y * .2;
+    final yBottom = game.size.y * .7;
+    final gaps = [
+      0.0,
+      for (var i = 0; i < traps.cages.length - 1; i++)
+        (traps.cages[i].right + traps.cages[i + 1].left) / 2 * game.size.x -
+            cat.size.x / 2,
+      game.size.x - cat.size.x,
+    ];
+    final candidates = <List<Vector2>>[
+      [target],
+      for (final y in [yTop, yBottom])
+        [Vector2(start.x, y), Vector2(target.x, y), target],
+      for (final x in gaps)
+        for (final y in [yTop, yBottom])
+          [Vector2(x, start.y), Vector2(x, y), Vector2(target.x, y), target],
+    ];
+    bool valid(List<Vector2> path) {
+      var from = start;
+      for (final point in path) {
+        if (!_clear(from, point, cat.size)) return false;
+        from = point;
+      }
+      return true;
+    }
+
+    return candidates.firstWhere(valid, orElse: () => [target]);
+  }
+
   void _release(TrapSlot slot, {bool startled = false}) {
     final actor = _cats.remove(slot);
     if (actor == null) return;
     final cat = actor.cat;
-    final center = cat.center.clone();
     cat.size.setFrom(actor.size);
-    cat.position = center - cat.size / 2;
+    final exit = _entry(slot, cat);
+    cat.position.setFrom(exit);
     cat.position.x =
         cat.position.x.clamp(0, math.max(0, game.size.x - cat.size.x));
     cat.position.y = cat.position.y.clamp(game.size.y * .2, game.size.y * .7);
@@ -167,28 +232,27 @@ class WarehouseTrapsScene extends NightScene {
 
   void close(TrapSlot selected) {
     final night = game.night!;
-    if (game.paused || night.phase != NightPhase.playing) return;
+    if (game.paused ||
+        night.phase != NightPhase.playing ||
+        selected.phase == TrapPhase.closing) {
+      return;
+    }
     if (!_cats.containsKey(selected)) {
       game.hud.showBanner(['Chờ mèo vào rồi mới chốt cửa'], 1.3);
       return;
     }
     for (final slot in traps.closingGroup(selected).toList()) {
-      if (night.phase != NightPhase.playing) break;
       final actor = _cats[slot];
       if (actor == null) continue;
-      final caught = traps.catchable(slot, forgiving: night.acceptsAnyBed);
-      if (caught) {
-        // Mark the cat before notifying the controller, so a linked door cannot pay twice.
-        _cats.remove(slot);
-        traps.reset(slot);
-        actor.cat.rescueFromTrap();
+      if (traps.shut(slot, forgiving: night.acceptsAnyBed)) {
+        actor.cat.positionInTrap(_inside(slot, actor.cat), walking: false);
         GameAudio.instance.playRescue(GameSound.catRescue, important: true);
       } else {
         _release(slot, startled: !night.assist.calm);
         traps.reset(slot);
         game.stats.startles++;
-        final center = Vector2(slot.area.center.dx * game.size.x,
-            slot.area.center.dy * game.size.y);
+        final light = _pixels(slot.area).center;
+        final center = Vector2(light.dx, light.dy);
         for (final cat in game.children.whereType<CatComponent>()) {
           if (!cat.trapManaged &&
               (cat.center - center).length < traps.scareRadius) {
@@ -212,11 +276,15 @@ class WarehouseTrapsScene extends NightScene {
         frozenSlot: (slot) =>
             _cats[slot] != null && night.freezesCat(_cats[slot]!.cat));
     for (final (slot, event) in events) {
-      if (event == TrapEvent.escaped) {
-        _release(slot);
-      } else {
-        final cat = _cats[slot]?.cat;
-        if (cat != null) night.cardEffects.onFed(cat);
+      switch (event) {
+        case TrapEvent.escaped:
+          _release(slot);
+        case TrapEvent.fed:
+          final cat = _cats[slot]?.cat;
+          if (cat != null) night.cardEffects.onFed(cat);
+        case TrapEvent.captured:
+          final actor = _cats.remove(slot);
+          if (night.phase == NightPhase.playing) actor?.cat.rescueFromTrap();
       }
     }
     for (final slot in traps.slots) {
@@ -231,15 +299,20 @@ class WarehouseTrapsScene extends NightScene {
             .where((c) =>
                 c.isLoaded && !c.isDelivered && !c.trapManaged && !c.isRemoving)
             .toList()
-          ..sort((a, b) => (a.position - _inside(slot, a))
+          ..sort((a, b) => (a.position - _entry(slot, a))
               .length2
-              .compareTo((b.position - _inside(slot, b)).length2));
+              .compareTo((b.position - _entry(slot, b)).length2));
         if (candidates.isNotEmpty) {
           final cat = candidates.first;
-          _cats[slot] = _TrapCat(cat);
-          final available =
-              slot.area.width * game.size.x * (cat.isBoss ? .7 : .62);
-          cat.size.scale(math.min(1, available / cat.size.x));
+          final actor = _TrapCat(cat);
+          _cats[slot] = actor;
+          final area = _pixels(slot.area);
+          final scale = math.min(
+              1.0,
+              math.min(area.width * (cat.isBoss ? .82 : .74) / cat.size.x,
+                  area.height * .82 / cat.size.y));
+          cat.size.scale(scale);
+          actor.route.addAll(_route(cat, _entry(slot, cat)));
           traps.assign(slot, boss: cat.isBoss, trusting: cat.hasEaten);
           cat.hasEaten = false;
           cat.enterTrap();
@@ -247,13 +320,16 @@ class WarehouseTrapsScene extends NightScene {
       }
     }
     for (final entry in _cats.entries.toList()) {
-      final slot = entry.key, cat = entry.value.cat;
+      final slot = entry.key, actor = entry.value, cat = actor.cat;
       if (slot.phase == TrapPhase.approaching) {
-        final target = _entry(slot, cat), delta = target - cat.position;
+        final target =
+            actor.route.isEmpty ? _entry(slot, cat) : actor.route.first;
+        final delta = target - cat.position;
         final step = 85 * run.lure * dt;
         if (delta.length <= step + 1) {
-          cat.positionInTrap(target, walking: false);
-          traps.arrive(slot);
+          cat.positionInTrap(target, walking: actor.route.length > 1);
+          if (actor.route.isNotEmpty) actor.route.removeAt(0);
+          if (actor.route.isEmpty) traps.arrive(slot);
         } else {
           cat.positionInTrap(cat.position + delta.normalized() * step,
               walking: true);
@@ -261,8 +337,8 @@ class WarehouseTrapsScene extends NightScene {
       } else {
         final from = _entry(slot, cat), to = _inside(slot, cat);
         cat.positionInTrap(from + (to - from) * traps.progress(slot),
-            walking: slot.phase != TrapPhase.inside &&
-                slot.phase != TrapPhase.peeking);
+            walking: slot.phase == TrapPhase.entering ||
+                slot.phase == TrapPhase.leaving);
       }
     }
   }
@@ -270,11 +346,7 @@ class WarehouseTrapsScene extends NightScene {
   Iterable<(Offset, double)> _lights() sync* {
     for (final slot in traps.slots) {
       if (slot.baited || slot.occupied || slot.cool > 0) {
-        yield (
-          Offset(slot.area.center.dx * game.size.x,
-              slot.area.center.dy * game.size.y),
-          65
-        );
+        yield (_pixels(slot.area).center, 65);
       }
     }
     for (final cat in game.children.whereType<CatComponent>()) {

@@ -153,6 +153,7 @@ extension CatCatchBehaviour on CatComponent {
   /// Whether the Himalaya helper's blessing can fill this cat up now.
   bool get canBless =>
       !trapManaged &&
+      !hiddenInCover &&
       isLoaded &&
       !_isDelivered &&
       !_isDragged &&

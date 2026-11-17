@@ -25,7 +25,13 @@ enum NightVariant {
   warehouseStaggered(NightMap.warehouse, 'Lồng so le',
       'Lồng đặt trước sau xen kẽ; chọn mồi để chia mèo ra từng lồng.'),
   warehouseService(NightMap.warehouse, 'Lồng bảo trì',
-      'Một lồng cần chuẩn bị 8 giây đầu đêm; hai lồng khác dùng ngay.');
+      'Một lồng cần chuẩn bị 8 giây đầu đêm; hai lồng khác dùng ngay.'),
+  reedNormal(NightMap.reedGarden, 'Lau tĩnh',
+      'Năm bụi lau, mèo đổi chỗ đều và để lại vết rung.'),
+  reedWindy(NightMap.reedGarden, 'Gió lau',
+      'Gió làm mèo đổi bụi nhanh hơn; hãy theo vết mới nhất.'),
+  reedMist(NightMap.reedGarden, 'Sương lau',
+      'Vết rung tan nhanh, nhưng cá dụ được mèo cách hai bụi.');
 
   const NightVariant(this.map, this.title, this.description);
   final NightMap map;

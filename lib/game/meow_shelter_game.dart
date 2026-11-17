@@ -171,6 +171,8 @@ class MeowShelterGame extends FlameGame {
       level: catLevel,
       isBoss: boss,
       trapCapture: night?.scene.usesTraps ?? false,
+      // Night maps draw darkness, moon and lamp controls up to 86.
+      priority: night == null ? 0 : 87,
       isBlocked: _isMapBlocked,
       terrainSpeed: _terrainSpeed,
       lureWaypoint: night?.lureWaypoint,
@@ -315,7 +317,7 @@ class MeowShelterGame extends FlameGame {
 
   void _placeFish(Vector2 point) {
     if (!canPlaceFish) return;
-    if (night?.scene.usesTraps == true) {
+    if (night?.scene.ownsBait == true) {
       if (night!.scene.placeBait(point.toOffset())) {
         stats.fishUsed++;
         if (bait.limited) hud.fishLeft = bait.fishCount;

@@ -42,6 +42,7 @@ class CatComponent extends SpriteAnimationGroupComponent<CatState>
     this.assist,
     this.inLight,
     this.freezeInLight,
+    super.priority,
   })  : catchWindow = CatchWindow(
             readySeconds: level.readySeconds,
             gripSeconds: level.skillFor(catType) == CatSkill.slippery
@@ -57,7 +58,7 @@ class CatComponent extends SpriteAnimationGroupComponent<CatState>
 
   final String catType;
   final bool trapCapture;
-  bool trapManaged = false;
+  bool trapManaged = false, hiddenInCover = false;
   final void Function(CatComponent cat)? onFed;
   final double lightTimeScale;
 
@@ -85,6 +86,7 @@ class CatComponent extends SpriteAnimationGroupComponent<CatState>
   double _dodgeTime = 0;
   bool get canLure =>
       !trapCapture &&
+      !hiddenInCover &&
       isLoaded &&
       !_isDelivered &&
       !_isDragged &&
@@ -156,6 +158,7 @@ class CatComponent extends SpriteAnimationGroupComponent<CatState>
 
   @override
   void render(Canvas canvas) {
+    if (hiddenInCover) return;
     if (!trapCapture && (catchWindow.canCatch || _isDragged)) {
       final fraction =
           _isDragged ? catchWindow.gripFraction : catchWindow.readyFraction;
@@ -227,6 +230,21 @@ class CatComponent extends SpriteAnimationGroupComponent<CatState>
     }
   }
 
+  void hideInCover(Vector2 spot) {
+    enterTrap();
+    hiddenInCover = true;
+    position.setFrom(spot);
+    _setState(CatState.idle);
+  }
+
+  void revealFromCover(Vector2 spot) {
+    hiddenInCover = false;
+    trapManaged = false;
+    position.setFrom(spot);
+    bless();
+    _dialogue.say('Bị tìm thấy rồi!');
+  }
+
   void rescueFromTrap() {
     if (_isDelivered || _deliveredNotified) return;
     _isDelivered = _deliveredNotified = true;
@@ -237,7 +255,11 @@ class CatComponent extends SpriteAnimationGroupComponent<CatState>
   @override
   void onTapDown(TapDownEvent event) {
     super.onTapDown(event);
-    if (trapCapture || !isPlaying() || catchWindow.canCatch) return;
+    // Warehouse cats sit above cages visually, but the cage receives the tap.
+    if (trapCapture || hiddenInCover) event.continuePropagation = true;
+    if (trapCapture || hiddenInCover || !isPlaying() || catchWindow.canCatch) {
+      return;
+    }
     if (level.isTutorial && catType != 'calico') return;
     if (_isDragged || _isDropWrong || _isDelivered || _isEscaping) return;
     if (catType == 'calico') {
@@ -289,7 +311,14 @@ class CatComponent extends SpriteAnimationGroupComponent<CatState>
   @override
   void onDragStart(DragStartEvent event) {
     super.onDragStart(event);
-    if (trapCapture || !isPlaying() || _isDropWrong || _isDelivered) return;
+    if (trapCapture || hiddenInCover) event.continuePropagation = true;
+    if (trapCapture ||
+        hiddenInCover ||
+        !isPlaying() ||
+        _isDropWrong ||
+        _isDelivered) {
+      return;
+    }
 
     if (!catchWindow.grab()) {
       if (_dodgeTime <= 0 && !level.isTutorial) _startle();

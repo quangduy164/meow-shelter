@@ -78,11 +78,69 @@ class WarehouseMoon extends PositionComponent with HasGameReference {
   void render(Canvas canvas) => paintMoon(canvas, game.size.toSize(), moon);
 }
 
-/// Cage front is above cats. Taps are intercepted here, never used to carry cats.
+Rect _cageRect(TrapSlot slot, Vector2 field) => Rect.fromLTWH(
+    slot.area.left * field.x,
+    slot.area.top * field.y,
+    slot.area.width * field.x,
+    slot.area.height * field.y);
+
+/// Floor, back bars and bait stay behind cats.
+class WarehouseCageBack extends PositionComponent with HasGameReference {
+  WarehouseCageBack(this.slot, this.traps) : super(priority: 70);
+  final TrapSlot slot;
+  final WarehouseTraps traps;
+
+  @override
+  void render(Canvas canvas) {
+    final body = _cageRect(slot, game.size).deflate(3);
+    final shell = RRect.fromRectAndRadius(body, const Radius.circular(8));
+    canvas.drawRRect(shell.shift(const Offset(0, 5)),
+        Paint()..color = const Color(0x55101519));
+    canvas.drawRRect(
+        shell,
+        Paint()
+          ..shader = ui.Gradient.linear(body.topCenter, body.bottomCenter,
+              const [Color(0xFF1C2B31), Color(0xFF34443F)]));
+    final back = Paint()
+      ..color = const Color(0x5574918D)
+      ..strokeWidth = 1.5;
+    for (var y = body.top + 14; y < body.bottom - 18; y += 14) {
+      canvas.drawLine(
+          Offset(body.left + 7, y), Offset(body.right - 7, y), back);
+    }
+    final floor = Rect.fromLTWH(body.left + 4, body.bottom - body.height * .22,
+        body.width - 8, body.height * .18);
+    canvas.drawRRect(RRect.fromRectAndRadius(floor, const Radius.circular(4)),
+        Paint()..color = const Color(0xFF8A6A43));
+    for (var x = floor.left + 14; x < floor.right; x += 18) {
+      canvas.drawLine(Offset(x, floor.top + 2), Offset(x - 5, floor.bottom - 2),
+          Paint()..color = const Color(0x665B3F27));
+    }
+    if (!slot.showsFish) return;
+    final left = traps.fishLeft(slot);
+    final x = slot.opensRight
+        ? body.left + body.width * .34
+        : body.right - body.width * .34;
+    final center = Offset(x, floor.top + 5);
+    canvas.drawOval(
+        Rect.fromCenter(
+            center: center + const Offset(0, 9), width: 46, height: 10),
+        Paint()..color = const Color(0x66392616));
+    canvas.save();
+    canvas.clipRect(Rect.fromLTRB(center.dx - 26, center.dy - 18,
+        center.dx - 26 + 52 * left, center.dy + 18));
+    canvas.translate(center.dx, center.dy);
+    canvas.scale(slot.opensRight ? -.72 : .72, .72);
+    drawFish(canvas, Offset.zero);
+    canvas.restore();
+  }
+}
+
+/// Front bars and gate cover cats. The front also receives taps.
 class WarehouseDoor extends PositionComponent
     with HasGameReference, TapCallbacks {
   WarehouseDoor(this.slot, this.traps, {required this.onClose, this.canClose})
-      : super(priority: 12);
+      : super(priority: 88);
   final TrapSlot slot;
   final WarehouseTraps traps;
   final void Function(TrapSlot) onClose;
@@ -90,11 +148,9 @@ class WarehouseDoor extends PositionComponent
   @override
   void onGameResize(Vector2 size) {
     super.onGameResize(size);
-    final field = size;
-    position =
-        Vector2(slot.area.left * field.x - 5, slot.area.top * field.y - 14);
-    this.size = Vector2(
-        slot.area.width * field.x + 10, slot.area.height * field.y + 48);
+    final body = _cageRect(slot, size);
+    position = Vector2(body.left - 5, body.top - 16);
+    this.size = Vector2(body.width + 10, body.height + 50);
   }
 
   @override
@@ -108,7 +164,7 @@ class WarehouseDoor extends PositionComponent
                 color: color,
                 fontFamily: 'Roboto',
                 fontSize: font,
-                fontWeight: FontWeight.w800)),
+                fontWeight: FontWeight.w900)),
         textDirection: TextDirection.ltr)
       ..layout(maxWidth: size.x - 8);
     p.paint(c, center - Offset(p.width / 2, 0));
@@ -118,75 +174,83 @@ class WarehouseDoor extends PositionComponent
   @override
   void render(Canvas canvas) {
     final c = canvas;
-    final body = Rect.fromLTWH(5, 14, size.x - 10, size.y - 48);
+    final body = Rect.fromLTWH(8, 19, size.x - 16, size.y - 56);
     final ready = canClose?.call(slot) ?? traps.catchable(slot);
-    final color = ready ? const Color(0xFF96E6AC) : const Color(0xFFD1B17C);
+    final closed = slot.phase == TrapPhase.closing;
+    final color = ready
+        ? const Color(0xFF8FF0A6)
+        : closed
+            ? const Color(0xFFFFD36E)
+            : const Color(0xFFC9AE7C);
+    final metal = Paint()
+      ..color = const Color(0xFFB9C7C1)
+      ..strokeWidth = 2.2
+      ..strokeCap = StrokeCap.round;
     final frame = Paint()
       ..color = color
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 3;
-    c.drawRRect(
-        RRect.fromRectAndRadius(body.inflate(2), const Radius.circular(6)),
-        frame);
-    // Open entrance at left; back and ceiling remain visibly barred.
-    for (var x = body.left + body.width * .35; x < body.right; x += 16) {
-      c.drawLine(
-          Offset(x, body.top + 4),
-          Offset(x, body.bottom - 4),
-          Paint()
-            ..color = const Color(0x778DA4A3)
-            ..strokeWidth = 2);
+      ..strokeWidth = ready ? 4 : 3;
+    final entrance = slot.opensRight ? body.right : body.left;
+    final innerStart = slot.opensRight ? body.left + 10 : body.left + 24;
+    final innerEnd = slot.opensRight ? body.right - 24 : body.right - 10;
+    for (var x = innerStart; x <= innerEnd; x += 13) {
+      c.drawLine(Offset(x, body.top + 5), Offset(x, body.bottom - 5), metal);
     }
     c.drawLine(body.topLeft, body.topRight, frame);
     c.drawLine(body.bottomLeft, body.bottomRight, frame);
-    if (slot.phase == TrapPhase.cooling) {
-      c.drawRect(body, Paint()..color = const Color(0x66506468));
-      for (var y = body.top + 8; y < body.bottom; y += 15) {
-        c.drawLine(
-            Offset(body.left, y),
-            Offset(body.right, y),
-            Paint()
-              ..color = const Color(0xFF91A7A7)
-              ..strokeWidth = 2);
-      }
+    c.drawLine(Offset(slot.opensRight ? body.left : body.right, body.top),
+        Offset(slot.opensRight ? body.left : body.right, body.bottom), frame);
+    final close = traps.doorClosed(slot);
+    final gateHeight = body.height * (.18 + .82 * close);
+    final gateX = slot.opensRight ? entrance - 18 : entrance;
+    final gate = Rect.fromLTWH(gateX, body.top, 18, gateHeight);
+    c.drawRRect(RRect.fromRectAndRadius(gate, const Radius.circular(3)),
+        Paint()..color = const Color(0xDD394B4F));
+    for (var x = gate.left + 4; x < gate.right; x += 7) {
+      c.drawLine(Offset(x, gate.top + 2), Offset(x, gate.bottom - 2), metal);
     }
-    if (slot.baited) {
-      c.save();
-      c.translate(body.center.dx + 7, body.center.dy);
-      c.scale(.6);
-      drawFish(c, Offset.zero);
-      c.restore();
+    c.drawLine(gate.bottomLeft, gate.bottomRight, frame);
+    if (slot.phase == TrapPhase.cooling) {
+      c.drawRect(body, Paint()..color = const Color(0x77506468));
+      for (var y = body.top + 9; y < body.bottom; y += 14) {
+        c.drawLine(Offset(body.left, y), Offset(body.right, y), metal);
+      }
     }
     if (ready) {
       c.drawRRect(
-          RRect.fromRectAndRadius(body.inflate(5), const Radius.circular(8)),
+          RRect.fromRectAndRadius(body.inflate(5), const Radius.circular(9)),
           Paint()
-            ..color = const Color(0x5596E6AC)
+            ..color = const Color(0x6696E6AC)
             ..style = PaintingStyle.stroke
-            ..strokeWidth = 3);
+            ..strokeWidth = 4);
     }
     final name =
         'LỒNG ${slot.cage + 1}${traps.lanes == 2 ? ' · ${slot.lane + 1}' : ''}';
-    _label(c, name, Offset(body.center.dx, 0), color, font: 9);
-    final button = Rect.fromLTWH(5, body.bottom + 9, body.width, 25);
+    _label(c, name, Offset(body.center.dx, 1), color, font: 10);
+    final button = Rect.fromLTWH(body.left, body.bottom + 8, body.width, 25);
     c.drawRRect(
-        RRect.fromRectAndRadius(button, const Radius.circular(6)),
+        RRect.fromRectAndRadius(button, const Radius.circular(7)),
         Paint()
-          ..color = ready ? const Color(0xFF3C8065) : const Color(0xFF354B51));
+          ..color = ready
+              ? const Color(0xFF3C8065)
+              : closed
+                  ? const Color(0xFF8A6630)
+                  : const Color(0xFF354B51));
     final text = ready
         ? 'CHỐT NGAY'
         : switch (slot.phase) {
             TrapPhase.open => slot.baited ? 'CHỜ MÈO' : 'THẢ MỒI',
             TrapPhase.approaching => 'MÈO ĐANG TỚI',
-            TrapPhase.peeking => 'CHỈ THÒ ĐẦU',
+            TrapPhase.peeking => 'MÈO DÒ ĐƯỜNG',
             TrapPhase.entering => 'ĐANG VÀO',
-            TrapPhase.inside => 'CHỐT NGAY',
+            TrapPhase.inside => 'ĐANG ĂN',
+            TrapPhase.closing => 'ĐÃ CHỐT',
             TrapPhase.leaving => 'MÈO ĐANG RA',
             TrapPhase.cooling => 'CHỜ ${slot.cool.ceil()}s',
           };
     _label(c, text, Offset(button.center.dx, button.top + 6),
         const Color(0xFFFFF4DA),
-        font: 9);
+        font: 10);
     if (slot.phase == TrapPhase.inside) {
       c.drawRect(
           Rect.fromLTWH(body.left, body.bottom + 3,

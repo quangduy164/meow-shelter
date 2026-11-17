@@ -57,12 +57,13 @@ Cứu mèo mỗi đêm trên các bản đồ luân phiên, chọn thẻ và gh�
 Thẻ riêng tạo dư sáng/đèn nối tiếp ở Sân sau, xe chở cá/khoảng yên tĩnh ở Chợ,
 cầu đôi/mâm cá chung ở Mái nhà. Kho hàng xuất hiện ở đêm 4: đặt mồi trong lồng,
 chờ tín hiệu xanh rồi chạm chốt cửa, tự cứu mèo mà không cần bế. Bốn thẻ riêng:
-Cửa êm, Hai ngăn, Mồi sâu và Dây giật chung.
+Cửa êm, Hai ngăn, Mồi sâu và Dây giật chung. Vườn lau ở đêm 5: theo vết lau rung,
+chạm đúng bụi để mèo lộ ra rồi bế vào ổ.
 Thẻ chung hỗ trợ hồi kỹ năng, hoàn cá và cứu liên tiếp.
 
-Từ đêm 5, mỗi map có các biến thể đèn/trăng, lịch xe, cầu hoặc lồng so le/bảo trì,
+Từ đêm 6, mỗi map có các biến thể đèn/trăng, lịch xe, cầu hoặc lồng so le/bảo trì,
 kết hợp nhịp mèo rải đều, từng đợt hoặc dồn nhịp. Hướng dẫn báo trước điều kiện,
-HUD đếm ngược đợt tới; bốn đêm đầu giữ nhịp làm quen.
+HUD đếm ngược đợt tới; năm đêm đầu giữ nhịp làm quen.
 
 ### Câu cá
 
@@ -107,7 +108,7 @@ Dùng joystick dẫn mèo đầu đàn đến các nhóm mèo rồi đưa đàn 
 
 ### Trại mèo
 
-- Mèo cam có sẵn; mua thêm các loài trong cửa hàng để chúng xuất hiện tại trại.
+- Mèo cam có sẵn; bản lưu mới bắt đầu với 150 xu (`CampState.startingCoins`) để mua thêm loài trong cửa hàng.
 - Chạm để vuốt ve, kéo để bế mèo. Độ thân thiết được lưu theo loài.
 - Mua đồ trang trí và kéo thả để sắp xếp; vị trí được lưu lại.
 - Tiền hiển thị **bên trong Cửa hàng**, không nằm trên homepage hoặc thanh chính của trại.

@@ -111,7 +111,7 @@ class NightRun {
                   count(NightCard.nightWind) + count(NightCard.fewerLanterns),
                 NightMap.marketAlley => count(NightCard.busyMarket),
                 NightMap.rooftops => count(NightCard.stormyRoof),
-                NightMap.warehouse => 0,
+                NightMap.warehouse || NightMap.reedGarden => 0,
               });
 
   // The night itself.
@@ -123,8 +123,15 @@ class NightRun {
   int get seconds => (22 + quota * 8) + 10 * count(NightCard.longNight);
 
   /// Rotate rescue maps each night.
-  NightMap mapFor(int night) =>
-      NightMap.values[(night - 1) % NightMap.values.length];
+  // Test order: put the newest maps first.
+  static const mapOrder = [
+    NightMap.warehouse,
+    NightMap.reedGarden,
+    NightMap.backyard,
+    NightMap.marketAlley,
+    NightMap.rooftops,
+  ];
+  NightMap mapFor(int night) => mapOrder[(night - 1) % mapOrder.length];
   NightMap get map => mapFor(night);
 
   double get lightTimeScale => map == NightMap.backyard

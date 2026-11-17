@@ -5,7 +5,8 @@ enum NightMap {
   marketAlley('Hẻm chợ đêm',
       'Giữ độ ồn dưới 100; vùng đèn bảo vệ mèo khi xe đẩy đi qua'),
   rooftops('Mái nhà', 'Đặt cá ở mái giữa; hạ cầu để mèo hai mái bên sang ăn'),
-  warehouse('Kho hàng', 'Đặt mồi trong lồng; chờ tín hiệu xanh rồi chốt cửa');
+  warehouse('Kho hàng', 'Đặt mồi trong lồng; chờ tín hiệu xanh rồi chốt cửa'),
+  reedGarden('Vườn lau', 'Theo vết lau rung, chạm đúng bụi để tìm mèo trốn');
 
   const NightMap(this.title, this.rule);
   final String title, rule;
@@ -101,7 +102,15 @@ enum NightCard {
       limit: 2, map: NightMap.warehouse),
   linkedDoors(
       'Dây giật chung', 'Chốt thêm ngăn cùng hàng của lồng kế tiếp nếu có mèo',
-      limit: 1, map: NightMap.warehouse);
+      limit: 1, map: NightMap.warehouse),
+  dewTracks('Dấu chân sương', 'Vết mèo đổi bụi hiện lâu thêm 2s/cấp',
+      limit: 2, map: NightMap.reedGarden),
+  stillReeds('Lau lặng gió', 'Mèo đổi bụi chậm hơn 30%/cấp',
+      limit: 2, map: NightMap.reedGarden),
+  softParting('Rẽ lau nhẹ', 'Chạm hụt không làm mèo gần đó chạy bụi',
+      limit: 1, map: NightMap.reedGarden),
+  reedBell('Chuông lau', 'Mỗi 8s, một bụi có mèo rung mạnh',
+      limit: 1, map: NightMap.reedGarden);
 
   const NightCard(this.title, this.perk, {this.cost, this.limit = 3, this.map});
   final String title, perk;
@@ -141,6 +150,10 @@ enum NightCard {
         twinCages => 'Ghép Dây giật chung để canh nhiều ngăn cùng lúc.',
         deepBait => 'Ghép Cá thơm để bù thời gian dẫn mèo vào lồng.',
         linkedDoors => 'Ghép Mồi sâu để hai mèo cùng ở trong cửa sổ chốt.',
+        dewTracks => 'Ghép Lau lặng gió để lần theo từng bước dễ hơn.',
+        stillReeds => 'Ghép Cá thơm để dụ mèo vào bụi đã chọn.',
+        softParting => 'Ghép trợ thủ mèo đen để dò bụi an toàn hơn.',
+        reedBell => 'Ghép Chuông đèn: lần tìm thấy đầu tiên kích hoạt chuông.',
         _ => null,
       };
 }

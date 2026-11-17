@@ -487,6 +487,7 @@ class AdventureDecoy extends SpriteAnimationGroupComponent<CatState> {
 
   final bool flip;
   double timeLeft = HomeAttack.decoy.duration;
+  double timeScale = 1;
   bool recalled = false;
   bool empowered = false;
   double _t = 0;
@@ -497,9 +498,10 @@ class AdventureDecoy extends SpriteAnimationGroupComponent<CatState> {
 
   @override
   void update(double dt) {
-    super.update(dt);
-    _t += dt;
-    timeLeft -= dt;
+    final elapsed = dt * timeScale;
+    super.update(elapsed);
+    _t += elapsed;
+    timeLeft -= elapsed;
   }
 
   @override

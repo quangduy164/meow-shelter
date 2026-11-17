@@ -1185,6 +1185,13 @@ class AdventureGame extends FlameGame {
 
   @override
   void update(double dt) {
+    // Children update before the game's timers; preserve the clone for the
+    // stopped portion of this frame, including a partial final frame.
+    final decoy = _decoy;
+    if (decoy != null) {
+      final stopped = min(dt, max(0.0, timeStopTime));
+      decoy.timeScale = dt > 0 ? (dt - stopped) / dt : 1;
+    }
     super.update(dt);
     if (!started) return;
     // Flame can deliver the first update before the viewport and child assets

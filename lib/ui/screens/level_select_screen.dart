@@ -135,9 +135,9 @@ class _ChapterCard extends StatelessWidget {
     final rule = breed.catchRule;
     final mixed = number == levelChapters.length;
     return Container(
-      width: 230,
-      padding: const EdgeInsets.fromLTRB(
-          DS.spaceMd, DS.spaceSm, DS.spaceMd, DS.spaceSm),
+      width: 210,
+      padding: const EdgeInsets.symmetric(
+          horizontal: DS.spaceLg, vertical: DS.spaceMd),
       decoration: BoxDecoration(
         color: DS.surfaceGlass,
         borderRadius: BorderRadius.circular(DS.radiusCard),

@@ -297,7 +297,7 @@ class NightGame {
     _updateArrivalHint();
     _fillField();
     if (run.has(NightCard.preparedBait)) {
-      if (scene.usesTraps) {
+      if (scene.ownsBait) {
         scene.prepareBait();
       } else {
         game.bait.place(Vector2(game.size.x * .5, game.size.y * .5), game.size,

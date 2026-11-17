@@ -39,6 +39,9 @@ class CatSprite extends StatelessWidget {
             alignment:
                 Alignment(frames <= 1 ? -1 : -1 + 2 * frame / (frames - 1), 0),
             child: Image.asset('assets/images/${breed.sheet(action)}',
+                // Decode at the size drawn, not the full 256px sheet.
+                cacheHeight:
+                    (size * MediaQuery.devicePixelRatioOf(context)).ceil(),
                 width: size * frames,
                 height: size,
                 fit: BoxFit.fill,

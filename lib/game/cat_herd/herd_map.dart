@@ -3,10 +3,12 @@ import 'package:flame/components.dart';
 import 'herd_route.dart';
 import 'herd_market.dart';
 import 'herd_snow.dart';
+import 'herd_traits.dart';
 
 export 'herd_market.dart';
 export 'herd_desert.dart';
 export 'herd_snow.dart';
+export 'herd_traits.dart';
 
 enum HerdMapKind { nightMarket, dunes, snow, playground, tutorial }
 
@@ -25,7 +27,8 @@ class HerdMap {
       this.lanternZones = const [],
       this.shade = const [],
       this.thinIce = const [],
-      this.chutes = const []});
+      this.chutes = const [],
+      this.specials = const []});
   final HerdMapKind kind;
   final HerdRoute route;
   final String name, hint;
@@ -42,6 +45,9 @@ class HerdMap {
   /// Snow sheets that crack under a crowd; snowPads inside them stay safe.
   final List<Rect> thinIce;
   final List<HerdChute> chutes;
+
+  /// Personality of the last cat in each cluster, by route group.
+  final List<HerdTrait> specials;
   static const all = [playground, market, desert, winter];
   static const tutorial = HerdMap(HerdMapKind.tutorial, 'SÂN TẬP DẪN ĐÀN',
       'Tập joystick, né các tảng đá và đón đủ 12 bé về nhà.', Color(0xFF8DB6A2),
@@ -56,6 +62,12 @@ class HerdMap {
       'SÂN ĐỒ CHƠI',
       'Len qua khối gỗ, canh xe chạy vòng và né bóng nảy. Bóng chỉ đẩy lệch đàn, không mất mạng.',
       Color(0xFF74A46B),
+      specials: [
+        HerdTrait.sleepy,
+        HerdTrait.curious,
+        HerdTrait.chubby,
+        HerdTrait.golden
+      ],
       route: HerdRoute.playground,
       walls: [
         Rect.fromLTWH(.14, .19, .035, .28),
@@ -67,6 +79,12 @@ class HerdMap {
       'PHỐ CHỢ ĐÊM',
       'Bác bán hàng thấy mèo trong vùng sáng sẽ xua cả đàn. Chờ bác quay đi hoặc đèn lồng tắt rồi lẻn qua.',
       Color(0xFF8470B4),
+      specials: [
+        HerdTrait.curious,
+        HerdTrait.sleepy,
+        HerdTrait.chubby,
+        HerdTrait.golden
+      ],
       route: HerdRoute.market,
       walls: [
         Rect.fromLTWH(.14, .20, .23, .04),
@@ -92,6 +110,12 @@ class HerdMap {
       'ĐỒI CÁT',
       'Nắng làm mèo trong đàn nóng dần; đi qua bóng râm để mát lại. Bão cát có báo trước: nấp sau đá hoặc lều.',
       Color(0xFFD69C55),
+      specials: [
+        HerdTrait.sleepy,
+        HerdTrait.chubby,
+        HerdTrait.curious,
+        HerdTrait.golden
+      ],
       route: HerdRoute.desert,
       walls: [
         Rect.fromLTWH(.13, .25, .10, .09),
@@ -103,12 +127,8 @@ class HerdMap {
         Rect.fromLTWH(.22, .45, .20, .13),
         Rect.fromLTWH(.53, .68, .18, .15)
       ],
-      slopes: [
-        Rect.fromLTWH(.59, .28, .20, .28)
-      ],
-      landings: [
-        Rect.fromLTWH(.59, .56, .23, .10)
-      ],
+      slopes: [Rect.fromLTWH(.59, .28, .20, .28)],
+      landings: [Rect.fromLTWH(.59, .56, .23, .10)],
       shade: [
         Rect.fromLTWH(.07, .20, .28, .21),
         Rect.fromLTWH(.42, .33, .08, .10),
@@ -122,6 +142,12 @@ class HerdMap {
       'XỨ TUYẾT',
       'Băng mỏng trên hồ chỉ chịu được ít mèo: đàn đông đi qua sẽ làm băng nứt vỡ. Làn trượt một chiều đưa đàn đi rất nhanh.',
       Color(0xFF6AAEC5),
+      specials: [
+        HerdTrait.curious,
+        HerdTrait.golden,
+        HerdTrait.chubby,
+        HerdTrait.sleepy
+      ],
       route: HerdRoute.snow,
       walls: [
         Rect.fromLTWH(.13, .21, .20, .045),
@@ -134,9 +160,7 @@ class HerdMap {
         Rect.fromLTWH(.37, .19, .36, .41),
         Rect.fromLTWH(.65, .67, .29, .22)
       ],
-      thinIce: [
-        Rect.fromLTWH(.37, .19, .36, .41)
-      ],
+      thinIce: [Rect.fromLTWH(.37, .19, .36, .41)],
       snowPads: [
         Rect.fromLTWH(.48, .27, .15, .17),
         Rect.fromLTWH(.30, .36, .06, .12),

@@ -14,13 +14,14 @@ Future<void> main() async {
   FishCollection.instance = FishCollection(preferences);
   CampState.instance = CampState(preferences);
   GameAudio.instance.initialize(preferences);
-  // Khóa màn hình ngang
-  SystemChrome.setPreferredOrientations([
+  // Khóa màn hình ngang và ẩn thanh hệ thống trước khung hình đầu tiên, để
+  // trang chủ không bị dàn lại khi cửa sổ đổi kích thước.
+  await SystemChrome.setPreferredOrientations([
     DeviceOrientation.landscapeLeft,
     DeviceOrientation.landscapeRight,
   ]);
   // Ẩn status bar & navigation bar
-  SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
+  await SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
 
   runApp(MaterialApp(
     debugShowCheckedModeBanner: false,

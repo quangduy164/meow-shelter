@@ -13,6 +13,7 @@ import '../../camp/camp_resident.dart';
 import '../../camp/camp_social.dart';
 import '../../game/cats/cat_breed.dart';
 import '../widgets/cat_sprite.dart';
+import '../widgets/paw_loader.dart';
 import '../../camp/camp_decor_painter.dart';
 import '../design.dart';
 import '../widgets/round_button.dart';
@@ -42,6 +43,9 @@ class _CampScreenState extends State<CampScreen>
   CampResident? _pressed;
   Size _room = Size.zero;
   _Panel _panel = _Panel.none;
+
+  /// Panels are built the first time they open, not with the room.
+  final _builtPanels = <_Panel>{};
   CampState get camp => CampState.instance;
 
   /// Floor toys the cats can visit (wall items are out of reach). Rebuilt
@@ -74,16 +78,54 @@ class _CampScreenState extends State<CampScreen>
     ];
   }
 
-  /// Idle sheets first so every cat shows up quickly, then the rest.
+  /// Sheets waiting to be decoded, one at a time so opening the camp never
+  /// decodes dozens of images in the same frames as the screen change.
+  final _queue = <String>[];
+  bool _loading = false;
+
+  /// Paw loader over the room until every cat's idle sheet is decoded.
+  bool _ready = false;
+  bool _coverGone = false;
+
+  void _markReady() {
+    if (_ready || !mounted) return;
+    setState(() => _ready = true);
+  }
+
+  /// Idle sheets first so every cat shows up quickly; the other actions wait
+  /// until the screen change has finished. Until a sheet is ready the cat
+  /// holds its idle pose.
   void _loadSprites() {
-    for (final act in [
-      CampAct.idle,
-      ...CampAct.values.where((a) => a != CampAct.idle)
-    ]) {
+    for (final cat in _cats) {
+      final idle = CatBreed.of(cat.type).sheet(CampAct.idle.sheet);
+      if (!_queue.contains(idle)) _queue.insert(0, idle);
+    }
+    for (final act in CampAct.values.where((a) => a != CampAct.idle)) {
       for (final cat in _cats) {
-        _loadSheet(CatBreed.of(cat.type).sheet(act.sheet));
+        final path = CatBreed.of(cat.type).sheet(act.sheet);
+        if (!_queue.contains(path)) _queue.add(path);
       }
     }
+    _pumpSprites();
+  }
+
+  Future<void> _pumpSprites() async {
+    if (_loading) return;
+    _loading = true;
+    var waited = false;
+    while (_queue.isNotEmpty && mounted) {
+      final path = _queue.removeAt(0);
+      final idle = path.endsWith('-${CampAct.idle.sheet}.png');
+      if (!idle) _markReady();
+      if (!idle && !waited) {
+        waited = true;
+        await Future<void>.delayed(DS.pageTransitionDuration);
+        if (!mounted) break;
+      }
+      await _loadSheet(path);
+    }
+    _loading = false;
+    _markReady();
   }
 
   Future<void> _loadSheet(String path) async {
@@ -198,162 +240,187 @@ class _CampScreenState extends State<CampScreen>
             .merge(DS.captionText.copyWith(color: DS.ink)),
         MediaQuery.textScalerOf(context));
     return Scaffold(
-      body: LayoutBuilder(builder: (context, box) {
-        final w = box.maxWidth, h = box.maxHeight;
-        _room = Size(w, h);
-        // Expand so the yard fills the screen; a loose Stack would shrink to
-        // the height of the top bar and leave the rest blank.
-        return Stack(fit: StackFit.expand, children: [
-          Positioned.fill(
+      body: Stack(fit: StackFit.expand, children: [
+        LayoutBuilder(builder: (context, box) {
+          final w = box.maxWidth, h = box.maxHeight;
+          _room = Size(w, h);
+          // Expand so the yard fills the screen; a loose Stack would shrink to
+          // the height of the top bar and leave the rest blank.
+          return Stack(fit: StackFit.expand, children: [
+            Positioned.fill(
+                child: RepaintBoundary(
+                    child: CustomPaint(
+                        painter: CampRoomPainter(hour: _roomHour)))),
+            for (final item in [
+              ...CampDecoration.all.where((d) => d.id == 'rug'),
+              ...CampDecoration.all.where((d) => d.id != 'rug'),
+            ])
+              if (camp.owned.contains(item.id))
+                _PlacedDecoration(
+                    key: ValueKey(item.id),
+                    item: item,
+                    room: Size(w, h),
+                    onPlaced: _refreshToys),
+            // All cats are painted by one painter that repaints every frame
+            // without rebuilding widgets. One gesture detector serves every
+            // cat; touches that miss a cat fall through to the decorations.
+            Positioned.fill(
               child: RepaintBoundary(
-                  child:
-                      CustomPaint(painter: CampRoomPainter(hour: _roomHour)))),
-          for (final item in [
-            ...CampDecoration.all.where((d) => d.id == 'rug'),
-            ...CampDecoration.all.where((d) => d.id != 'rug'),
-          ])
-            if (camp.owned.contains(item.id))
-              _PlacedDecoration(
-                  key: ValueKey(item.id),
-                  item: item,
-                  room: Size(w, h),
-                  onPlaced: _refreshToys),
-          // All cats are painted by one painter that repaints every frame
-          // without rebuilding widgets. One gesture detector serves every
-          // cat; touches that miss a cat fall through to the decorations.
-          Positioned.fill(
-            child: RepaintBoundary(
-              child: GestureDetector(
-                onTapUp: (d) {
-                  final cat = _catAt(d.localPosition);
-                  if (cat != null) _pet(cat);
-                },
-                onPanDown: (d) {
-                  if (_carried == null) _pressed = _catAt(d.localPosition);
-                },
-                // Only one cat can be carried at a time.
-                onPanStart: (_) {
-                  final cat = _pressed;
-                  if (cat == null || _carried != null) return;
-                  _carried = cat..pickUp();
-                  GameAudio.instance
-                      .playGameplay(GameSound.campLift, priority: 1);
-                },
-                onPanUpdate: (d) {
-                  final cat = _carried;
-                  if (cat == null) return;
-                  cat.x = (cat.x + d.delta.dx / w).clamp(.03, .97);
-                  cat.y = (cat.y + d.delta.dy / h).clamp(.3, .95);
-                },
-                onPanEnd: (_) {
-                  final cat = _carried;
-                  if (cat != null) _drop(cat);
-                },
-                onPanCancel: () {
-                  final cat = _carried;
-                  if (cat != null) _drop(cat, sound: false);
-                },
-                child: CustomPaint(
-                  size: Size.infinite,
-                  painter: _CampCatsPainter(
-                    cats: _cats,
-                    sprites: _sprites,
-                    missing: _missing,
-                    labels: _labels,
-                    hit: (p) => _catAt(p) != null,
-                    repaint: _animation,
+                child: GestureDetector(
+                  onTapUp: (d) {
+                    final cat = _catAt(d.localPosition);
+                    if (cat != null) _pet(cat);
+                  },
+                  onPanDown: (d) {
+                    if (_carried == null) _pressed = _catAt(d.localPosition);
+                  },
+                  // Only one cat can be carried at a time.
+                  onPanStart: (_) {
+                    final cat = _pressed;
+                    if (cat == null || _carried != null) return;
+                    _carried = cat..pickUp();
+                    GameAudio.instance
+                        .playGameplay(GameSound.campLift, priority: 1);
+                  },
+                  onPanUpdate: (d) {
+                    final cat = _carried;
+                    if (cat == null) return;
+                    cat.x = (cat.x + d.delta.dx / w).clamp(.03, .97);
+                    cat.y = (cat.y + d.delta.dy / h).clamp(.3, .95);
+                  },
+                  onPanEnd: (_) {
+                    final cat = _carried;
+                    if (cat != null) _drop(cat);
+                  },
+                  onPanCancel: () {
+                    final cat = _carried;
+                    if (cat != null) _drop(cat, sound: false);
+                  },
+                  child: CustomPaint(
+                    size: Size.infinite,
+                    painter: _CampCatsPainter(
+                      cats: _cats,
+                      sprites: _sprites,
+                      missing: _missing,
+                      labels: _labels,
+                      hit: (p) => _catAt(p) != null,
+                      repaint: _animation,
+                    ),
                   ),
                 ),
               ),
             ),
-          ),
-          // Tapping anywhere outside an open panel closes it.
-          if (_panel != _Panel.none)
-            Positioned.fill(
-              child: GestureDetector(
-                behavior: HitTestBehavior.opaque,
-                onTap: () => setState(() => _panel = _Panel.none),
+            // Tapping anywhere outside an open panel closes it.
+            if (_panel != _Panel.none)
+              Positioned.fill(
+                child: GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: () => setState(() => _panel = _Panel.none),
+                ),
               ),
-            ),
-          // Panels slide up from the bottom; the room stays visible above.
-          for (final (panel, child) in [
-            (
-              _Panel.shop,
-              _ShopBar(
-                onBought: () => setState(() {
-                  _syncResidents();
-                  _refreshToys();
-                }),
-                onClose: () => setState(() => _panel = _Panel.none),
-              ) as Widget,
-            ),
-            (
-              _Panel.cats,
-              _BondBar(
-                onClose: () => setState(() => _panel = _Panel.none),
-                onRename: _renameCat,
+            // Panels slide up from the bottom; the room stays visible above.
+            for (final (panel, child) in [
+              if (_builtPanels.contains(_Panel.shop))
+                (
+                  _Panel.shop,
+                  _ShopBar(
+                    onBought: () => setState(() {
+                      _syncResidents();
+                      _refreshToys();
+                    }),
+                    onClose: () => setState(() => _panel = _Panel.none),
+                  ) as Widget,
+                ),
+              if (_builtPanels.contains(_Panel.cats))
+                (
+                  _Panel.cats,
+                  _BondBar(
+                    onClose: () => setState(() => _panel = _Panel.none),
+                    onRename: _renameCat,
+                  ),
+                ),
+            ])
+              AnimatedPositioned(
+                duration: DS.transitionDuration,
+                curve: Curves.easeOut,
+                left: 0,
+                right: 0,
+                bottom: _panel == panel ? 0 : -(h * .36 + 20),
+                height: h * .36,
+                child: child,
               ),
-            ),
-          ])
-            AnimatedPositioned(
-              duration: DS.transitionDuration,
-              curve: Curves.easeOut,
-              left: 0,
-              right: 0,
-              bottom: _panel == panel ? 0 : -(h * .36 + 20),
-              height: h * .36,
-              child: child,
-            ),
-          Align(
-            alignment: Alignment.topCenter,
-            child: SafeArea(
-              child: Padding(
-                padding: const EdgeInsets.all(DS.spaceMd),
-                // Only navigation and panel controls stay in the top bar.
-                // Progress counters belong inside the panel that uses them.
-                child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      RoundButton(
-                          glyph: GameGlyph.home,
-                          onPressed: () => Navigator.of(context).pop()),
-                      const SizedBox(width: DS.spaceSm),
-                      Expanded(
-                        child: Align(
-                          alignment: Alignment.topRight,
-                          child: FittedBox(
-                            fit: BoxFit.scaleDown,
-                            alignment: Alignment.centerRight,
-                            child:
-                                Row(mainAxisSize: MainAxisSize.min, children: [
-                              _PanelButton(
-                                label: 'CỬA HÀNG',
-                                icon: _CampIcon.shop,
-                                active: _panel == _Panel.shop,
-                                onTap: () => _toggle(_Panel.shop),
-                              ),
-                              const SizedBox(width: DS.spaceSm),
-                              _PanelButton(
-                                label: 'THÂN THIẾT',
-                                icon: _CampIcon.heart,
-                                active: _panel == _Panel.cats,
-                                onTap: () => _toggle(_Panel.cats),
-                              ),
-                            ]),
+            Align(
+              alignment: Alignment.topCenter,
+              child: SafeArea(
+                child: Padding(
+                  padding: const EdgeInsets.all(DS.spaceMd),
+                  // Only navigation and panel controls stay in the top bar.
+                  // Progress counters belong inside the panel that uses them.
+                  child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        RoundButton(
+                            glyph: GameGlyph.home,
+                            onPressed: () => Navigator.of(context).pop()),
+                        const SizedBox(width: DS.spaceSm),
+                        Expanded(
+                          child: Align(
+                            alignment: Alignment.topRight,
+                            child: FittedBox(
+                              fit: BoxFit.scaleDown,
+                              alignment: Alignment.centerRight,
+                              child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    _PanelButton(
+                                      label: 'CỬA HÀNG',
+                                      icon: _CampIcon.shop,
+                                      active: _panel == _Panel.shop,
+                                      onTap: () => _toggle(_Panel.shop),
+                                    ),
+                                    const SizedBox(width: DS.spaceSm),
+                                    _PanelButton(
+                                      label: 'THÂN THIẾT',
+                                      icon: _CampIcon.heart,
+                                      active: _panel == _Panel.cats,
+                                      onTap: () => _toggle(_Panel.cats),
+                                    ),
+                                  ]),
+                            ),
                           ),
                         ),
-                      ),
-                    ]),
+                      ]),
+                ),
               ),
             ),
+          ]);
+        }),
+        if (!_coverGone)
+          // Same loader as the game modes; fades out once the cats can show.
+          IgnorePointer(
+            ignoring: _ready,
+            child: AnimatedOpacity(
+              opacity: _ready ? 0 : 1,
+              duration: DS.loadingFadeDuration,
+              curve: Curves.easeOut,
+              onEnd: () => setState(() => _coverGone = true),
+              child: const GameLoading(),
+            ),
           ),
-        ]);
-      }),
+      ]),
     );
   }
 
   void _toggle(_Panel p) {
     GameAudio.instance.play(GameSound.click);
+    if (_builtPanels.add(p)) {
+      // First open: build it hidden below the edge, then slide it up.
+      setState(() {});
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) setState(() => _panel = p);
+      });
+      return;
+    }
     setState(() => _panel = _panel == p ? _Panel.none : p);
   }
 }

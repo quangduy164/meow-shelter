@@ -95,6 +95,11 @@ class _NightCardPainter extends CustomPainter {
       case NightCard.deepBait:
       case NightCard.linkedDoors:
         _trapCard(canvas);
+      case NightCard.dewTracks:
+      case NightCard.stillReeds:
+      case NightCard.softParting:
+      case NightCard.reedBell:
+        _reedCard(canvas);
       case NightCard.lanternRelay:
       case NightCard.moonEcho:
       case NightCard.restingLight:
@@ -133,6 +138,39 @@ class _NightCardPainter extends CustomPainter {
       _arrow(canvas, const Offset(8, 9), const Offset(39, 9));
     } else {
       _featureSpark(canvas, const Offset(34, 12), 7, _blue);
+    }
+  }
+
+  void _reedCard(Canvas canvas) {
+    for (var i = 0; i < 6; i++) {
+      final x = 12.0 + i * 5;
+      canvas.drawLine(Offset(x, 40), Offset(x + (i.isEven ? 3 : -2), 13),
+          _line(3, i.isEven ? const Color(0xFF6F8D50) : _goldDark));
+      canvas.drawOval(
+          Rect.fromCenter(
+              center: Offset(x + (i.isEven ? 3 : -2), 15),
+              width: 5,
+              height: 12),
+          _fill(_gold));
+    }
+    switch (card) {
+      case NightCard.dewTracks:
+        for (final p in const [
+          Offset(10, 34),
+          Offset(18, 28),
+          Offset(27, 23)
+        ]) {
+          canvas.drawOval(
+              Rect.fromCenter(center: p, width: 6, height: 4), _fill(_cream));
+        }
+      case NightCard.stillReeds:
+        canvas.drawLine(
+            const Offset(8, 10), const Offset(40, 10), _line(4, _blue));
+      case NightCard.softParting:
+        _featureSpark(canvas, const Offset(35, 12), 6, _blue);
+      default:
+        canvas.drawArc(const Rect.fromLTWH(30, 7, 12, 12), 0, math.pi * 1.4,
+            false, _line(3, _gold));
     }
   }
 

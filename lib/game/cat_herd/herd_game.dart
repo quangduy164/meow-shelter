@@ -14,6 +14,7 @@ import 'herd_hud.dart';
 import 'herd_market_painter.dart';
 import 'herd_desert_painter.dart';
 import 'herd_snow_painter.dart';
+import 'herd_trait_painter.dart';
 import 'herd_map_painter.dart';
 import 'herd_home_painter.dart';
 
@@ -180,22 +181,24 @@ class HerdGame extends FlameGame {
             cat.position.toOffset(),
             19,
             Paint()
-              ..color = cat.scared > 0
-                  ? const Color(0x44E97159)
-                  : const Color(0x66FFF6CB));
+              ..color =
+                  cat.scared > 0 ? const Color(0x44E97159) : traitRing(cat));
       }
       _cat(canvas, cat.type, cat.position,
-          moving: cat.following && cat.velocity.length > 2,
+          moving:
+              (cat.following && cat.velocity.length > 2) || cat.distracted > 0,
           leader: false,
           facingLeft: cat.facingLeft,
           hop: cat.hop,
           tumble: cat.tumble,
           scared: cat.scared,
-          resting: !cat.following,
+          resting: !cat.following && cat.distracted == 0,
           shiver: cat.chill > 0,
+          scale: cat.trait == HerdTrait.chubby ? HerdTraits.chubbyScale : 1,
           buried: round.map.kind == HerdMapKind.dunes && cat.group == 2);
       if (round.map.kind == HerdMapKind.dunes) paintCatHeat(canvas, cat);
       paintCatChill(canvas, cat, round.time);
+      paintCatTrait(canvas, cat, round.time);
     }
     if (round.immune == 0 || (round.time * 10).floor().isEven) {
       _cat(canvas, 'orange', round.leader,
@@ -266,13 +269,16 @@ class HerdGame extends FlameGame {
       double scared = 0,
       bool resting = false,
       bool buried = false,
-      bool shiver = false}) {
+      bool shiver = false,
+      double scale = 1}) {
     final animation = (moving ? _walk : _idle)[type]!;
     final frame =
         animation.frames[(round.time / .12).floor() % animation.frames.length];
     canvas.drawOval(
         Rect.fromCenter(
-            center: at.toOffset() + const Offset(0, 12), width: 26, height: 9),
+            center: at.toOffset() + const Offset(0, 12),
+            width: 26 * scale,
+            height: 9 * scale),
         Paint()..color = const Color(0x33402A14));
     canvas.save();
     final bounce = hop > 0 ? math.sin((.65 - hop) / .65 * math.pi) : 0.0;
@@ -287,7 +293,8 @@ class HerdGame extends FlameGame {
         canvas.clipRect(const Rect.fromLTWH(-30, -30, 60, 30));
       }
     }
-    canvas.scale(1 + bounce * .12, 1 - bounce * .1);
+    canvas.scale((1 + bounce * .12) * scale * (scale > 1 ? 1.08 : 1),
+        (1 - bounce * .1) * scale);
     if (facingLeft) canvas.scale(-1, 1);
     frame.sprite
         .render(canvas, position: Vector2.all(-25), size: Vector2.all(50));

@@ -98,6 +98,14 @@
     lanes: `_groundStep` overrides steering with the lane direction, so they
     are shortcuts that cannot be entered backwards. Spawns avoid thin ice and
     chutes via `_onHazardLane`. Dry `snowPads` still override ice friction.
+  - `herd_traits.dart` / `herd_trait_painter.dart`: `HerdMap.specials` gives
+    the last cat of each cluster a personality (`HerdCat.trait`). Chubby:
+    slower follower, leader x0.9 while it is in the herd, weight 2 on thin ice,
+    heats 1.3x in the desert. Curious: after 6-11 s it leaves the chain to chase
+    a butterfly (`_wander`, never onto thin ice/chutes or near home), with a
+    `!` warning first. Sleepy: the leader must stay beside it ~1 s (`wake`).
+    Golden: +30 score at home. Each trait announces itself once on joining.
+    The tutorial has no specials.
   - `HerdMap.tutorial` is excluded from the four-region picker. It has no
     damaging hazards, twelve cats in four clusters, three slalom rocks and a
     three-step move/recruit/return guide driven by
