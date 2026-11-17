@@ -6,7 +6,9 @@ enum NightMap {
       'Giữ độ ồn dưới 100; vùng đèn bảo vệ mèo khi xe đẩy đi qua'),
   rooftops('Mái nhà', 'Đặt cá ở mái giữa; hạ cầu để mèo hai mái bên sang ăn'),
   warehouse('Kho hàng', 'Đặt mồi trong lồng; chờ tín hiệu xanh rồi chốt cửa'),
-  reedGarden('Vườn lau', 'Theo vết lau rung, chạm đúng bụi để tìm mèo trốn');
+  reedGarden('Vườn lau', 'Chạm bụi cạnh mèo để lùa nó tới giỏ lối ra'),
+  harbor('Bến thuyền', 'Đổi cửa nước để bè chở mèo trôi về bến'),
+  station('Nhà ga đêm', 'Đưa mèo ra đúng vạch toa trước khi tàu dừng');
 
   const NightMap(this.title, this.rule);
   final String title, rule;
@@ -107,10 +109,26 @@ enum NightCard {
       limit: 2, map: NightMap.reedGarden),
   stillReeds('Lau lặng gió', 'Mèo đổi bụi chậm hơn 30%/cấp',
       limit: 2, map: NightMap.reedGarden),
-  softParting('Rẽ lau nhẹ', 'Chạm hụt không làm mèo gần đó chạy bụi',
+  softParting('Rẽ lau nhẹ', 'Chạm trúng bụi có mèo: mèo vẫn nép yên',
       limit: 1, map: NightMap.reedGarden),
   reedBell('Chuông lau', 'Mỗi 8s, một bụi có mèo rung mạnh',
-      limit: 1, map: NightMap.reedGarden);
+      limit: 1, map: NightMap.reedGarden),
+  sturdyRaft('Bè chắc', 'Đâm đá chỉ dừng 1.5s rồi trôi tiếp',
+      limit: 1, map: NightMap.harbor),
+  slowCurrent('Dòng chậm', 'Bè trôi chậm hơn 20%/cấp',
+      limit: 2, map: NightMap.harbor),
+  extraDock('Bến chung', 'Một bến nhận mọi giống mèo',
+      limit: 1, map: NightMap.harbor),
+  dockRope('Dây kéo bến', 'Bè cạnh bến đúng màu được kéo vào',
+      limit: 1, map: NightMap.harbor),
+  earlyWhistle('Còi báo sớm', 'Tàu tới chậm hơn 3s/cấp',
+      limit: 2, map: NightMap.station),
+  longStop('Dừng lâu', 'Tàu đứng ga thêm 1.5s/cấp',
+      limit: 2, map: NightMap.station),
+  sharedCar('Toa chung', 'Toa giữa nhận mọi giống mèo',
+      limit: 1, map: NightMap.station),
+  porter('Nhân viên ga', 'Mèo đi ra vạch nhanh hơn 50%',
+      limit: 1, map: NightMap.station);
 
   const NightCard(this.title, this.perk, {this.cost, this.limit = 3, this.map});
   final String title, perk;
@@ -124,7 +142,12 @@ enum NightCard {
   bool get isDeal => cost != null;
   bool availableOn(NightMap next) =>
       (map == null || map == next) &&
-      (next != NightMap.warehouse ||
+      (!const [
+            NightMap.warehouse,
+            NightMap.reedGarden,
+            NightMap.harbor,
+            NightMap.station
+          ].contains(next) ||
           !const [warmHug, patience, wideBeds, nailedBeds, nurturingMeal]
               .contains(this));
   String? get comboHint => switch (this) {
@@ -152,8 +175,16 @@ enum NightCard {
         linkedDoors => 'Ghép Mồi sâu để hai mèo cùng ở trong cửa sổ chốt.',
         dewTracks => 'Ghép Lau lặng gió để lần theo từng bước dễ hơn.',
         stillReeds => 'Ghép Cá thơm để dụ mèo vào bụi đã chọn.',
-        softParting => 'Ghép trợ thủ mèo đen để dò bụi an toàn hơn.',
+        softParting => 'Ghép trợ thủ mèo đen để lùa mèo an toàn hơn.',
         reedBell => 'Ghép Chuông đèn: lần tìm thấy đầu tiên kích hoạt chuông.',
+        sturdyRaft => 'Ghép Đá ngầm để đi đường ngắn mạo hiểm.',
+        slowCurrent => 'Ghép Cá thơm và cá neo bè để có thêm thời gian bẻ cửa.',
+        extraDock => 'Ghép Dây kéo bến: bè cạnh bến chung cũng được kéo vào.',
+        dockRope => 'Ghép Bến chung để luồng giữa và hai bên dễ cập bến.',
+        earlyWhistle => 'Ghép Nhân viên ga để kịp xếp nhiều mèo mỗi chuyến.',
+        longStop => 'Ghép Toa chung để mèo tới muộn vẫn kịp lên tàu.',
+        sharedCar => 'Mèo khó xếp có thể đưa vào toa giữa.',
+        porter => 'Ghép Còi báo sớm để đổi vạch nhiều lần trước khi tàu tới.',
         _ => null,
       };
 }

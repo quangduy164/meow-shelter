@@ -184,3 +184,58 @@ class ReedPatchComponent extends PositionComponent
     }
   }
 }
+
+class ReedExitComponent extends PositionComponent with HasGameReference {
+  ReedExitComponent(this.garden) : super(priority: 87);
+  final ReedGarden garden;
+
+  @override
+  void render(Canvas canvas) {
+    for (final exit in garden.exits) {
+      final r = _px(exit.area, game.size);
+      final left = exit.center.dx < .5;
+      canvas.drawOval(r.inflate(10), Paint()..color = const Color(0x33FFE08A));
+      final basket = RRect.fromRectAndRadius(
+          Rect.fromCenter(
+              center: r.center + Offset(0, r.height * .18),
+              width: r.width * .9,
+              height: r.height * .42),
+          const Radius.circular(10));
+      canvas.drawRRect(basket.shift(const Offset(0, 4)),
+          Paint()..color = const Color(0x55000000));
+      canvas.drawRRect(basket, Paint()..color = const Color(0xFFC28A51));
+      canvas.drawRRect(
+          basket,
+          Paint()
+            ..color = const Color(0xFF6A3E1E)
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = 3);
+      for (var x = basket.left + 8; x < basket.right; x += 9) {
+        canvas.drawLine(Offset(x, basket.top + 3), Offset(x, basket.bottom - 3),
+            Paint()..color = const Color(0x886A3E1E));
+      }
+      canvas.drawArc(
+          Rect.fromCenter(
+              center: basket.outerRect.topCenter,
+              width: basket.width * .72,
+              height: basket.height * .9),
+          math.pi,
+          math.pi,
+          false,
+          Paint()
+            ..color = const Color(0xFF6A3E1E)
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = 4);
+      final arrow = Paint()
+        ..color = const Color(0xFFFFE08A)
+        ..strokeWidth = 4
+        ..strokeCap = StrokeCap.round;
+      final y = r.top + 6;
+      final from = Offset(left ? r.right + 8 : r.left - 8, y);
+      final to = Offset(left ? r.left + 10 : r.right - 10, y);
+      canvas.drawLine(from, to, arrow);
+      canvas.drawLine(to, to + Offset(left ? 8 : -8, -6), arrow);
+      canvas.drawLine(to, to + Offset(left ? 8 : -8, 6), arrow);
+    }
+  }
+}

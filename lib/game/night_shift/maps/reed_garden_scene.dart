@@ -24,13 +24,15 @@ class ReedGardenScene extends NightScene {
   final _patches = <ReedPatchComponent>[];
   final _hidden = <ReedPatch, CatComponent>{};
   final _moveLeft = <CatComponent, double>{};
-  final _seen = <CatComponent>{};
+  final _runners = <_ReedRunner>[];
   NightRun get run => game.night!.run!;
 
   @override
   NightMap get map => NightMap.reedGarden;
   @override
   bool get ownsBait => true;
+  @override
+  bool get noCarry => true;
   @override
   double get lanternBurn => 0;
   @override
@@ -39,7 +41,9 @@ class ReedGardenScene extends NightScene {
   double get notificationTop => 46;
   @override
   bool get hasBaitInTransit =>
-      _hidden.isNotEmpty || garden.patches.any((p) => p.baited);
+      _hidden.isNotEmpty ||
+      _runners.isNotEmpty ||
+      garden.patches.any((p) => p.baited);
   @override
   List<String> get rules => const [
         'Mèo trốn trong bụi lau và để lại vết khi đổi bụi',
@@ -89,6 +93,7 @@ class ReedGardenScene extends NightScene {
               paintMoonlitField(canvas, size, moon),
           shade: const Color(0x2C142932)),
       ReedMoon(moon),
+      ReedExitComponent(garden),
       ReedTrailsComponent(garden),
     ]);
     game.addAll(_parts);
@@ -102,7 +107,7 @@ class ReedGardenScene extends NightScene {
     }
     _hidden.clear();
     _moveLeft.clear();
-    _seen.clear();
+    _runners.clear();
     game.removeAll([..._parts, ..._patches]);
     _parts.clear();
     _patches.clear();
@@ -115,7 +120,7 @@ class ReedGardenScene extends NightScene {
     moon.reset(fullMoon: run.has(NightCard.fullMoon), thickClouds: thickClouds);
     _hidden.clear();
     _moveLeft.clear();
-    _seen.clear();
+    _runners.clear();
     game.removeAll(_patches);
     _patches
       ..clear()
@@ -173,22 +178,15 @@ class ReedGardenScene extends NightScene {
     return true;
   }
 
-  Vector2 _revealSpot(Rect r, Vector2 size) {
-    final spots = [
-      Vector2(r.center.dx - size.x / 2, r.bottom + 8),
-      Vector2(r.center.dx - size.x / 2, r.top - size.y - 8),
-      Vector2(r.left - size.x - 8, r.center.dy - size.y / 2),
-      Vector2(r.right + 8, r.center.dy - size.y / 2),
-    ];
-    for (final spot in spots) {
-      spot.x = spot.x.clamp(0, game.size.x - size.x).toDouble();
-      spot.y = spot.y.clamp(game.size.y * .2, game.size.y * .7).toDouble();
-      if (!blocks(Rect.fromLTWH(spot.x / game.size.x, spot.y / game.size.y,
-          size.x / game.size.x, size.y / game.size.y))) {
-        return spot;
-      }
-    }
-    return spots.first;
+  void _escape(ReedPatch from, ReedPatch exit) {
+    final cat = _hidden.remove(from);
+    if (cat == null) return;
+    garden.move(from, exit);
+    _moveLeft.remove(cat);
+    cat.hiddenInCover = false;
+    final r = _px(exit);
+    _runners.add(_ReedRunner(cat,
+        Vector2(r.center.dx - cat.size.x / 2, r.bottom - cat.size.y * .9)));
   }
 
   void tapPatch(ReedPatch patch) {
@@ -196,34 +194,47 @@ class ReedGardenScene extends NightScene {
     if (game.paused || night.phase != NightPhase.playing || patch.cool > 0) {
       return;
     }
-    final cat = _hidden.remove(patch);
-    if (cat != null) {
-      patch.occupied = false;
-      patch.shake = 1;
-      _moveLeft.remove(cat);
-      final r = _px(patch);
-      cat.revealFromCover(_revealSpot(r, cat.size));
-      GameAudio.instance.playRescue(GameSound.catReady, important: true);
-      if (!patch.chimed) {
-        patch.chimed = true;
-        onFirstLight(r.center, game.size.x * .18);
-      }
+    patch
+      ..cool = 1.2
+      ..shake = .8;
+    if (!patch.chimed) {
+      patch.chimed = true;
+      onFirstLight(_px(patch).center, game.size.x * .18);
+    }
+    final quiet = garden.softParting || night.assist.calm;
+    if (patch.occupied && !quiet) {
+      game.stats.startles++;
+      final to = garden.emptyNear(patch, game.random);
+      if (to != null) _move(patch, to);
+      game.hud.showBanner(['Chạm trúng chỗ nấp! Mèo chạy loạn'], 1.4);
+      GameAudio.instance.playRescue(GameSound.catWrong);
       return;
     }
-    patch.cool = 1.5;
-    patch.shake = .5;
-    final quiet = garden.softParting || night.assist.calm;
-    game.hud.showBanner(
-        [quiet ? 'Bụi trống, mèo vẫn yên' : 'Bụi trống! Mèo gần đó đổi chỗ'],
-        1.4);
-    GameAudio.instance.playRescue(GameSound.catWrong);
-    if (quiet) return;
-    game.stats.startles++;
+    var moved = 0, saved = 0;
     for (final from
         in garden.neighbors(patch).where((p) => p.occupied).toList()) {
-      final to = garden.emptyNear(from, game.random);
-      if (to != null) _move(from, to);
+      final to = garden.fleeTarget(from, patch);
+      if (to == null) continue;
+      moved++;
+      if (to.index < 0) {
+        saved++;
+        _escape(from, to);
+      } else {
+        _move(from, to);
+      }
     }
+    GameAudio.instance.playRescue(
+        saved > 0 ? GameSound.catRescue : GameSound.baitDrop,
+        important: saved > 0);
+    game.hud.showBanner([
+      saved > 0
+          ? 'Lùa thành công · $saved mèo ra lối'
+          : moved > 0
+              ? 'Mèo bị lùa sang bụi xa hơn'
+              : patch.occupied
+                  ? 'Mèo nép yên trong bụi'
+                  : 'Không có mèo cạnh bụi này'
+    ], 1.3);
   }
 
   @override
@@ -233,12 +244,31 @@ class ReedGardenScene extends NightScene {
       game.hud.showBanner(['Chuông lau: có bụi vừa rung mạnh'], 1.2);
     }
     for (final cat in game.children.whereType<CatComponent>()) {
-      if (!cat.isLoaded || cat.isDelivered || _seen.contains(cat)) continue;
+      if (!cat.isLoaded ||
+          cat.isDelivered ||
+          cat.hiddenInCover ||
+          cat.trapManaged) {
+        continue;
+      }
       final empty =
           garden.patches.where((p) => !p.occupied && !p.baited).toList();
-      _seen.add(cat);
       if (empty.isNotEmpty) {
         _hide(cat, empty[game.random.nextInt(empty.length)]);
+      }
+    }
+    for (final runner in _runners.toList()) {
+      final delta = runner.target - runner.cat.position;
+      final step = 170 * dt;
+      if (delta.length <= step) {
+        _runners.remove(runner);
+        runner.cat.positionInTrap(runner.target, walking: false);
+        if (game.night!.phase == NightPhase.playing) {
+          runner.cat.rescueFromTrap();
+        }
+      } else {
+        runner.cat.positionInTrap(
+            runner.cat.position + delta.normalized() * step,
+            walking: true);
       }
     }
     for (final entry in _hidden.entries.toList()) {
@@ -280,4 +310,10 @@ class ReedGardenScene extends NightScene {
       }
     }
   }
+}
+
+class _ReedRunner {
+  _ReedRunner(this.cat, this.target);
+  final CatComponent cat;
+  final Vector2 target;
 }

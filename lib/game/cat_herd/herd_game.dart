@@ -15,13 +15,22 @@ import 'herd_market_painter.dart';
 import 'herd_desert_painter.dart';
 import 'herd_snow_painter.dart';
 import 'herd_trait_painter.dart';
+import '../../camp/camp_resident.dart' show campSleepFrames;
 import 'herd_map_painter.dart';
 import 'herd_home_painter.dart';
 
 /// Coordinates simulation, input and sprite rendering. Rules live in HerdRound.
 class HerdGame extends FlameGame {
-  HerdGame({this.needsTutorial = false, this.onTutorialCompleted});
+  HerdGame(
+      {this.needsTutorial = false,
+      this.onTutorialCompleted,
+      this.introSeen,
+      this.onIntroSeen});
   final bool needsTutorial;
+
+  /// First map with special cats shows who they are before play starts.
+  final bool Function(String key)? introSeen;
+  final Future<void> Function(String key)? onIntroSeen;
   final Future<void> Function()? onTutorialCompleted;
   late final round = HerdRound(onSound: _playSound);
 
@@ -38,6 +47,10 @@ class HerdGame extends FlameGame {
       HerdSound.overheated => (GameSound.herdTired, 2),
       HerdSound.iceWarning => (GameSound.homeIce, 2),
       HerdSound.iceBreak => (GameSound.herdIceBreak, 3),
+      HerdSound.cuckoo => (GameSound.homeCheckpoint, 2),
+      HerdSound.stuck => (GameSound.catWrong, 2),
+      HerdSound.horn => (GameSound.homeImpact, 3),
+      HerdSound.doors => (GameSound.homeCheckpoint, 1),
     };
     GameAudio.instance.playGameplay(sound, priority: priority);
   }
@@ -113,10 +126,23 @@ class HerdGame extends FlameGame {
     round.map = map;
     round.reset(size);
     overlays.remove('maps');
+    final key = map.introKey;
+    if (key != null && introSeen != null && !introSeen!(key)) {
+      overlays.add('traits');
+      return;
+    }
     round.started = true;
     if (!round.isTutorial) {
       round.message(map.hint, 5);
     }
+  }
+
+  void closeIntro() {
+    final key = round.map.introKey, seen = onIntroSeen;
+    if (key != null && seen != null) unawaited(seen(key));
+    overlays.remove('traits');
+    round.started = true;
+    round.message(round.map.hint, 5);
   }
 
   void showMaps() {
@@ -193,9 +219,11 @@ class HerdGame extends FlameGame {
           tumble: cat.tumble,
           scared: cat.scared,
           resting: !cat.following && cat.distracted == 0,
-          shiver: cat.chill > 0,
+          asleep: !cat.awake && !cat.following,
+          shiver: cat.chill > 0 || cat.hidden,
           scale: cat.trait == HerdTrait.chubby ? HerdTraits.chubbyScale : 1,
-          buried: round.map.kind == HerdMapKind.dunes && cat.group == 2);
+          buried: (round.map.kind == HerdMapKind.dunes && cat.group == 2) ||
+              cat.hidden);
       if (round.map.kind == HerdMapKind.dunes) paintCatHeat(canvas, cat);
       paintCatChill(canvas, cat, round.time);
       paintCatTrait(canvas, cat, round.time);
@@ -270,10 +298,14 @@ class HerdGame extends FlameGame {
       bool resting = false,
       bool buried = false,
       bool shiver = false,
+      bool asleep = false,
       double scale = 1}) {
     final animation = (moving ? _walk : _idle)[type]!;
-    final frame =
-        animation.frames[(round.time / .12).floor() % animation.frames.length];
+    // Napping holds the closed-eye idle frame, exactly like the camp.
+    final frame = asleep
+        ? _idle[type]!.frames[campSleepFrames[type] ?? 0]
+        : animation
+            .frames[(round.time / .12).floor() % animation.frames.length];
     canvas.drawOval(
         Rect.fromCenter(
             center: at.toOffset() + const Offset(0, 12),
@@ -286,7 +318,13 @@ class HerdGame extends FlameGame {
         at.y - bounce * 16);
     if (tumble > 0) canvas.rotate(math.sin((.65 - tumble) * 14) * tumble * .8);
     if (scared > 1.1) canvas.rotate((2 - scared) * math.pi * 5);
-    if (resting && scared == 0) {
+    if (asleep) {
+      // Slow breathing: the body swells a little, feet stay on the ground.
+      final breath = 1 + .03 * math.sin(round.time * 2.2 + at.x);
+      canvas.translate(0, 25 * scale);
+      canvas.scale(1, breath);
+      canvas.translate(0, -25 * scale);
+    } else if (resting && scared == 0) {
       canvas.rotate(math.sin(round.time * 1.3 + at.x) * .10);
       if (buried) {
         canvas.translate(0, 9);
@@ -319,8 +357,6 @@ class HerdGame extends FlameGame {
             2.5,
             Paint()..color = const Color(0xFFFFD258));
       }
-    } else if (resting && !shiver && round.map.kind == HerdMapKind.snow) {
-      herdText(canvas, 'zZ', Offset(at.x + 10, at.y - 28), DS.fontCaption);
     }
     if (leader) {
       canvas.drawPath(

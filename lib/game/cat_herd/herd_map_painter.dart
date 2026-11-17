@@ -3,6 +3,9 @@ import 'package:flutter/painting.dart';
 import 'herd_map.dart';
 import 'herd_round.dart';
 import 'herd_route_painter.dart';
+import 'herd_grandma_painter.dart';
+import 'herd_station_painter.dart';
+import 'herd_farm_painter.dart';
 
 /// Exclusive art for the herd mode. Geometry comes from HerdMap.
 void paintHerdMap(Canvas canvas, Size size, HerdRound r) {
@@ -26,6 +29,12 @@ void paintHerdMapBase(Canvas canvas, Size size, HerdRound r) {
       _desert(canvas, r);
     case HerdMapKind.snow:
       _snow(canvas, r);
+    case HerdMapKind.grandma:
+      paintGrandmaBase(canvas, r);
+    case HerdMapKind.station:
+      paintStationBase(canvas, r);
+    case HerdMapKind.farm:
+      paintFarmBase(canvas, r);
   }
   canvas.restore();
 }
@@ -35,6 +44,9 @@ void paintHerdMapMotion(Canvas canvas, Size size, HerdRound r) {
   canvas.scale(size.width / 800, size.height / 375);
   if (r.map.kind == HerdMapKind.nightMarket) _marketSignal(canvas, r);
   if (r.map.kind == HerdMapKind.snow) _snowfall(canvas, r);
+  if (r.map.kind == HerdMapKind.grandma) paintGrandmaMotion(canvas, r);
+  if (r.map.kind == HerdMapKind.station) paintStationMotion(canvas, r);
+  if (r.map.kind == HerdMapKind.farm) paintFarmMotion(canvas, r);
   canvas.restore();
 }
 

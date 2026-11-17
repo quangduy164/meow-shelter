@@ -125,6 +125,7 @@ class CampState {
   static const bondedAffection = 10;
 
   final SharedPreferences preferences;
+
   /// Coins a brand-new save starts with: enough for a first cat or toys.
   static const startingCoins = 150;
   int coins = startingCoins;
@@ -196,6 +197,10 @@ class CampState {
   static const _herdTutorialKey = 'mode:herd:tutorial:v1';
   bool get herdTutorialDone => seenGuides.contains(_herdTutorialKey);
   Future<void> completeHerdTutorial() => markGuidesSeen([_herdTutorialKey]);
+
+  /// One-time intro card per herd map (keys come from HerdMap.introKey).
+  bool herdIntroSeen(String key) => seenGuides.contains(key);
+  Future<void> markHerdIntroSeen(String key) => markGuidesSeen([key]);
 
   /// Cat breeds and mode guides already completed/read.
   final seenGuides = <String>{};

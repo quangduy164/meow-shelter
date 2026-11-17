@@ -58,7 +58,8 @@ Thẻ riêng tạo dư sáng/đèn nối tiếp ở Sân sau, xe chở cá/kho�
 cầu đôi/mâm cá chung ở Mái nhà. Kho hàng xuất hiện ở đêm 4: đặt mồi trong lồng,
 chờ tín hiệu xanh rồi chạm chốt cửa, tự cứu mèo mà không cần bế. Bốn thẻ riêng:
 Cửa êm, Hai ngăn, Mồi sâu và Dây giật chung. Vườn lau ở đêm 5: theo vết lau rung,
-chạm đúng bụi để mèo lộ ra rồi bế vào ổ.
+chạm bụi cạnh mèo để lùa mèo tới giỏ lối ra. Bến thuyền: đổi cửa nước để bè chở mèo
+cập đúng bến.
 Thẻ chung hỗ trợ hồi kỹ năng, hoàn cá và cứu liên tiếp.
 
 Từ đêm 6, mỗi map có các biến thể đèn/trăng, lịch xe, cầu hoặc lồng so le/bảo trì,

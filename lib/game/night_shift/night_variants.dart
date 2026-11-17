@@ -31,7 +31,19 @@ enum NightVariant {
   reedWindy(NightMap.reedGarden, 'Gió lau',
       'Gió làm mèo đổi bụi nhanh hơn; hãy theo vết mới nhất.'),
   reedMist(NightMap.reedGarden, 'Sương lau',
-      'Vết rung tan nhanh, nhưng cá dụ được mèo cách hai bụi.');
+      'Vết rung tan nhanh, nhưng cá dụ được mèo cách hai bụi.'),
+  harborNormal(NightMap.harbor, 'Bến giữa',
+      'Một bến ở luồng giữa; bẻ cửa nước để đưa bè về đó.'),
+  harborTwin(NightMap.harbor, 'Hai bến',
+      'Hai bến ở luồng trên và dưới, luồng giữa trôi ra mép.'),
+  harborRocks(NightMap.harbor, 'Đá ngầm',
+      'Đá chắn giữa sông; phải vòng qua luồng bên rồi quay lại.'),
+  stationNormal(NightMap.station, 'Ga nhỏ',
+      'Tàu ba toa, bảng điện báo trước biển toa chuyến sau.'),
+  stationLong(
+      NightMap.station, 'Tàu dài', 'Tàu bốn toa, có thêm vạch để xếp mèo.'),
+  stationLate(
+      NightMap.station, 'Đổi biển', 'Biển toa chỉ hiện khi tàu đang vào ga.');
 
   const NightVariant(this.map, this.title, this.description);
   final NightMap map;

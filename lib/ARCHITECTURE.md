@@ -98,14 +98,37 @@
     lanes: `_groundStep` overrides steering with the lane direction, so they
     are shortcuts that cannot be entered backwards. Spawns avoid thin ice and
     chutes via `_onHazardLane`. Dry `snowPads` still override ice friction.
-  - `herd_traits.dart` / `herd_trait_painter.dart`: `HerdMap.specials` gives
-    the last cat of each cluster a personality (`HerdCat.trait`). Chubby:
-    slower follower, leader x0.9 while it is in the herd, weight 2 on thin ice,
-    heats 1.3x in the desert. Curious: after 6-11 s it leaves the chain to chase
-    a butterfly (`_wander`, never onto thin ice/chutes or near home), with a
-    `!` warning first. Sleepy: the leader must stay beside it ~1 s (`wake`).
-    Golden: +30 score at home. Each trait announces itself once on joining.
-    The tutorial has no specials.
+  - `herd_traits.dart` / `herd_trait_painter.dart`: special cats appear only
+    from map 5 (Nhà bà ngoại). `HerdMap.specials[group][i]` sets
+    `HerdCat.trait`. Chubby: slower follower, leader x0.9, weight 2 on thin
+    ice, 1.3x desert heat, jammed by `HerdMap.catFlaps` (pops back, leaves the
+    herd, `stuck` bubble). Curious: leaves after 6-11 s for a butterfly, or at
+    once within `HerdLure.radius` of a `HerdMap.lures` point (`lured`). Sleepy:
+    leader stays ~1 s (`wake`) or the cuckoo wakes it. Golden: +30 score.
+  - `herd_grandma.dart` / `herd_grandma_painter.dart`: Nhà bà ngoại layout
+    (`HerdHouse`), `HerdCuckoo` (rings every 15 s, wakes sleepy cats in
+    `HerdMap.cuckooRoom`) and `HerdRobot` (rectangular `HerdMap.robots` loop;
+    bumping scatters, never costs a life).
+  - `herd_station.dart` / `herd_station_painter.dart`: Nhà ga tàu nhỏ (map 6).
+    `HerdMap.track` is solid except inside `HerdTrain.rect` while its doors
+    are open, or for whoever is already aboard (`HerdRound._solid`). The
+    train (14 s cycle, `HerdTrain.offset`) stops 4 s at Ga Tây then Ga Đông;
+    `_carryTrain` moves riders with it. On departure `_depart` puts riders
+    off unless the leader rides from the west stop, and drops followers on a
+    different side (`_zone`) than the leader; Ga Đông is the end of the line.
+    The horn sends Bé Nhát Gan (`HerdTrait.shy`) within `HerdShy.hearing`
+    to the nearest same-side `HerdMap.hideSpots`; standing beside it for
+    `coaxSeconds` brings it out, then it stays calm for `calmSeconds`.
+    Intro cards are keyed by `HerdMap.introKey` (`HerdTraitIntro`).
+  - `herd_farm.dart` / `herd_farm_painter.dart`: Nông trại bác Ba (map 7).
+    `HerdMap.pens` gates are solid (`_solid`) unless their plate is pressed,
+    someone stands in the gap, or a follower is still inside the pen. The
+    first follower over a free plate sits on it (`HerdCat.plate`); heavy
+    plates take only Bé Mập. A sitter rejoins once the leader has left and
+    come back (`plateReady`), then the plate rests `HerdPlate.restSeconds`.
+    `HerdMap.geese` flocks scatter the herd without costing lives. Bé Hay
+    Dỗi (`HerdTrait.sulky`) never holds plates; whenever it drops out of the
+    chain it sulks, backs away from the leader and is coaxed by staying close.
   - `HerdMap.tutorial` is excluded from the four-region picker. It has no
     damaging hazards, twelve cats in four clusters, three slalom rocks and a
     three-step move/recruit/return guide driven by

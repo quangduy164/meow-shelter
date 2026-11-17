@@ -4,6 +4,7 @@ import 'package:material_ui/material_ui.dart';
 import '../../game/cat_herd/herd_game.dart';
 import '../widgets/herd_map_select.dart';
 import '../widgets/herd_result_overlay.dart';
+import '../widgets/herd_trait_intro.dart';
 import '../widgets/paw_loader.dart';
 import '../widgets/round_button.dart';
 import '../widgets/game_glyphs.dart';
@@ -23,7 +24,9 @@ class _HerdScreenState extends State<HerdScreen> with WidgetsBindingObserver {
     super.initState();
     _game = HerdGame(
         needsTutorial: !CampState.instance.herdTutorialDone,
-        onTutorialCompleted: CampState.instance.completeHerdTutorial);
+        onTutorialCompleted: CampState.instance.completeHerdTutorial,
+        introSeen: CampState.instance.herdIntroSeen,
+        onIntroSeen: CampState.instance.markHerdIntroSeen);
     WidgetsBinding.instance.addObserver(this);
   }
 
@@ -60,6 +63,8 @@ class _HerdScreenState extends State<HerdScreen> with WidgetsBindingObserver {
                   onPlay: game.chooseMap,
                   onHome: () => Navigator.pop(context),
                   onTutorial: () => game.chooseMap(HerdMap.tutorial)),
+              'traits': (context, game) =>
+                  HerdTraitIntro(map: game.round.map, onStart: game.closeIntro),
               'result': (context, game) => HerdResultOverlay(
                     round: game.round,
                     onReplay: game.restart,

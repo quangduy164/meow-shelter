@@ -25,6 +25,107 @@ const _woodLight = Color(0xFFE7C3A3);
 const _pink = Color(0xFFE85D6F);
 const _orange = Color(0xFFF28A3A);
 const _blue = Color(0xFF7FB3C7);
+const _reed = Color(0xFF7FA25A);
+const _mint = Color(0xFF6DBE63);
+
+enum NightGuideGlyph {
+  lantern,
+  fish,
+  carry,
+  quiet,
+  bridge,
+  cageBait,
+  cageWatch,
+  cageLock,
+  reedTracks,
+  reedTap,
+  reedExit,
+  harborGate,
+  harborRaft,
+  harborDock,
+  stationSign,
+  stationMark,
+  stationTrain
+}
+
+/// Hand-drawn guide art, matching the card icons without the round badge.
+class NightGuideIcon extends StatelessWidget {
+  const NightGuideIcon(this.glyph, {super.key, this.size = 40});
+  final NightGuideGlyph glyph;
+  final double size;
+
+  @override
+  Widget build(BuildContext context) => SizedBox.square(
+      dimension: size, child: CustomPaint(painter: _NightGuidePainter(glyph)));
+}
+
+class _NightGuidePainter extends _NightCardPainter {
+  const _NightGuidePainter(this.glyph) : super(NightCard.scentedFish);
+  final NightGuideGlyph glyph;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    canvas.scale(size.width / 48, size.height / 48);
+    switch (glyph) {
+      case NightGuideGlyph.lantern:
+        _brightLantern(canvas);
+      case NightGuideGlyph.fish:
+        _fish(canvas, const Offset(24, 25), 36, _orange);
+      case NightGuideGlyph.carry:
+        _bed(canvas, const Rect.fromLTWH(7, 25, 34, 16));
+        _paw(canvas, const Offset(24, 18), 18, _cream);
+      case NightGuideGlyph.quiet:
+        _quietCorner(canvas);
+      case NightGuideGlyph.bridge:
+        _widePlanks(canvas);
+      case NightGuideGlyph.cageBait:
+        _cage(canvas, open: true);
+        _fish(canvas, const Offset(27, 30), 18, _blue);
+      case NightGuideGlyph.cageWatch:
+        _cage(canvas, open: true);
+        _catHead(canvas, const Offset(25, 29), 8, _orange);
+        _check(canvas, const Offset(37, 13));
+      case NightGuideGlyph.cageLock:
+        _cage(canvas, open: false);
+        _catHead(canvas, const Offset(25, 29), 8, _orange);
+        _lock(canvas, const Offset(37, 34));
+      case NightGuideGlyph.reedTracks:
+        _reeds(canvas, const Offset(24, 41), 30);
+        _tracks(canvas);
+      case NightGuideGlyph.reedTap:
+        _reeds(canvas, const Offset(24, 41), 30);
+        _catHead(canvas, const Offset(25, 28), 8, const Color(0xFFE4D3B2));
+        _tap(canvas, const Offset(36, 13));
+      case NightGuideGlyph.harborGate:
+        _water(canvas);
+        _gate(canvas, const Offset(24, 24), -.6);
+      case NightGuideGlyph.harborRaft:
+        _water(canvas);
+        _raft(canvas, const Offset(24, 30));
+        _catHead(canvas, const Offset(24, 21), 8, _orange);
+      case NightGuideGlyph.harborDock:
+        _water(canvas);
+        _raft(canvas, const Offset(18, 30));
+        _dock(canvas);
+      case NightGuideGlyph.stationSign:
+        _stationSign(canvas, const Offset(24, 20), _orange);
+        canvas.drawLine(const Offset(24, 28), const Offset(24, 42), _line(3));
+      case NightGuideGlyph.stationMark:
+        _platformMark(canvas);
+        _catHead(canvas, const Offset(24, 22), 9, _orange);
+      case NightGuideGlyph.stationTrain:
+        _trainCar(canvas, open: true);
+      case NightGuideGlyph.reedExit:
+        _reeds(canvas, const Offset(17, 41), 25);
+        _fishBasketOnly(canvas);
+        _arrow(canvas, const Offset(17, 12), const Offset(36, 12));
+    }
+  }
+
+  @override
+  bool shouldRepaint(_NightGuidePainter oldDelegate) =>
+      oldDelegate.glyph != glyph;
+}
 
 class _NightCardPainter extends CustomPainter {
   const _NightCardPainter(this.card);
@@ -95,6 +196,16 @@ class _NightCardPainter extends CustomPainter {
       case NightCard.deepBait:
       case NightCard.linkedDoors:
         _trapCard(canvas);
+      case NightCard.earlyWhistle:
+      case NightCard.longStop:
+      case NightCard.sharedCar:
+      case NightCard.porter:
+        _stationCard(canvas);
+      case NightCard.sturdyRaft:
+      case NightCard.slowCurrent:
+      case NightCard.extraDock:
+      case NightCard.dockRope:
+        _harborCard(canvas);
       case NightCard.dewTracks:
       case NightCard.stillReeds:
       case NightCard.softParting:
@@ -122,55 +233,325 @@ class _NightCardPainter extends CustomPainter {
   }
 
   void _trapCard(Canvas canvas) {
-    final box = RRect.fromRectAndRadius(
-        const Rect.fromLTWH(7, 14, 34, 25), const Radius.circular(4));
-    canvas.drawRRect(box, _fill(_woodLight));
-    canvas.drawRRect(box, _line(2.3));
-    for (var x = 13.0; x < 40; x += 7) {
-      canvas.drawLine(Offset(x, 16), Offset(x, 37), _line(1.3));
-    }
-    if (card == NightCard.deepBait) {
-      _fish(canvas, const Offset(27, 27), 21, _blue);
-    } else if (card == NightCard.twinCages) {
-      canvas.drawLine(
-          const Offset(24, 15), const Offset(24, 38), _line(4, _goldDark));
-    } else if (card == NightCard.linkedDoors) {
-      _arrow(canvas, const Offset(8, 9), const Offset(39, 9));
-    } else {
-      _featureSpark(canvas, const Offset(34, 12), 7, _blue);
+    switch (card) {
+      case NightCard.quietDoors:
+        _cage(canvas, open: false);
+        for (final y in const [15.0, 22.0, 29.0]) {
+          canvas.drawArc(Rect.fromCircle(center: Offset(6, y), radius: 5), -.8,
+              1.6, false, _line(1.6, _blue));
+        }
+        _featureSpark(canvas, const Offset(37, 12), 6, _blue);
+      case NightCard.twinCages:
+        _cage(canvas, open: true);
+        canvas.drawLine(
+            const Offset(24, 14), const Offset(24, 39), _line(3.5, _goldDark));
+        _fish(canvas, const Offset(17, 31), 12, _blue);
+        _fish(canvas, const Offset(32, 31), 12, _orange, angle: math.pi);
+      case NightCard.deepBait:
+        _cage(canvas, open: true);
+        _fish(canvas, const Offset(31, 31), 18, _blue);
+        _arrow(canvas, const Offset(10, 9), const Offset(30, 9));
+      case NightCard.linkedDoors:
+        canvas.save();
+        canvas.translate(-7, 3);
+        canvas.scale(.72);
+        _cage(canvas, open: false);
+        canvas.restore();
+        canvas.save();
+        canvas.translate(20, 8);
+        canvas.scale(.62);
+        _cage(canvas, open: false);
+        canvas.restore();
+        canvas.drawPath(
+            Path()
+              ..moveTo(15, 10)
+              ..quadraticBezierTo(24, 3, 33, 12),
+            _line(2.4, _goldDark));
+      default:
+        break;
     }
   }
 
   void _reedCard(Canvas canvas) {
-    for (var i = 0; i < 6; i++) {
-      final x = 12.0 + i * 5;
-      canvas.drawLine(Offset(x, 40), Offset(x + (i.isEven ? 3 : -2), 13),
-          _line(3, i.isEven ? const Color(0xFF6F8D50) : _goldDark));
-      canvas.drawOval(
-          Rect.fromCenter(
-              center: Offset(x + (i.isEven ? 3 : -2), 15),
-              width: 5,
-              height: 12),
-          _fill(_gold));
-    }
+    _reeds(canvas, const Offset(24, 41), 31);
     switch (card) {
       case NightCard.dewTracks:
-        for (final p in const [
-          Offset(10, 34),
-          Offset(18, 28),
-          Offset(27, 23)
-        ]) {
-          canvas.drawOval(
-              Rect.fromCenter(center: p, width: 6, height: 4), _fill(_cream));
+        _tracks(canvas);
+        for (final p in const [Offset(10, 13), Offset(37, 10)]) {
+          _shape(canvas, _oval(p, 5, 7), const Color(0xFFBFE8F2), 1.2);
         }
       case NightCard.stillReeds:
-        canvas.drawLine(
-            const Offset(8, 10), const Offset(40, 10), _line(4, _blue));
+        canvas.drawPath(
+            Path()
+              ..moveTo(7, 12)
+              ..quadraticBezierTo(18, 7, 29, 12),
+            _line(3, _blue));
+        _pill(canvas, const Rect.fromLTWH(27, 6, 16, 9), '-30%');
       case NightCard.softParting:
-        _featureSpark(canvas, const Offset(35, 12), 6, _blue);
+        _paw(canvas, const Offset(35, 31), 12, _cream);
+        _featureSpark(canvas, const Offset(36, 13), 6, _blue);
       default:
-        canvas.drawArc(const Rect.fromLTWH(30, 7, 12, 12), 0, math.pi * 1.4,
-            false, _line(3, _gold));
+        _bell(canvas, const Offset(35, 14));
+    }
+  }
+
+  void _stationCard(Canvas canvas) {
+    switch (card) {
+      case NightCard.earlyWhistle:
+        _trainCar(canvas, open: false);
+        for (final r in const [5.0, 9.0]) {
+          canvas.drawArc(
+              Rect.fromCircle(center: const Offset(8, 12), radius: r),
+              -.9,
+              1.8,
+              false,
+              _line(1.8, _goldDark));
+        }
+      case NightCard.longStop:
+        _trainCar(canvas, open: true);
+        _pill(canvas, const Rect.fromLTWH(25, 6, 18, 9), '+1.5s');
+      case NightCard.sharedCar:
+        _trainCar(canvas, open: true);
+        _stationSign(canvas, const Offset(24, 11), _gold);
+      default:
+        _platformMark(canvas);
+        _catHead(canvas, const Offset(18, 22), 8, _orange);
+        _arrow(canvas, const Offset(27, 22), const Offset(40, 22));
+    }
+  }
+
+  void _stationSign(Canvas canvas, Offset c, Color color) {
+    final sign = RRect.fromRectAndRadius(
+        Rect.fromCenter(center: c, width: 22, height: 16),
+        const Radius.circular(4));
+    _shape(canvas, Path()..addRRect(sign), color, 1.8);
+    _paw(canvas, c, 10, _cream);
+  }
+
+  void _platformMark(Canvas canvas) {
+    final mark = RRect.fromRectAndRadius(
+        const Rect.fromLTWH(8, 32, 32, 9), const Radius.circular(3));
+    _shape(canvas, Path()..addRRect(mark), _gold, 1.6);
+    for (var x = 12.0; x < 38; x += 7) {
+      canvas.drawLine(Offset(x, 33), Offset(x - 3, 40), _line(1.4, _ink));
+    }
+  }
+
+  void _trainCar(Canvas canvas, {required bool open}) {
+    final body = RRect.fromRectAndRadius(
+        const Rect.fromLTWH(7, 16, 34, 22), const Radius.circular(5));
+    _shape(canvas, Path()..addRRect(body), const Color(0xFF2F6B73));
+    canvas.drawRect(const Rect.fromLTWH(8, 33, 32, 3), _fill(_gold));
+    canvas.drawRect(Rect.fromLTWH(open ? 19 : 21, 21, open ? 10 : 6, 14),
+        _fill(open ? const Color(0xFFFFE6A6) : const Color(0xFF1C3F46)));
+    for (final x in const [10.0, 32.0]) {
+      canvas.drawRect(
+          Rect.fromLTWH(x, 20, 6, 6), _fill(const Color(0xFFFFD98A)));
+    }
+    for (final x in const [14.0, 34.0]) {
+      _shape(canvas, _oval(Offset(x, 40), 6, 6), _ink, 1);
+    }
+  }
+
+  void _harborCard(Canvas canvas) {
+    _water(canvas);
+    switch (card) {
+      case NightCard.earlyWhistle:
+      case NightCard.longStop:
+      case NightCard.sharedCar:
+      case NightCard.porter:
+        _stationCard(canvas);
+      case NightCard.sturdyRaft:
+        _raft(canvas, const Offset(22, 29));
+        _shape(canvas, _oval(const Offset(37, 31), 13, 10),
+            const Color(0xFF747B75), 1.6);
+        _featureSpark(canvas, const Offset(31, 16), 5, _gold);
+      case NightCard.slowCurrent:
+        _raft(canvas, const Offset(24, 30));
+        _pill(canvas, const Rect.fromLTWH(24, 8, 18, 9), '-20%');
+      case NightCard.extraDock:
+        _dock(canvas);
+        _shape(canvas, _oval(const Offset(16, 15), 12, 12), _mint);
+        canvas.drawLine(
+            const Offset(13, 15), const Offset(19, 15), _line(2, Colors.white));
+        canvas.drawLine(
+            const Offset(16, 12), const Offset(16, 18), _line(2, Colors.white));
+      default:
+        _raft(canvas, const Offset(17, 30));
+        _dock(canvas);
+        canvas.drawPath(
+            Path()
+              ..moveTo(22, 25)
+              ..quadraticBezierTo(30, 14, 37, 25),
+            _line(2.4, _goldDark));
+    }
+  }
+
+  void _water(Canvas canvas) {
+    canvas.drawRRect(
+        RRect.fromRectAndRadius(
+            const Rect.fromLTWH(5, 24, 38, 17), const Radius.circular(8)),
+        _fill(const Color(0xFF6DB8CF)));
+    for (final x in const [10.0, 22.0, 34.0]) {
+      canvas.drawArc(Rect.fromLTWH(x - 4, 31, 8, 5), math.pi, math.pi, false,
+          _line(1.4, _cream));
+    }
+  }
+
+  void _raft(Canvas canvas, Offset c) {
+    final r = RRect.fromRectAndRadius(
+        Rect.fromCenter(center: c, width: 25, height: 10),
+        const Radius.circular(3));
+    _shape(canvas, Path()..addRRect(r), _wood, 1.6);
+    for (final x in [c.dx - 6, c.dx, c.dx + 6]) {
+      canvas.drawLine(Offset(x, c.dy - 4), Offset(x, c.dy + 4), _line(1, _ink));
+    }
+  }
+
+  void _dock(Canvas canvas) {
+    _shape(
+        canvas,
+        Path()
+          ..addRRect(RRect.fromRectAndRadius(
+              const Rect.fromLTWH(31, 18, 11, 22), const Radius.circular(3))),
+        _woodLight,
+        1.6);
+    _shape(canvas, _oval(const Offset(36, 14), 10, 10), _mint, 1.4);
+  }
+
+  void _gate(Canvas canvas, Offset c, double angle) {
+    _shape(canvas, _oval(c, 28, 28), _gold, 2);
+    canvas.save();
+    canvas.translate(c.dx, c.dy);
+    canvas.rotate(angle);
+    final arrow = Path()
+      ..moveTo(-9, -3)
+      ..lineTo(3, -3)
+      ..lineTo(3, -8)
+      ..lineTo(11, 0)
+      ..lineTo(3, 8)
+      ..lineTo(3, 3)
+      ..lineTo(-9, 3)
+      ..close();
+    _shape(canvas, arrow, const Color(0xFF203650), 1.2);
+    canvas.restore();
+  }
+
+  void _fishBasketOnly(Canvas canvas) {
+    final basket = Path()
+      ..moveTo(25, 25)
+      ..lineTo(43, 25)
+      ..lineTo(40, 40)
+      ..lineTo(28, 40)
+      ..close();
+    _shape(canvas, basket, const Color(0xFFD9A066));
+    canvas.drawPath(
+        Path()
+          ..moveTo(27, 25)
+          ..quadraticBezierTo(34, 14, 41, 25),
+        _line(2.4, _wood));
+  }
+
+  void _cage(Canvas canvas, {required bool open}) {
+    final body = RRect.fromRectAndRadius(
+        const Rect.fromLTWH(8, 14, 32, 26), const Radius.circular(5));
+    _shape(canvas, Path()..addRRect(body), const Color(0xFF3D5156), 2.2);
+    canvas.drawRect(
+        const Rect.fromLTWH(10, 33, 28, 5), _fill(const Color(0xFF9B7148)));
+    for (var x = 15.0; x < 38; x += 6) {
+      canvas.drawLine(Offset(x, 17), Offset(x, 37), _line(1.6, _cream));
+    }
+    canvas.drawRRect(body, _line(2.2));
+    final gate = open
+        ? const Rect.fromLTWH(7, 10, 8, 9)
+        : const Rect.fromLTWH(7, 15, 8, 24);
+    _shape(
+        canvas,
+        Path()
+          ..addRRect(RRect.fromRectAndRadius(gate, const Radius.circular(2))),
+        _goldDark,
+        1.5);
+    for (var y = gate.top + 4; y < gate.bottom; y += 5) {
+      canvas.drawLine(Offset(gate.left + 2, y), Offset(gate.right - 2, y),
+          _line(1, _cream));
+    }
+  }
+
+  void _reeds(Canvas canvas, Offset base, double height) {
+    for (var i = 0; i < 7; i++) {
+      final x = base.dx - 15 + i * 5;
+      final top =
+          Offset(x + (i.isEven ? 3 : -2), base.dy - height + (i % 3) * 4);
+      canvas.drawLine(Offset(x, base.dy), top,
+          _line(2.6, i.isEven ? _reed : const Color(0xFF5E7E48)));
+      _shape(canvas, _oval(top + const Offset(0, 4), 5, 13),
+          const Color(0xFFE5C978), 1.1);
+    }
+    canvas.drawLine(Offset(base.dx - 18, base.dy),
+        Offset(base.dx + 18, base.dy), _line(2.4, _ink));
+  }
+
+  void _tracks(Canvas canvas) {
+    for (final (p, s) in const [
+      (Offset(10, 37), 7.0),
+      (Offset(18, 30), 7.0),
+      (Offset(28, 25), 7.0),
+      (Offset(37, 19), 7.0),
+    ]) {
+      _paw(canvas, p, s, _gold);
+    }
+  }
+
+  void _check(Canvas canvas, Offset c) {
+    _shape(canvas, _oval(c, 15, 15), _mint, 1.6);
+    canvas.drawPath(
+        Path()
+          ..moveTo(c.dx - 4, c.dy)
+          ..lineTo(c.dx - 1, c.dy + 3)
+          ..lineTo(c.dx + 5, c.dy - 4),
+        _line(2.2, Colors.white));
+  }
+
+  void _lock(Canvas canvas, Offset c) {
+    canvas.drawArc(
+        Rect.fromCenter(center: c - const Offset(0, 5), width: 10, height: 12),
+        math.pi,
+        math.pi,
+        false,
+        _line(2.5, _ink));
+    _shape(
+        canvas,
+        Path()
+          ..addRRect(RRect.fromRectAndRadius(
+              Rect.fromCenter(center: c, width: 15, height: 12),
+              const Radius.circular(3))),
+        _gold,
+        1.6);
+    canvas.drawCircle(c, 1.6, _fill(_ink));
+  }
+
+  void _tap(Canvas canvas, Offset c) {
+    for (final r in const [5.0, 9.0]) {
+      canvas.drawCircle(c, r, _line(1.6, _blue));
+    }
+    _shape(canvas, _oval(c, 7, 7), _cream, 1.4);
+  }
+
+  void _bell(Canvas canvas, Offset c) {
+    final bell = Path()
+      ..moveTo(c.dx - 7, c.dy + 6)
+      ..quadraticBezierTo(c.dx - 6, c.dy - 7, c.dx, c.dy - 8)
+      ..quadraticBezierTo(c.dx + 6, c.dy - 7, c.dx + 7, c.dy + 6)
+      ..close();
+    _shape(canvas, bell, _gold, 1.6);
+    canvas.drawCircle(c + const Offset(0, 7), 2.2, _fill(_goldDark));
+    for (final dir in const [-1.0, 1.0]) {
+      canvas.drawArc(
+          Rect.fromCircle(center: c, radius: 12),
+          dir < 0 ? math.pi * .8 : -math.pi * .2,
+          math.pi * .35,
+          false,
+          _line(1.6, _goldDark));
     }
   }
 

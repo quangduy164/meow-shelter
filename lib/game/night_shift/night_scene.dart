@@ -1,5 +1,6 @@
 import 'dart:math';
 import 'package:flutter/painting.dart';
+import '../components/cat_component.dart';
 import '../meow_shelter_game.dart';
 import 'night_cards.dart';
 import 'night_run.dart';
@@ -8,6 +9,8 @@ import 'maps/night_market_scene.dart';
 import 'maps/rooftop_bridges_scene.dart';
 import 'maps/warehouse_traps_scene.dart';
 import 'maps/reed_garden_scene.dart';
+import 'maps/harbor_flow_scene.dart';
+import 'maps/night_station_scene.dart';
 
 /// Each map owns its scenery, resource timers and lit-area rules.
 abstract class NightScene {
@@ -21,6 +24,8 @@ abstract class NightScene {
   bool get peaceful => false;
   bool get usesTraps => false;
   bool get ownsBait => usesTraps;
+  bool get noCarry => usesTraps;
+  bool tapCat(CatComponent cat) => false;
   bool placeBait(Offset point, {bool free = false}) => false;
   void prepareBait() {}
   bool get hasBaitInTransit => false;
@@ -55,4 +60,6 @@ NightScene createNightScene(NightMap map, MeowShelterGame game,
       NightMap.warehouse =>
         WarehouseTrapsScene(game, onFirstLight: onFirstLight),
       NightMap.reedGarden => ReedGardenScene(game, onFirstLight: onFirstLight),
+      NightMap.harbor => HarborFlowScene(game, onFirstLight: onFirstLight),
+      NightMap.station => NightStationScene(game, onFirstLight: onFirstLight),
     };

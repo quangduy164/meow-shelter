@@ -1,5 +1,5 @@
 /// Special cats with a personality. Each map gives one per cluster.
-enum HerdTrait { normal, chubby, curious, sleepy, golden }
+enum HerdTrait { normal, chubby, curious, sleepy, golden, shy, sulky }
 
 abstract final class HerdTraits {
   /// Bé Mập: slower, slows the leader, weighs two on thin ice and heats up
@@ -22,6 +22,8 @@ abstract final class HerdTraits {
         HerdTrait.curious => 'Bé Tò Mò',
         HerdTrait.sleepy => 'Bé Ngủ Say',
         HerdTrait.golden => 'Bé Vàng',
+        HerdTrait.shy => 'Bé Nhát Gan',
+        HerdTrait.sulky => 'Bé Hay Dỗi',
         HerdTrait.normal => '',
       };
 }

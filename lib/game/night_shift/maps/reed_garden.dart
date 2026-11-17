@@ -23,6 +23,7 @@ class ReedTrail {
 /// Hidden-cat positions only. The scene owns sprites, fish stock and rewards.
 class ReedGarden {
   final patches = <ReedPatch>[];
+  final exits = <ReedPatch>[];
   final trails = <ReedTrail>[];
   double moveSeconds = 4.5, trailSeconds = 2.5, bellLeft = 0;
   bool softParting = false, bell = false;
@@ -42,13 +43,26 @@ class ReedGarden {
       ..clear()
       ..addAll([
         for (final (i, c) in const [
-          Offset(.30, .39),
-          Offset(.50, .34),
-          Offset(.70, .39),
-          Offset(.27, .74),
-          Offset(.73, .74),
+          Offset(.30, .36),
+          Offset(.50, .36),
+          Offset(.70, .36),
+          Offset(.30, .68),
+          Offset(.50, .68),
+          Offset(.70, .68),
         ].indexed)
-          ReedPatch(i, Rect.fromCenter(center: c, width: .15, height: .20))
+          ReedPatch(i, Rect.fromCenter(center: c, width: .14, height: .18))
+      ]);
+    exits
+      ..clear()
+      ..addAll([
+        ReedPatch(
+            -1,
+            Rect.fromCenter(
+                center: const Offset(.075, .52), width: .1, height: .2)),
+        ReedPatch(
+            -2,
+            Rect.fromCenter(
+                center: const Offset(.925, .52), width: .1, height: .2)),
       ]);
     trails.clear();
   }
@@ -61,7 +75,7 @@ class ReedGarden {
       .firstOrNull;
   Iterable<ReedPatch> neighbors(ReedPatch patch, {int reach = 1}) =>
       patches.where((p) =>
-          p != patch && (p.center - patch.center).distance <= .27 * reach);
+          p != patch && (p.center - patch.center).distance <= .33 * reach);
   ReedPatch? emptyNear(ReedPatch from, math.Random random, {int reach = 1}) {
     final choices = neighbors(from, reach: reach)
         .where((p) => !p.occupied && !p.baited)
@@ -69,9 +83,31 @@ class ReedGarden {
     return choices.isEmpty ? null : choices[random.nextInt(choices.length)];
   }
 
+  Iterable<ReedPatch> exitsNear(ReedPatch patch) => [
+        if (patch.index == 0 || patch.index == 3) exits[0],
+        if (patch.index == 2 || patch.index == 5) exits[1],
+      ];
+
+  /// A rustle pushes a neighbour farther away; exits rescue the cat.
+  ReedPatch? fleeTarget(ReedPatch from, ReedPatch rustle) {
+    final start = (from.center - rustle.center).distance;
+    final choices = [
+      ...neighbors(from).where((p) => p != rustle && !p.occupied && !p.baited),
+      ...exitsNear(from),
+    ].where((p) => (p.center - rustle.center).distance > start + .01).toList()
+      ..sort((a, b) {
+        final exit = (b.index < 0 ? 1 : 0) - (a.index < 0 ? 1 : 0);
+        if (exit != 0) return exit;
+        return (b.center - rustle.center)
+            .distance
+            .compareTo((a.center - rustle.center).distance);
+      });
+    return choices.firstOrNull;
+  }
+
   void move(ReedPatch from, ReedPatch to) {
     from.occupied = false;
-    to.occupied = true;
+    to.occupied = to.index >= 0;
     from.shake = to.shake = .7;
     trails.add(ReedTrail(from, to, trailSeconds, trailSeconds));
   }

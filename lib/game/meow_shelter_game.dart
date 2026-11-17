@@ -170,7 +170,8 @@ class MeowShelterGame extends FlameGame {
       catType: type,
       level: catLevel,
       isBoss: boss,
-      trapCapture: night?.scene.usesTraps ?? false,
+      trapCapture: night?.scene.noCarry ?? false,
+      onCaptureTap: night == null ? null : (cat) => night!.scene.tapCat(cat),
       // Night maps draw darkness, moon and lamp controls up to 86.
       priority: night == null ? 0 : 87,
       isBlocked: _isMapBlocked,
@@ -199,7 +200,7 @@ class MeowShelterGame extends FlameGame {
     for (final shelter in placements) {
       final component = ShelterZoneComponent(
         catType: shelter.type,
-        visible: () => night?.scene.usesTraps != true,
+        visible: () => night?.scene.noCarry != true,
         label: shelter.label,
         size: bedSize,
         position: level.isTutorial

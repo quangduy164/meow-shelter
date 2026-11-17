@@ -111,7 +111,11 @@ class NightRun {
                   count(NightCard.nightWind) + count(NightCard.fewerLanterns),
                 NightMap.marketAlley => count(NightCard.busyMarket),
                 NightMap.rooftops => count(NightCard.stormyRoof),
-                NightMap.warehouse || NightMap.reedGarden => 0,
+                NightMap.warehouse ||
+                NightMap.reedGarden ||
+                NightMap.harbor ||
+                NightMap.station =>
+                  0,
               });
 
   // The night itself.
@@ -125,6 +129,8 @@ class NightRun {
   /// Rotate rescue maps each night.
   // Test order: put the newest maps first.
   static const mapOrder = [
+    NightMap.station,
+    NightMap.harbor,
     NightMap.warehouse,
     NightMap.reedGarden,
     NightMap.backyard,

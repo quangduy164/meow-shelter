@@ -178,14 +178,41 @@ Trùm nán lại 1.2s thay vì 1.8s. Chỉ thò đầu 0.8s, sau đó vào lồn
 
 ## Vườn lau
 
-Map thứ năm. Mèo vào sân sẽ trốn ngay trong năm bụi lau, không hiện và không
-nhận chạm. Mèo đổi sang bụi kề sau vài giây, để lại vết chân vàng từ bụi cũ
-sang bụi mới. Chạm đúng bụi: mèo lộ ra cạnh bụi, đã no và sẵn sàng bế vào ổ.
-Chạm hụt: bụi nghỉ 1.5s, mèo ở bụi kề đổi chỗ. Kéo cá vào bụi trống để sau 1.2s
-dụ một mèo ở bụi kề vào đó.
+Mèo trốn trong sáu bụi lau, không hiện và không bế được. Mèo tự đổi sang bụi
+kề sau vài giây, để lại vết chân vàng. Chạm một bụi để tạo tiếng động: mèo ở
+bụi kề chạy sang nơi xa bụi đó hơn. Nếu mèo ở bụi biên bị lùa về phía giỏ,
+mèo chạy vào lối ra và được cứu ngay. Chạm trúng bụi đang có mèo làm mèo chạy
+loạn và tính lỗi. Kéo cá vào bụi trống để dụ mèo ở bụi kề vào đó.
 
-- Logic: `maps/reed_garden.dart`; gắn mèo, chạm, cá: `maps/reed_garden_scene.dart`;
-  vẽ nền, bụi và vết: `maps/reed_garden_painter.dart`.
-- Biến thể: Lau tĩnh; Gió lau đổi bụi nhanh hơn; Sương lau vết tan nhanh nhưng
-  cá dụ được mèo cách hai bụi.
+- Logic bụi, lối ra và hướng chạy: `maps/reed_garden.dart`.
+- Gắn mèo, chạm, cá và mèo chạy về giỏ: `maps/reed_garden_scene.dart`.
+- Vẽ nền, bụi, vết và giỏ lối ra: `maps/reed_garden_painter.dart`.
 - Thẻ riêng: Dấu chân sương, Lau lặng gió, Rẽ lau nhẹ, Chuông lau.
+## Bến thuyền
+
+Mèo chờ ở bến trái, mỗi con lên một bè có cờ màu giống mèo. Bến phải có đèn
+màu giống mèo: bè chỉ được cứu khi vào đúng bến cùng màu. Khi mèo giống mới tới,
+một bến không còn bè cần dùng sẽ đổi màu. Vào nhầm bến, ra thác hoặc đâm đá
+thì bè quay lại bến trái và tính lỗi. Kéo cá lên bè để neo bè 2.5 giây.
+
+- Lần đầu gặp map: cửa nước đổi riêng từng luồng.
+- Lần thứ hai: một cửa đổi hướng cả cột, có thanh nối giữa các cửa cùng cột.
+- Lần thứ ba trở đi: hai bè đi sát nhau sẽ va và cùng quay lại.
+- Logic luồng, bến, cửa, va chạm: `maps/harbor_flow.dart`; gắn mèo và cá:
+  `maps/harbor_flow_scene.dart`; vẽ: `maps/harbor_flow_painter.dart`.
+- Thẻ riêng: Bè chắc, Dòng chậm, Bến chung, Dây kéo bến.
+## Nhà ga đêm
+
+Mèo vào sân ngồi chờ trên ghế sân ga, có vòng màu dưới chân theo giống mèo.
+Mỗi vạch toa có cột biển màu báo toa của chuyến tàu sắp tới. Chạm mèo rồi chạm
+vạch để mèo ra đứng chờ; chạm mèo trên vạch rồi chạm vạch khác để đổi chỗ. Khi tàu
+dừng, mèo đúng màu lên tàu và được cứu, mèo sai màu về ghế và tính lỗi. Kéo cá
+vào vạch trống để gọi một mèo đang chờ, ưu tiên mèo hợp biển toa đó.
+
+- Lịch tàu và biển toa: `maps/night_station.dart`; ghế, vạch, cá và lên tàu:
+  `maps/night_station_scene.dart`; vẽ ga, tàu, biển, vạch: `maps/night_station_painter.dart`.
+- Biển chuyến sau có mọi giống đang chờ (tối đa bằng số toa), toa thừa là biển
+  ngẫu nhiên. Mèo mới tới chỉ thay biển thừa, không đổi biển đã xếp.
+- Biến thể: Ga nhỏ (3 toa), Tàu dài (4 toa), Đổi biển (biển chỉ hiện khi tàu vào).
+- Lần gặp thứ hai: tàu dừng ngắn hơn. Lần thứ ba: tàu tới dày hơn.
+- Thẻ riêng: Còi báo sớm, Dừng lâu, Toa chung, Nhân viên ga.

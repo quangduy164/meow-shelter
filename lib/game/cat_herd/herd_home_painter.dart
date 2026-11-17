@@ -18,6 +18,12 @@ void paintHerdHome(Canvas canvas, Offset center, HerdMapKind kind) {
       _desertHome(canvas);
     case HerdMapKind.snow:
       _snowHome(canvas);
+    case HerdMapKind.grandma:
+      _basket(canvas);
+    case HerdMapKind.station:
+      _waitingRoom(canvas);
+    case HerdMapKind.farm:
+      _barn(canvas);
   }
   // A consistent doorstep and paw badge identify the goal on every map.
   _box(canvas, const Rect.fromLTWH(-20, 21, 40, 6), const Color(0xFFBFA57D), 2);
@@ -34,6 +40,133 @@ void paintHerdHome(Canvas canvas, Offset center, HerdMapKind kind) {
     canvas.drawCircle(p, 2, paw);
   }
   canvas.restore();
+}
+
+/// Little red barn with a hay loft and cross-braced doors.
+void _barn(Canvas c) {
+  _box(c, const Rect.fromLTWH(-36, -20, 72, 44), const Color(0xFFC6463B), 3);
+  final roof = Path()
+    ..moveTo(-42, -16)
+    ..lineTo(-28, -38)
+    ..lineTo(28, -38)
+    ..lineTo(42, -16)
+    ..close();
+  c.drawPath(roof, Paint()..color = const Color(0xFF5E3B2A));
+  _line(c, const Offset(-42, -16), const Offset(42, -16),
+      const Color(0xFFF2EBDD), 3);
+  _box(c, const Rect.fromLTWH(-9, -32, 18, 12), const Color(0xFFF2EBDD), 2);
+  _box(c, const Rect.fromLTWH(-6, -30, 12, 9), const Color(0xFFE6C05A), 1);
+  _box(c, const Rect.fromLTWH(-16, -4, 32, 28), const Color(0xFFF2EBDD), 2);
+  _box(c, const Rect.fromLTWH(-13, -1, 26, 25), const Color(0xFFA9362D), 1);
+  _line(c, const Offset(-13, -1), const Offset(13, 24), const Color(0xFFF2EBDD),
+      2);
+  _line(c, const Offset(13, -1), const Offset(-13, 24), const Color(0xFFF2EBDD),
+      2);
+  for (final x in [-31.0, 21.0]) {
+    _box(c, Rect.fromLTWH(x, -12, 10, 10), const Color(0xFFF2EBDD), 1);
+  }
+}
+
+/// Cosy station waiting room with a cat-shaped sign.
+void _waitingRoom(Canvas c) {
+  _box(c, const Rect.fromLTWH(-34, -18, 68, 42), const Color(0xFFF1E3C8), 5);
+  final roof = Path()
+    ..moveTo(-42, -14)
+    ..lineTo(0, -40)
+    ..lineTo(42, -14)
+    ..close();
+  c.drawPath(roof, Paint()..color = const Color(0xFF3F6E8C));
+  _line(c, const Offset(-42, -14), const Offset(42, -14),
+      const Color(0xFF2E5570), 4);
+  for (final x in [-27.0, 15.0]) {
+    _box(c, Rect.fromLTWH(x, -8, 12, 12), const Color(0xFFFFE9A3), 2);
+    _line(c, Offset(x + 6, -8), Offset(x + 6, 4), const Color(0xFFD9B26B), 1);
+  }
+  _door(c, const Color(0xFFB0794C), const Color(0xFF7A4F2E));
+  // Cat-ear sign on the roof.
+  final sign = Path()
+    ..moveTo(-12, -40)
+    ..lineTo(-10, -52)
+    ..lineTo(-4, -46)
+    ..lineTo(4, -46)
+    ..lineTo(10, -52)
+    ..lineTo(12, -40)
+    ..close();
+  c.drawPath(sign, Paint()..color = const Color(0xFFF2C437));
+  c.drawCircle(
+      const Offset(-4, -43), 1.4, Paint()..color = const Color(0xFF5A3214));
+  c.drawCircle(
+      const Offset(4, -43), 1.4, Paint()..color = const Color(0xFF5A3214));
+}
+
+/// Grandma's big wicker cat basket with a cushion and a knitted blanket.
+void _basket(Canvas c) {
+  final wicker = Paint()..color = const Color(0xFFC08A4E);
+  final weave = Paint()
+    ..color = const Color(0xFF9A6A36)
+    ..style = PaintingStyle.stroke
+    ..strokeWidth = 1.4;
+  // Back rim, cushion, then the front of the basket.
+  c.drawOval(const Rect.fromLTWH(-42, -22, 84, 34), wicker);
+  c.drawOval(const Rect.fromLTWH(-36, -17, 72, 24),
+      Paint()..color = const Color(0xFFF2C6C9));
+  c.drawOval(const Rect.fromLTWH(-30, -14, 60, 16),
+      Paint()..color = const Color(0xFFF8DADB));
+  final front = Path()
+    ..moveTo(-42, -5)
+    ..quadraticBezierTo(-40, 22, 0, 24)
+    ..quadraticBezierTo(40, 22, 42, -5)
+    ..quadraticBezierTo(0, 8, -42, -5)
+    ..close();
+  c.drawPath(front, wicker);
+  c.save();
+  c.clipPath(front);
+  for (var x = -42.0; x < 44; x += 7) {
+    c.drawLine(Offset(x, -10), Offset(x + 4, 26), weave);
+  }
+  for (var y = 0.0; y < 26; y += 6) {
+    c.drawArc(Rect.fromLTWH(-44, y - 14, 88, 22), .1, 2.9, false, weave);
+  }
+  c.restore();
+  c.drawPath(
+      front,
+      Paint()
+        ..color = const Color(0xFF8A5B2C)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 2);
+  // Knitted blanket over the edge, a ball of yarn and a heart tag.
+  final blanket = Path()
+    ..moveTo(10, -4)
+    ..quadraticBezierTo(24, -8, 36, -2)
+    ..lineTo(32, 16)
+    ..quadraticBezierTo(22, 12, 14, 14)
+    ..close();
+  c.drawPath(blanket, Paint()..color = const Color(0xFF8DB4D9));
+  for (var i = 0; i < 3; i++) {
+    c.drawLine(
+        Offset(14 + i * 7.0, -2),
+        Offset(15 + i * 6.0, 13),
+        Paint()
+          ..color = const Color(0xFFBFD7EC)
+          ..strokeWidth = 1.5);
+  }
+  c.drawCircle(
+      const Offset(-30, 14), 7, Paint()..color = const Color(0xFFE77FA0));
+  c.drawArc(
+      const Rect.fromLTWH(-35, 9, 10, 10),
+      0,
+      3.6,
+      false,
+      Paint()
+        ..color = const Color(0xFFF9B9CC)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.3);
+  final heart = Path()
+    ..moveTo(0, -24)
+    ..cubicTo(-8, -32, -14, -22, 0, -14)
+    ..cubicTo(14, -22, 8, -32, 0, -24)
+    ..close();
+  c.drawPath(heart, Paint()..color = const Color(0xFFE0614F));
 }
 
 void _box(Canvas c, Rect r, Color color, [double radius = 0]) => c.drawRRect(

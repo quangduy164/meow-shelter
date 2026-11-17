@@ -1,4 +1,5 @@
 import 'dart:math';
+import 'dart:ui' show Offset, Rect;
 import 'package:flame/components.dart';
 import 'herd_map.dart';
 import 'herd_ball.dart';
@@ -31,6 +32,24 @@ class HerdCat {
   /// and where it is heading.
   double itch = 0, distracted = 0;
   final wanderTo = Vector2.zero();
+
+  /// Grandma's house: Bé Mập stuck in a cat flap, or a curious cat playing
+  /// with a lure instead of chasing a butterfly.
+  double stuck = 0;
+  bool lured = false;
+
+  /// Station: Bé Nhát Gan running to cover, hiding there, and coax progress.
+  bool fleeing = false, hidden = false;
+  double coax = 0, calm = 0;
+
+  /// Farm: the plate this cat is holding down, a short pause before it may
+  /// sit on a plate again, and Bé Hay Dỗi's sulk.
+  int? plate;
+  double plateCooldown = 0;
+
+  /// A sitter only gets up once the leader has walked off and come back.
+  bool plateReady = false;
+  bool sulking = false;
   bool introduced = false;
 }
 
@@ -69,6 +88,10 @@ enum HerdSound {
   overheated,
   iceWarning,
   iceBreak,
+  cuckoo,
+  stuck,
+  horn,
+  doors,
 }
 
 class HerdRound {
@@ -92,7 +115,12 @@ class HerdRound {
   /// Market stealth state: global shout cooldown and the vendor shouting.
   double vendorCooldown = 0, shoutTime = 0;
   int? shoutingVendor;
-  int _stormAnnounced = -1;
+  int _stormAnnounced = -1, _cuckooRung = -1, _hornHeard = -1;
+  int? _openStop;
+
+  /// Farm gate state per pen, and how long each plate rests after pickup.
+  final gateOpen = <bool>[];
+  final plateRest = <double>[];
   HerdMap map = HerdMap.market;
   final leader = Vector2.zero();
   final velocity = Vector2.zero();
@@ -143,6 +171,15 @@ class HerdRound {
     shoutTime = 0;
     shoutingVendor = null;
     _stormAnnounced = -1;
+    _cuckooRung = -1;
+    _hornHeard = -1;
+    _openStop = null;
+    gateOpen
+      ..clear()
+      ..addAll(List.filled(map.pens.length, false));
+    plateRest
+      ..clear()
+      ..addAll(List.filled(map.pens.length, 0.0));
     lives = 3;
     delivered = 0;
     score = 0;
@@ -235,6 +272,9 @@ class HerdRound {
     shoutTime = max(0, shoutTime - dt);
     noticeTime = max(0, noticeTime - dt);
     _leaderBallCooldown = max(0, _leaderBallCooldown - dt);
+    if (map.track != null) _carryTrain(dt);
+    final wasFollowing = chain.toSet();
+    if (map.pens.isNotEmpty) _updateGates(dt);
     final direction = input.clone();
     if (direction.length > 1) direction.normalize();
     landingTime = max(0, landingTime - dt);
@@ -263,6 +303,7 @@ class HerdRound {
     if (leaderDx.abs() > .001) leaderFacingLeft = leaderDx < 0;
     if (trail.length > 600) trail.removeRange(600, trail.length);
     _wakeSleepers(dt);
+    if (map.track != null) _station(dt);
     for (final cat in cats) {
       cat.scared = max(0, cat.scared - dt);
       cat.hop = max(0, cat.hop - dt);
@@ -275,10 +316,18 @@ class HerdRound {
           cat.chill == 0 &&
           cat.distracted == 0 &&
           cat.awake &&
+          !cat.hidden &&
+          !cat.sulking &&
+          (cat.plate == null || cat.plateReady) &&
           cat.position.distanceTo(leader) < 29 &&
           _clearLine(cat.position, leader)) {
         cat.following = true;
         cat.hop = .65;
+        if (cat.plate != null) {
+          plateRest[cat.plate!] = HerdPlate.restSeconds;
+          cat.plate = null;
+          cat.plateCooldown = HerdPlate.rejoinCooldown;
+        }
         final wasUnlocked = homeUnlocked;
         chain.add(cat);
         onSound?.call(
@@ -297,8 +346,10 @@ class HerdRound {
         }
       }
     }
+    final jammed = <HerdCat>[];
     for (var i = 0; i < chain.length; i++) {
       final cat = chain[i];
+      final from = cat.position.clone();
       final gap =
           velocity.length < 8 || landingTime > 0 ? spacing * .65 : spacing;
       final target = _followTarget(cat.position, (i + 1) * gap);
@@ -322,8 +373,20 @@ class HerdRound {
       }
       final dx = cat.position.x - before;
       if (dx.abs() > .001) cat.facingLeft = dx < 0;
+      if (cat.trait == HerdTrait.chubby &&
+          map.contains(map.catFlaps, cat.position, field)) {
+        cat.position.setFrom(from);
+        jammed.add(cat);
+      }
+    }
+    for (final cat in jammed) {
+      _jamInFlap(cat);
     }
     if (!ended) _wander(dt);
+    if (!ended && map.cuckooRoom != null) _cuckoo();
+    if (!ended && immune == 0) _bumpRobots();
+    if (!ended && map.pens.isNotEmpty) _sitOnPlates();
+    if (!ended && map.pens.isNotEmpty) _sulk(dt);
     if (immune == 0) {
       for (final patrol in patrols) {
         if (patrol.trafficLight && map.green(time)) continue;
@@ -360,6 +423,16 @@ class HerdRound {
           ? 'Đã dẫn $count bạn về nhà! Bé Vàng +${HerdTraits.goldenBonus * golden} điểm'
           : 'Đã dẫn $count bạn về nhà!');
     }
+    for (final cat in wasFollowing) {
+      if (cat.trait == HerdTrait.sulky &&
+          !cat.following &&
+          !cat.home &&
+          !cat.sulking) {
+        cat.sulking = true;
+        cat.coax = 0;
+        message('Bé Hay Dỗi giận rồi! Đuổi theo đứng cạnh để dỗ');
+      }
+    }
     assert(delivered + cats.where((c) => !c.home).length == catCount);
     assert(chain.toSet().length == chain.length);
   }
@@ -375,8 +448,345 @@ class HerdRound {
         HerdTrait.sleepy => 'Bé Ngủ Say dậy rồi! Đi thôi',
         HerdTrait.golden =>
           'Bé Vàng vào đàn! Đưa bé về nhà để được thêm ${HerdTraits.goldenBonus} điểm',
+        HerdTrait.shy => 'Bé Nhát Gan vào đàn! Coi chừng tiếng còi tàu',
+        HerdTrait.sulky =>
+          'Bé Hay Dỗi vào đàn! Đừng bỏ rơi bé, bé giận lâu lắm',
         HerdTrait.normal => '',
       };
+
+  Rect? get trackRect =>
+      map.track == null ? null : map.pixels(map.track!, field);
+
+  /// The whole train in pixels, or null on maps without one.
+  Rect? trainAt(double t) => map.track == null
+      ? null
+      : map.pixels(HerdTrain.rect(t, map.track!), field);
+
+  bool _inCar(Rect? car, Vector2 p) =>
+      car != null &&
+      Rect.fromLTRB(car.left + 8, car.top, car.right - 8, car.bottom)
+          .contains(p.toOffset());
+
+  bool inTrain(Vector2 p) => _inCar(trainAt(time), p);
+  bool onTrack(Vector2 p) => trackRect?.contains(p.toOffset()) ?? false;
+
+  /// Walls, plus the rails: inside the train only while its doors are open,
+  /// and no way out of it while it is moving.
+  bool _solid(Vector2 p, bool riding) {
+    if (map.blocked(p, field)) return true;
+    for (var i = 0; i < map.pens.length; i++) {
+      if (!gateOpen[i] &&
+          map
+              .pixels(map.pens[i].gate, field)
+              .inflate(15)
+              .contains(p.toOffset())) {
+        return true;
+      }
+    }
+    if (map.track == null) return false;
+    final open = HerdTrain.open(time);
+    if (riding && !open) return !inTrain(p);
+    return onTrack(p) && !(inTrain(p) && (open || riding));
+  }
+
+  bool _offLimits(Vector2 p) => map.blocked(p, field) || onTrack(p);
+
+  /// Which side of the rails a point is on; the hall splits the upper side.
+  int _zone(Vector2 p) {
+    if (inTrain(p)) return 0;
+    final track = trackRect!;
+    if (p.y > track.center.dy) return 3;
+    return p.x < field.x / 2 ? 1 : 2;
+  }
+
+  void _carryTrain(double dt) {
+    final before = trainAt(time - dt), after = trainAt(time);
+    if (before == null || after == null) return;
+    final dx = after.center.dx - before.center.dx;
+    if (dx == 0 || dx.abs() > 40) return;
+    if (_inCar(before, leader)) leader.x += dx;
+    for (final cat in cats) {
+      if (!cat.home && _inCar(before, cat.position)) cat.position.x += dx;
+    }
+  }
+
+  void _station(double dt) {
+    final stop = HerdTrain.stop(time);
+    if (stop != null && _openStop == null) onSound?.call(HerdSound.doors);
+    if (_openStop != null && stop == null) _depart(_openStop!);
+    _openStop = stop;
+    final horn = HerdTrain.horn(time);
+    if (horn != null && horn != _hornHeard) {
+      _hornHeard = horn;
+      _blowHorn(horn.isEven ? HerdTrain.westX : HerdTrain.eastX);
+    }
+    for (final cat in cats) {
+      cat.calm = max(0, cat.calm - dt);
+      if (!cat.hidden) continue;
+      final near = cat.position.distanceTo(leader) < 32 &&
+          _clearLine(cat.position, leader);
+      cat.coax = near
+          ? min(1, cat.coax + dt / HerdShy.coaxSeconds)
+          : max(0, cat.coax - dt);
+      if (cat.coax >= 1) {
+        cat.hidden = false;
+        cat.coax = 0;
+        cat.calm = HerdShy.calmSeconds;
+        cat.hop = .65;
+        message('Bé Nhát Gan hết sợ rồi, đi tiếp thôi!');
+      }
+    }
+  }
+
+  /// Doors close: riders stay aboard only with the leader; everyone else is
+  /// put off on the nearer platform, and followers on another side than the
+  /// leader are left behind. The east stop is the end of the line.
+  void _depart(int stop) {
+    final leaderAboard = stop == 0 && inTrain(leader);
+    void putOff(Vector2 p) {
+      final track = trackRect!;
+      final up = (p.y - track.top) < (track.bottom - p.y);
+      final off = Vector2(p.x, up ? track.top - 16 : track.bottom + 16);
+      p.setFrom(_offLimits(off) ? _safeSpot(off) : off);
+    }
+
+    if (!leaderAboard && inTrain(leader)) {
+      putOff(leader);
+      trail
+        ..clear()
+        ..add(leader.clone());
+    }
+    for (final cat in cats) {
+      if (cat.home || !inTrain(cat.position)) continue;
+      if (!leaderAboard) putOff(cat.position);
+    }
+    final side = _zone(leader);
+    final left = chain.where((c) => _zone(c.position) != side).toList();
+    for (final cat in left) {
+      chain.remove(cat);
+      cat.following = false;
+      cat.velocity.setZero();
+    }
+    if (left.isNotEmpty) {
+      onSound?.call(HerdSound.scattered);
+      message('Tàu chạy rồi! ${left.length} bé bị bỏ lại sân ga');
+    } else if (stop == 1) {
+      message('Ga cuối! Mời cả đàn xuống tàu');
+    }
+  }
+
+  /// The horn sends every Bé Nhát Gan in earshot running to the nearest
+  /// bench on its own side of the rails.
+  void _blowHorn(double stopX) {
+    onSound?.call(HerdSound.horn);
+    final source = Vector2(stopX * field.x, trackRect!.center.dy);
+    var ran = 0;
+    for (final cat in cats) {
+      if (cat.trait != HerdTrait.shy ||
+          cat.home ||
+          cat.hidden ||
+          cat.fleeing ||
+          cat.calm > 0 ||
+          cat.position.distanceTo(source) > HerdShy.hearing * field.x) {
+        continue;
+      }
+      final zone = _zone(cat.position);
+      Vector2? best;
+      for (final spot in map.hideSpots) {
+        final p = _px(spot);
+        if (zone != 0 && _zone(p) != zone) continue;
+        if (best == null ||
+            p.distanceTo(cat.position) < best.distanceTo(cat.position)) {
+          best = p;
+        }
+      }
+      if (cat.following) chain.remove(cat);
+      cat.following = false;
+      cat.velocity.setZero();
+      cat.fleeing = true;
+      cat.lured = false;
+      cat.coax = 0;
+      cat.hop = .5;
+      cat.distracted = 3;
+      cat.wanderTo.setFrom(best ?? cat.position);
+      ran++;
+    }
+    if (ran > 0) message('Tuuu! Bé Nhát Gan sợ quá chạy đi trốn');
+  }
+
+  /// Bé Mập cannot squeeze through: it pops back out and leaves the herd.
+  void _jamInFlap(HerdCat cat) {
+    chain.remove(cat);
+    cat.following = false;
+    cat.velocity.setZero();
+    cat.tumble = .65;
+    cat.stuck = 1.6;
+    cat.distracted = 1.2;
+    Rect? flap;
+    for (final f in map.catFlaps) {
+      final box = map.pixels(f, field).inflate(14);
+      if (box.contains(cat.position.toOffset())) flap = box;
+    }
+    final side = flap == null || cat.position.x < flap.center.dx ? -1.0 : 1.0;
+    final back = cat.position + Vector2(side * 30, 0);
+    cat.wanderTo.setFrom(map.blocked(back, field) ? cat.position : back);
+    onSound?.call(HerdSound.stuck);
+    message('Bé Mập kẹt ở cửa mèo! Đi cửa lớn với bé nhé');
+  }
+
+  Vector2 _px(Offset fraction) =>
+      Vector2(fraction.dx * field.x, fraction.dy * field.y);
+
+  List<Vector2> get robotPositions => [
+        for (final loop in map.robots)
+          () {
+            final p = HerdRobot.at(map.pixels(loop, field), time);
+            return Vector2(p.dx, p.dy);
+          }()
+      ];
+
+  /// The robot vacuum scatters the herd but never costs a life.
+  List<Vector2> get goosePositions => [
+        for (final flock in map.geese)
+          for (var k = 0; k < HerdGoose.flock; k++) _px(flock.at(time, k))
+      ];
+
+  Vector2 platePoint(int i) => _px(map.pens[i].plate);
+
+  /// Whether cat [c] (or the leader when null) can push plate [i] down.
+  bool _presses(int i, HerdCat? c) =>
+      !map.pens[i].heavy || (c != null && c.trait == HerdTrait.chubby);
+
+  /// Gates open while their plate is down or someone stands in the gap.
+  /// Closing shuts in whoever is on the other side from the leader.
+  void _updateGates(double dt) {
+    for (var i = 0; i < map.pens.length; i++) {
+      plateRest[i] = max(0, plateRest[i] - dt);
+      final plate = platePoint(i);
+      bool on(Vector2 p) => p.distanceTo(plate) < HerdPlate.radius;
+      final pressed = (on(leader) && _presses(i, null)) ||
+          cats.any((c) => !c.home && on(c.position) && _presses(i, c));
+      final gap = map.pixels(map.pens[i].gate, field).inflate(14);
+      final area = map.pixels(map.pens[i].area, field);
+      // Never shut on the herd: the gate waits for every follower inside.
+      final busy = gap.contains(leader.toOffset()) ||
+          cats.any((c) => !c.home && gap.contains(c.position.toOffset())) ||
+          chain.any((c) => area.contains(c.position.toOffset()));
+      final open = pressed || busy;
+      if (open != gateOpen[i]) onSound?.call(HerdSound.doors);
+      gateOpen[i] = open;
+      if (open) continue;
+      final leaderIn = area.contains(leader.toOffset());
+      final shut = chain
+          .where((c) => area.contains(c.position.toOffset()) != leaderIn)
+          .toList();
+      for (final cat in shut) {
+        chain.remove(cat);
+        cat.following = false;
+        cat.velocity.setZero();
+      }
+      if (shut.isNotEmpty) {
+        message('Cổng đóng mất rồi! ${shut.length} bé bị nhốt lại');
+      }
+    }
+    for (final cat in cats) {
+      cat.plateCooldown = max(0, cat.plateCooldown - dt);
+      if (cat.plate != null && cat.position.distanceTo(leader) > 70) {
+        cat.plateReady = true;
+      }
+    }
+  }
+
+  /// The first follower to step on a free plate sits down and holds it.
+  void _sitOnPlates() {
+    for (var i = 0; i < map.pens.length; i++) {
+      if (plateRest[i] > 0 || cats.any((c) => c.plate == i)) continue;
+      final plate = platePoint(i);
+      final sitter = chain
+          .where((c) =>
+              c.trait != HerdTrait.sulky &&
+              c.plateCooldown == 0 &&
+              _presses(i, c) &&
+              c.position.distanceTo(plate) < HerdPlate.radius - 2)
+          .firstOrNull;
+      if (sitter == null) continue;
+      chain.remove(sitter);
+      sitter.following = false;
+      sitter.velocity.setZero();
+      sitter.position.setFrom(plate);
+      sitter.plate = i;
+      sitter.plateReady = false;
+      sitter.hop = .5;
+      message(map.pens[i].heavy
+          ? 'Bé Mập ngồi đè bàn đạp, cổng chuồng gà mở rồi!'
+          : 'Một bé ngồi giữ bàn đạp, cổng mở rồi! Nhớ quay lại đón bé');
+    }
+  }
+
+  /// Bé Hay Dỗi backs away from the leader until coaxed.
+  void _sulk(double dt) {
+    for (final cat in cats) {
+      if (!cat.sulking || cat.home) continue;
+      final away = cat.position - leader;
+      final near =
+          away.length < HerdSulk.coaxRange && _clearLine(cat.position, leader);
+      if (away.length < HerdSulk.avoidRange && away.length > .01) {
+        final before = cat.position.x;
+        _move(cat.position, away.normalized() * HerdSulk.walkSpeed * dt);
+        cat.facingLeft = cat.position.x < before;
+      }
+      cat.coax = near
+          ? min(1, cat.coax + dt / HerdSulk.coaxSeconds)
+          : max(0, cat.coax - dt * .5);
+      if (cat.coax >= 1) {
+        cat.sulking = false;
+        cat.coax = 0;
+        cat.hop = .65;
+        message('Bé Hay Dỗi hết giận rồi!');
+      }
+    }
+  }
+
+  void _bumpRobots() {
+    final geese = goosePositions;
+    for (final p in [...robotPositions, ...geese]) {
+      final hitLeader = p.distanceTo(leader) < 25;
+      final hit = hitLeader
+          ? 0
+          : chain.indexWhere((cat) => cat.position.distanceTo(p) < 24);
+      if (hit < 0 || (hitLeader && chain.isEmpty)) continue;
+      for (final cat in chain.skip(hit)) {
+        cat.tumble = .65;
+      }
+      _scatter(hit);
+      immune = 1.5;
+      onSound?.call(HerdSound.scattered);
+      message(geese.contains(p)
+          ? 'Quác quác! Ngỗng đuổi cả đàn chạy tán loạn'
+          : 'Robot hút bụi húc trúng! Đàn chạy tán loạn');
+      return;
+    }
+  }
+
+  /// Every ring wakes the sleepy cats in the living room at once.
+  void _cuckoo() {
+    if (!HerdCuckoo.ringing(time)) return;
+    final ring = HerdCuckoo.number(time);
+    if (ring == _cuckooRung) return;
+    _cuckooRung = ring;
+    final room = map.pixels(map.cuckooRoom!, field);
+    var woke = 0;
+    for (final cat in cats) {
+      if (cat.awake || cat.home || !room.contains(cat.position.toOffset())) {
+        continue;
+      }
+      cat.wake = 1;
+      cat.hop = .65;
+      woke++;
+    }
+    onSound?.call(HerdSound.cuckoo);
+    if (woke > 0) message('Cúc cu! Bé Ngủ Say giật mình tỉnh dậy');
+  }
 
   /// The leader must stay beside a sleepy cat until it wakes up.
   void _wakeSleepers(double dt) {
@@ -399,18 +809,39 @@ class HerdRound {
       if (cat.distracted > 0 && !cat.following) {
         cat.distracted = max(0, cat.distracted - dt);
         final delta = cat.wanderTo - cat.position;
+        final speed = cat.fleeing ? HerdShy.runSpeed : HerdTraits.wanderSpeed;
         if (delta.length > 2) {
           final before = cat.position.x;
           _move(
-              cat.position,
-              delta.normalized() *
-                  min(delta.length, HerdTraits.wanderSpeed * dt));
+              cat.position, delta.normalized() * min(delta.length, speed * dt));
           cat.facingLeft = cat.position.x < before;
+        }
+        if (cat.fleeing && (delta.length <= 2 || cat.distracted == 0)) {
+          cat.fleeing = false;
+          cat.hidden = true;
+          cat.distracted = 0;
         }
       }
     }
+    for (final cat in cats) {
+      cat.stuck = max(0, cat.stuck - dt);
+    }
     for (final cat in chain.toList()) {
       if (cat.trait != HerdTrait.curious) continue;
+      final lure = map.lures
+          .map(_px)
+          .where((p) => p.distanceTo(cat.position) < HerdLure.radius)
+          .firstOrNull;
+      if (lure != null) {
+        // Straight to the yarn or the fish dish, no warning.
+        final toward = cat.position - lure;
+        final spot = lure +
+            (toward.length < .01 ? Vector2(0, 1) : toward.normalized()) * 14;
+        _leaveFor(cat, map.blocked(spot, field) ? cat.position.clone() : spot,
+            lured: true);
+        message('Bé Tò Mò bị cuộn len, đĩa cá dụ mất rồi!');
+        continue;
+      }
       if (onThinIce(cat.position) ||
           map.chuteAt(cat.position, field) != null ||
           leader.distanceTo(home) < 110) {
@@ -423,15 +854,20 @@ class HerdRound {
         cat.itch = 1;
         continue;
       }
-      chain.remove(cat);
-      cat.following = false;
-      cat.velocity.setZero();
-      cat.hop = .5;
-      cat.distracted = HerdTraits.wanderSeconds;
-      cat.wanderTo.setFrom(spot);
-      onSound?.call(HerdSound.scattered);
+      _leaveFor(cat, spot);
       message('Bé Tò Mò chạy theo bướm rồi! Quay lại đón bé nhé');
     }
+  }
+
+  void _leaveFor(HerdCat cat, Vector2 spot, {bool lured = false}) {
+    chain.remove(cat);
+    cat.following = false;
+    cat.velocity.setZero();
+    cat.hop = .5;
+    cat.lured = lured;
+    cat.distracted = lured ? 2.4 : HerdTraits.wanderSeconds;
+    cat.wanderTo.setFrom(spot);
+    onSound?.call(HerdSound.scattered);
   }
 
   Vector2? _wanderSpot(Vector2 from) {
@@ -444,7 +880,7 @@ class HerdRound {
           at.x > field.x - 30 ||
           at.y < 75 ||
           at.y > field.y - 35 ||
-          map.blocked(at, field) ||
+          _offLimits(at) ||
           onThinIce(at) ||
           map.chuteAt(at, field) != null ||
           !_clearLine(from, at)) {
@@ -656,8 +1092,9 @@ class HerdRound {
       for (final spot in spots) {
         final id = cats.length;
         final cat = HerdCat(id, types[id % types.length], spot, group: group);
-        if (spot == spots.last && group < map.specials.length) {
-          cat.trait = map.specials[group];
+        final index = spots.indexOf(spot);
+        if (group < map.specials.length && index < map.specials[group].length) {
+          cat.trait = map.specials[group][index];
         }
         cats.add(cat);
       }
@@ -666,6 +1103,32 @@ class HerdRound {
 
   bool _onHazardLane(Vector2 at) {
     if (isTutorial) return false;
+    if (map.track != null) {
+      return map.pixels(map.track!, field).inflate(20).contains(at.toOffset());
+    }
+    if (map.pens.isNotEmpty) {
+      for (var i = 0; i < map.pens.length; i++) {
+        if (platePoint(i).distanceTo(at) < 40 ||
+            map
+                .pixels(map.pens[i].gate, field)
+                .inflate(20)
+                .contains(at.toOffset())) {
+          return true;
+        }
+      }
+      for (final flock in map.geese) {
+        final a = _px(flock.from), b = _px(flock.to);
+        final d = b - a;
+        final t = ((at - a).dot(d) / d.length2).clamp(0.0, 1.0);
+        if (at.distanceTo(a + d * t) < 36) return true;
+      }
+      return false;
+    }
+    if (map.robots.isNotEmpty) {
+      return map.robots.any((loop) =>
+          HerdRobot.distanceToLoop(map.pixels(loop, field), at.toOffset()) <
+          34);
+    }
     if (map.kind == HerdMapKind.snow) {
       return onThinIce(at) ||
           map.chutes.any((c) =>
@@ -741,7 +1204,7 @@ class HerdRound {
             at.y > field.y - 30) {
           continue;
         }
-        if (!map.blocked(at, field) && !(avoidThinIce && onThinIce(at))) {
+        if (!_offLimits(at) && !(avoidThinIce && onThinIce(at))) {
           return at;
         }
       }
@@ -781,11 +1244,12 @@ class HerdRound {
     // Axis sliding lets both the leader and the tail skirt the same wall.
     final pieces = max(1, (step.length / 4).ceil());
     final part = step / pieces.toDouble();
+    final riding = map.track != null && inTrain(at);
     for (var i = 0; i < pieces; i++) {
       final x = Vector2((at.x + part.x).clamp(24, field.x - 24), at.y);
-      if (!map.blocked(x, field)) at.setFrom(x);
+      if (!_solid(x, riding)) at.setFrom(x);
       final y = Vector2(at.x, (at.y + part.y).clamp(66, field.y - 30));
-      if (!map.blocked(y, field)) at.setFrom(y);
+      if (!_solid(y, riding)) at.setFrom(y);
     }
   }
 
@@ -817,7 +1281,7 @@ class HerdRound {
           (random.nextDouble() - .5) * 65, (random.nextDouble() - .5) * 65));
       cat.position.x = cat.position.x.clamp(30, field.x - 30);
       cat.position.y = cat.position.y.clamp(75, field.y - 35);
-      if (map.blocked(cat.position, field)) {
+      if (_offLimits(cat.position)) {
         cat.position.setFrom(_safeSpot(cat.position));
       }
     }

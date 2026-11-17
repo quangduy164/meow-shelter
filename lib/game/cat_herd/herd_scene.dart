@@ -9,6 +9,9 @@ import 'herd_home_painter.dart';
 import 'herd_market_painter.dart';
 import 'herd_snow_painter.dart';
 import 'herd_route_painter.dart';
+import 'herd_grandma_painter.dart';
+import 'herd_station_painter.dart';
+import 'herd_farm_painter.dart';
 
 /// Scenery and hazards only; cat sprites are owned by HerdGame.
 void paintHerdField(Canvas canvas, Size size, HerdRound round,
@@ -21,6 +24,9 @@ void paintHerdField(Canvas canvas, Size size, HerdRound round,
     paintHerdRoute(canvas, size, round);
   }
   paintSnowHazards(canvas, round);
+  paintGrandmaRobots(canvas, round);
+  paintStationTrain(canvas, round);
+  paintFarmGeese(canvas, round);
   for (final patrol in round.patrols) {
     final p = patrol.position(round.patrolClock(patrol) * .7).toOffset();
     if (round.map.kind == HerdMapKind.nightMarket) {

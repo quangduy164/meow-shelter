@@ -39,6 +39,7 @@ class CatComponent extends SpriteAnimationGroupComponent<CatState>
     this.onFed,
     this.lightTimeScale = .5,
     this.trapCapture = false,
+    this.onCaptureTap,
     this.assist,
     this.inLight,
     this.freezeInLight,
@@ -58,6 +59,9 @@ class CatComponent extends SpriteAnimationGroupComponent<CatState>
 
   final String catType;
   final bool trapCapture;
+
+  /// Map-owned tap on a no-carry cat; true consumes the tap.
+  final bool Function(CatComponent cat)? onCaptureTap;
   bool trapManaged = false, hiddenInCover = false;
   final void Function(CatComponent cat)? onFed;
   final double lightTimeScale;
@@ -256,6 +260,9 @@ class CatComponent extends SpriteAnimationGroupComponent<CatState>
   void onTapDown(TapDownEvent event) {
     super.onTapDown(event);
     // Warehouse cats sit above cages visually, but the cage receives the tap.
+    if (trapCapture && !hiddenInCover && onCaptureTap?.call(this) == true) {
+      return;
+    }
     if (trapCapture || hiddenInCover) event.continuePropagation = true;
     if (trapCapture || hiddenInCover || !isPlaying() || catchWindow.canCatch) {
       return;

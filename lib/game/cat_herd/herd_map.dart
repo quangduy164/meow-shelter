@@ -4,13 +4,28 @@ import 'herd_route.dart';
 import 'herd_market.dart';
 import 'herd_snow.dart';
 import 'herd_traits.dart';
+import 'herd_grandma.dart';
+import 'herd_station.dart';
+import 'herd_farm.dart';
 
 export 'herd_market.dart';
 export 'herd_desert.dart';
 export 'herd_snow.dart';
 export 'herd_traits.dart';
+export 'herd_grandma.dart';
+export 'herd_station.dart';
+export 'herd_farm.dart';
 
-enum HerdMapKind { nightMarket, dunes, snow, playground, tutorial }
+enum HerdMapKind {
+  nightMarket,
+  dunes,
+  snow,
+  playground,
+  grandma,
+  station,
+  farm,
+  tutorial
+}
 
 /// Layout and terrain tuning shared by the simulation and painters.
 /// Coordinates use fractions of the playable viewport, not pixels.
@@ -28,7 +43,15 @@ class HerdMap {
       this.shade = const [],
       this.thinIce = const [],
       this.chutes = const [],
-      this.specials = const []});
+      this.specials = const [],
+      this.catFlaps = const [],
+      this.lures = const [],
+      this.robots = const [],
+      this.cuckooRoom,
+      this.track,
+      this.hideSpots = const [],
+      this.pens = const [],
+      this.geese = const []});
   final HerdMapKind kind;
   final HerdRoute route;
   final String name, hint;
@@ -46,9 +69,39 @@ class HerdMap {
   final List<Rect> thinIce;
   final List<HerdChute> chutes;
 
-  /// Personality of the last cat in each cluster, by route group.
-  final List<HerdTrait> specials;
-  static const all = [playground, market, desert, winter];
+  /// Personalities by route group, then by cat within the cluster.
+  final List<List<HerdTrait>> specials;
+
+  /// Narrow gaps every cat passes except Bé Mập.
+  final List<Rect> catFlaps;
+
+  /// Points that pull curious followers out of the herd.
+  final List<Offset> lures;
+
+  /// Rectangular robot-vacuum circuits; bumping scatters, costs no life.
+  final List<Rect> robots;
+
+  /// Room woken by the cuckoo clock.
+  final Rect? cuckooRoom;
+
+  /// Station rails: crossed only through or riding the train.
+  final Rect? track;
+
+  /// Cover Bé Nhát Gan runs to when the horn blows.
+  final List<Offset> hideSpots;
+
+  /// Farm pens with plate-operated gates, and goose flocks on patrol.
+  final List<HerdPen> pens;
+  final List<HerdGoose> geese;
+  static const all = [
+    playground,
+    market,
+    desert,
+    winter,
+    grandma,
+    station,
+    farm
+  ];
   static const tutorial = HerdMap(HerdMapKind.tutorial, 'SÂN TẬP DẪN ĐÀN',
       'Tập joystick, né các tảng đá và đón đủ 12 bé về nhà.', Color(0xFF8DB6A2),
       route: HerdRoute.tutorial,
@@ -62,12 +115,6 @@ class HerdMap {
       'SÂN ĐỒ CHƠI',
       'Len qua khối gỗ, canh xe chạy vòng và né bóng nảy. Bóng chỉ đẩy lệch đàn, không mất mạng.',
       Color(0xFF74A46B),
-      specials: [
-        HerdTrait.sleepy,
-        HerdTrait.curious,
-        HerdTrait.chubby,
-        HerdTrait.golden
-      ],
       route: HerdRoute.playground,
       walls: [
         Rect.fromLTWH(.14, .19, .035, .28),
@@ -79,12 +126,6 @@ class HerdMap {
       'PHỐ CHỢ ĐÊM',
       'Bác bán hàng thấy mèo trong vùng sáng sẽ xua cả đàn. Chờ bác quay đi hoặc đèn lồng tắt rồi lẻn qua.',
       Color(0xFF8470B4),
-      specials: [
-        HerdTrait.curious,
-        HerdTrait.sleepy,
-        HerdTrait.chubby,
-        HerdTrait.golden
-      ],
       route: HerdRoute.market,
       walls: [
         Rect.fromLTWH(.14, .20, .23, .04),
@@ -110,12 +151,6 @@ class HerdMap {
       'ĐỒI CÁT',
       'Nắng làm mèo trong đàn nóng dần; đi qua bóng râm để mát lại. Bão cát có báo trước: nấp sau đá hoặc lều.',
       Color(0xFFD69C55),
-      specials: [
-        HerdTrait.sleepy,
-        HerdTrait.chubby,
-        HerdTrait.curious,
-        HerdTrait.golden
-      ],
       route: HerdRoute.desert,
       walls: [
         Rect.fromLTWH(.13, .25, .10, .09),
@@ -127,8 +162,12 @@ class HerdMap {
         Rect.fromLTWH(.22, .45, .20, .13),
         Rect.fromLTWH(.53, .68, .18, .15)
       ],
-      slopes: [Rect.fromLTWH(.59, .28, .20, .28)],
-      landings: [Rect.fromLTWH(.59, .56, .23, .10)],
+      slopes: [
+        Rect.fromLTWH(.59, .28, .20, .28)
+      ],
+      landings: [
+        Rect.fromLTWH(.59, .56, .23, .10)
+      ],
       shade: [
         Rect.fromLTWH(.07, .20, .28, .21),
         Rect.fromLTWH(.42, .33, .08, .10),
@@ -142,12 +181,6 @@ class HerdMap {
       'XỨ TUYẾT',
       'Băng mỏng trên hồ chỉ chịu được ít mèo: đàn đông đi qua sẽ làm băng nứt vỡ. Làn trượt một chiều đưa đàn đi rất nhanh.',
       Color(0xFF6AAEC5),
-      specials: [
-        HerdTrait.curious,
-        HerdTrait.golden,
-        HerdTrait.chubby,
-        HerdTrait.sleepy
-      ],
       route: HerdRoute.snow,
       walls: [
         Rect.fromLTWH(.13, .21, .20, .045),
@@ -160,7 +193,9 @@ class HerdMap {
         Rect.fromLTWH(.37, .19, .36, .41),
         Rect.fromLTWH(.65, .67, .29, .22)
       ],
-      thinIce: [Rect.fromLTWH(.37, .19, .36, .41)],
+      thinIce: [
+        Rect.fromLTWH(.37, .19, .36, .41)
+      ],
       snowPads: [
         Rect.fromLTWH(.48, .27, .15, .17),
         Rect.fromLTWH(.30, .36, .06, .12),
@@ -169,6 +204,79 @@ class HerdMap {
         HerdChute(Rect.fromLTWH(.27, .855, .32, .065), Offset(1, 0)),
         HerdChute(Rect.fromLTWH(.875, .36, .06, .30), Offset(0, -1)),
       ]);
+
+  static const grandma = HerdMap(
+      HerdMapKind.grandma,
+      'NHÀ BÀ NGOẠI',
+      'Bé Mập không chui lọt cửa mèo. Đồng hồ cúc cu reo sẽ gọi Bé Ngủ Say dậy. Né robot hút bụi!',
+      Color(0xFFC98A6B),
+      route: HerdRoute.grandma,
+      walls: [...HerdHouse.walls, ...HerdHouse.furniture],
+      catFlaps: HerdHouse.flaps,
+      lures: [HerdHouse.yarn, HerdHouse.fishDish],
+      robots: [HerdHouse.robotLoop],
+      cuckooRoom: HerdHouse.livingRoom,
+      specials: [
+        [HerdTrait.sleepy, HerdTrait.sleepy],
+        [HerdTrait.golden],
+        [HerdTrait.chubby],
+        [HerdTrait.curious, HerdTrait.curious],
+      ]);
+
+  static const station = HerdMap(
+      HerdMapKind.station,
+      'NHÀ GA TÀU NHỎ',
+      'Tàu dừng mở cửa vài giây: dẫn cả đàn lên toa để qua đường ray hoặc đi nhờ sang ga bên kia. Còi tàu làm Bé Nhát Gan chạy trốn!',
+      Color(0xFF7C9A6B),
+      route: HerdRoute.station,
+      walls: [
+        HerdStation.hall,
+        ...HerdStation.benches,
+        HerdStation.kiosk,
+        HerdStation.luggage,
+      ],
+      track: HerdStation.track,
+      hideSpots: HerdStation.hideSpots,
+      specials: [
+        [HerdTrait.shy],
+        [HerdTrait.chubby, HerdTrait.shy],
+        [HerdTrait.golden],
+        [HerdTrait.shy, HerdTrait.sleepy],
+      ]);
+
+  static const farm = HerdMap(
+      HerdMapKind.farm,
+      'NÔNG TRẠI BÁC BA',
+      'Bé đầu tiên bước lên bàn đạp sẽ ngồi giữ cổng. Bàn đạp chuồng gà chỉ Bé Mập đè nổi. Né đàn ngỗng!',
+      Color(0xFFB7A24E),
+      route: HerdRoute.farm,
+      walls: [
+        ...HerdFarm.fences,
+        HerdFarm.hay,
+        HerdFarm.trough,
+        HerdFarm.well,
+      ],
+      pens: [
+        HerdFarm.sheepPen,
+        HerdFarm.coop
+      ],
+      geese: [
+        HerdFarm.geese
+      ],
+      specials: [
+        [HerdTrait.chubby],
+        [HerdTrait.sulky],
+        [HerdTrait.golden],
+        [HerdTrait.sulky],
+      ]);
+
+  /// Saved guide key for maps that open with an intro card, else null.
+  String? get introKey => switch (kind) {
+        HerdMapKind.grandma => 'mode:herd:traits:v1',
+        HerdMapKind.station => 'mode:herd:station:v1',
+        HerdMapKind.farm => 'mode:herd:farm:v1',
+        _ => null,
+      };
 
   Rect pixels(Rect r, Vector2 size) => Rect.fromLTWH(
       r.left * size.x, r.top * size.y, r.width * size.x, r.height * size.y);
