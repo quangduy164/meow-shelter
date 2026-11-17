@@ -72,15 +72,12 @@ extension CatCatchBehaviour on CatComponent {
             ? '♥ $_playTaps/$_tapsNeeded'
             : null;
     if (label == null) return;
-    final text = TextPainter(
-        text: TextSpan(
-            text: label,
-            style: const TextStyle(
-                color: Color(0xFFFFF4DA),
-                fontSize: DS.fontBody,
-                fontWeight: FontWeight.w800)),
-        textDirection: TextDirection.ltr)
-      ..layout();
+    final text = TextCache.layout(
+        label,
+        const TextStyle(
+            color: Color(0xFFFFF4DA),
+            fontSize: DS.fontBody,
+            fontWeight: FontWeight.w800));
     final box = Rect.fromCenter(
         center: Offset(size.x / 2, size.y + 10),
         width: text.width + 12,
@@ -93,16 +90,14 @@ extension CatCatchBehaviour on CatComponent {
   void _drawDialogue(Canvas canvas) {
     final line = _dialogue.text;
     if (line == null) return;
-    final text = TextPainter(
-        text: TextSpan(
-            text: line,
-            style: const TextStyle(
-                color: Color(0xFF31564C),
-                fontSize: DS.fontCaption,
-                fontWeight: FontWeight.w600)),
-        textDirection: TextDirection.ltr,
-        textAlign: TextAlign.center)
-      ..layout(maxWidth: min(154, game.size.x - 32));
+    final text = TextCache.layout(
+        line,
+        const TextStyle(
+            color: Color(0xFF31564C),
+            fontSize: DS.fontCaption,
+            fontWeight: FontWeight.w600),
+        maxWidth: min(154, game.size.x - 32),
+        textAlign: TextAlign.center);
     final width = text.width + 16;
     final left = (size.x / 2 - width / 2)
         .clamp(8 - position.x, game.size.x - position.x - width - 8);

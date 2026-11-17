@@ -3,6 +3,8 @@ import 'dart:ui' as ui;
 import 'package:flame/components.dart';
 import 'package:flame/events.dart';
 import 'package:flutter/painting.dart';
+import '../../text_cache.dart';
+import '../static_layer.dart';
 import '../../../fishing/fishing_lighting.dart';
 import '../../components/cat_component.dart';
 import '../moonlight_art.dart';
@@ -10,30 +12,24 @@ import 'rooftop_bridges.dart';
 
 class RooftopBackground extends PositionComponent {
   RooftopBackground() : super(priority: -100);
-  ui.Picture? _picture;
+  final _layer = StaticLayer();
   @override
   void onGameResize(Vector2 size) {
     super.onGameResize(size);
     this.size.setFrom(size);
-    _picture?.dispose();
-    _picture = null;
+    _layer.clear();
   }
 
   @override
   void onRemove() {
-    _picture?.dispose();
+    _layer.clear();
     super.onRemove();
   }
 
   @override
   void render(Canvas canvas) {
     if (size.x <= 0 || size.y <= 0) return;
-    if (_picture == null) {
-      final recorder = ui.PictureRecorder();
-      paintRooftops(Canvas(recorder), size.toSize());
-      _picture = recorder.endRecording();
-    }
-    canvas.drawPicture(_picture!);
+    _layer.draw(canvas, size.toSize(), (c) => paintRooftops(c, size.toSize()));
   }
 }
 
@@ -134,19 +130,14 @@ void paintRooftops(Canvas canvas, Size size) {
         ..color = const Color(0xBBDDCC94)
         ..style = PaintingStyle.stroke
         ..strokeWidth = 1.5);
-  final label = TextPainter(
-      text: const TextSpan(
-          text: 'ĐẶT CÁ Ở MÁI GIỮA',
-          style: TextStyle(
-              color: Color(0xFFFFE9B6),
-              fontSize: 10,
-              fontWeight: FontWeight.w800)),
-      textAlign: TextAlign.center,
-      textDirection: TextDirection.ltr)
-    ..layout(maxWidth: feedingRect.width - 8);
+  final label = TextCache.layout(
+      'ĐẶT CÁ Ở MÁI GIỮA',
+      const TextStyle(
+          color: Color(0xFFFFE9B6), fontSize: 10, fontWeight: FontWeight.w800),
+      maxWidth: feedingRect.width - 8,
+      textAlign: TextAlign.center);
   label.paint(canvas,
       Offset(feedingRect.center.dx - label.width / 2, feedingRect.top + 7));
-  label.dispose();
   // Decorative chimneys at the outer edges.
   for (final x in [w * .06, w * .91]) {
     canvas.drawRect(Rect.fromLTWH(x, h * .55, 34, 54),
@@ -222,18 +213,14 @@ class RoofBridgeComponent extends PositionComponent
               ..color = const Color(0xFFFFC879)
               ..strokeWidth = 3);
       }
-      final text = TextPainter(
-          text: TextSpan(
-              text: 'SỬA ${bridge.repair.ceil()}s',
-              style: const TextStyle(
-                  fontSize: 10,
-                  fontWeight: FontWeight.w900,
-                  color: Color(0xFFFFE4AC))),
-          textDirection: TextDirection.ltr)
-        ..layout();
+      final text = TextCache.layout(
+          'SỬA ${bridge.repair.ceil()}s',
+          const TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.w900,
+              color: Color(0xFFFFE4AC)));
       text.paint(canvas,
           Offset(rect.center.dx - text.width / 2, rect.top - text.height - 3));
-      text.dispose();
       return;
     }
     if (active) {

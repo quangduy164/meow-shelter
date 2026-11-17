@@ -2,6 +2,7 @@ import 'dart:math' as math;
 import 'dart:ui' as ui;
 import 'package:flame/components.dart';
 import 'package:flutter/painting.dart';
+import 'herd_text_cache.dart';
 import 'herd_round.dart';
 import 'herd_map.dart';
 import 'herd_map_painter.dart';
@@ -13,15 +14,37 @@ import 'herd_grandma_painter.dart';
 import 'herd_station_painter.dart';
 import 'herd_farm_painter.dart';
 
+final _imagePaint = Paint()..filterQuality = FilterQuality.medium;
+
+/// Map base and footprints rasterised once at device resolution.
+ui.Image renderHerdBackground(Size size, HerdRound round, double pixelRatio) {
+  final recorder = ui.PictureRecorder();
+  final canvas = Canvas(recorder);
+  canvas.scale(pixelRatio);
+  paintHerdMapBase(canvas, size, round);
+  paintHerdFootprints(canvas, round);
+  final picture = recorder.endRecording();
+  final image = picture.toImageSync(
+      (size.width * pixelRatio).ceil(), (size.height * pixelRatio).ceil());
+  picture.dispose();
+  return image;
+}
+
 /// Scenery and hazards only; cat sprites are owned by HerdGame.
 void paintHerdField(Canvas canvas, Size size, HerdRound round,
-    {ui.Picture? background, ui.Picture? home}) {
+    {ui.Image? background, ui.Picture? home}) {
   if (background == null) {
     paintHerdMap(canvas, size, round);
   } else {
-    canvas.drawPicture(background);
+    // One pre-rendered image replaces thousands of vector ops per frame.
+    canvas.drawImageRect(
+        background,
+        Rect.fromLTWH(
+            0, 0, background.width.toDouble(), background.height.toDouble()),
+        Offset.zero & size,
+        _imagePaint);
     paintHerdMapMotion(canvas, size, round);
-    paintHerdRoute(canvas, size, round);
+    paintHerdClusterRings(canvas, round);
   }
   paintSnowHazards(canvas, round);
   paintGrandmaRobots(canvas, round);
@@ -88,18 +111,8 @@ void paintHerdField(Canvas canvas, Size size, HerdRound round,
   paintMarketVendors(canvas, round);
 }
 
-void herdText(Canvas canvas, String value, Offset at, double fontSize) {
-  final text = TextPainter(
-      text: TextSpan(
-          text: value,
-          style: TextStyle(
-              fontSize: fontSize,
-              color: const Color(0xFF5A3214),
-              fontWeight: FontWeight.w900)),
-      textDirection: TextDirection.ltr)
-    ..layout();
-  text.paint(canvas, at);
-}
+void herdText(Canvas canvas, String value, Offset at, double fontSize) =>
+    herdLabel(value, fontSize, const Color(0xFF5A3214)).paint(canvas, at);
 
 /// Wooden toy pickup, drawn around its collision centre.
 void _toyCar(Canvas canvas, Offset center,

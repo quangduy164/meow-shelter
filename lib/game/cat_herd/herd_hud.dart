@@ -1,6 +1,7 @@
 import '../../ui/design.dart';
 import 'dart:math' as math;
 import 'package:flutter/painting.dart';
+import 'herd_text_cache.dart';
 import 'herd_round.dart';
 
 /// Lives and the translucent tutorial caption share one top row. [safe] is
@@ -56,18 +57,13 @@ void _paintCaption(Canvas canvas, Size size, HerdRound round) {
   final start = round.map.topRowStart;
   // Leave a clear gap after Home and the life pill, even on narrow tablets.
   final width = math.min(560.0, size.width - start - 12);
-  final caption = TextPainter(
-      text: TextSpan(
-          text: round.tutorialInstruction,
-          style: const TextStyle(
-              color: Color(0xFF28564C),
-              fontSize: DS.fontBody,
-              fontWeight: FontWeight.bold,
-              height: 1.25,
-              shadows: [Shadow(color: Color(0xCCFFF4DA), blurRadius: 3)])),
-      textDirection: TextDirection.ltr,
-      textAlign: TextAlign.center)
-    ..layout(maxWidth: width - 24);
+  final caption = herdLabel(
+      round.tutorialInstruction, DS.fontBody, const Color(0xFF28564C),
+      weight: FontWeight.bold,
+      height: 1.25,
+      align: TextAlign.center,
+      maxWidth: width - 24,
+      shadows: const [Shadow(color: Color(0xCCFFF4DA), blurRadius: 3)]);
   final centerX = (start + size.width - 12) / 2;
   final box = Rect.fromCenter(
       center: Offset(centerX, 36), width: width, height: caption.height + 14);

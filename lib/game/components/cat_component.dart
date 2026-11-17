@@ -11,6 +11,7 @@ import '../constants.dart';
 import '../cats/cat_state.dart';
 import '../cats/cat_animations.dart';
 import '../catch_window.dart';
+import '../text_cache.dart';
 import '../../levels/level_config.dart';
 import '../cats/cat_skill.dart';
 import '../cats/cat_dialogue.dart';

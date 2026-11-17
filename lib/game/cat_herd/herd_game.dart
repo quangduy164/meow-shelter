@@ -10,13 +10,13 @@ import '../adventure/adventure_joystick.dart';
 import 'herd_round.dart';
 import 'herd_scene.dart';
 import 'herd_map.dart';
+import 'herd_text_cache.dart';
 import 'herd_hud.dart';
 import 'herd_market_painter.dart';
 import 'herd_desert_painter.dart';
 import 'herd_snow_painter.dart';
 import 'herd_trait_painter.dart';
 import '../../camp/camp_resident.dart' show campSleepFrames;
-import 'herd_map_painter.dart';
 import 'herd_home_painter.dart';
 
 /// Coordinates simulation, input and sprite rendering. Rules live in HerdRound.
@@ -73,7 +73,8 @@ class HerdGame extends FlameGame {
   final _idle = <String, SpriteAnimation>{};
   bool _ready = false;
   bool pausedByApp = false;
-  ui.Picture? _background, _home;
+  ui.Image? _background;
+  ui.Picture? _home;
   HerdMap? _cachedMap;
   Size? _cachedSize;
 
@@ -85,9 +86,10 @@ class HerdGame extends FlameGame {
     }
     _background?.dispose();
     _home?.dispose();
-    final background = ui.PictureRecorder();
-    paintHerdMapBase(Canvas(background), viewport, round);
-    _background = background.endRecording();
+    final ratio =
+        (ui.PlatformDispatcher.instance.implicitView?.devicePixelRatio ?? 2.0)
+            .clamp(1.0, 3.0);
+    _background = renderHerdBackground(viewport, round, ratio);
     final home = ui.PictureRecorder();
     paintHerdHome(Canvas(home), round.home.toOffset(), round.map.kind);
     _home = home.endRecording();
@@ -262,18 +264,11 @@ class HerdGame extends FlameGame {
     if (round.noticeTime > 0 &&
         !round.isTutorial &&
         round.notice == round.map.hint) {
-      final text = TextPainter(
-          text: TextSpan(
-              text: round.notice,
-              style: const TextStyle(
-                  fontSize: DS.fontBody,
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xFF5A3214))),
-          textDirection: TextDirection.ltr)
-        ..layout(
-            maxWidth: math.min(560.0,
-                    size.x - _safe.horizontal - round.map.topRowStart - 12) -
-                24);
+      final text = herdLabel(round.notice, DS.fontBody, const Color(0xFF5A3214),
+          weight: FontWeight.bold,
+          maxWidth: math.min(560.0,
+                  size.x - _safe.horizontal - round.map.topRowStart - 12) -
+              24);
       // Top row, centred in the space right of the Home button and life pill
       // (same slot as the tutorial caption in paintHerdHud).
       final centerX =

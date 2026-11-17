@@ -4,12 +4,13 @@ import 'package:material_ui/material_ui.dart';
 
 import '../../game/night_shift/night_run.dart';
 import '../../game/night_shift/night_cards.dart';
+import '../../game/night_shift/night_relics.dart';
 import '../design.dart';
 import 'night_card_icons.dart';
 import 'night_relic_icon.dart';
 
 /// The same briefing is opened before a night and by the information button.
-/// Nothing closes it automatically; the game remains paused until dismissed.
+/// Every map fills one layout: mission + conditions, three steps, relic slots.
 class NightInfoOverlay extends StatelessWidget {
   const NightInfoOverlay({
     super.key,
@@ -26,9 +27,10 @@ class NightInfoOverlay extends StatelessWidget {
   final double lanternBurn;
   final VoidCallback onClose;
 
-  static const _panel = Color(0xFF1E2944);
-  static const _panelLight = Color(0xFF2C3A5D);
-  static const _muted = Color(0xFFC5D0E8);
+  static const _paper = Color(0xFFFFF4DA);
+  static const _card = Color(0xFFFFFBF0);
+  static const _line = Color(0xFFE1CFAD);
+  static const _green = Color(0xFF3C8065);
 
   List<String> get _notes => rules
       .skip(1)
@@ -40,7 +42,7 @@ class NightInfoOverlay extends StatelessWidget {
   @override
   Widget build(BuildContext context) => BlockSemantics(
         child: Stack(fit: StackFit.expand, children: [
-          const ModalBarrier(dismissible: false, color: Color(0xC40A1020)),
+          const ModalBarrier(dismissible: false, color: Color(0xB3201208)),
           SafeArea(
             child: Padding(
               padding: const EdgeInsets.all(DS.spaceMd),
@@ -49,38 +51,36 @@ class NightInfoOverlay extends StatelessWidget {
                   child: SizedBox(
                     width: math.min(700, box.maxWidth),
                     height: math.min(330, box.maxHeight),
-                    child: DecoratedBox(
+                    child: Container(
                       decoration: BoxDecoration(
-                        gradient: const LinearGradient(
-                          begin: Alignment.topCenter,
-                          end: Alignment.bottomCenter,
-                          colors: [_panelLight, _panel],
-                        ),
-                        borderRadius: BorderRadius.circular(22),
-                        border: Border.all(
-                            color: DS.gold.withValues(alpha: .55), width: 2),
+                        color: _paper,
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: DS.wood, width: 3),
                         boxShadow: const [
                           BoxShadow(
-                              color: Color(0x88000000),
-                              blurRadius: 24,
-                              offset: Offset(0, 10))
+                              color: Color(0x66000000),
+                              blurRadius: 20,
+                              offset: Offset(0, 8))
                         ],
                       ),
-                      child: Padding(
-                        padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-                        child: Column(children: [
-                          _header(),
-                          const SizedBox(height: DS.spaceMd),
-                          Align(
-                              alignment: Alignment.centerLeft,
-                              child:
-                                  _label('CÁCH CHƠI', Icons.touch_app_rounded)),
-                          const SizedBox(height: 4),
-                          Expanded(child: _stepsRow()),
-                          const SizedBox(height: DS.spaceSm),
-                          _footer(),
-                        ]),
-                      ),
+                      clipBehavior: Clip.antiAlias,
+                      child: Column(children: [
+                        _header(),
+                        Expanded(
+                          child: Padding(
+                            padding: const EdgeInsets.fromLTRB(12, 8, 12, 6),
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                Expanded(flex: 4, child: _missionColumn()),
+                                const SizedBox(width: 10),
+                                Expanded(flex: 6, child: _stepsColumn()),
+                              ],
+                            ),
+                          ),
+                        ),
+                        _footer(),
+                      ]),
                     ),
                   ),
                 ),
@@ -90,121 +90,142 @@ class NightInfoOverlay extends StatelessWidget {
         ]),
       );
 
-  Widget _header() => Row(children: [
-        Container(
-          width: 46,
-          height: 46,
-          decoration: BoxDecoration(
-            color: DS.gold.withValues(alpha: .16),
-            shape: BoxShape.circle,
-            border: Border.all(color: DS.gold.withValues(alpha: .5)),
-          ),
-          child:
-              const Icon(Icons.nights_stay_rounded, color: DS.gold, size: 27),
+  Widget _header() => Container(
+        padding: const EdgeInsets.fromLTRB(14, 7, 14, 7),
+        decoration: const BoxDecoration(
+          gradient:
+              LinearGradient(colors: [Color(0xFF8A5A2E), Color(0xFFB27A3E)]),
         ),
-        const SizedBox(width: DS.spaceMd),
-        Expanded(
-          flex: 5,
-          child:
-              Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text('ĐÊM ${run.night}${run.bossNight ? ' · CÓ TRÙM' : ''}',
-                style: const TextStyle(
-                    color: DS.gold,
-                    fontSize: 22,
-                    height: 1.05,
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: .8)),
-            Text('${run.map.title} · ${run.variant.title}',
+        child: Row(children: [
+          const Icon(Icons.nights_stay_rounded, color: DS.gold, size: 24),
+          const SizedBox(width: 8),
+          Text('ĐÊM ${run.night}',
+              style: const TextStyle(
+                  color: DS.gold,
+                  fontSize: 20,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: .8)),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text('${run.map.title} · ${run.variant.title}',
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: const TextStyle(
-                    color: _muted, fontSize: 15, fontWeight: FontWeight.w700)),
-          ]),
-        ),
-        const SizedBox(width: DS.spaceSm),
-        Flexible(
-          flex: 6,
-          child: Container(
-            constraints: const BoxConstraints(maxWidth: 300),
-            padding: const EdgeInsets.fromLTRB(12, 6, 14, 7),
-            decoration: BoxDecoration(
-              color: DS.cream,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: DS.gold, width: 2),
-              boxShadow: const [
-                BoxShadow(color: Color(0x44000000), offset: Offset(0, 3))
-              ],
-            ),
-            child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Row(mainAxisSize: MainAxisSize.min, children: [
-                    Icon(Icons.flag_rounded, color: DS.success, size: 15),
-                    SizedBox(width: 3),
-                    Text('NHIỆM VỤ',
-                        style: TextStyle(
-                            color: DS.success,
-                            fontSize: 11,
-                            fontWeight: FontWeight.w900,
-                            letterSpacing: .8)),
-                  ]),
-                  FittedBox(
-                    fit: BoxFit.scaleDown,
-                    alignment: Alignment.centerLeft,
-                    child: Text.rich(
-                      TextSpan(children: [
-                        const TextSpan(text: 'Cứu '),
-                        TextSpan(
-                            text: '${run.quota} mèo',
-                            style: const TextStyle(color: DS.success)),
-                        const TextSpan(text: ' trong '),
-                        TextSpan(
-                            text: '${secondsLeft}s',
-                            style: const TextStyle(color: DS.goldEdge)),
-                      ]),
-                      style: const TextStyle(
-                          color: DS.ink,
-                          fontSize: 18,
-                          fontWeight: FontWeight.w900),
-                    ),
-                  ),
-                  Text(_mission,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                          color: DS.soft,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w700)),
-                ]),
+                    color: _paper, fontSize: 15, fontWeight: FontWeight.w800)),
           ),
-        ),
-      ]);
-
-  String get _mission => run.map.mission;
+          if (run.bossNight)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+              decoration: BoxDecoration(
+                  color: const Color(0xFFE85D6F),
+                  borderRadius: BorderRadius.circular(10)),
+              child: const Text('CÓ TRÙM',
+                  style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w900)),
+            ),
+        ]),
+      );
 
   Widget _label(String text, IconData icon) =>
       Row(mainAxisSize: MainAxisSize.min, children: [
-        Icon(icon, color: DS.gold, size: 14),
+        Icon(icon, color: DS.goldEdge, size: 15),
         const SizedBox(width: 4),
         Text(text,
             style: const TextStyle(
-                color: DS.gold,
+                color: DS.goldEdge,
                 fontSize: 11,
                 fontWeight: FontWeight.w900,
                 letterSpacing: .8)),
       ]);
-  Widget _stepsRow() => Row(children: [
-        for (var i = 0; i < _steps.length; i++) ...[
-          if (i > 0)
-            const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 3),
-              child: Icon(Icons.chevron_right_rounded,
-                  color: Color(0x99FFC24D), size: 26),
+
+  Widget _missionColumn() => Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _label('NHIỆM VỤ', Icons.flag_rounded),
+          const SizedBox(height: 4),
+          Container(
+            padding: const EdgeInsets.fromLTRB(10, 5, 10, 6),
+            decoration: BoxDecoration(
+              color: const Color(0xFFE6EFDF),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: const Color(0xFFB8D0AA), width: 1.5),
             ),
-          Expanded(child: _step(i + 1, _steps[i])),
+            child:
+                Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: Alignment.centerLeft,
+                child: Text('Cứu ${run.quota} mèo',
+                    style: const TextStyle(
+                        color: _green,
+                        fontSize: 22,
+                        fontWeight: FontWeight.w900)),
+              ),
+              FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.centerLeft,
+                  child: Row(mainAxisSize: MainAxisSize.min, children: [
+                    const Icon(Icons.timer_rounded,
+                        color: DS.goldEdge, size: 16),
+                    const SizedBox(width: 3),
+                    Text('trong ${secondsLeft}s',
+                        style: const TextStyle(
+                            color: DS.ink,
+                            fontSize: 15,
+                            fontWeight: FontWeight.w800)),
+                  ])),
+              const SizedBox(height: 3),
+              Text(run.map.mission,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                      color: DS.ink,
+                      fontSize: 13,
+                      height: 1.2,
+                      fontWeight: FontWeight.w700)),
+            ]),
+          ),
+          const SizedBox(height: 6),
+          _label('ĐIỀU KIỆN', Icons.auto_awesome_rounded),
+          const SizedBox(height: 4),
+          Expanded(
+            child: SingleChildScrollView(
+              child: Wrap(spacing: 5, runSpacing: 5, children: [
+                for (final note
+                    in _notes.isEmpty ? const ['Đêm thường'] : _notes)
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF5E1B8),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: _line),
+                    ),
+                    child: Text(note,
+                        style: const TextStyle(
+                            color: DS.ink,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w800)),
+                  ),
+              ]),
+            ),
+          ),
         ],
-      ]);
+      );
+
+  Widget _stepsColumn() => Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _label('CÁCH CHƠI', Icons.touch_app_rounded),
+          const SizedBox(height: 4),
+          for (var i = 0; i < _steps.length; i++) ...[
+            if (i > 0) const SizedBox(height: 5),
+            Expanded(child: _step(i + 1, _steps[i])),
+          ],
+        ],
+      );
   List<(NightGuideGlyph, String, String)> get _steps => switch (run.map) {
         NightMap.backyard => [
             (NightGuideGlyph.lantern, 'Bật đèn', 'Chạm đèn để tạo vùng sáng'),
@@ -255,143 +276,119 @@ class NightInfoOverlay extends StatelessWidget {
 
   Widget _step(int number, (NightGuideGlyph, String, String) step) {
     final (icon, title, text) = step;
-    final color = _stepColors[number - 1];
     return Container(
-      padding: const EdgeInsets.fromLTRB(7, 8, 7, 7),
+      padding: const EdgeInsets.symmetric(horizontal: 8),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: .07),
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: Colors.white.withValues(alpha: .12)),
+        color: _card,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: _line, width: 1.5),
       ),
-      child: FittedBox(
-        fit: BoxFit.scaleDown,
-        child: SizedBox(
-          width: 140,
-          child: Column(mainAxisSize: MainAxisSize.min, children: [
-            Stack(clipBehavior: Clip.none, children: [
-              Container(
-                width: 46,
-                height: 46,
-                decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-                child: Padding(
-                  padding: const EdgeInsets.all(3),
-                  child: NightGuideIcon(icon),
-                ),
-              ),
-              Positioned(
-                right: -5,
-                top: -4,
-                child: Container(
-                  width: 22,
-                  height: 22,
-                  alignment: Alignment.center,
-                  decoration: BoxDecoration(
-                    color: _panel,
-                    shape: BoxShape.circle,
-                    border: Border.all(color: color, width: 2),
-                  ),
-                  child: Text('$number',
-                      style: TextStyle(
-                          color: color,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w900)),
-                ),
-              ),
-            ]),
-            const SizedBox(height: 6),
-            Text(title,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 18,
-                    fontWeight: FontWeight.w900)),
-            const SizedBox(height: 2),
-            Text(text,
-                textAlign: TextAlign.center,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style:
-                    const TextStyle(color: _muted, fontSize: 14, height: 1.15)),
-          ]),
+      child: Row(children: [
+        Text('$number',
+            style: const TextStyle(
+                color: DS.goldEdge, fontSize: 18, fontWeight: FontWeight.w900)),
+        const SizedBox(width: 6),
+        AspectRatio(
+          aspectRatio: 1,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 4),
+            child: Container(
+              decoration: BoxDecoration(
+                  color: _stepColors[number - 1], shape: BoxShape.circle),
+              padding: const EdgeInsets.all(3),
+              child: NightGuideIcon(icon),
+            ),
+          ),
         ),
-      ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(title,
+                      style: const TextStyle(
+                          color: DS.ink,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w900)),
+                  Text(text,
+                      style: const TextStyle(
+                          color: DS.soft,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600)),
+                ]),
+          ),
+        ),
+      ]),
     );
   }
 
-  Widget _chip(Widget child) => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-        decoration: BoxDecoration(
-          color: DS.gold.withValues(alpha: .13),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: DS.gold.withValues(alpha: .28)),
+  /// Three slots, the same number the shop allows; empty ones stay dashed.
+  Widget _relicSlot(NightRelic? relic) {
+    final box = Container(
+      width: 42,
+      height: 42,
+      decoration: BoxDecoration(
+        color: relic == null ? const Color(0xFFF1E4C8) : _card,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(
+            color: relic == null ? _line : DS.wood,
+            width: relic == null ? 1.5 : 2),
+      ),
+      padding: const EdgeInsets.all(3),
+      child: relic == null
+          ? const Icon(Icons.add_rounded, color: _line, size: 20)
+          : NightRelicIcon(relic, size: 34),
+    );
+    if (relic == null) return box;
+    return Tooltip(
+      triggerMode: TooltipTriggerMode.tap,
+      message: '${relic.title}: ${relic.effectOn(run.map)}',
+      child: box,
+    );
+  }
+
+  Widget _footer() {
+    final slots = [
+      for (var i = 0; i < NightRun.relicSlots; i++)
+        i < run.relics.length ? run.relics[i] : null
+    ];
+    return Container(
+      padding: const EdgeInsets.fromLTRB(12, 7, 12, 8),
+      decoration: const BoxDecoration(
+        color: Color(0xFFF5E8D0),
+        border: Border(top: BorderSide(color: _line, width: 1.5)),
+      ),
+      child: Row(children: [
+        _label('CỔ VẬT', Icons.diamond_rounded),
+        const SizedBox(width: 8),
+        for (final relic in slots) ...[
+          _relicSlot(relic),
+          const SizedBox(width: 6),
+        ],
+        const SizedBox(width: 4),
+        Expanded(
+          child: Text(
+              run.relics.isEmpty
+                  ? 'Mua ở tiệm sau đêm chẵn'
+                  : 'Chạm ô để xem tác dụng ở map này',
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                  color: DS.soft, fontSize: 12, fontWeight: FontWeight.w700)),
         ),
-        child: child,
-      );
-
-  Widget _row(String label, IconData icon, List<Widget> chips) => Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SizedBox(
-              width: 86,
-              child: Padding(
-                padding: const EdgeInsets.only(top: 4),
-                child: FittedBox(
-                    fit: BoxFit.scaleDown,
-                    alignment: Alignment.centerLeft,
-                    child: _label(label, icon)),
-              )),
-          Expanded(
-            child: SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(children: [
-                for (final chip in chips) ...[chip, const SizedBox(width: 6)]
-              ]),
-            ),
-          ),
-        ],
-      );
-
-  Text _chipText(String text, {Color color = const Color(0xFFFFE6A6)}) => Text(
-      text,
-      style:
-          TextStyle(color: color, fontSize: 12, fontWeight: FontWeight.w800));
-
-  Widget _footer() => Row(
-        crossAxisAlignment: CrossAxisAlignment.end,
-        children: [
-          Expanded(
-            child: Column(mainAxisSize: MainAxisSize.min, children: [
-              _row('ĐIỀU KIỆN', Icons.auto_awesome_rounded, [
-                for (final note
-                    in _notes.isEmpty ? const ['Đêm thường'] : _notes)
-                  _chip(_chipText(note)),
-              ]),
-              const SizedBox(height: 5),
-              _row('CỔ VẬT', Icons.diamond_rounded, [
-                if (run.relics.isEmpty)
-                  _chip(_chipText('Chưa có · tiệm mở sau đêm chẵn',
-                      color: _muted)),
-                for (final relic in run.relics)
-                  Tooltip(
-                    message: '${relic.title}: ${relic.details}',
-                    child: _chip(Row(mainAxisSize: MainAxisSize.min, children: [
-                      NightRelicIcon(relic, size: 18),
-                      const SizedBox(width: 4),
-                      _chipText(relic.effectOn(run.map), color: Colors.white),
-                    ])),
-                  ),
-              ]),
-            ]),
-          ),
-          const SizedBox(width: DS.spaceMd),
-          ElevatedButton.icon(
-            style: DS.primary.copyWith(
-                minimumSize: const WidgetStatePropertyAll(Size(140, 42))),
-            onPressed: onClose,
-            icon: const Icon(Icons.play_arrow_rounded),
-            label: const Text('BẮT ĐẦU'),
-          ),
-        ],
-      );
+        const SizedBox(width: 8),
+        ElevatedButton.icon(
+          style: DS.primary.copyWith(
+              minimumSize: const WidgetStatePropertyAll(Size(140, 42))),
+          onPressed: onClose,
+          icon: const Icon(Icons.play_arrow_rounded),
+          label: const Text('BẮT ĐẦU'),
+        ),
+      ]),
+    );
+  }
 }

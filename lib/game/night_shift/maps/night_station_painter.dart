@@ -3,6 +3,8 @@ import 'dart:ui' as ui;
 import 'package:flame/components.dart';
 import 'package:flame/events.dart';
 import 'package:flutter/painting.dart';
+import '../../text_cache.dart';
+import '../static_layer.dart';
 import '../moonlight.dart';
 import '../moonlight_art.dart';
 import 'night_station.dart';
@@ -60,17 +62,13 @@ void paintStationSign(Canvas c, Offset center, String? breed, bool shared,
   c.drawRRect(plate, Paint()..color = _signColor(breed, shared));
   c.drawRRect(plate, _stroke(_ink, 2));
   if (breed == null && !shared) {
-    final text = TextPainter(
-        text: const TextSpan(
-            text: '?',
-            style: TextStyle(
-                color: Color(0xFFFFF4DA),
-                fontSize: 16,
-                fontWeight: FontWeight.w900)),
-        textDirection: TextDirection.ltr)
-      ..layout();
+    final text = TextCache.layout(
+        '?',
+        const TextStyle(
+            color: Color(0xFFFFF4DA),
+            fontSize: 16,
+            fontWeight: FontWeight.w900));
     text.paint(c, center - Offset(text.width / 2, text.height / 2));
-    text.dispose();
   } else {
     _paw(c, center, size * .62,
         shared ? const Color(0xFF6A3E1E) : const Color(0xFFFFF4DA));
@@ -80,12 +78,11 @@ void paintStationSign(Canvas c, Offset center, String? breed, bool shared,
 class NightStationBackground extends PositionComponent with HasGameReference {
   NightStationBackground(this.scene) : super(priority: -100);
   final NightStationScene scene;
-  ui.Picture? _picture;
-  Size _size = Size.zero;
+  final _layer = StaticLayer();
 
   @override
   void onRemove() {
-    _picture?.dispose();
+    _layer.clear();
     super.onRemove();
   }
 
@@ -93,14 +90,7 @@ class NightStationBackground extends PositionComponent with HasGameReference {
   void render(Canvas canvas) {
     final s = game.size.toSize();
     if (s.isEmpty) return;
-    if (_picture == null || _size != s) {
-      _picture?.dispose();
-      final rec = ui.PictureRecorder();
-      _paint(Canvas(rec), s);
-      _picture = rec.endRecording();
-      _size = s;
-    }
-    canvas.drawPicture(_picture!);
+    _layer.draw(canvas, s, (c) => _paint(c, s));
   }
 
   void _paint(Canvas c, Size s) {
@@ -309,20 +299,16 @@ class StationMarkComponent extends PositionComponent
         Paint()..color = Color.fromRGBO(255, 224, 138, pulse * .45));
     canvas.drawRRect(RRect.fromRectAndRadius(mark, const Radius.circular(8)),
         _stroke(const Color(0xFFFFE08A), 2.5));
-    final label = TextPainter(
-        text: TextSpan(
-            text: 'TOA ${car + 1}',
-            style: const TextStyle(
-                color: Color(0xFFFFF4DA),
-                fontSize: 10,
-                fontWeight: FontWeight.w900)),
-        textDirection: TextDirection.ltr)
-      ..layout();
+    final label = TextCache.layout(
+        'TOA ${car + 1}',
+        const TextStyle(
+            color: Color(0xFFFFF4DA),
+            fontSize: 10,
+            fontWeight: FontWeight.w900));
     label.paint(
         canvas,
         Offset(
             mark.center.dx - label.width / 2, mark.bottom - label.height - 2));
-    label.dispose();
     // Sign post: the coming train's car, unless signs are hidden.
     final post = Offset(size.x - 10, 10);
     canvas.drawLine(post + const Offset(0, 12), Offset(post.dx, mark.top),

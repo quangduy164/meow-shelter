@@ -2,6 +2,7 @@ import '../../ui/design.dart';
 import 'dart:math' as math;
 import 'package:flutter/painting.dart';
 import 'herd_market.dart';
+import 'herd_text_cache.dart';
 import 'herd_round.dart';
 
 /// Vision cones and vendors, drawn under the cats so cats stay readable.
@@ -102,17 +103,11 @@ void _vendor(Canvas c, Offset at, double angle, bool watching, int index) {
 
 void _bubble(Canvas c, Offset at, String text, Color color) {
   c.drawCircle(at, 9, Paint()..color = const Color(0xF2FFF4DA));
-  final t = TextPainter(
-      text: TextSpan(
-          text: text,
-          style: TextStyle(
-              color: color,
-              fontSize: DS.fontBody,
-              fontWeight: FontWeight.w900)),
-      textDirection: TextDirection.ltr)
-    ..layout();
+  final t = herdLabel(text, DS.fontBody, color);
   t.paint(c, at - Offset(t.width / 2, t.height / 2));
 }
+
+final _dark = Paint();
 
 /// Unlit lantern zones, drawn over cats so darkness reads as cover.
 void paintMarketDarkness(Canvas canvas, HerdRound round) {
@@ -123,11 +118,14 @@ void paintMarketDarkness(Canvas canvas, HerdRound round) {
     final lit = HerdLanterns.lit(i, round.time);
     final flicker = HerdLanterns.flickering(i, round.time);
     if (!lit) {
-      canvas.drawRRect(
-          RRect.fromRectAndRadius(box, const Radius.circular(18)),
-          Paint()
-            ..color = const Color(0x8C0B0C1E)
-            ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 6));
+      // Soft edge from three stacked rounded rects: no per-frame blur pass.
+      for (final (grow, alpha) in [(4.0, .15), (1.5, .2), (-2.0, .32)]) {
+        _dark.color = Color.fromRGBO(11, 12, 30, alpha);
+        canvas.drawRRect(
+            RRect.fromRectAndRadius(
+                box.inflate(grow), Radius.circular(18 + grow)),
+            _dark);
+      }
     }
     // A row of lanterns along the zone's top edge shows its state.
     final count = (box.width / 46).floor().clamp(2, 8);

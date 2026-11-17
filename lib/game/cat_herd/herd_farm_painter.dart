@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 import 'package:flutter/painting.dart';
 import 'herd_map.dart';
+import 'herd_text_cache.dart';
 import 'herd_round.dart';
 
 /// Uncle Ba's farm. Base and motion use the 800x375 design space; geese are
@@ -178,15 +179,7 @@ void paintFarmMotion(Canvas c, HerdRound r) {
             ..color = const Color(0xFF4F5560)
             ..style = PaintingStyle.stroke
             ..strokeWidth = 1.6);
-      final t = TextPainter(
-          text: const TextSpan(
-              text: 'NẶNG',
-              style: TextStyle(
-                  color: Color(0xFFFFFFFF),
-                  fontSize: 6,
-                  fontWeight: FontWeight.w900)),
-          textDirection: TextDirection.ltr)
-        ..layout();
+      final t = herdLabel('NẶNG', 6, const Color(0xFFFFFFFF));
       t.paint(c, w + Offset(-t.width / 2, -1));
     }
   }

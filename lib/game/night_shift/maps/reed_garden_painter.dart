@@ -3,6 +3,7 @@ import 'dart:ui' as ui;
 import 'package:flame/components.dart';
 import 'package:flame/events.dart';
 import 'package:flutter/painting.dart';
+import '../static_layer.dart';
 import '../../components/fish_item_component.dart';
 import '../moonlight.dart';
 import '../moonlight_art.dart';
@@ -13,30 +14,24 @@ Rect _px(Rect r, Vector2 s) =>
 
 class ReedGardenBackground extends PositionComponent {
   ReedGardenBackground() : super(priority: -100);
-  ui.Picture? _picture;
+  final _layer = StaticLayer();
   @override
   void onGameResize(Vector2 size) {
     super.onGameResize(size);
     this.size.setFrom(size);
-    _picture?.dispose();
-    _picture = null;
+    _layer.clear();
   }
 
   @override
   void onRemove() {
-    _picture?.dispose();
+    _layer.clear();
     super.onRemove();
   }
 
   @override
   void render(Canvas canvas) {
     if (size.x <= 0 || size.y <= 0) return;
-    if (_picture == null) {
-      final recorder = ui.PictureRecorder();
-      _paint(Canvas(recorder), size.toSize());
-      _picture = recorder.endRecording();
-    }
-    canvas.drawPicture(_picture!);
+    _layer.draw(canvas, size.toSize(), (c) => _paint(c, size.toSize()));
   }
 
   void _paint(Canvas c, Size s) {

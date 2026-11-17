@@ -3,6 +3,7 @@ import 'dart:ui' as ui;
 import 'package:flame/components.dart';
 import 'package:flame/events.dart';
 import 'package:flutter/painting.dart';
+import '../static_layer.dart';
 import '../moonlight.dart';
 import '../moonlight_art.dart';
 import '../../cats/cat_breed.dart';
@@ -24,8 +25,7 @@ Paint _stroke(Color color, double width) => Paint()
 class HarborBackground extends PositionComponent with HasGameReference {
   HarborBackground(this.flow) : super(priority: -100);
   final HarborFlow flow;
-  ui.Picture? _picture;
-  Size _pictureSize = Size.zero;
+  final _layer = StaticLayer();
   double _clock = 0;
 
   @override
@@ -33,7 +33,7 @@ class HarborBackground extends PositionComponent with HasGameReference {
 
   @override
   void onRemove() {
-    _picture?.dispose();
+    _layer.clear();
     super.onRemove();
   }
 
@@ -41,14 +41,7 @@ class HarborBackground extends PositionComponent with HasGameReference {
   void render(Canvas canvas) {
     final s = game.size.toSize();
     if (s.isEmpty) return;
-    if (_picture == null || _pictureSize != s) {
-      _picture?.dispose();
-      final recorder = ui.PictureRecorder();
-      _paintStatic(Canvas(recorder), s);
-      _picture = recorder.endRecording();
-      _pictureSize = s;
-    }
-    canvas.drawPicture(_picture!);
+    _layer.draw(canvas, s, (c) => _paintStatic(c, s));
     _paintFlow(canvas, s);
     _paintDocks(canvas, s);
     _paintRocks(canvas, s);
@@ -263,6 +256,43 @@ class HarborRaftsComponent extends PositionComponent with HasGameReference {
   @override
   void update(double dt) => _clock += dt;
 
+  static final _raftArt = StaticLayer();
+
+  /// Identical for every raft, so it is rasterised once and stamped.
+  static void _paintRaft(Canvas canvas, Rect body) {
+    // Bamboo poles lie across the current, tied by two rope bands.
+    for (var i = 0; i < 4; i++) {
+      final pole = RRect.fromRectAndRadius(
+          Rect.fromLTWH(body.left - (i.isEven ? 3 : 0), body.top + i * 8.8,
+              body.width + (i.isEven ? 6 : 0), 8.2),
+          const Radius.circular(4.1));
+      canvas.drawRRect(
+          pole,
+          Paint()
+            ..shader = ui.Gradient.linear(
+                pole.outerRect.topCenter,
+                pole.outerRect.bottomCenter,
+                const [Color(0xFFE6D985), Color(0xFF9FA34C)]));
+      canvas.drawLine(
+          Offset(pole.left + 5, pole.top + 2.4),
+          Offset(pole.right - 5, pole.top + 2.4),
+          _stroke(const Color(0x99FFF8C8), 1.2));
+      for (var x = pole.left + 15; x < pole.right - 6; x += 17) {
+        canvas.drawLine(Offset(x, pole.top + 1), Offset(x, pole.bottom - 1),
+            _stroke(const Color(0xFF6E7434), 1.6));
+      }
+      canvas.drawRRect(pole, _stroke(_ink, 1.3));
+    }
+    for (final x in [body.left + 17, body.right - 17]) {
+      canvas.drawLine(Offset(x, body.top - 2), Offset(x, body.bottom + 2),
+          _stroke(const Color(0xFFD7B47A), 3.4));
+      for (var y = body.top + 4; y < body.bottom; y += 7) {
+        canvas.drawLine(Offset(x - 2, y), Offset(x + 2, y + 3),
+            _stroke(const Color(0xFF8A6235), 1));
+      }
+    }
+  }
+
   @override
   void render(Canvas canvas) {
     for (final raft in flow.rafts) {
@@ -275,37 +305,12 @@ class HarborRaftsComponent extends PositionComponent with HasGameReference {
           body.centerLeft + const Offset(-14, 0),
           body.centerLeft + const Offset(-26, 0),
           _stroke(const Color(0x66BFF2FA), 2));
-      // Bamboo poles lie across the current, tied by two rope bands.
-      for (var i = 0; i < 4; i++) {
-        final pole = RRect.fromRectAndRadius(
-            Rect.fromLTWH(body.left - (i.isEven ? 3 : 0), body.top + i * 8.8,
-                body.width + (i.isEven ? 6 : 0), 8.2),
-            const Radius.circular(4.1));
-        canvas.drawRRect(
-            pole,
-            Paint()
-              ..shader = ui.Gradient.linear(
-                  pole.outerRect.topCenter,
-                  pole.outerRect.bottomCenter,
-                  const [Color(0xFFE6D985), Color(0xFF9FA34C)]));
-        canvas.drawLine(
-            Offset(pole.left + 5, pole.top + 2.4),
-            Offset(pole.right - 5, pole.top + 2.4),
-            _stroke(const Color(0x99FFF8C8), 1.2));
-        for (var x = pole.left + 15; x < pole.right - 6; x += 17) {
-          canvas.drawLine(Offset(x, pole.top + 1), Offset(x, pole.bottom - 1),
-              _stroke(const Color(0xFF6E7434), 1.6));
-        }
-        canvas.drawRRect(pole, _stroke(_ink, 1.3));
-      }
-      for (final x in [body.left + 17, body.right - 17]) {
-        canvas.drawLine(Offset(x, body.top - 2), Offset(x, body.bottom + 2),
-            _stroke(const Color(0xFFD7B47A), 3.4));
-        for (var y = body.top + 4; y < body.bottom; y += 7) {
-          canvas.drawLine(Offset(x - 2, y), Offset(x + 2, y + 3),
-              _stroke(const Color(0xFF8A6235), 1));
-        }
-      }
+      canvas
+        ..save()
+        ..translate(body.left - 8, body.top - 6);
+      _raftArt.draw(canvas, const Size(100, 47),
+          (c) => _paintRaft(c, const Rect.fromLTWH(8, 6, 84, 35)));
+      canvas.restore();
       final pole = Offset(body.right - 8, body.top + 4);
       canvas.drawLine(pole, pole - const Offset(0, 25), _stroke(_ink, 2.5));
       final flag = Path()
@@ -356,6 +361,8 @@ class HarborGateComponent extends PositionComponent
   final void Function(HarborGate) onTapGate;
   final void Function(HarborGate, int) onSwipeGate;
   double _turn = 0, _clock = 0, _dragY = 0;
+  static final _plankShader = ui.Gradient.linear(const Offset(0, -6),
+      const Offset(0, 6), const [Color(0xFFD8A866), Color(0xFF9B6534)]);
 
   @override
   void onGameResize(Vector2 size) {
@@ -424,11 +431,7 @@ class HarborGateComponent extends PositionComponent
         Rect.fromLTWH(-length * .38, -6, length, 12), const Radius.circular(4));
     canvas.drawRRect(plank.shift(const Offset(0, 4)),
         Paint()..color = const Color(0x55000000));
-    canvas.drawRRect(
-        plank,
-        Paint()
-          ..shader = ui.Gradient.linear(const Offset(0, -6), const Offset(0, 6),
-              const [Color(0xFFD8A866), Color(0xFF9B6534)]));
+    canvas.drawRRect(plank, Paint()..shader = _plankShader);
     for (var x = -length * .38 + 12; x < length * .62 - 6; x += 12) {
       canvas.drawLine(Offset(x, -4), Offset(x + 4, 4),
           _stroke(const Color(0x667A4A27), 1.1));

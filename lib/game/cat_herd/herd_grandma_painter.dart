@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 import 'package:flutter/painting.dart';
 import 'herd_map.dart';
+import 'herd_text_cache.dart';
 import 'herd_round.dart';
 
 /// Grandma's house art. Base and motion use the 800x375 design space; the
@@ -82,13 +83,7 @@ void paintGrandmaMotion(Canvas c, HerdRound r) {
           ..lineTo(head.dx + 6, head.dy + 2)
           ..close(),
         _p(const Color(0xFFF2A93B)));
-    final text = TextPainter(
-        text: const TextSpan(
-            text: 'Cúc cu!',
-            style: TextStyle(
-                fontSize: 13, fontWeight: FontWeight.w900, color: _ink)),
-        textDirection: TextDirection.ltr)
-      ..layout();
+    final text = herdLabel('Cúc cu!', 13, _ink);
     final at = head + const Offset(14, -22);
     _box(c, (at & text.size).inflate(4), const Color(0xF2FFF6E3), 8);
     text.paint(c, at);

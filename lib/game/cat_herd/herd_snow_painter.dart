@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:flame/components.dart';
 import 'package:flutter/painting.dart';
 import 'herd_map.dart';
+import 'herd_text_cache.dart';
 import 'herd_round.dart';
 
 /// Thin-ice cracks, fall ripples and chute lanes, in pixel space.
@@ -33,7 +34,6 @@ void paintSnowHazards(Canvas canvas, HerdRound round) {
         Paint()
           ..color = Color.lerp(const Color(0x553C7FA6), const Color(0x44D9534A),
               danger * crack)!);
-    final random = math.Random(z * 31 + 7);
     final hair = Paint()
       ..color = const Color(0xAAFFFFFF)
       ..style = PaintingStyle.stroke
@@ -45,19 +45,10 @@ void paintSnowHazards(Canvas canvas, HerdRound round) {
       ..strokeWidth = 1.8
       ..strokeJoin = StrokeJoin.round;
     // Fixed seeds keep the cracks in place; the load only reveals more.
-    const total = 16;
-    final shown = (crack * total).ceil();
-    for (var i = 0; i < total; i++) {
-      var p = Offset(sheet.left + random.nextDouble() * sheet.width,
-          sheet.top + random.nextDouble() * sheet.height);
-      final path = Path()..moveTo(p.dx, p.dy);
-      var angle = random.nextDouble() * math.pi * 2;
-      for (var k = 0; k < 4; k++) {
-        angle += (random.nextDouble() - .5) * 1.4;
-        p += Offset.fromDirection(angle, 9 + random.nextDouble() * 9);
-        path.lineTo(p.dx, p.dy);
-      }
-      canvas.drawPath(path, i < shown ? deep : hair);
+    final paths = _cracks(z, sheet);
+    final shown = (crack * paths.length).ceil();
+    for (var i = 0; i < paths.length; i++) {
+      canvas.drawPath(paths[i], i < shown ? deep : hair);
     }
     canvas.restore();
     // Little warning posts on the shore mark the thin sheet.
@@ -101,6 +92,32 @@ void paintSnowHazards(Canvas canvas, HerdRound round) {
           drop, 2.5 * (1 - t), Paint()..color = const Color(0xDDBFE6F2));
     }
   }
+}
+
+final _crackCache = <String, List<Path>>{};
+
+/// Crack shapes depend only on the sheet, so they are built once per size.
+List<Path> _cracks(int z, Rect sheet) {
+  final key = '$z|$sheet';
+  final hit = _crackCache[key];
+  if (hit != null) return hit;
+  if (_crackCache.length > 8) _crackCache.clear();
+  final random = math.Random(z * 31 + 7);
+  return _crackCache[key] = [
+    for (var i = 0; i < 16; i++)
+      () {
+        var p = Offset(sheet.left + random.nextDouble() * sheet.width,
+            sheet.top + random.nextDouble() * sheet.height);
+        final path = Path()..moveTo(p.dx, p.dy);
+        var angle = random.nextDouble() * math.pi * 2;
+        for (var k = 0; k < 4; k++) {
+          angle += (random.nextDouble() - .5) * 1.4;
+          p += Offset.fromDirection(angle, 9 + random.nextDouble() * 9);
+          path.lineTo(p.dx, p.dy);
+        }
+        return path;
+      }()
+  ];
 }
 
 void _chute(Canvas canvas, Rect lane, Offset dir, double time) {
@@ -173,13 +190,5 @@ void paintCatChill(Canvas canvas, HerdCat cat, double time) {
       DS.fontCaption, const Color(0xFF3E7EA3));
 }
 
-void _text(Canvas canvas, String value, Offset at, double size, Color color) {
-  (TextPainter(
-          text: TextSpan(
-              text: value,
-              style: TextStyle(
-                  fontSize: size, color: color, fontWeight: FontWeight.w900)),
-          textDirection: TextDirection.ltr)
-        ..layout())
-      .paint(canvas, at);
-}
+void _text(Canvas canvas, String value, Offset at, double size, Color color) =>
+    herdLabel(value, size, color).paint(canvas, at);

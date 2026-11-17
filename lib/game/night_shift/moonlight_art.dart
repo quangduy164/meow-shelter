@@ -17,9 +17,9 @@ void _paintBeam(Canvas canvas, Size screen, Moonlight moon,
   if (moon.shown <= .01) return;
   final source = moon.source(screen);
   final target = moon.foot(screen);
-  // Overlapping bands soften both sides without a full-screen blur layer.
-  for (final width in const [1.0, .96, .91, .85]) {
-    final strength = moon.shown * (erase ? .38 : .065);
+  // Two bands, a faint wide edge and a strong core, keep the soft rim.
+  for (final (width, share) in const [(1.0, .33), (.88, .67)]) {
+    final strength = moon.shown * (erase ? 1.52 : .26) * share;
     Color color(double opacity) => erase
         ? Color.fromRGBO(0, 0, 0, opacity)
         : const Color(0xFFCEE8E4).withValues(alpha: opacity);

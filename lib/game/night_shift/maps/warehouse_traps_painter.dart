@@ -2,6 +2,8 @@ import 'dart:ui' as ui;
 import 'package:flame/components.dart';
 import 'package:flame/events.dart';
 import 'package:flutter/painting.dart';
+import '../../text_cache.dart';
+import '../static_layer.dart';
 import '../../components/fish_item_component.dart';
 import '../moonlight.dart';
 import '../moonlight_art.dart';
@@ -9,30 +11,24 @@ import 'warehouse_traps.dart';
 
 class WarehouseBackground extends PositionComponent {
   WarehouseBackground() : super(priority: -100);
-  ui.Picture? _picture;
+  final _layer = StaticLayer();
   @override
   void onGameResize(Vector2 size) {
     super.onGameResize(size);
     this.size.setFrom(size);
-    _picture?.dispose();
-    _picture = null;
+    _layer.clear();
   }
 
   @override
   void onRemove() {
-    _picture?.dispose();
+    _layer.clear();
     super.onRemove();
   }
 
   @override
   void render(Canvas canvas) {
     if (size.x <= 0 || size.y <= 0) return;
-    if (_picture == null) {
-      final rec = ui.PictureRecorder();
-      _paint(Canvas(rec), size.toSize());
-      _picture = rec.endRecording();
-    }
-    canvas.drawPicture(_picture!);
+    _layer.draw(canvas, size.toSize(), (c) => _paint(c, size.toSize()));
   }
 
   void _paint(Canvas c, Size s) {
@@ -89,10 +85,15 @@ class WarehouseCageBack extends PositionComponent with HasGameReference {
   WarehouseCageBack(this.slot, this.traps) : super(priority: 70);
   final TrapSlot slot;
   final WarehouseTraps traps;
+  final _shell = StaticLayer();
 
   @override
-  void render(Canvas canvas) {
-    final body = _cageRect(slot, game.size).deflate(3);
+  void onRemove() {
+    _shell.clear();
+    super.onRemove();
+  }
+
+  static void _paintShell(Canvas canvas, Rect body) {
     final shell = RRect.fromRectAndRadius(body, const Radius.circular(8));
     canvas.drawRRect(shell.shift(const Offset(0, 5)),
         Paint()..color = const Color(0x55101519));
@@ -116,6 +117,20 @@ class WarehouseCageBack extends PositionComponent with HasGameReference {
       canvas.drawLine(Offset(x, floor.top + 2), Offset(x - 5, floor.bottom - 2),
           Paint()..color = const Color(0x665B3F27));
     }
+  }
+
+  @override
+  void render(Canvas canvas) {
+    final body = _cageRect(slot, game.size).deflate(3);
+    // Only the cage area is rasterised, with room for the drop shadow.
+    canvas
+      ..save()
+      ..translate(body.left - 4, body.top - 4);
+    _shell.draw(canvas, Size(body.width + 8, body.height + 12),
+        (c) => _paintShell(c, Rect.fromLTWH(4, 4, body.width, body.height)));
+    canvas.restore();
+    final floor = Rect.fromLTWH(body.left + 4, body.bottom - body.height * .22,
+        body.width - 8, body.height * .18);
     if (!slot.showsFish) return;
     final left = traps.fishLeft(slot);
     final x = slot.opensRight
@@ -157,18 +172,15 @@ class WarehouseDoor extends PositionComponent
   void onTapDown(TapDownEvent event) => onClose(slot);
   void _label(Canvas c, String text, Offset center, Color color,
       {double font = 10}) {
-    final p = TextPainter(
-        text: TextSpan(
-            text: text,
-            style: TextStyle(
-                color: color,
-                fontFamily: 'Roboto',
-                fontSize: font,
-                fontWeight: FontWeight.w900)),
-        textDirection: TextDirection.ltr)
-      ..layout(maxWidth: size.x - 8);
+    final p = TextCache.layout(
+        text,
+        TextStyle(
+            color: color,
+            fontFamily: 'Roboto',
+            fontSize: font,
+            fontWeight: FontWeight.w900),
+        maxWidth: size.x - 8);
     p.paint(c, center - Offset(p.width / 2, 0));
-    p.dispose();
   }
 
   @override

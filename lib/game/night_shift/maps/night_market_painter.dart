@@ -4,6 +4,8 @@ import 'dart:ui' as ui;
 import 'package:flame/components.dart';
 import 'package:flame/events.dart';
 import 'package:flutter/painting.dart';
+import '../../text_cache.dart';
+import '../static_layer.dart';
 import '../../../fishing/fishing_lighting.dart';
 import '../../components/cat_component.dart';
 import '../moonlight_art.dart';
@@ -11,30 +13,25 @@ import 'night_market.dart';
 
 class NightMarketBackground extends PositionComponent {
   NightMarketBackground() : super(priority: -100);
-  ui.Picture? _picture;
+  final _layer = StaticLayer();
   @override
   void onGameResize(Vector2 size) {
     super.onGameResize(size);
     this.size.setFrom(size);
-    _picture?.dispose();
-    _picture = null;
+    _layer.clear();
   }
 
   @override
   void onRemove() {
-    _picture?.dispose();
+    _layer.clear();
     super.onRemove();
   }
 
   @override
   void render(Canvas canvas) {
     if (size.x <= 0 || size.y <= 0) return;
-    if (_picture == null) {
-      final recorder = ui.PictureRecorder();
-      paintNightMarket(Canvas(recorder), size.toSize());
-      _picture = recorder.endRecording();
-    }
-    canvas.drawPicture(_picture!);
+    _layer.draw(
+        canvas, size.toSize(), (c) => paintNightMarket(c, size.toSize()));
   }
 }
 
@@ -356,15 +353,9 @@ class NightMarketAtmosphere extends PositionComponent with HasGameReference {
 
   void _text(Canvas canvas, String text, Offset at, Color color,
       {bool centered = false}) {
-    final label = TextPainter(
-        text: TextSpan(
-            text: text,
-            style: TextStyle(
-                color: color, fontSize: 10, fontWeight: FontWeight.w800)),
-        textDirection: TextDirection.ltr)
-      ..layout();
+    final label = TextCache.layout(text,
+        TextStyle(color: color, fontSize: 10, fontWeight: FontWeight.w800));
     label.paint(canvas, at - Offset(centered ? label.width / 2 : 0, 0));
-    label.dispose();
   }
 }
 

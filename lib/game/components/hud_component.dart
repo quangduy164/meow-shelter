@@ -7,6 +7,7 @@ import 'package:flutter/painting.dart';
 
 import '../../levels/level_goal.dart';
 import '../silver_token_art.dart';
+import '../text_cache.dart';
 
 enum RoundStatus { playing, won, lost }
 
@@ -121,8 +122,6 @@ class HudComponent extends PositionComponent with HasGameReference<FlameGame> {
     final numberTemplate = _text('0000', DS.fontBody, _ink, bold: true);
     final clockWidth = math.max(34.0, clockTemplate.width);
     final numberWidth = math.max(38.0, numberTemplate.width);
-    clockTemplate.dispose();
-    numberTemplate.dispose();
     final widths = [
       for (var i = 0; i < labels.length; i++)
         math.max(labels[i].width, timed && i == 0 ? clockWidth : numberWidth),
@@ -244,7 +243,6 @@ class HudComponent extends PositionComponent with HasGameReference<FlameGame> {
     if (arrivalHint.isNotEmpty) {
       final hint = _text(arrivalHint, DS.fontMicro, _ink);
       hint.paint(canvas, Offset(box.left + pad, y + 3));
-      hint.dispose();
       y += 15;
     }
     if (tags.isEmpty) return;
@@ -349,19 +347,16 @@ class HudComponent extends PositionComponent with HasGameReference<FlameGame> {
           bool strike = false,
           double? maxWidth,
           int maxLines = 1}) =>
-      TextPainter(
-          text: TextSpan(
-              text: text,
-              style: TextStyle(
-                  color: color,
-                  fontSize: size,
-                  fontWeight: bold ? FontWeight.w900 : FontWeight.w700,
-                  decoration: strike ? TextDecoration.lineThrough : null,
-                  decorationColor: color)),
-          textDirection: TextDirection.ltr,
-          maxLines: maxLines,
-          ellipsis: '…')
-        ..layout(maxWidth: maxWidth ?? double.infinity);
+      TextCache.layout(
+          text,
+          TextStyle(
+              color: color,
+              fontSize: size,
+              fontWeight: bold ? FontWeight.w900 : FontWeight.w700,
+              decoration: strike ? TextDecoration.lineThrough : null,
+              decorationColor: color),
+          maxWidth: maxWidth ?? double.infinity,
+          maxLines: maxLines);
 
   static void _clockIcon(Canvas canvas, Offset c, Color color) {
     final stroke = Paint()

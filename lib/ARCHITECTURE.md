@@ -129,6 +129,12 @@
     `HerdMap.geese` flocks scatter the herd without costing lives. Bé Hay
     Dỗi (`HerdTrait.sulky`) never holds plates; whenever it drops out of the
     chain it sulks, backs away from the leader and is coaxed by staying close.
+  - Rendering cost: `renderHerdBackground` rasterises `paintHerdMapBase` plus
+    the footprints once per map/viewport (device pixel ratio, capped at 3)
+    into a `ui.Image`; frames draw that image, then only motion layers.
+    Base painters must not read round state. Per-frame text goes through
+    `herdLabel` (`herd_text_cache.dart`), thin-ice cracks are cached per
+    sheet, and lantern darkness uses stacked rects instead of a blur filter.
   - `HerdMap.tutorial` is excluded from the four-region picker. It has no
     damaging hazards, twelve cats in four clusters, three slalom rocks and a
     three-step move/recruit/return guide driven by

@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 import 'package:flame/components.dart';
 import 'package:flutter/painting.dart';
+import 'herd_text_cache.dart';
 import 'herd_round.dart';
 import 'herd_traits.dart';
 
@@ -276,13 +277,5 @@ void _sparkle(Canvas canvas, Offset at, double r, Color color) {
       paint);
 }
 
-void _text(Canvas canvas, String value, Offset at, double size, Color color) {
-  (TextPainter(
-          text: TextSpan(
-              text: value,
-              style: TextStyle(
-                  fontSize: size, color: color, fontWeight: FontWeight.w900)),
-          textDirection: TextDirection.ltr)
-        ..layout())
-      .paint(canvas, at);
-}
+void _text(Canvas canvas, String value, Offset at, double size, Color color) =>
+    herdLabel(value, size, color).paint(canvas, at);

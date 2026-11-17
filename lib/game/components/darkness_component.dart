@@ -22,6 +22,20 @@ class DarknessComponent extends PositionComponent with HasGameReference {
   final Iterable<(Offset, double)> Function() lights;
   final bool Function() visible;
   double _clock = 0;
+  static final _layerPaint = Paint();
+  static final _shadePaint = Paint();
+  static final _flyPaint = Paint();
+  static final _holePaint = Paint()
+    ..blendMode = BlendMode.dstOut
+    ..shader = Gradient.radial(Offset.zero, 1, const [
+      Color(0xFF000000),
+      Color(0xCC000000),
+      Color(0x00000000),
+    ], const [
+      0,
+      .55,
+      1
+    ]);
 
   @override
   void update(double dt) {
@@ -33,24 +47,17 @@ class DarknessComponent extends PositionComponent with HasGameReference {
   void render(Canvas canvas) {
     if (!visible()) return;
     final area = Offset.zero & Size(game.size.x, game.size.y);
-    canvas.saveLayer(area, Paint());
-    canvas.drawRect(area, Paint()..color = shade);
+    canvas.saveLayer(area, _layerPaint);
+    canvas.drawRect(area, _shadePaint..color = shade);
     for (final (center, radius) in lights()) {
       final r = radius * (1 + math.sin(_clock * 2.4 + center.dx) * .04);
-      canvas.drawCircle(
-          center,
-          r,
-          Paint()
-            ..blendMode = BlendMode.dstOut
-            ..shader = Gradient.radial(center, r, const [
-              Color(0xFF000000),
-              Color(0xCC000000),
-              Color(0x00000000),
-            ], const [
-              0,
-              .55,
-              1
-            ]));
+      // One unit-size gradient, scaled per light: no shader per light per frame.
+      canvas
+        ..save()
+        ..translate(center.dx, center.dy)
+        ..scale(r)
+        ..drawCircle(Offset.zero, 1, _holePaint)
+        ..restore();
     }
     additionalLights?.call(canvas, area.size);
     canvas.restore();
@@ -61,9 +68,9 @@ class DarknessComponent extends PositionComponent with HasGameReference {
           game.size.y * (.25 + .45 * (.5 + .5 * _wave(t * 1.3 + i))));
       final glow = .4 + .6 * (.5 + .5 * _wave(t * 3 + i * 2));
       canvas.drawCircle(
-          p, 5, Paint()..color = Color.fromRGBO(255, 236, 140, .18 * glow));
+          p, 5, _flyPaint..color = Color.fromRGBO(255, 236, 140, .18 * glow));
       canvas.drawCircle(
-          p, 1.6, Paint()..color = Color.fromRGBO(255, 244, 190, .9 * glow));
+          p, 1.6, _flyPaint..color = Color.fromRGBO(255, 244, 190, .9 * glow));
     }
   }
 

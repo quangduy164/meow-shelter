@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 import 'package:flutter/painting.dart';
 import 'herd_map.dart';
+import 'herd_text_cache.dart';
 import 'herd_round.dart';
 
 /// Small train station art. Base uses the 800x375 design space; the train
@@ -19,13 +20,7 @@ void _line(Canvas c, Offset a, Offset b, Color color, double width) =>
           ..strokeWidth = width
           ..strokeCap = StrokeCap.round);
 void _label(Canvas c, String text, Offset center, double size, Color color) {
-  final t = TextPainter(
-      text: TextSpan(
-          text: text,
-          style: TextStyle(
-              fontSize: size, color: color, fontWeight: FontWeight.w900)),
-      textDirection: TextDirection.ltr)
-    ..layout();
+  final t = herdLabel(text, size, color);
   t.paint(c, center - Offset(t.width / 2, t.height / 2));
 }
 
