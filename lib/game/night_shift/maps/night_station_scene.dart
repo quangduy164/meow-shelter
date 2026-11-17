@@ -118,6 +118,7 @@ class NightStationScene extends NightScene {
     }
     _sizes.clear();
     _walks.clear();
+    _arrived.clear();
     benches.fillRange(0, benches.length, null);
     marks = [];
     selected = null;
@@ -136,6 +137,7 @@ class NightStationScene extends NightScene {
     marks = List.filled(line.cars, null);
     _walks.clear();
     _sizes.clear();
+    _arrived.clear();
     selected = null;
     _chimed = false;
     game.removeAll(_marksUi);
@@ -148,10 +150,23 @@ class NightStationScene extends NightScene {
     game.addAll(_marksUi);
   }
 
-  List<String> get _needed => [
-        for (final cat in [...benches, ...marks])
-          if (cat != null) cat.catType,
-      ];
+  /// Cats on the platform in arrival order; the oldest gets the next free car.
+  final _arrived = <CatComponent>[];
+
+  /// True when the coming train has no car left for this cat: it must wait.
+  bool waitsNextTrain(CatComponent cat) {
+    if (line.sharedCar != null) return false;
+    if (line.phase != TrainPhase.waiting && line.phase != TrainPhase.leaving) {
+      return false;
+    }
+    final before = _arrived
+        .takeWhile((c) => c != cat)
+        .where((c) => c.catType == cat.catType);
+    return line.next.where((s) => s == cat.catType).length <= before.length;
+  }
+
+  void _plan() =>
+      line.plan([for (final cat in _arrived) cat.catType], game.random);
 
   @override
   bool tapCat(CatComponent cat) {
@@ -164,14 +179,13 @@ class NightStationScene extends NightScene {
 
   @override
   int helpNear(Offset point, double reach, int targets) {
-    final signs = line.phase == TrainPhase.waiting ? line.next : line.signs;
     var helped = 0;
     for (final cat in benches.whereType<CatComponent>().toList()) {
       if (helped >= targets) break;
       final car = List.generate(line.cars, (c) => c)
           .where((c) =>
               marks[c] == null &&
-              (c == line.sharedCar || signs[c] == cat.catType))
+              (c == line.sharedCar || line.shownSign(c) == cat.catType))
           .firstOrNull;
       if (car == null) continue;
       _assign(cat, car);
@@ -235,9 +249,7 @@ class NightStationScene extends NightScene {
       return false;
     }
     if (!free && !game.bait.spend()) return false;
-    final sign = line.signsShown
-        ? (line.phase == TrainPhase.waiting ? line.next : line.signs)[car]
-        : null;
+    final sign = line.shownSign(car);
     final cat = waiting.firstWhere((c) => c.catType == sign,
         orElse: () => waiting.first);
     _assign(cat, car);
@@ -279,18 +291,11 @@ class NightStationScene extends NightScene {
       cat.size.setFrom(_catSize);
       benches[slot] = cat;
       cat.positionInTrap(benchSpot(slot, cat), walking: false);
-      if (line.next.every((s) => s == null)) {
-        line.prepare(_needed, game.random);
-      } else {
-        line.include(cat.catType, _needed);
-      }
+      _arrived.add(cat);
     }
     final pace = night.assist.frozen ? 0.0 : night.assist.pace;
-    for (final event in line.update(dt * pace)) {
-      if (event == TrainEvent.departed) {
-        line.prepare(_needed, game.random);
-      }
-    }
+    line.update(dt * pace);
+    _plan();
     if (line.phase == TrainPhase.stopped) _boardReady();
     final step = 150 * line.walkSpeed * dt;
     for (final entry in _walks.entries.toList()) {
@@ -301,6 +306,7 @@ class NightStationScene extends NightScene {
         _walks.remove(cat);
         if (walk.board) {
           _sizes.remove(cat);
+          _arrived.remove(cat);
           if (selected == cat) selected = null;
           if (night.phase == NightPhase.playing) {
             GameAudio.instance.playRescue(GameSound.catRescue, important: true);

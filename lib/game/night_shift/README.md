@@ -211,8 +211,10 @@ vào vạch trống để gọi một mèo đang chờ, ưu tiên mèo hợp bi�
 
 - Lịch tàu và biển toa: `maps/night_station.dart`; ghế, vạch, cá và lên tàu:
   `maps/night_station_scene.dart`; vẽ ga, tàu, biển, vạch: `maps/night_station_painter.dart`.
-- Biển chuyến sau có mọi giống đang chờ (tối đa bằng số toa), toa thừa là biển
-  ngẫu nhiên. Mèo mới tới chỉ thay biển thừa, không đổi biển đã xếp.
+- Biển chuyến sau được lên lịch liên tục khi tàu vắng (StationLine.plan): biển
+  đang phục vụ một mèo trên sân không bao giờ đổi; toa trống chia cho mèo tới sớm
+  nhất, nên không con nào bị bỏ qua hai chuyến liền. Mèo chưa có toa ở chuyến tới
+  hiện đồng hồ nhỏ trên đầu. Biển khóa khi tàu bắt đầu vào ga.
 - Biến thể: Ga nhỏ (3 toa), Tàu dài (4 toa), Đổi biển (biển chỉ hiện khi tàu vào).
 - Lần gặp thứ hai: tàu dừng ngắn hơn. Lần thứ ba: tàu tới dày hơn.
 - Thẻ riêng: Còi báo sớm, Dừng lâu, Toa chung, Nhân viên ga.

@@ -7,6 +7,7 @@ import '../../text_cache.dart';
 import '../static_layer.dart';
 import '../moonlight.dart';
 import '../moonlight_art.dart';
+import '../../components/cat_component.dart';
 import 'night_station.dart';
 import 'night_station_scene.dart';
 
@@ -245,6 +246,9 @@ class StationSelectionComponent extends PositionComponent
       canvas.drawOval(
           Rect.fromCenter(center: c, width: cat.size.x * .62, height: 10),
           _stroke(_ink, 1.5));
+      if (scene.line.preview && scene.waitsNextTrain(cat)) {
+        _waitBadge(canvas, cat);
+      }
     }
     final cat = scene.selected;
     if (cat == null) return;
@@ -256,6 +260,16 @@ class StationSelectionComponent extends PositionComponent
             height: 18 * r),
         _stroke(const Color(0xFFFFE08A), 3));
   }
+}
+
+/// Small clock over a cat that has no car on the coming train.
+void _waitBadge(Canvas canvas, CatComponent cat) {
+  final c = Offset(cat.position.x + cat.size.x * .82, cat.position.y + 6);
+  canvas.drawCircle(c, 9, Paint()..color = const Color(0xFF5A6370));
+  canvas.drawCircle(c, 9, _stroke(const Color(0xFFFFF4DA), 1.6));
+  final hand = _stroke(const Color(0xFFFFF4DA), 1.6);
+  canvas.drawLine(c, c + const Offset(0, -5), hand);
+  canvas.drawLine(c, c + const Offset(3.5, 1.5), hand);
 }
 
 class StationMoon extends PositionComponent with HasGameReference {
@@ -313,11 +327,7 @@ class StationMarkComponent extends PositionComponent
     final post = Offset(size.x - 10, 10);
     canvas.drawLine(post + const Offset(0, 12), Offset(post.dx, mark.top),
         _stroke(_ink, 3));
-    final sign = !line.signsShown
-        ? null
-        : line.phase == TrainPhase.waiting
-            ? line.next[car]
-            : line.signs[car];
+    final sign = line.shownSign(car);
     paintStationSign(canvas, post, sign, car == line.sharedCar, size: 22);
   }
 }

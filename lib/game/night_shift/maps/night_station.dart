@@ -35,28 +35,39 @@ class StationLine {
 
   double markX(int car) => cars == 3 ? .25 + car * .25 : .2 + car * .2;
 
-  /// Signs for the coming train: each needed breed once, other cars decoys.
-  void prepare(List<String> needed, math.Random random) {
-    final pool = needed.toSet().take(cars).toList()..shuffle(random);
-    const breeds = ['orange', 'black', 'himalaya', 'scottish', 'calico'];
-    while (pool.length < cars) {
-      pool.add(breeds[random.nextInt(breeds.length)]);
+  static const _breeds = ['orange', 'black', 'himalaya', 'scottish', 'calico'];
+
+  /// Plans the coming train while it is still away. Signs that still serve a
+  /// waiting cat never flip, so a cat already moved stays right; free cars
+  /// go to cats oldest first, so nobody is skipped twice in a row.
+  void plan(List<String> waiting, math.Random random) {
+    if (phase != TrainPhase.waiting && phase != TrainPhase.leaving) return;
+    final plan = List<String?>.filled(cars, null);
+    final want = [...waiting];
+    bool free(int c) => c != sharedCar && plan[c] == null;
+    for (var c = 0; c < cars; c++) {
+      final old = c < next.length ? next[c] : null;
+      if (free(c) && old != null && want.remove(old)) plan[c] = old;
     }
-    next = (pool..shuffle(random)).cast<String?>().toList();
+    for (var c = 0; c < cars; c++) {
+      if (free(c) && want.isNotEmpty) plan[c] = want.removeAt(0);
+    }
+    for (var c = 0; c < cars; c++) {
+      if (!free(c)) continue;
+      final old = c < next.length ? next[c] : null;
+      plan[c] = old ?? _breeds[random.nextInt(_breeds.length)];
+    }
+    next = plan;
   }
 
-  /// A newcomer replaces one decoy sign, so earlier plans stay valid.
-  void include(String breed, List<String> needed) {
-    if (phase != TrainPhase.waiting || timer < 1.5 || next.contains(breed)) {
-      return;
-    }
-    final decoy = [
-      for (var i = 0; i < next.length; i++)
-        if (next[i] == null || !needed.contains(next[i])) i
-    ];
-    if (decoy.isNotEmpty) next[decoy.first] = breed;
-  }
+  /// What the post above [car] shows right now; null when hidden.
+  String? shownSign(int car) => switch (phase) {
+        TrainPhase.waiting || TrainPhase.leaving => preview ? next[car] : null,
+        _ => signs[car],
+      };
 
+  /// Whether the next train has a car this breed can board.
+  bool hasCarFor(String breed) => sharedCar != null || next.contains(breed);
   bool accepts(int car, String breed) =>
       phase == TrainPhase.stopped && (car == sharedCar || signs[car] == breed);
 
@@ -69,7 +80,6 @@ class StationLine {
         TrainPhase.stopped => 0,
         TrainPhase.waiting => 1.2,
       };
-  bool get signsShown => preview || phase != TrainPhase.waiting;
 
   List<TrainEvent> update(double dt) {
     timer -= dt;
