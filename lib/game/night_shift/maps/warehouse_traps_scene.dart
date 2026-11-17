@@ -45,8 +45,8 @@ class WarehouseTrapsScene extends NightScene {
   bool get hasBaitInTransit => traps.slots.any((s) => s.baited || s.occupied);
   @override
   List<String> get rules => const [
-        'Lồng áp dụng cho mọi giống mèo; trùm nán lại ngắn hơn. Không cần bế vào ổ',
-        'Thẻ bế/ổ dùng ở các map bế mèo; trợ thủ ở đây hỗ trợ thời điểm chốt lồng',
+        'Lồng bắt: mọi giống mèo đều vào lồng, không cần bế',
+        'Chốt xanh: chạm khi lồng sáng xanh; trùm nán ngắn hơn',
       ];
   @override
   void onMistake() {}
@@ -114,6 +114,7 @@ class WarehouseTrapsScene extends NightScene {
   void begin(NightRun run,
       {required bool thickClouds, required double afterglowSeconds}) {
     traps.begin(run);
+    traps.holdBonus += afterglowSeconds / 4;
     moon.reset(fullMoon: run.has(NightCard.fullMoon), thickClouds: thickClouds);
     game.removeAll(_cages);
     _cages.clear();

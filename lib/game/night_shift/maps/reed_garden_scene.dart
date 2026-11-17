@@ -45,9 +45,10 @@ class ReedGardenScene extends NightScene {
       _runners.isNotEmpty ||
       garden.patches.any((p) => p.baited);
   @override
-  List<String> get rules => const [
-        'Mèo trốn trong bụi lau và để lại vết khi đổi bụi',
-        'Chạm đúng bụi để mèo lộ ra; mèo lộ ra đã sẵn sàng bế',
+  List<String> get rules => [
+        'Vết lau: mèo đổi bụi để lại vết chân vàng',
+        'Lùa mèo: chạm bụi cạnh mèo, mèo chạy ra xa chỗ chạm',
+        if (!garden.softParting) 'Chạm trúng mèo: mèo chạy loạn, tính lỗi',
       ];
   @override
   void onMistake() {}
@@ -77,10 +78,12 @@ class ReedGardenScene extends NightScene {
       (p) => (p.shake > 0 || p.baited) && _px(p).inflate(24).contains(point));
   @override
   bool isLit(Offset point, Size size) =>
-      moon.contains(point, size) || _patchLit(point);
+      moon.contains(point, size) || _patchLit(point) || _exitLit(point);
+  bool _exitLit(Offset point) =>
+      garden.exits.any((e) => _px(e).inflate(30).contains(point));
   @override
   bool overlappingLights(Offset point, Size size) =>
-      moon.contains(point, size) && _patchLit(point);
+      moon.contains(point, size) && (_patchLit(point) || _exitLit(point));
 
   @override
   void mount() {
@@ -117,6 +120,7 @@ class ReedGardenScene extends NightScene {
   void begin(NightRun run,
       {required bool thickClouds, required double afterglowSeconds}) {
     garden.begin(run);
+    garden.trailSeconds += afterglowSeconds / 2;
     moon.reset(fullMoon: run.has(NightCard.fullMoon), thickClouds: thickClouds);
     _hidden.clear();
     _moveLeft.clear();
@@ -187,6 +191,35 @@ class ReedGardenScene extends NightScene {
     final r = _px(exit);
     _runners.add(_ReedRunner(cat,
         Vector2(r.center.dx - cat.size.x / 2, r.bottom - cat.size.y * .9)));
+  }
+
+  @override
+  int helpNear(Offset point, double reach, int targets) {
+    double toExit(ReedPatch p) => garden.exits
+        .map((e) => (e.center - p.center).distance)
+        .reduce(math.min);
+    final near = _hidden.keys
+        .where((p) => (_px(p).center - point).distance <= reach)
+        .toList()
+      ..sort((a, b) => (_px(a).center - point)
+          .distance
+          .compareTo((_px(b).center - point).distance));
+    var helped = 0;
+    for (final from in near.take(targets)) {
+      final options = [
+        ...garden.exitsNear(from),
+        ...garden.neighbors(from).where((p) => !p.occupied && !p.baited),
+      ]..sort((a, b) => toExit(a).compareTo(toExit(b)));
+      final to = options.firstOrNull;
+      if (to == null || toExit(to) >= toExit(from)) continue;
+      helped++;
+      if (to.index < 0) {
+        _escape(from, to);
+      } else {
+        _move(from, to);
+      }
+    }
+    return helped;
   }
 
   void tapPatch(ReedPatch patch) {

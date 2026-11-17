@@ -1,17 +1,42 @@
-/// Night-shift maps, each built around its own night resource.
+/// Night-shift maps. Every map fills the same briefing template:
+/// [mission] (what counts as a rescue), [rule], its [control] (the thing the
+/// player uses; relics trigger on its first use) and [light] (where relics
+/// count a rescue as lit).
 enum NightMap {
   backyard('Sân sau dưới trăng',
-      'Chạm đèn lồng để thắp; mèo trong vùng sáng không giở chiêu'),
+      'Chạm đèn lồng để thắp; mèo trong vùng sáng không giở chiêu',
+      mission: 'Bế mỗi mèo vào đúng ổ',
+      control: 'Thắp đèn lần đầu',
+      light: 'đèn lồng'),
   marketAlley('Hẻm chợ đêm',
-      'Giữ độ ồn dưới 100; vùng đèn bảo vệ mèo khi xe đẩy đi qua'),
-  rooftops('Mái nhà', 'Đặt cá ở mái giữa; hạ cầu để mèo hai mái bên sang ăn'),
-  warehouse('Kho hàng', 'Đặt mồi trong lồng; chờ tín hiệu xanh rồi chốt cửa'),
-  reedGarden('Vườn lau', 'Chạm bụi cạnh mèo để lùa nó tới giỏ lối ra'),
-  harbor('Bến thuyền', 'Đổi cửa nước để bè chở mèo trôi về bến'),
-  station('Nhà ga đêm', 'Đưa mèo ra đúng vạch toa trước khi tàu dừng');
+      'Giữ độ ồn dưới 100; vùng đèn bảo vệ mèo khi xe đẩy đi qua',
+      mission: 'Bế mỗi mèo vào đúng ổ',
+      control: 'Bật đèn đường lần đầu',
+      light: 'đèn đường'),
+  rooftops('Mái nhà', 'Đặt cá ở mái giữa; hạ cầu để mèo hai mái bên sang ăn',
+      mission: 'Bế mỗi mèo vào đúng ổ',
+      control: 'Hạ cầu lần đầu',
+      light: 'cầu ván'),
+  warehouse('Kho hàng', 'Đặt mồi trong lồng; chờ tín hiệu xanh rồi chốt cửa',
+      mission: 'Chốt lồng khi mèo vào trọn',
+      control: 'Mồi mỗi ngăn lần đầu',
+      light: 'lồng'),
+  reedGarden('Vườn lau', 'Chạm bụi cạnh mèo để lùa nó tới giỏ lối ra',
+      mission: 'Lùa mèo chạy vào giỏ',
+      control: 'Chạm bụi lần đầu',
+      light: 'giỏ'),
+  harbor('Bến thuyền', 'Đổi cửa nước để bè chở mèo trôi về bến',
+      mission: 'Đưa bè về bến cùng màu',
+      control: 'Bẻ cửa nước lần đầu',
+      light: 'bến'),
+  station('Nhà ga đêm', 'Đưa mèo ra đúng vạch toa trước khi tàu dừng',
+      mission: 'Đưa mèo lên đúng toa tàu',
+      control: 'Xếp vạch lần đầu',
+      light: 'cửa toa');
 
-  const NightMap(this.title, this.rule);
-  final String title, rule;
+  const NightMap(this.title, this.rule,
+      {required this.mission, required this.control, required this.light});
+  final String title, rule, mission, control, light;
 }
 
 /// Upgrade cards picked between nights. Deals ([cost] set) pay more run currency

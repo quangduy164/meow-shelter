@@ -270,6 +270,14 @@ class HerdMap {
         [HerdTrait.sulky],
       ]);
 
+  /// Only traffic can hurt the leader, so only these maps show lives.
+  bool get costsLives =>
+      kind == HerdMapKind.playground || kind == HerdMapKind.nightMarket;
+
+  /// Left edge of the free top row: after Home, and after the life pill
+  /// when lives are shown.
+  double get topRowStart => costsLives ? 196 : 72;
+
   /// Saved guide key for maps that open with an intro card, else null.
   String? get introKey => switch (kind) {
         HerdMapKind.grandma => 'mode:herd:traits:v1',

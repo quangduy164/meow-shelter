@@ -27,6 +27,7 @@ class HarborFlowScene extends NightScene {
   final _sizes = <CatComponent, Vector2>{};
   final _waiting = <CatComponent>[];
   bool _preparedAnchor = false;
+  double _anchorSeconds = 2.5;
 
   @override
   NightMap get map => NightMap.harbor;
@@ -44,8 +45,10 @@ class HarborFlowScene extends NightScene {
   bool get hasBaitInTransit => _cats.isNotEmpty || _waiting.isNotEmpty;
   @override
   List<String> get rules => [
-        'Chạm cửa nước để đổi hướng bè ở mỗi chặng',
-        'Kéo cá lên bè để neo bè 2.5 giây',
+        'Bến cùng màu: bè chỉ cập bến có màu giống cờ mèo',
+        'Cá neo bè: thả cá lên bè để giữ bè ${_anchorSeconds.toStringAsFixed(1)}s',
+        if (flow.linked) 'Cửa nối cột: một cửa đổi hướng cả cột',
+        if (flow.collisions) 'Va bè: hai bè đi sát nhau cùng quay lại',
       ];
   @override
   void onMistake() {}
@@ -57,12 +60,15 @@ class HarborFlowScene extends NightScene {
       null;
   @override
   bool isLit(Offset point, Size size) =>
-      moon.contains(point, size) || _nearRaft(point);
+      moon.contains(point, size) || _nearRaft(point) || _dockLit(point);
+  bool _dockLit(Offset point) => flow.dockBreeds.keys.any((lane) =>
+      (point - _px(Offset(.93, HarborFlow.laneY[lane]))).distance <
+      game.size.x * .08);
   bool _nearRaft(Offset point) => flow.rafts
       .any((r) => (_px(r.center) - point).distance < game.size.x * .07);
   @override
   bool overlappingLights(Offset point, Size size) =>
-      moon.contains(point, size) && _nearRaft(point);
+      moon.contains(point, size) && (_nearRaft(point) || _dockLit(point));
 
   Offset _px(Offset p) => Offset(p.dx * game.size.x, p.dy * game.size.y);
 
@@ -100,6 +106,7 @@ class HarborFlowScene extends NightScene {
   void begin(NightRun run,
       {required bool thickClouds, required double afterglowSeconds}) {
     flow.begin(run);
+    _anchorSeconds = 2.5 + afterglowSeconds / 4;
     moon.reset(fullMoon: run.has(NightCard.fullMoon), thickClouds: thickClouds);
     _cats.clear();
     _sizes.clear();
@@ -120,6 +127,18 @@ class HarborFlowScene extends NightScene {
     _changedGate(gate);
   }
 
+  @override
+  int helpNear(Offset point, double reach, int targets) {
+    final near = flow.rafts
+        .where((r) => (_px(r.center) - point).distance <= reach)
+        .take(targets)
+        .toList();
+    for (final raft in near) {
+      raft.anchor = math.max(raft.anchor, 2);
+    }
+    return near.length;
+  }
+
   void tapGate(HarborGate gate) {
     if (game.paused || game.night?.phase != NightPhase.playing) return;
     flow.turn(gate);
@@ -137,8 +156,7 @@ class HarborFlowScene extends NightScene {
 
   @override
   void prepareBait() {
-    final raft = flow.rafts.firstOrNull;
-    if (raft != null) raft.anchor = 2.5;
+    _preparedAnchor = true;
   }
 
   @override
@@ -151,7 +169,7 @@ class HarborFlowScene extends NightScene {
       return false;
     }
     if (!free && !game.bait.spend()) return false;
-    raft.anchor = 2.5;
+    raft.anchor = _anchorSeconds;
     if (game.bait.limited) game.hud.fishLeft = game.bait.fishCount;
     GameAudio.instance.playRescue(GameSound.baitDrop);
     final cat = _cats[raft];
@@ -207,7 +225,7 @@ class HarborFlowScene extends NightScene {
       final raft =
           flow.launch(lanes[game.random.nextInt(lanes.length)], cat.catType);
       if (_preparedAnchor) {
-        raft.anchor = 2.5;
+        raft.anchor = _anchorSeconds;
         _preparedAnchor = false;
       }
       _cats[raft] = cat;

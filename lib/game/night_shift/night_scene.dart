@@ -26,6 +26,10 @@ abstract class NightScene {
   bool get ownsBait => usesTraps;
   bool get noCarry => usesTraps;
   bool tapCat(CatComponent cat) => false;
+
+  /// Relic help near [point] for maps without carryable cats. Returns how many
+  /// cats were helped, or -1 to use the shared feed-a-step rule.
+  int helpNear(Offset point, double reach, int targets) => -1;
   bool placeBait(Offset point, {bool free = false}) => false;
   void prepareBait() {}
   bool get hasBaitInTransit => false;

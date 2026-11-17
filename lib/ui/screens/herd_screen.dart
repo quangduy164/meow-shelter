@@ -42,7 +42,14 @@ class _HerdScreenState extends State<HerdScreen> with WidgetsBindingObserver {
   }
 
   @override
-  Widget build(BuildContext context) => Scaffold(
+  Widget build(BuildContext context) {
+    // Same insets the Home button's SafeArea uses, so the life pill drawn by
+    // the game stays beside it on notched phones.
+    _game.safeArea = MediaQuery.paddingOf(context);
+    return _scaffold();
+  }
+
+  Widget _scaffold() => Scaffold(
       body: GameLoadingCurtain(
           game: _game,
           child: GameWidget<HerdGame>(

@@ -38,6 +38,9 @@ class HerdCat {
   double stuck = 0;
   bool lured = false;
 
+  /// Lures this cat already played with; they no longer pull it away.
+  final playedWith = <int>{};
+
   /// Station: Bé Nhát Gan running to cover, hiding there, and coax progress.
   bool fleeing = false, hidden = false;
   double coax = 0, calm = 0;
@@ -323,6 +326,7 @@ class HerdRound {
           _clearLine(cat.position, leader)) {
         cat.following = true;
         cat.hop = .65;
+        cat.lured = false;
         if (cat.plate != null) {
           plateRest[cat.plate!] = HerdPlate.restSeconds;
           cat.plate = null;
@@ -828,10 +832,16 @@ class HerdRound {
     }
     for (final cat in chain.toList()) {
       if (cat.trait != HerdTrait.curious) continue;
-      final lure = map.lures
-          .map(_px)
-          .where((p) => p.distanceTo(cat.position) < HerdLure.radius)
-          .firstOrNull;
+      Vector2? lure;
+      for (var k = 0; k < map.lures.length; k++) {
+        final p = _px(map.lures[k]);
+        if (!cat.playedWith.contains(k) &&
+            p.distanceTo(cat.position) < HerdLure.radius) {
+          lure = p;
+          cat.playedWith.add(k);
+          break;
+        }
+      }
       if (lure != null) {
         // Straight to the yarn or the fish dish, no warning.
         final toward = cat.position - lure;

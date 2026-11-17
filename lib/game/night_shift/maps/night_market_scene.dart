@@ -30,7 +30,8 @@ class NightMarketScene extends NightScene {
   bool get cloudy => market.moon.cloudy;
   @override
   List<String> get rules => const [
-        'Sau xe đi qua có khoảng yên tĩnh: mèo ngoan hơn, độ ồn giảm nhanh. Xe có thể chở cá chưa ai nhận ở ven đường'
+        'Yên tĩnh sau xe: mèo ngoan, độ ồn giảm nhanh',
+        'Xe chở cá: cá chưa ai nhận ven đường được chở đi',
       ];
   @override
   bool blocks(Rect bounds) => false;

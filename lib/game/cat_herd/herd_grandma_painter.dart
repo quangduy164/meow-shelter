@@ -326,36 +326,74 @@ void _wall(Canvas c, Rect w) {
   }
 }
 
+const _living = (Color(0xFFE2B587), Color(0xFFCC9A6A));
+const _bedroom = (Color(0xFFB9D1E2), Color(0xFF9EBDD3));
+const _fire = (Color(0xFFD0A06E), Color(0xFFB98756));
+const _kitchen = (Color(0xFFF6EBD6), Color(0xFFE7B49A));
+
+/// Floor continues through every opening, half in each room's colour, so
+/// exits read as walkable floor; a thin brass threshold marks the middle.
+void _gapFloor(Canvas c, Rect g, (Color, Color) a, (Color, Color) b,
+    {required bool vertical}) {
+  final first = vertical
+      ? Rect.fromLTRB(g.left, g.top, g.center.dx, g.bottom)
+      : Rect.fromLTRB(g.left, g.top, g.right, g.center.dy);
+  final second = vertical
+      ? Rect.fromLTRB(g.center.dx, g.top, g.right, g.bottom)
+      : Rect.fromLTRB(g.left, g.center.dy, g.right, g.bottom);
+  for (final (half, floor) in [(first, a), (second, b)]) {
+    _box(c, half.inflate(.5), floor.$1);
+    // A couple of seams so the strip looks like the room's floor.
+    if (vertical) {
+      for (var y = half.top + 12; y < half.bottom; y += 12) {
+        _line(c, Offset(half.left, y), Offset(half.right, y), floor.$2, 1);
+      }
+    } else {
+      for (var x = half.left + 20; x < half.right; x += 20) {
+        _line(c, Offset(x, half.top), Offset(x, half.bottom), floor.$2, 1);
+      }
+    }
+  }
+  if (vertical) {
+    _line(c, Offset(g.center.dx, g.top + 2), Offset(g.center.dx, g.bottom - 2),
+        const Color(0xFFD9B26B), 2);
+  } else {
+    _line(c, Offset(g.left + 2, g.center.dy), Offset(g.right - 2, g.center.dy),
+        const Color(0xFFD9B26B), 2);
+  }
+}
+
 void _doors(Canvas c) {
-  // Big doors: wooden jambs, a mat and an open leaf against the wall.
-  for (final (gap, vertical) in [
-    (const Rect.fromLTWH(.36, .62, .025, .16), true),
-    (const Rect.fromLTWH(.66, .26, .025, .16), true),
-    (const Rect.fromLTWH(.78, .555, .12, .03), false),
+  // Big doors: floor through the gap, wooden jambs, leaf open against wall.
+  for (final (gap, vertical, a, b) in [
+    (const Rect.fromLTWH(.36, .62, .025, .16), true, _living, _bedroom),
+    (const Rect.fromLTWH(.66, .26, .025, .16), true, _bedroom, _fire),
+    (const Rect.fromLTWH(.78, .555, .12, .03), false, _fire, _kitchen),
   ]) {
     final g = _r(gap);
+    _gapFloor(c, g, a, b, vertical: vertical);
     if (vertical) {
-      _box(
-          c,
-          Rect.fromLTWH(g.left - 10, g.top + 8, g.width + 20, g.height - 16),
-          const Color(0xFFC9A57A),
-          4);
-      for (final y in [g.top, g.bottom - 4]) {
-        _box(c, Rect.fromLTWH(g.left - 2, y, g.width + 4, 4),
+      for (final y in [g.top - 1, g.bottom - 4]) {
+        _box(c, Rect.fromLTWH(g.left - 2, y, g.width + 4, 5),
             const Color(0xFF8C6544), 1);
       }
       _line(c, Offset(g.right + 1, g.top + 2), Offset(g.right + 18, g.top - 10),
           const Color(0xFFA5734A), 5);
     } else {
-      _box(c, Rect.fromLTWH(g.left + 8, g.top - 8, g.width - 16, g.height + 16),
-          const Color(0xFFC9A57A), 4);
-      for (final x in [g.left, g.right - 4]) {
-        _box(c, Rect.fromLTWH(x, g.top - 2, 4, g.height + 4),
+      for (final x in [g.left - 1, g.right - 4]) {
+        _box(c, Rect.fromLTWH(x, g.top - 2, 5, g.height + 4),
             const Color(0xFF8C6544), 1);
       }
       _line(c, Offset(g.right - 2, g.bottom),
           Offset(g.right + 14, g.bottom + 18), const Color(0xFFA5734A), 5);
     }
+  }
+  // Cat flap openings get the same floor before their frames are drawn.
+  for (final (gap, a, b) in [
+    (const Rect.fromLTWH(.36, .30, .025, .13), _living, _bedroom),
+    (const Rect.fromLTWH(.66, .70, .025, .13), _bedroom, _kitchen),
+  ]) {
+    _gapFloor(c, _r(gap), a, b, vertical: true);
   }
 }
 
@@ -366,11 +404,11 @@ void _flap(Canvas c, Rect f) {
     _box(c, Rect.fromLTWH(frame.left - 2, y, frame.width + 4, 5),
         const Color(0xFFE08E3C), 2);
   }
-  _box(c, frame.deflate(3).translate(0, 3), const Color(0x66F6C989), 3);
-  _line(c, Offset(frame.center.dx, frame.top + 6),
-      Offset(frame.center.dx, frame.bottom - 6), const Color(0x99B86A2C), 1.5);
-  // Paw print on the flap.
-  final paw = _p(const Color(0xCC8F623C));
+  // A clear flap hanging in the opening: floor shows through it.
+  _box(c, Rect.fromLTWH(frame.left + 1, frame.top + 5, 3, frame.height - 10),
+      const Color(0x88E08E3C), 1.5);
+  // Paw print on the floor.
+  final paw = _p(const Color(0x668F623C));
   final pc = frame.center;
   c.drawOval(
       Rect.fromCenter(center: pc + const Offset(0, 3), width: 8, height: 6),

@@ -25,10 +25,11 @@ class MoonlitYardScene extends NightScene {
   NightMap get map => NightMap.backyard;
   @override
   List<String> get rules => [
+        'Vùng sáng: mèo ngoan, không giở chiêu',
         if (game.night!.run!.has(NightCard.moonEcho))
-          'Đốm trăng màu xanh nhạt còn sáng sau khi vệt trăng đi qua',
+          'Đốm trăng: đốm xanh còn sáng sau khi vệt trăng qua',
         if (game.night!.run!.has(NightCard.lanternRelay))
-          'Bật đèn sẽ nối thêm thời gian cho đèn gần nhất đang sáng',
+          'Đèn nối tiếp: bật đèn nối giờ cho đèn gần nhất',
       ];
   @override
   bool blocks(Rect bounds) => false;

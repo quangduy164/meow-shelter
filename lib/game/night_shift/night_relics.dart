@@ -2,15 +2,22 @@ import 'night_cards.dart';
 
 /// Every advertised card combo has an explicit mechanical bonus.
 enum NightRelic {
-  embers('Than hồng', 22, 'Đèn/cầu tắt còn sáng thêm 4s.', {
+  embers('Than hồng', 22,
+      'Kéo dài lợi thế của map: đèn, cầu, lồng, vết, bè, tàu.', {
     NightCard.longWick: '+2s dư sáng mỗi cấp',
     NightCard.backupPower: '+2s dư sáng mỗi cấp',
     NightCard.sturdyPlanks: '+2s dư sáng mỗi cấp',
     NightCard.lanternRelay: 'Kéo dài đèn trước khi chuyển sang dư sáng',
     NightCard.lastStep: 'Giữ cầu đến khi qua hết, rồi mới dư sáng',
+    NightCard.deepBait: '+2s dư sáng mỗi cấp',
+    NightCard.dewTracks: '+2s dư sáng mỗi cấp',
+    NightCard.slowCurrent: '+2s dư sáng mỗi cấp',
+    NightCard.longStop: '+2s dư sáng mỗi cấp',
   }),
   bell('Chuông đèn', 26,
-      'Lần đầu mở đèn/cầu hoặc đặt mồi mỗi ngăn lồng: giúp 1 mèo gần đó.', {
+      'Lần đầu dùng mỗi điểm điều khiển: giúp 1 mèo gần đó.', {
+    NightCard.reedBell: '+1 mèo nhận chuông',
+    NightCard.porter: '+1 mèo nhận chuông',
     NightCard.extraLantern: '+1 mèo nhận chuông/cấp (tối đa 3)',
     NightCard.widePlanks: '+1 mèo nhận chuông/cấp (tối đa 3)',
     NightCard.brightLantern: '+25% tầm chuông mỗi cấp',
@@ -58,11 +65,33 @@ enum NightRelic {
         relicCombo,
       ].join('\n');
 
+  /// The same relic, worded for one map. Shown in the night briefing.
+  String effectOn(NightMap map) => switch (this) {
+        NightRelic.embers => switch (map) {
+            NightMap.backyard => 'Đèn tắt còn sáng thêm',
+            NightMap.marketAlley => 'Đèn đường tắt còn sáng thêm',
+            NightMap.rooftops => 'Cầu thu lại còn sáng thêm',
+            NightMap.warehouse => 'Mèo nán trong lồng lâu hơn',
+            NightMap.reedGarden => 'Vết chân hiện lâu hơn',
+            NightMap.harbor => 'Cá neo bè lâu hơn',
+            NightMap.station => 'Tàu dừng ga lâu hơn',
+          },
+        NightRelic.bell => switch (map) {
+            NightMap.reedGarden => '${map.control}: mèo nhích về giỏ',
+            NightMap.harbor => '${map.control}: giữ bè gần 2s',
+            NightMap.station => '${map.control}: mèo tự ra vạch',
+            NightMap.warehouse => '${map.control}: mèo gần tin mồi',
+            _ => '${map.control}: mèo gần tiến bước',
+          },
+        NightRelic.moonPouch => '${map.control}: trợ thủ hồi 2s',
+        NightRelic.feastCharm => 'Cứu liên tiếp: giúp mèo gần',
+        NightRelic.prism => 'Cứu ở giao trăng và ${map.light}: +3',
+      };
+
   String get relicCombo => switch (this) {
         NightRelic.embers =>
           'Dư sáng vẫn nối chuỗi Bùa và giao sáng Lăng kính.',
-        NightRelic.bell =>
-          'Túi trăng: cùng kích hoạt khi mở đèn/cầu hoặc mồi lồng lần đầu.',
+        NightRelic.bell => 'Túi trăng: cùng kích hoạt ở lần dùng đầu tiên.',
         NightRelic.moonPouch => 'Chuông đèn: vừa tiến bước vừa hồi trợ thủ.',
         NightRelic.feastCharm =>
           'Lăng kính: chuỗi từ 3 thưởng thêm 2 Nguyệt quang.',

@@ -31,7 +31,8 @@ class RooftopBridgesScene extends NightScene {
   double get notificationTop => 46;
   @override
   List<String> get rules => const [
-        'Mèo xuất hiện ở cả ba mái. Chỉ đặt cá ở mái giữa; mở cầu cho mèo hai mái bên sang ăn'
+        'Ba mái: mèo xuất hiện ở cả ba mái',
+        'Mái giữa: chỉ đặt cá ở mái giữa, hạ cầu cho mèo sang',
       ];
   @override
   void onMistake() {}

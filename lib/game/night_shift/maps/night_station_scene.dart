@@ -51,10 +51,11 @@ class NightStationScene extends NightScene {
   bool get hasBaitInTransit => _sizes.isNotEmpty;
   @override
   List<String> get rules => [
-        'Chạm mèo rồi chạm vạch toa; tàu dừng thì mèo đúng biển sẽ lên tàu',
-        if (!line.preview) 'Biển toa chỉ hiện khi tàu vào ga',
-        if (line.stage >= 2) 'Tàu dừng ngắn hơn',
-        if (line.stage >= 3) 'Tàu tới dày hơn',
+        'Biển toa: mèo chỉ lên toa có biển cùng màu vòng chân',
+        'Xếp vạch: chạm mèo rồi chạm vạch toa',
+        if (!line.preview) 'Biển muộn: biển chỉ hiện khi tàu vào ga',
+        if (line.stage >= 2) 'Dừng ngắn: tàu đứng ga ít hơn',
+        if (line.stage >= 3) 'Tàu dày: chuyến sau tới sớm hơn',
       ];
   @override
   void onMistake() {}
@@ -63,9 +64,16 @@ class NightStationScene extends NightScene {
   @override
   bool allowsBait(Offset point, Size field) => _markAt(point) != null;
   @override
-  bool isLit(Offset point, Size size) => moon.contains(point, size);
+  bool isLit(Offset point, Size size) =>
+      moon.contains(point, size) || _platformLit(point);
   @override
-  bool overlappingLights(Offset point, Size size) => false;
+  bool overlappingLights(Offset point, Size size) =>
+      moon.contains(point, size) && _platformLit(point);
+  bool _platformLit(Offset point) => List.generate(line.cars, (c) => c).any(
+      (car) =>
+          (point.dx - game.size.x * line.markX(car)).abs() <
+              game.size.x * .09 &&
+          point.dy > game.size.y * .42);
 
   Vector2 get _catSize => Vector2.all(game.size.y * .2);
   Vector2 benchSpot(int i, CatComponent cat) =>
@@ -111,7 +119,7 @@ class NightStationScene extends NightScene {
     _sizes.clear();
     _walks.clear();
     benches.fillRange(0, benches.length, null);
-    marks.clear();
+    marks = [];
     selected = null;
     game.removeAll([..._parts, ..._marksUi]);
     _parts.clear();
@@ -122,6 +130,7 @@ class NightStationScene extends NightScene {
   void begin(NightRun run,
       {required bool thickClouds, required double afterglowSeconds}) {
     line.begin(run);
+    line.stopSeconds += afterglowSeconds / 4;
     moon.reset(fullMoon: run.has(NightCard.fullMoon), thickClouds: thickClouds);
     benches.fillRange(0, benches.length, null);
     marks = List.filled(line.cars, null);
@@ -151,6 +160,24 @@ class NightStationScene extends NightScene {
     selected = selected == cat ? null : cat;
     GameAudio.instance.playRescue(GameSound.click);
     return true;
+  }
+
+  @override
+  int helpNear(Offset point, double reach, int targets) {
+    final signs = line.phase == TrainPhase.waiting ? line.next : line.signs;
+    var helped = 0;
+    for (final cat in benches.whereType<CatComponent>().toList()) {
+      if (helped >= targets) break;
+      final car = List.generate(line.cars, (c) => c)
+          .where((c) =>
+              marks[c] == null &&
+              (c == line.sharedCar || signs[c] == cat.catType))
+          .firstOrNull;
+      if (car == null) continue;
+      _assign(cat, car);
+      helped++;
+    }
+    return helped;
   }
 
   void tapMark(int car) {

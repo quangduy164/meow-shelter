@@ -3,8 +3,23 @@ import 'dart:math' as math;
 import 'package:flutter/painting.dart';
 import 'herd_round.dart';
 
-/// Lives and the translucent tutorial caption share one top row.
-void paintHerdHud(Canvas canvas, Size size, HerdRound round) {
+/// Lives and the translucent tutorial caption share one top row. [safe] is
+/// the device safe area, matching the SafeArea that places the Home button.
+void paintHerdHud(Canvas canvas, Size size, HerdRound round,
+    [EdgeInsets safe = EdgeInsets.zero]) {
+  canvas.save();
+  canvas.translate(safe.left, safe.top);
+  size = Size(size.width - safe.horizontal, size.height - safe.vertical);
+  _paintHud(canvas, size, round);
+  canvas.restore();
+}
+
+void _paintHud(Canvas canvas, Size size, HerdRound round) {
+  if (round.map.costsLives) _paintLives(canvas, round);
+  _paintCaption(canvas, size, round);
+}
+
+void _paintLives(Canvas canvas, HerdRound round) {
   final lives = RRect.fromRectAndRadius(
       const Rect.fromLTWH(72, 17, 112, 38), const Radius.circular(14));
   canvas.drawRRect(lives.shift(const Offset(0, 2)),
@@ -34,9 +49,13 @@ void paintHerdHud(Canvas canvas, Size size, HerdRound round) {
               : const Color(0xFFD4C8B6));
     canvas.restore();
   }
+}
+
+void _paintCaption(Canvas canvas, Size size, HerdRound round) {
   if (!round.isTutorial || round.ended) return;
+  final start = round.map.topRowStart;
   // Leave a clear gap after Home and the life pill, even on narrow tablets.
-  final width = math.min(560.0, size.width - 208);
+  final width = math.min(560.0, size.width - start - 12);
   final caption = TextPainter(
       text: TextSpan(
           text: round.tutorialInstruction,
@@ -49,7 +68,7 @@ void paintHerdHud(Canvas canvas, Size size, HerdRound round) {
       textDirection: TextDirection.ltr,
       textAlign: TextAlign.center)
     ..layout(maxWidth: width - 24);
-  final centerX = (196 + size.width - 12) / 2;
+  final centerX = (start + size.width - 12) / 2;
   final box = Rect.fromCenter(
       center: Offset(centerX, 36), width: width, height: caption.height + 14);
   canvas.drawRRect(RRect.fromRectAndRadius(box, const Radius.circular(10)),

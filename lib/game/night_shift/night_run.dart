@@ -43,10 +43,19 @@ class NightRun {
           2.0 *
               (count(NightCard.longWick) +
                   count(NightCard.backupPower) +
-                  count(NightCard.sturdyPlanks))
+                  count(NightCard.sturdyPlanks) +
+                  count(NightCard.deepBait) +
+                  count(NightCard.dewTracks) +
+                  count(NightCard.slowCurrent) +
+                  count(NightCard.longStop))
       : 0;
-  int get bellTargets =>
-      min(3, 1 + count(NightCard.extraLantern) + count(NightCard.widePlanks));
+  int get bellTargets => min(
+      3,
+      1 +
+          count(NightCard.extraLantern) +
+          count(NightCard.widePlanks) +
+          count(NightCard.reedBell) +
+          count(NightCard.porter));
   double get bellReach =>
       1 +
       .25 * count(NightCard.brightLantern) +

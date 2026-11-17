@@ -216,3 +216,22 @@ vào vạch trống để gọi một mèo đang chờ, ưu tiên mèo hợp bi�
 - Biến thể: Ga nhỏ (3 toa), Tàu dài (4 toa), Đổi biển (biển chỉ hiện khi tàu vào).
 - Lần gặp thứ hai: tàu dừng ngắn hơn. Lần thứ ba: tàu tới dày hơn.
 - Thẻ riêng: Còi báo sớm, Dừng lâu, Toa chung, Nhân viên ga.
+
+## Mẫu chung cho mọi map
+
+Mỗi `NightMap` khai báo đủ: `rule` (luật một dòng), `mission` (thế nào là cứu
+được 1 mèo), `control` (điểm điều khiển, cổ vật kích hoạt ở lần dùng đầu) và
+`light` (nguồn sáng tại chỗ cứu). Mỗi cảnh có `rules` dạng `Nhãn: giải thích`
+(nhãn hiện thành chip ĐIỀU KIỆN). Bảng đầu đêm luôn có NHIỆM VỤ, CÁCH CHƠI 3
+bước và CỔ VẬT với tác dụng ghi theo map (`NightRelic.effectOn`).
+
+Cổ vật trên các map không bế mèo:
+- Than hồng: Kho hàng +¼ dư sáng vào thời gian nán trong lồng; Vườn lau +½ vào
+  thời gian vết chân; Bến thuyền +¼ vào cá neo bè; Nhà ga +¼ vào thời gian tàu dừng.
+  Mồi sâu, Dấu chân sương, Dòng chậm, Dừng lâu cộng +2s dư sáng/cấp như Bấc dài.
+- Chuông đèn/Bùa liên hoàn dùng `NightScene.helpNear`: Vườn lau đẩy mèo trốn một
+  bụi về phía giỏ; Bến thuyền giữ bè gần 2s; Nhà ga đưa mèo đang chờ ra vạch đúng
+  biển. Kho hàng dùng luật chung (mèo đang đi lang thang tin mồi).
+  Chuông lau và Nhân viên ga +1 mèo nhận chuông.
+- Lồng, giỏ, bến và vạch toa luôn sáng nên cứu ở đó tính là cứu trong sáng;
+  Lăng kính thưởng khi chỗ đó nằm trong vệt trăng.

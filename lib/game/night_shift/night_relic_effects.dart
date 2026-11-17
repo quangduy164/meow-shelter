@@ -77,6 +77,13 @@ class NightRelicEffects {
 
   void _advanceNearby(
       Offset point, double reach, String relicName, int targets) {
+    final helped = night.scene.helpNear(point, reach, targets);
+    if (helped >= 0) {
+      if (helped > 0) {
+        night.game.hud.showBanner(['$relicName · giúp $helped mèo'], 1.5);
+      }
+      return;
+    }
     final cats = night.game.children
         .whereType<CatComponent>()
         .where((cat) =>

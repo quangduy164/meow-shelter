@@ -56,6 +56,19 @@ class HerdGame extends FlameGame {
   }
 
   late AdventureJoystick _joystick;
+
+  /// Device safe area; the Flutter Home button sits inside it, so the HUD
+  /// and joystick drawn on the canvas must be inset by the same amount.
+  EdgeInsets _safe = EdgeInsets.zero;
+  EdgeInsets get safeArea => _safe;
+  set safeArea(EdgeInsets value) {
+    if (value == _safe) return;
+    _safe = value;
+    if (_ready) _joystick.position.setFrom(_joystickAt);
+  }
+
+  Vector2 get _joystickAt =>
+      Vector2(85 + _safe.left, size.y - 75 - _safe.bottom);
   final _walk = <String, SpriteAnimation>{};
   final _idle = <String, SpriteAnimation>{};
   bool _ready = false;
@@ -111,7 +124,7 @@ class HerdGame extends FlameGame {
       for (final type in ['orange', 'himalaya', 'scottish', 'calico', 'black'])
         for (final moving in [false, true]) loadSheet(type, moving),
     ]);
-    _joystick = AdventureJoystick(position: Vector2(85, size.y - 75));
+    _joystick = AdventureJoystick(position: _joystickAt);
     add(_joystick);
     _ready = true;
     round.reset(size);
@@ -161,7 +174,7 @@ class HerdGame extends FlameGame {
   void onGameResize(Vector2 size) {
     super.onGameResize(size);
     if (_ready) {
-      _joystick.position.setValues(85, size.y - 75);
+      _joystick.position.setFrom(_joystickAt);
       // Overlay/layout rebuilds can report the same size again after a win.
       // Preserve the run and its result even when the viewport really changes.
       round.resize(size);
@@ -243,7 +256,7 @@ class HerdGame extends FlameGame {
     if (round.isTutorial && !round.ended && round.tutorialStep == 1) {
       _tutorialGuide(canvas);
     }
-    paintHerdHud(canvas, Size(size.x, size.y), round);
+    paintHerdHud(canvas, Size(size.x, size.y), round, _safe);
     // Just the one-line hint at the start of a map; in-play status messages
     // are not shown.
     if (round.noticeTime > 0 &&
@@ -257,11 +270,16 @@ class HerdGame extends FlameGame {
                   fontWeight: FontWeight.bold,
                   color: Color(0xFF5A3214))),
           textDirection: TextDirection.ltr)
-        ..layout(maxWidth: math.min(560.0, size.x - 208) - 24);
+        ..layout(
+            maxWidth: math.min(560.0,
+                    size.x - _safe.horizontal - round.map.topRowStart - 12) -
+                24);
       // Top row, centred in the space right of the Home button and life pill
       // (same slot as the tutorial caption in paintHerdHud).
-      final centerX = (196 + size.x - 12) / 2;
-      final at = Offset(centerX - text.width / 2, 36 - text.height / 2);
+      final centerX =
+          (round.map.topRowStart + _safe.left + size.x - _safe.right - 12) / 2;
+      final at =
+          Offset(centerX - text.width / 2, 36 + _safe.top - text.height / 2);
       canvas.drawRRect(
           RRect.fromRectAndRadius(
               (at & text.size).inflate(6), const Radius.circular(6)),
@@ -278,7 +296,7 @@ class HerdGame extends FlameGame {
       ..strokeWidth = 3;
     switch (round.tutorialStep) {
       case 1:
-        canvas.drawCircle(Offset(85, size.y - 75), 65 + radius, guide);
+        canvas.drawCircle(_joystickAt.toOffset(), 65 + radius, guide);
       case 2:
         for (final cat in round.cats.where((c) => !c.following)) {
           canvas.drawCircle(cat.position.toOffset(), 25 + radius, guide);
