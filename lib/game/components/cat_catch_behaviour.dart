@@ -6,10 +6,17 @@ part of 'cat_component.dart';
 /// so a breed's rule can be read and changed in one place.
 extension CatCatchBehaviour on CatComponent {
   /// Per-breed bait rules; see [CatCatchRule].
-  bool acceptsBait(Vector2 point, Iterable<CatComponent> cats) =>
+  bool acceptsBait(Vector2 point, Iterable<CatComponent> cats,
+          [Dish dish = Dish.fish]) =>
       (lureWaypoint == null || lureWaypoint!(this, point) != null) &&
+      (craving == null || craving == dish) &&
+      (catType != 'black' || moonlit == null || moonlit!(point)) &&
+      (dish != Dish.yarn ||
+          catType == 'calico' ||
+          (_center - point).length < CatCatchRule.yarnPull) &&
       switch (catType) {
-        'calico' => false,
+        'calico' => dish == Dish.yarn,
+        _ when dish == Dish.yarn => true,
         'himalaya' => (_center - point).length >= _shyDistance,
         'black' => !cats.any((other) =>
             other != this &&
@@ -23,7 +30,73 @@ extension CatCatchBehaviour on CatComponent {
   double get _shyDistance =>
       CatCatchRule.shyDistance * (isBoss ? CatCatchRule.bossShyScale : 1);
 
-  int get _mealsNeeded => CatCatchRule.mealsFor(catType, boss: isBoss);
+  int get mealsNeeded => _mealsNeeded;
+
+  int get _mealsNeeded =>
+      menu?.length ?? CatCatchRule.mealsFor(catType, boss: isBoss);
+
+  /// Random courses with no dish twice in a row.
+  List<Dish> _orderMenu(int courses) {
+    final dishes = <Dish>[];
+    while (dishes.length < courses) {
+      final next = Dish.foods[_random.nextInt(Dish.foods.length)];
+      if (dishes.isEmpty || dishes.last != next) dishes.add(next);
+    }
+    return dishes;
+  }
+
+  /// A Scottish turning its nose up at the wrong dish.
+  void refuseDish(Dish dish) {
+    _dialogue
+        .say('Không ăn ${dish.label} đâu! Muốn ${craving?.label ?? ''} cơ');
+  }
+
+  /// Thought bubble with the wanted dish; the boss also shows what is next.
+  void _drawCraving(Canvas canvas) {
+    final wants = craving;
+    if (wants == null || _isDelivered || catchWindow.canCatch || _isDragged) {
+      return;
+    }
+    final upcoming = menu!.skip(_meals).toList();
+    final bob = sin(_bubbleClock * 3) * 1.5;
+    final width = 34.0 + (upcoming.length - 1) * 22;
+    // Float above the right ear; flip to the left ear near the screen edge.
+    final right = position.x + size.x * .82 + width < game.size.x - 4;
+    final dotX = right ? size.x * .62 : size.x * .38;
+    final dot2X = right ? size.x * .7 : size.x * .3;
+    final firstX = right ? size.x * .82 : size.x * .18 - (width - 34);
+    final center = Offset(firstX, -16 + bob);
+    final bubble = Rect.fromLTWH(firstX - 17, center.dy - 15, width, 30);
+    final fill = Paint()..color = const Color(0xF7FFFDF4);
+    final edge = Paint()
+      ..color = const Color(0xFF8A6446)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.5;
+    canvas.drawCircle(Offset(dotX, 4 + bob), 3, fill);
+    canvas.drawCircle(Offset(dotX, 4 + bob), 3, edge);
+    canvas.drawCircle(Offset(dot2X, -4 + bob), 4.5, fill);
+    canvas.drawCircle(Offset(dot2X, -4 + bob), 4.5, edge);
+    final shape = RRect.fromRectAndRadius(bubble, const Radius.circular(15));
+    canvas.drawRRect(shape, fill);
+    canvas.drawRRect(shape, edge);
+    for (var i = 0; i < upcoming.length; i++) {
+      canvas.save();
+      canvas.translate(center.dx + i * 22, center.dy);
+      canvas.scale(i == 0 ? .6 : .42);
+      drawDish(canvas, Offset.zero, upcoming[i]);
+      canvas.restore();
+    }
+    if (upcoming.length > 1) {
+      // Arrows between courses read as "then".
+      for (var i = 1; i < upcoming.length; i++) {
+        final x = center.dx + i * 22 - 11;
+        canvas.drawLine(
+            Offset(x - 2, center.dy - 3), Offset(x + 1, center.dy), edge);
+        canvas.drawLine(
+            Offset(x + 1, center.dy), Offset(x - 2, center.dy + 3), edge);
+      }
+    }
+  }
 
   int get _tapsNeeded =>
       isBoss ? CatCatchRule.bossTaps : CatCatchRule.calicoTaps;
@@ -127,10 +200,37 @@ extension CatCatchBehaviour on CatComponent {
   void _eat() {
     _meals += 1;
     onFed?.call(this);
+    if (_meals >= _mealsNeeded &&
+        isBoss &&
+        napMat != null &&
+        !napMat!(_center)) {
+      // The fat orange boss only naps on a straw mat; elsewhere it keeps
+      // running and needs one more fish.
+      _meals = _mealsNeeded - 1;
+      GameAudio.instance.playRescue(GameSound.catEat);
+      _dialogue.say('Chưa buồn ngủ ở đây! Ổ rơm cơ!');
+      _pickNextAction();
+      return;
+    }
     if (_meals < _mealsNeeded) {
       GameAudio.instance.playRescue(GameSound.catEat);
-      _dialogue
-          .say(isBoss ? 'Bụng to lắm, thêm cá!' : 'Chưa no! Thêm cá nữa đi!');
+      final wants = menu;
+      if (wants != null && isBoss && !_changedMind && _meals == 1) {
+        // The boss changes its mind about the next course, once.
+        _changedMind = true;
+        final old = wants[1];
+        var next = old;
+        while (next == old || next == wants[0]) {
+          next = Dish.foods[_random.nextInt(Dish.foods.length)];
+        }
+        wants[1] = next;
+        _dialogue.say('Đổi ý rồi! Giờ muốn ${next.label} cơ');
+      } else if (wants != null) {
+        _dialogue.say('Ngon! Món tiếp: ${craving!.label}');
+      } else {
+        _dialogue
+            .say(isBoss ? 'Bụng to lắm, thêm cá!' : 'Chưa no! Thêm cá nữa đi!');
+      }
       _pickNextAction();
       return;
     }
@@ -194,7 +294,70 @@ extension CatCatchBehaviour on CatComponent {
   }
 
   /// Calico ignores fish; three quick taps tire it out instead.
+  /// Seconds per beat the Calico boss taps along to; taps count only on it.
+  static const _beat = .9;
+  double get beatPhase => (_bubbleClock % _beat) / _beat;
+  bool get _onBeat => beatPhase < .2 || beatPhase > .8;
+  bool get _keepsRhythm => isBoss && level.toys && catType == 'calico';
+
+  /// Arrived at a ball of yarn. Calico plays and tires itself out (the boss
+  /// only sits still to play); anyone else just bats the ball away.
+  void _reachYarn() {
+    _velocityY = 0;
+    if (catType != 'calico') {
+      _dialogue.say('Lăn nè!');
+      onKickToy?.call(this);
+      _pickNextAction();
+      return;
+    }
+    _setState(CatState.celebrate);
+    if (_keepsRhythm) {
+      _yarnPlay = 3.5;
+      _dialogue.say('Len! Chạm theo nhịp với em nào!');
+      return;
+    }
+    _yarnPlay = 1.2;
+    _playTaps = 0;
+    hasEaten = true;
+    GameAudio.instance.playRescue(GameSound.catReady, important: true);
+    catchWindow.open();
+    _dialogue.say('Chơi len vui quá… mệt rồi');
+  }
+
+  /// Pulsing beat ring around the Calico boss: tap when it flashes gold.
+  void _drawBeat(Canvas canvas) {
+    if (!_keepsRhythm || hasEaten || _isDelivered || _isDragged) return;
+    final on = _onBeat;
+    final pulse = 1 - (beatPhase < .5 ? beatPhase : 1 - beatPhase) * 2;
+    final center = Offset(size.x / 2, size.y * .55);
+    canvas.drawCircle(
+        center,
+        size.x * (.42 + pulse * .12),
+        Paint()
+          ..color = on ? const Color(0xCCFFC24D) : const Color(0x66FFFFFF)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = on ? 4 : 2);
+    for (var i = 0; i < _tapsNeeded; i++) {
+      final x = size.x / 2 + (i - (_tapsNeeded - 1) / 2) * 9;
+      canvas.drawCircle(
+          Offset(x, size.y + 4),
+          3.2,
+          Paint()
+            ..color = i < _playTaps
+                ? const Color(0xFFE77FA0)
+                : const Color(0x88FFFFFF));
+    }
+  }
+
   void _play() {
+    if (_keepsRhythm && !_onBeat) {
+      // Off the beat: the boss throws a tantrum and knocks toys over.
+      _playTaps = 0;
+      _dialogue.say('Sai nhịp rồi! Hứ!');
+      GameAudio.instance.playRescue(GameSound.catWrong);
+      onTantrum?.call(this);
+      return;
+    }
     _playTaps += 1;
     _playTimer = 3;
     _actionTimer = 0;

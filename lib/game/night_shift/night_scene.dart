@@ -11,6 +11,7 @@ import 'maps/warehouse_traps_scene.dart';
 import 'maps/reed_garden_scene.dart';
 import 'maps/harbor_flow_scene.dart';
 import 'maps/night_station_scene.dart';
+import 'maps/claw_machine_scene.dart';
 
 /// Each map owns its scenery, resource timers and lit-area rules.
 abstract class NightScene {
@@ -30,6 +31,10 @@ abstract class NightScene {
   /// Relic help near [point] for maps without carryable cats. Returns how many
   /// cats were helped, or -1 to use the shared feed-a-step rule.
   int helpNear(Offset point, double reach, int targets) => -1;
+
+  /// Himalaya helper on maps without carryable cats; -1 keeps the shared
+  /// 'two cats are full at once' rule.
+  int helperBoost(int count) => -1;
   bool placeBait(Offset point, {bool free = false}) => false;
   void prepareBait() {}
   bool get hasBaitInTransit => false;
@@ -66,4 +71,6 @@ NightScene createNightScene(NightMap map, MeowShelterGame game,
       NightMap.reedGarden => ReedGardenScene(game, onFirstLight: onFirstLight),
       NightMap.harbor => HarborFlowScene(game, onFirstLight: onFirstLight),
       NightMap.station => NightStationScene(game, onFirstLight: onFirstLight),
+      NightMap.clawMachine =>
+        ClawMachineScene(game, onFirstLight: onFirstLight),
     };

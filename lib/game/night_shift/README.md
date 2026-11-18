@@ -178,9 +178,11 @@ Trùm nán lại 1.2s thay vì 1.8s. Chỉ thò đầu 0.8s, sau đó vào lồn
 
 ## Vườn lau
 
-Mèo trốn trong sáu bụi lau, không hiện và không bế được. Mèo tự đổi sang bụi
+Mèo trốn trong 12 bụi lau (3 hàng × 4 cột), không hiện và không bế được. Mèo tự đổi sang bụi
 kề sau vài giây, để lại vết chân vàng. Chạm một bụi để tạo tiếng động: mèo ở
-bụi kề chạy sang nơi xa bụi đó hơn. Nếu mèo ở bụi biên bị lùa về phía giỏ,
+bụi sát bên chạy thẳng thêm 1 bụi ra xa chỗ chạm (bị chặn thì đứng yên). Chạm mà
+không mèo nào chạy là lùa hụt: tính lỗi, mèo trong 2 bụi quanh đó đổi chỗ.
+Mèo mới chui vào bụi làm bụi rung mạnh 1.5s. Nếu mèo ở bụi biên bị lùa về phía giỏ,
 mèo chạy vào lối ra và được cứu ngay. Chạm trúng bụi đang có mèo làm mèo chạy
 loạn và tính lỗi. Kéo cá vào bụi trống để dụ mèo ở bụi kề vào đó.
 
@@ -237,3 +239,37 @@ Cổ vật trên các map không bế mèo:
   Chuông lau và Nhân viên ga +1 mèo nhận chuông.
 - Lồng, giỏ, bến và vạch toa luôn sáng nên cứu ở đó tính là cứu trong sáng;
   Lăng kính thưởng khi chỗ đó nằm trong vệt trăng.
+
+## Trợ thủ theo map
+
+Lời mô tả và tác dụng nằm ở `NightHelperSkill.effectOn` (`night_helpers.dart`).
+Ba map bế mèo dùng tác dụng gốc. Map không bế mèo đọc cùng cờ trợ thủ:
+`assist.frozen` (cam), `assist.calm` (đen), `assist.pace` (tai cụp),
+`acceptsAnyBed` (tam thể), và `NightScene.helperBoost` (Himalaya).
+
+| Trợ thủ | Kho hàng | Vườn lau | Bến thuyền | Nhà ga |
+| --- | --- | --- | --- | --- |
+| Cam | Mèo nán trong lồng | Mèo ngừng đổi bụi | Bè đứng yên | Tàu đứng yên |
+| Đen | Đóng hụt không hoảng | Không phạt chạm trúng/lùa hụt | Đâm đá/va bè chỉ dừng | Mèo sai toa đứng chờ |
+| Tai cụp | Cửa sổ chốt hao chậm | Mèo đổi bụi chậm | Dòng chảy chậm | Tàu chạy chậm |
+| Tam thể | Chốt từ 70% | Bụi có mèo rung | Bến nhận mọi màu | Toa nhận mọi giống |
+| Himalaya | 2 mèo tin mồi | 2 mèo nhích về giỏ | 2 bè sang luồng đúng bến | 2 mèo ra đúng vạch |
+
+## Máy gắp mèo
+
+Mèo vào sân rơi vào thùng máy gắp và đi lại trên đáy thùng. Giữ nút xanh ◀ ▶ ở góc trái
+dưới để dời càng, bấm nút đỏ THẢ ở góc phải để hạ càng. Mèo gắp được rơi xuống
+ngồi trong miệng thả khoảng 1 giây rồi mới tính là cứu. Không có vòng gợi ý: càng
+hạ gần giữa người mèo thì gắp chắc, đưa về miệng thả; hạ lệch về mép tầm gắp thì
+mèo tuột khi càng nâng giữa chừng. Gắp trượt chỉ tốn thời gian. Thả cá vào thùng để gom mèo trong 4 giây.
+
+- Logic càng, tầm gắp và mèo trong thùng: `maps/claw_machine.dart`.
+- Gắn mèo, cá, trợ thủ, cổ vật: `maps/claw_machine_scene.dart`.
+- Trong thùng có 3 đồ chơi (len, chuột bông, hộp cá). Thả càng trúng chỗ không có mèo thì gắp được đồ chơi; đưa về miệng thả được +1 Nguyệt quang và đồ chơi mới xuất hiện.
+- Vẽ phòng game, thùng, miệng thả, càng và nút THẢ:
+  `maps/claw_machine_painter.dart`.
+- Tính nết: cam ngủ lâu, đi chậm, lõi gắp rộng; tam thể đi nhanh, lõi hẹp nhất;
+  mèo đen né khi càng hạ xuống trên đầu.
+- Biến thể: Máy chuẩn, Hai miệng (về miệng gần nhất), Càng lắc (càng đung đưa).
+  Lần gặp thứ hai mèo đi nhanh hơn; thứ ba càng luôn lắc.
+- Thẻ riêng: Càng chắc, Càng rộng, Càng nhanh, Gắp đôi.

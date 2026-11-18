@@ -16,6 +16,7 @@ class StationLine {
   double timer = 0, gapSeconds = 7, stopSeconds = 5, walkSpeed = 1;
   int cars = 3, stage = 1;
   int? sharedCar;
+  bool anyCar = false;
   bool preview = true;
 
   void begin(NightRun run) {
@@ -35,8 +36,6 @@ class StationLine {
 
   double markX(int car) => cars == 3 ? .25 + car * .25 : .2 + car * .2;
 
-  static const _breeds = ['orange', 'black', 'himalaya', 'scottish', 'calico'];
-
   /// Plans the coming train while it is still away. Signs that still serve a
   /// waiting cat never flip, so a cat already moved stays right; free cars
   /// go to cats oldest first, so nobody is skipped twice in a row.
@@ -52,13 +51,19 @@ class StationLine {
     for (var c = 0; c < cars; c++) {
       if (free(c) && want.isNotEmpty) plan[c] = want.removeAt(0);
     }
+    // Spare cars repeat breeds already waiting, oldest first, never a breed
+    // nobody on the platform has. With nobody waiting the car stays blank.
+    var spare = 0;
     for (var c = 0; c < cars; c++) {
-      if (!free(c)) continue;
-      final old = c < next.length ? next[c] : null;
-      plan[c] = old ?? _breeds[random.nextInt(_breeds.length)];
+      if (!free(c) || waiting.isEmpty) continue;
+      plan[c] = waiting[spare++ % waiting.length];
     }
     next = plan;
   }
+
+  /// Signs are hidden on the platform until the train pulls in.
+  bool get signsHidden =>
+      !preview && (phase == TrainPhase.waiting || phase == TrainPhase.leaving);
 
   /// What the post above [car] shows right now; null when hidden.
   String? shownSign(int car) => switch (phase) {
@@ -69,7 +74,8 @@ class StationLine {
   /// Whether the next train has a car this breed can board.
   bool hasCarFor(String breed) => sharedCar != null || next.contains(breed);
   bool accepts(int car, String breed) =>
-      phase == TrainPhase.stopped && (car == sharedCar || signs[car] == breed);
+      phase == TrainPhase.stopped &&
+      (anyCar || car == sharedCar || signs[car] == breed);
 
   /// 0 = parked at the platform, positive = still to the right, negative = gone left.
   double get offset => switch (phase) {

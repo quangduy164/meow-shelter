@@ -189,12 +189,13 @@ class ReedExitComponent extends PositionComponent with HasGameReference {
     for (final exit in garden.exits) {
       final r = _px(exit.area, game.size);
       final left = exit.center.dx < .5;
-      canvas.drawOval(r.inflate(10), Paint()..color = const Color(0x33FFE08A));
+      canvas.drawOval(
+          Rect.fromCenter(
+              center: r.center, width: r.width * 1.4, height: r.width * 1.4),
+          Paint()..color = const Color(0x33FFE08A));
       final basket = RRect.fromRectAndRadius(
           Rect.fromCenter(
-              center: r.center + Offset(0, r.height * .18),
-              width: r.width * .9,
-              height: r.height * .42),
+              center: r.center, width: r.width * .9, height: r.width * .62),
           const Radius.circular(10));
       canvas.drawRRect(basket.shift(const Offset(0, 4)),
           Paint()..color = const Color(0x55000000));
@@ -225,7 +226,7 @@ class ReedExitComponent extends PositionComponent with HasGameReference {
         ..color = const Color(0xFFFFE08A)
         ..strokeWidth = 4
         ..strokeCap = StrokeCap.round;
-      final y = r.top + 6;
+      final y = r.center.dy - r.width * .72;
       final from = Offset(left ? r.right + 8 : r.left - 8, y);
       final to = Offset(left ? r.left + 10 : r.right - 10, y);
       canvas.drawLine(from, to, arrow);

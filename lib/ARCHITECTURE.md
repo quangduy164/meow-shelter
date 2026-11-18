@@ -179,6 +179,50 @@
   (ids 201+; never reuse one). Give it a twist (`fishLimit`, `waveSize`,
   `movingBeds`, `darkness`) or a `bossType`, plus up to two `LevelGoal`s
   (`levels/level_goal.dart`) for stars 2 and 3.
+- **Yard rack (chapter 1, levels 202-203):** `ShelterMap.yard` has a `rack`;
+  `systems/rack_system.dart` shakes one hanging fish, then drops it as free
+  bait every 8-11 s (rounds with a rack never end "out of fish"). The orange
+  boss only naps when its last fish is eaten on a `napMats` straw mat
+  (`CatComponent.napMat`); the mats glow once it needs one more fish.
+  Level 201 stays the plain guided tutorial. Art: `world/yard_painter.dart`.
+- **Garden bushes (chapter 2):** `ShelterMap.hedge` lists bush centres;
+  `systems/bush_system.dart` hides every Himalaya in one (`hideInCover`)
+  until it has `quietSeconds` without noise near its bush. Noise = fish
+  dropped, a carried cat passing, or a startle nearby; an unfed Himalaya out
+  in the open bolts back (`RoundStats.retreats`, `LevelGoal.quiet`). The boss
+  sneaks from bush to bush until fish lures it; `CatComponent.ignoresBait`
+  blocks bait while a cat runs for cover. Art: `world/hedge_garden_painter.dart`.
+- **Attic moonlight (chapter 5):** `ShelterMap.attic` has `moonbeams`, so
+  the round is dark. `systems/moon_system.dart` drifts each beam and covers it
+  with a cloud every 13 s; `cutLight` erases the pools from the darkness layer.
+  Black cats take fish only where `MoonSystem.lit` (`CatComponent.moonlit`)
+  and are not lit up outside moonlight unless busy. The black boss jumps to a
+  dark spot every 7 s when idle, showing paw prints toward it first.
+  Art: `world/attic_painter.dart`.
+- **Playroom yarn (chapter 4):** `LevelConfig.toys` adds a free `Dish.yarn`
+  slot. Yarn rolls (`BaitSystem` velocity, bounces off map obstacles) and is
+  only claimed once it stops. Calico accepts it from anywhere and becomes
+  ready; any other cat within `CatCatchRule.yarnPull` may claim it first and
+  bats it away (`onKickToy`, `RoundStats.distractions`). The Calico boss only
+  counts taps on its beat ring (`beatPhase`); off-beat taps reset it and knock
+  two yarn balls loose (`onTantrum`, `RoundStats.offBeats`). Art:
+  `world/playroom_painter.dart`.
+- **Storm finale (chapter 6):** `LevelConfig.flood` > 0 creates a
+  `systems/storm_system.dart` StormSystem: water rises from the bottom to
+  `flood` over 60 % of the time limit (cats in it move at .55, no fish can be
+  dropped in it), a bed whose middle is under water stops accepting cats,
+  and a rescue truck parks on the road every 24 s for 10.5 s and accepts any
+  cat (`StormSystem.onTruck`). `StormLayer`s draw water/truck under the cats
+  and rain/flood marks above them. `LevelConfig.bossParade` makes every cat a
+  boss and, with `waveSize: 1`, they arrive one by one with their hint.
+  Art: `world/storm_station_painter.dart`.
+- **Kitchen dishes (chapter 3):** `LevelConfig.dishes` gives the tray three
+  slots (`cats/dish.dart`: fish, shrimp, salmon); `BaitSystem` carries the
+  dish with each bait. A Scottish gets a `menu` (2 courses, the boss 3 and it
+  changes its mind once) and `acceptsBait` only takes its current `craving`.
+  Serving the wrong dish to the closest hungry Scottish counts as
+  `RoundStats.wrongDishes` (`LevelGoal.rightDish`). Map: `ShelterMap.kitchen`
+  drawn by `world/kitchen_painter.dart`.
 - **New decoration:** add a `CampDecoration` entry and a case in
   `CampDecorPainter`.
 - **New Adventure area:** add a `AdventureBiome` and a scenery painter.

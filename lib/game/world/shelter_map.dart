@@ -1,17 +1,21 @@
 import 'dart:ui';
 
-enum ShelterMapKind { garden, warehouse, pond }
+enum ShelterMapKind { garden, kitchen, hedge, playroom, attic, yard, storm }
 
-/// One infinite-mode map. Rects are normalized to the screen (0..1).
+/// One chapter map of the rescue mode; [none] is the plain lawn of the
+/// practice rounds. Rects are normalized to the screen (0..1).
 class ShelterMap {
   const ShelterMap({
     required this.kind,
     required this.name,
     required this.rule,
     this.obstacles = const [],
-    this.sprinkler,
-    this.altObstacles = const [],
-    this.mud = const [],
+    this.bushes = const [],
+    this.bushRadius = .055,
+    this.moonbeams = const [],
+    this.moonWindow = Offset.zero,
+    this.rack,
+    this.napMats = const [],
   });
 
   final ShelterMapKind kind;
@@ -21,66 +25,98 @@ class ShelterMap {
   final String rule;
   final List<Rect> obstacles;
 
-  /// Water spray area; active for three seconds in each ten-second cycle.
-  final Rect? sprinkler;
+  /// Flower bushes Himalaya hides in (centres, radius as a width fraction).
+  /// They are walkable; only shy cats use them as cover.
+  final List<Offset> bushes;
+  final double bushRadius;
 
-  /// Warehouse crates swap between [obstacles] and these.
-  final List<Rect> altObstacles;
+  /// Attic: base ellipses of moonlight on the floor (they drift) and the
+  /// window they shine from. A map with moonbeams is always dark.
+  final List<Rect> moonbeams;
+  final Offset moonWindow;
 
-  /// Shallow mud that slows cats down.
-  final List<Rect> mud;
-
-  static const sprinklerPeriod = 10.0, cratePeriod = 8.0, mudSpeed = .5;
+  /// Yard: the drying rack dropping free fish, and the straw mats where the
+  /// orange boss agrees to nap.
+  final Rect? rack;
+  final List<Rect> napMats;
 
   static const none =
       ShelterMap(kind: ShelterMapKind.garden, name: '', rule: '');
 
-  bool spraying(double t) => sprinkler != null && t % sprinklerPeriod >= 7;
-  bool cratesSwapped(double t) =>
-      altObstacles.isNotEmpty && (t ~/ cratePeriod).isOdd;
+  /// Chapter 3: a kitchen island and a serving trolley block the floor.
+  static const kitchen = ShelterMap(
+    kind: ShelterMapKind.kitchen,
+    name: 'Bếp ăn',
+    rule: 'Bàn bếp và xe đẩy món chắn lối đi',
+    obstacles: [
+      Rect.fromLTWH(.40, .34, .20, .11),
+      Rect.fromLTWH(.66, .47, .07, .10),
+    ],
+  );
 
-  /// Seconds until the gate or crates change, for warnings.
-  double untilChange(double t) => sprinkler != null
-      ? (spraying(t) ? sprinklerPeriod : 7) - t % sprinklerPeriod
-      : cratePeriod - t % cratePeriod;
-
-  List<Rect> blockersAt(double t) => [
-        ...(cratesSwapped(t) ? altObstacles : obstacles),
-        if (spraying(t)) sprinkler!,
-      ];
-
-  static const garden = ShelterMap(
-    kind: ShelterMapKind.garden,
+  /// Chapter 2: flower bushes where Himalaya cats hide until it is quiet.
+  static const hedge = ShelterMap(
+    kind: ShelterMapKind.hedge,
     name: 'Vườn hoa',
-    rule: 'Vòi tưới báo trước rồi phun nước, mèo sẽ né nước',
+    rule: 'Himalaya trốn trong bụi hoa, đủ yên tĩnh mới ló ra',
+    bushes: [
+      Offset(.30, .33),
+      Offset(.63, .30),
+      Offset(.48, .52),
+      Offset(.31, .70),
+      Offset(.68, .68),
+    ],
+  );
+
+  /// Chapter 4: a toy chest and a play tent; yarn bounces off both.
+  static const playroom = ShelterMap(
+    kind: ShelterMapKind.playroom,
+    name: 'Phòng chơi',
+    rule: 'Cuộn len lăn khắp phòng, nảy khỏi rương đồ chơi và lều',
     obstacles: [
-      Rect.fromLTWH(.25, .30, .12, .11),
-      Rect.fromLTWH(.63, .30, .12, .11),
+      Rect.fromLTWH(.40, .32, .17, .11),
+      Rect.fromLTWH(.66, .50, .07, .10),
     ],
-    sprinkler: Rect.fromLTWH(.43, .32, .14, .17),
   );
 
-  static const warehouse = ShelterMap(
-    kind: ShelterMapKind.warehouse,
-    name: 'Kho đồ',
-    rule: 'Thùng hàng đổi chỗ sau vài giây',
+  /// Chapter 5: a dark attic lit only by drifting pools of moonlight.
+  static const attic = ShelterMap(
+    kind: ShelterMapKind.attic,
+    name: 'Gác xép',
+    rule: 'Mèo đen chỉ ra ăn cá đặt trong vệt trăng; mây trôi qua sẽ che trăng',
     obstacles: [
-      Rect.fromLTWH(.27, .28, .11, .10),
-      Rect.fromLTWH(.60, .42, .11, .10),
+      Rect.fromLTWH(.40, .30, .16, .10),
+      Rect.fromLTWH(.82, .36, .07, .10),
     ],
-    altObstacles: [
-      Rect.fromLTWH(.27, .42, .11, .10),
-      Rect.fromLTWH(.60, .28, .11, .10),
+    moonbeams: [
+      Rect.fromLTWH(.20, .40, .20, .17),
+      Rect.fromLTWH(.52, .62, .20, .17),
+      Rect.fromLTWH(.30, .74, .18, .15),
+    ],
+    moonWindow: Offset(.47, .08),
+  );
+
+  /// Chapter 1: a sunny front yard with a fish-drying rack.
+  static const yard = ShelterMap(
+    kind: ShelterMapKind.yard,
+    name: 'Sân trước',
+    rule: 'Giàn phơi rung là sắp rơi cá khô miễn phí; mèo cam lao tới ngay',
+    obstacles: [Rect.fromLTWH(.40, .27, .20, .05)],
+    rack: Rect.fromLTWH(.38, .19, .24, .10),
+    napMats: [
+      Rect.fromLTWH(.22, .70, .13, .13),
+      Rect.fromLTWH(.65, .70, .13, .13),
     ],
   );
 
-  static const pond = ShelterMap(
-    kind: ShelterMapKind.pond,
-    name: 'Hồ sen',
-    rule: 'Bùn ven hồ làm mèo đi chậm',
-    obstacles: [Rect.fromLTWH(.41, .32, .18, .14)],
-    mud: [Rect.fromLTWH(.32, .25, .36, .29)],
+  /// Chapter 6: the rescue station on a stormy night; sandbags block.
+  static const storm = ShelterMap(
+    kind: ShelterMapKind.storm,
+    name: 'Trạm cứu hộ',
+    rule: 'Đêm mưa bão: nước ngập làm mèo đi chậm, không thả cá xuống nước',
+    obstacles: [
+      Rect.fromLTWH(.27, .40, .11, .06),
+      Rect.fromLTWH(.62, .44, .11, .06),
+    ],
   );
-
-  static const maps = <ShelterMap>[garden, warehouse, pond];
 }

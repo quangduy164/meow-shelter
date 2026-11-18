@@ -17,6 +17,7 @@ import '../cats/cat_skill.dart';
 import '../cats/cat_dialogue.dart';
 import '../cats/cat_catch_rule.dart';
 import '../cats/cat_assist.dart';
+import '../cats/dish.dart';
 
 part 'cat_catch_behaviour.dart';
 
@@ -44,6 +45,10 @@ class CatComponent extends SpriteAnimationGroupComponent<CatState>
     this.assist,
     this.inLight,
     this.freezeInLight,
+    this.onKickToy,
+    this.onTantrum,
+    this.moonlit,
+    this.napMat,
     super.priority,
   })  : catchWindow = CatchWindow(
             readySeconds: level.readySeconds,
@@ -64,6 +69,23 @@ class CatComponent extends SpriteAnimationGroupComponent<CatState>
   /// Map-owned tap on a no-carry cat; true consumes the tap.
   final bool Function(CatComponent cat)? onCaptureTap;
   bool trapManaged = false, hiddenInCover = false;
+
+  /// Playroom: a non-Calico batted the yarn away; the boss lost its rhythm.
+  final void Function(CatComponent cat)? onKickToy;
+  final void Function(CatComponent cat)? onTantrum;
+
+  /// Attic: black cats only take fish lying in moonlight.
+  final bool Function(Vector2 point)? moonlit;
+
+  /// Yard: whether a point lies on a straw mat (orange boss naps only there).
+  final bool Function(Vector2 point)? napMat;
+
+  /// What the cat is walking to: food, or a ball of yarn to play with.
+  Dish _lureDish = Dish.fish;
+  double _yarnPlay = 0;
+
+  /// Garden bushes: set while a shy cat bolts back to cover.
+  bool ignoresBait = false;
   final void Function(CatComponent cat)? onFed;
   final double lightTimeScale;
 
@@ -92,6 +114,7 @@ class CatComponent extends SpriteAnimationGroupComponent<CatState>
   bool get canLure =>
       !trapCapture &&
       !hiddenInCover &&
+      !ignoresBait &&
       isLoaded &&
       !_isDelivered &&
       !_isDragged &&
@@ -110,9 +133,10 @@ class CatComponent extends SpriteAnimationGroupComponent<CatState>
       (isBoss ? CatCatchRule.bossPace : 1) *
       (assist?.pace ?? 1);
 
-  void lure(Vector2 target) {
+  void lure(Vector2 target, [Dish dish = Dish.fish]) {
     if (!canLure) return;
     fishTarget = target.clone();
+    _lureDish = dish;
     _skillActive = false;
     _isVanishing = false;
     _isTapTriggered = false;
@@ -138,6 +162,19 @@ class CatComponent extends SpriteAnimationGroupComponent<CatState>
   final _dialogue = CatDialogue();
   int _meals = 0;
   int get meals => _meals;
+
+  /// Kitchen Scottish: the dishes it wants, one per meal, in order.
+  List<Dish>? menu;
+  bool _changedMind = false;
+  double _bubbleClock = 0;
+
+  /// The dish this cat is thinking about now, or null if it eats anything.
+  Dish? get craving {
+    final wants = menu;
+    if (wants == null || hasEaten || _meals >= wants.length) return null;
+    return wants[_meals];
+  }
+
   int get playTaps => _playTaps;
   int _playTaps = 0;
   double _playTimer = 0;
@@ -198,6 +235,8 @@ class CatComponent extends SpriteAnimationGroupComponent<CatState>
     canvas.restore();
     if (isBoss) _drawCrown(canvas);
     if (!trapCapture) _drawProgress(canvas);
+    if (!trapCapture) _drawCraving(canvas);
+    if (!trapCapture) _drawBeat(canvas);
     _drawDialogue(canvas);
   }
 
@@ -205,6 +244,11 @@ class CatComponent extends SpriteAnimationGroupComponent<CatState>
   Future<void> onLoad() async {
     await super.onLoad();
     animations = await loadCatAnimations(game.images, catType);
+    if (level.dishes && catType == 'scottish') {
+      menu = _orderMenu(isBoss
+          ? CatCatchRule.kitchenBossCourses
+          : CatCatchRule.kitchenCourses);
+    }
     _direction = _random.nextBool() ? 1 : -1;
     _pickNextAction();
   }
@@ -240,6 +284,22 @@ class CatComponent extends SpriteAnimationGroupComponent<CatState>
     hiddenInCover = true;
     position.setFrom(spot);
     _setState(CatState.idle);
+  }
+
+  /// Garden bushes: a Himalaya that judged it quiet enough steps out.
+  void emergeFromCover(Vector2 spot,
+      {String line = 'Yên tĩnh rồi… ló ra chút thôi'}) {
+    hiddenInCover = false;
+    trapManaged = false;
+    position.setFrom(spot);
+    _pickNextAction();
+    _dialogue.say(line);
+  }
+
+  /// Garden bushes: noise sends a shy cat running back to cover.
+  void flinch() {
+    _setState(CatState.dashEscape);
+    _dialogue.say('Ồn quá! Về bụi thôi!');
   }
 
   void revealFromCover(Vector2 spot) {
@@ -400,6 +460,7 @@ class CatComponent extends SpriteAnimationGroupComponent<CatState>
     if (!isPlaying()) return;
     super.update(dt);
     _dialogue.update(dt);
+    _bubbleClock += dt;
     if (trapManaged) return;
     if (_playTimer > 0) {
       _playTimer -= dt;
@@ -429,6 +490,12 @@ class CatComponent extends SpriteAnimationGroupComponent<CatState>
       if (_dodgeTime <= 0) _pickNextAction();
       return;
     }
+    if (_yarnPlay > 0) {
+      // Batting the yarn around: stays put, easy to tap in rhythm.
+      _yarnPlay -= dt;
+      if (_yarnPlay <= 0) _pickNextAction();
+      return;
+    }
     final target = fishTarget;
     if (target != null) {
       final waypoint =
@@ -443,7 +510,11 @@ class CatComponent extends SpriteAnimationGroupComponent<CatState>
       if (waypoint == target && distance <= speed * dt + 4) {
         fishTarget = null;
         _lureStuck = 0;
-        _eat();
+        if (_lureDish == Dish.yarn) {
+          _reachYarn();
+        } else {
+          _eat();
+        }
       } else if (distance < .1) {
         _lureStuck = 0;
       } else if (_steer(delta / distance, min(distance, speed * dt))) {

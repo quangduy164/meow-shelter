@@ -302,8 +302,8 @@ class HerdRound {
         leader.distanceTo(map.route.point(map.route.main.first, field)) > 38) {
       tutorialMoved = true;
     }
-    final leaderDx = leader.x - oldLeaderX;
-    if (leaderDx.abs() > .001) leaderFacingLeft = leaderDx < 0;
+    leaderFacingLeft =
+        _facing(leaderFacingLeft, leader.x - oldLeaderX, dt, velocity);
     if (trail.length > 600) trail.removeRange(600, trail.length);
     _wakeSleepers(dt);
     if (map.track != null) _station(dt);
@@ -375,8 +375,8 @@ class HerdRound {
         cat.tumble = .65;
         cat.hop = .4;
       }
-      final dx = cat.position.x - before;
-      if (dx.abs() > .001) cat.facingLeft = dx < 0;
+      cat.facingLeft =
+          _facing(cat.facingLeft, cat.position.x - before, dt, cat.velocity);
       if (cat.trait == HerdTrait.chubby &&
           map.contains(map.catFlaps, cat.position, field)) {
         cat.position.setFrom(from);
@@ -899,6 +899,16 @@ class HerdRound {
       return at;
     }
     return null;
+  }
+
+  /// Sprites only face left or right. Turn only on clear sideways motion, so
+  /// a thumb wobbling while walking up or down does not flip the cat every
+  /// frame.
+  bool _facing(bool left, double dx, double dt, Vector2 speed) {
+    if (dt <= 0) return left;
+    final vx = dx / dt;
+    if (vx.abs() < 25 || vx.abs() < speed.y.abs() * .4) return left;
+    return vx < 0;
   }
 
   bool shaded(Vector2 at) => map.contains(map.shade, at, field);

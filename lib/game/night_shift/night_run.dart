@@ -123,7 +123,8 @@ class NightRun {
                 NightMap.warehouse ||
                 NightMap.reedGarden ||
                 NightMap.harbor ||
-                NightMap.station =>
+                NightMap.station ||
+                NightMap.clawMachine =>
                   0,
               });
 
@@ -138,6 +139,7 @@ class NightRun {
   /// Rotate rescue maps each night.
   // Test order: put the newest maps first.
   static const mapOrder = [
+    NightMap.clawMachine,
     NightMap.station,
     NightMap.harbor,
     NightMap.warehouse,

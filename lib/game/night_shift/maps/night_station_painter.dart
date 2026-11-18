@@ -54,7 +54,7 @@ void _paw(Canvas c, Offset center, double s, Color color) {
 
 /// Car sign: a coloured plate with a paw, used on posts and on the train.
 void paintStationSign(Canvas c, Offset center, String? breed, bool shared,
-    {double size = 26}) {
+    {double size = 26, bool empty = false}) {
   final plate = RRect.fromRectAndRadius(
       Rect.fromCenter(center: center, width: size * 1.3, height: size),
       Radius.circular(size * .25));
@@ -62,7 +62,10 @@ void paintStationSign(Canvas c, Offset center, String? breed, bool shared,
       Paint()..color = const Color(0x66000000));
   c.drawRRect(plate, Paint()..color = _signColor(breed, shared));
   c.drawRRect(plate, _stroke(_ink, 2));
-  if (breed == null && !shared) {
+  if (empty) {
+    c.drawLine(center - Offset(size * .3, 0), center + Offset(size * .3, 0),
+        _stroke(const Color(0xFFFFF4DA), 2.5));
+  } else if (breed == null && !shared) {
     final text = TextCache.layout(
         '?',
         const TextStyle(
@@ -305,29 +308,30 @@ class StationMarkComponent extends PositionComponent
   @override
   void render(Canvas canvas) {
     final line = scene.line;
+    final shared = car == line.sharedCar;
+    final sign = line.shownSign(car);
+    final known = shared || (sign != null && !line.signsHidden);
+    // The boarding mark itself wears the car colour, so a cat standing on it
+    // is visibly right or wrong without looking anywhere else.
+    final color = known ? _signColor(sign, shared) : const Color(0xFFFFE08A);
     final mark =
-        Rect.fromLTWH(size.x * .12, size.y * .6, size.x * .76, size.y * .3);
+        Rect.fromLTWH(size.x * .04, size.y * .6, size.x * .92, size.y * .3);
     final waiting = scene.selected != null && scene.marks[car] == null;
-    final pulse = waiting ? .55 + math.sin(_clock * 6) * .25 : .35;
-    canvas.drawRRect(RRect.fromRectAndRadius(mark, const Radius.circular(8)),
-        Paint()..color = Color.fromRGBO(255, 224, 138, pulse * .45));
-    canvas.drawRRect(RRect.fromRectAndRadius(mark, const Radius.circular(8)),
-        _stroke(const Color(0xFFFFE08A), 2.5));
+    final pulse = waiting ? .75 + math.sin(_clock * 6) * .2 : .5;
+    final shape = RRect.fromRectAndRadius(mark, const Radius.circular(8));
+    canvas.drawRRect(
+        shape, Paint()..color = color.withValues(alpha: pulse * .6));
+    canvas.drawRRect(shape, _stroke(color, 3));
+    canvas.drawRRect(shape, _stroke(_ink, 1));
     final label = TextCache.layout(
-        'TOA ${car + 1}',
+        'TOA ',
         const TextStyle(
             color: Color(0xFFFFF4DA),
             fontSize: 10,
             fontWeight: FontWeight.w900));
-    label.paint(
-        canvas,
-        Offset(
-            mark.center.dx - label.width / 2, mark.bottom - label.height - 2));
-    // Sign post: the coming train's car, unless signs are hidden.
-    final post = Offset(size.x - 10, 10);
-    canvas.drawLine(post + const Offset(0, 12), Offset(post.dx, mark.top),
-        _stroke(_ink, 3));
-    final sign = line.shownSign(car);
-    paintStationSign(canvas, post, sign, car == line.sharedCar, size: 22);
+    label.paint(canvas, Offset(mark.left + 6, mark.bottom - label.height - 3));
+    paintStationSign(canvas, Offset(mark.right - 16, mark.center.dy),
+        line.signsHidden ? null : sign, shared,
+        size: 20, empty: !line.signsHidden && sign == null && !shared);
   }
 }

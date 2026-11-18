@@ -75,11 +75,13 @@ enum NightRelic {
             NightMap.reedGarden => 'Vết chân hiện lâu hơn',
             NightMap.harbor => 'Cá neo bè lâu hơn',
             NightMap.station => 'Tàu dừng ga lâu hơn',
+            NightMap.clawMachine => 'Cá giữ mèo tụ lâu hơn',
           },
         NightRelic.bell => switch (map) {
             NightMap.reedGarden => '${map.control}: mèo nhích về giỏ',
             NightMap.harbor => '${map.control}: giữ bè gần 2s',
             NightMap.station => '${map.control}: mèo tự ra vạch',
+            NightMap.clawMachine => '${map.control}: mèo gần nằm yên',
             NightMap.warehouse => '${map.control}: mèo gần tin mồi',
             _ => '${map.control}: mèo gần tiến bước',
           },

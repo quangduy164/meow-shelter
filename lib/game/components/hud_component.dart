@@ -340,6 +340,10 @@ class HudComponent extends PositionComponent with HasGameReference<FlameGame> {
         GoalKind.noStartle => s.startles > 0,
         GoalKind.fishMax => s.fishUsed > goal.value,
         GoalKind.noWrongBed => s.wrongDrops > 0,
+        GoalKind.rightDish => s.wrongDishes > 0,
+        GoalKind.quiet => s.retreats > 0,
+        GoalKind.noDistract => s.distractions > 0,
+        GoalKind.onBeat => s.offBeats > 0,
       };
 
   TextPainter _text(String text, double size, Color color,

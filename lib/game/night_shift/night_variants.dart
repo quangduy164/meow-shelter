@@ -27,7 +27,7 @@ enum NightVariant {
   warehouseService(NightMap.warehouse, 'Lồng bảo trì',
       'Một lồng cần chuẩn bị 8 giây đầu đêm; hai lồng khác dùng ngay.'),
   reedNormal(NightMap.reedGarden, 'Lau tĩnh',
-      'Năm bụi lau, mèo đổi chỗ đều và để lại vết rung.'),
+      'Mười hai bụi lau, mèo đổi chỗ đều và để lại vết rung.'),
   reedWindy(NightMap.reedGarden, 'Gió lau',
       'Gió làm mèo đổi bụi nhanh hơn; hãy theo vết mới nhất.'),
   reedMist(NightMap.reedGarden, 'Sương lau',
@@ -43,7 +43,13 @@ enum NightVariant {
   stationLong(
       NightMap.station, 'Tàu dài', 'Tàu bốn toa, có thêm vạch để xếp mèo.'),
   stationLate(
-      NightMap.station, 'Đổi biển', 'Biển toa chỉ hiện khi tàu đang vào ga.');
+      NightMap.station, 'Đổi biển', 'Biển toa chỉ hiện khi tàu đang vào ga.'),
+  clawNormal(NightMap.clawMachine, 'Máy chuẩn',
+      'Một miệng thả bên trái, càng hạ thẳng.'),
+  clawTwin(NightMap.clawMachine, 'Hai miệng',
+      'Miệng thả ở cả hai bên; càng về miệng gần nhất.'),
+  clawSwing(NightMap.clawMachine, 'Càng lắc',
+      'Càng đung đưa khi hạ; canh lúc càng lắc về giữa.');
 
   const NightVariant(this.map, this.title, this.description);
   final NightMap map;

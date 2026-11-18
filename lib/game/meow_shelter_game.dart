@@ -22,6 +22,13 @@ import 'world/shelter_layout.dart';
 import 'world/shelter_map.dart';
 import 'night_shift/night_game.dart';
 import 'systems/bait_system.dart';
+import 'cats/dish.dart';
+import 'systems/bush_system.dart';
+import 'systems/moon_system.dart';
+import 'systems/rack_system.dart';
+import 'systems/storm_system.dart';
+import 'cats/cat_breed.dart';
+import 'cats/cat_catch_rule.dart';
 
 class MeowShelterGame extends FlameGame {
   MeowShelterGame({required this.level, this.onNextLevel, Random? random})
@@ -38,7 +45,19 @@ class MeowShelterGame extends FlameGame {
   final bait = BaitSystem();
   ShelterMap _map = ShelterMap.none;
 
-  // Clock for the ordinary rescue maps (sprinklers and moving crates).
+  /// Chapter 2 garden: shy cats hide in bushes until it is quiet.
+  BushSystem? bushes;
+
+  /// Chapter 5 attic: drifting moonlight and the phantom boss.
+  MoonSystem? moon;
+
+  /// Chapter 1 yard: the drying rack that drops free fish.
+  RackSystem? rack;
+
+  /// Chapter 6 storm: rising water, flooded beds and the rescue truck.
+  StormSystem? storm;
+
+  // Seconds on the current map (drives the straw-mat glow).
   double _mapClock = 0;
 
   /// Night rules live outside the shared cat-catching engine.
@@ -97,8 +116,19 @@ class MeowShelterGame extends FlameGame {
     _bedWarned = false;
     _map = level.isInfinite ? ShelterMap.none : level.map ?? ShelterMap.none;
     _mapClock = 0;
+    bushes = _map.bushes.isEmpty || night != null
+        ? null
+        : BushSystem(_map, onRetreat: () => stats.retreats += 1);
+    moon = _map.moonbeams.isEmpty || night != null ? null : MoonSystem(_map);
+    rack = _map.rack == null || night != null ? null : RackSystem(_map, random);
+    storm = level.flood <= 0 || night != null
+        ? null
+        : (StormSystem(floodTop: level.flood, riseSeconds: level.timeLimit * .6)
+          ..field = size.clone());
     lostReason = 'HẾT GIỜ RỒI!';
     bait.reset(limit: level.fishLimit);
+    bait.field = size.clone();
+    bait.blocked = (p) => _isMapBlocked(p - Vector2.all(12), Vector2.all(24));
     hud = HudComponent()..size = size;
     hud.totalCats = level.catTypes.length;
     hud.secondsLeft = level.timeLimit;
@@ -112,12 +142,15 @@ class MeowShelterGame extends FlameGame {
       night!.mountScene();
     } else {
       add(ShelterGardenComponent(
-          isPlaying: () => hud.status == RoundStatus.playing,
-          map: () => _map,
-          mapTime: () => _mapClock));
+          isPlaying: () => hud.status == RoundStatus.playing, map: () => _map));
     }
     await _addCats();
     await _addShelters();
+    final weather = storm;
+    if (weather != null) {
+      add(StormLayer(weather.renderBack, priority: -50));
+      add(StormLayer((c) => weather.renderFront(c, shelters), priority: 79));
+    }
     if (level.isTutorial) {
       add(CatchTutorialComponent(
         cat: () => children.whereType<CatComponent>().firstOrNull,
@@ -126,20 +159,40 @@ class MeowShelterGame extends FlameGame {
         isPlaying: () => hud.status == RoundStatus.playing,
       ));
     }
-    if (level.darkness && night == null) {
+    if ((level.darkness || moon != null) && night == null) {
       add(DarknessComponent(
-          lights: _lights, visible: () => hud.status == RoundStatus.playing));
+          lights: _lights,
+          visible: () => hud.status == RoundStatus.playing,
+          shade:
+              moon == null ? const Color(0xF0101828) : const Color(0xE8101828),
+          additionalLights: moon?.cutLight));
     }
     add(hud);
     if (level.twistLines.isNotEmpty && !level.isTutorial) {
       hud.showBanner(level.twistLines, 4);
     }
-    add(FishItemComponent(
-      enabled: () => canPlaceFish,
-      visible: () => hud.status == RoundStatus.playing,
-      placeFish: _placeFish,
-      remaining: () => bait.limited ? bait.fishCount : null,
-    ));
+    // The kitchen tray offers three dishes; elsewhere it is one fish.
+    final tray = night != null
+        ? [Dish.fish]
+        : level.dishes
+            ? Dish.foods
+            : level.toys
+                ? [Dish.fish, Dish.yarn]
+                : [Dish.fish];
+    for (var i = 0; i < tray.length; i++) {
+      final toy = tray[i] == Dish.yarn;
+      add(FishItemComponent(
+        enabled: () => toy ? canPlaceToy : canPlaceFish,
+        visible: () => hud.status == RoundStatus.playing,
+        placeFish: (point) => _placeFish(point, tray[i]),
+        remaining: !toy && (i == tray.length - 1 || tray.last == Dish.yarn)
+            ? () => bait.limited ? bait.fishCount : null
+            : null,
+        dish: tray[i],
+        slot: i,
+        slots: tray.length,
+      ));
+    }
     night?.beginNight();
   }
 
@@ -149,7 +202,7 @@ class MeowShelterGame extends FlameGame {
     var bossLeft = level.bossType;
     final queue = <(String, bool)>[];
     for (final type in level.catTypes) {
-      final boss = type == bossLeft;
+      final boss = level.bossParade || type == bossLeft;
       if (boss) bossLeft = null;
       queue.add((type, boss));
     }
@@ -179,9 +232,23 @@ class MeowShelterGame extends FlameGame {
       lureWaypoint: night?.lureWaypoint,
       onFed: night?.cardEffects.onFed,
       lightTimeScale: night?.run?.lightTimeScale ?? .5,
-      onStartled: (_) {
+      onStartled: (cat) {
         stats.startles += 1;
         night?.onMistake();
+        bushes?.noise(cat.center, BushSystem.startleNoise);
+      },
+      moonlit: moon?.lit,
+      napMat: _map.napMats.isEmpty ? null : _onNapMat,
+      onKickToy: (cat) {
+        stats.distractions += 1;
+        bait.kickYarn(cat.center, _randomRoll(170));
+      },
+      onTantrum: (cat) {
+        stats.offBeats += 1;
+        // The boss knocks two balls of yarn across the room.
+        for (var i = 0; i < 2; i++) {
+          bait.kickYarn(cat.center, _randomRoll(260));
+        }
       },
       onDrop: _handleDrop,
       onDelivered: _handleDelivered,
@@ -219,7 +286,16 @@ class MeowShelterGame extends FlameGame {
         shelters.any((shelter) => shelter.covers(cat))) {
       return true;
     }
-    final isCorrect = shelters.any((shelter) => shelter.accepts(cat));
+    final storm = this.storm;
+    // The parked rescue truck takes any cat.
+    if (storm != null && storm.onTruck(cat)) return true;
+    final isCorrect = shelters.any((shelter) =>
+        shelter.accepts(cat) && (storm == null || !storm.flooded(shelter)));
+    if (!isCorrect &&
+        storm != null &&
+        shelters.any((s) => s.accepts(cat) && storm.flooded(s))) {
+      hud.showBanner(['Ổ ngập rồi! Đưa bé lên xe cứu hộ'], 2);
+    }
     if (!isCorrect && shelters.any((shelter) => shelter.covers(cat))) {
       stats.wrongDrops += 1;
       night?.onMistake();
@@ -241,7 +317,12 @@ class MeowShelterGame extends FlameGame {
       spawnCat(type, boss: boss);
       if (boss) {
         GameAudio.instance.playRescue(GameSound.rescueNotice, important: true);
-        hud.showBanner(['Trùm xuất hiện!', level.twistLines.first]);
+        hud.showBanner(level.bossParade
+            ? [
+                'Trùm ${CatBreed.of(type).name} xuất hiện!',
+                CatCatchRule.bossHint(type)
+              ]
+            : ['Trùm xuất hiện!', level.twistLines.first]);
       }
     }
   }
@@ -261,6 +342,12 @@ class MeowShelterGame extends FlameGame {
   void update(double dt) {
     super.update(dt);
     if (!isLoaded || paused || hud.status != RoundStatus.playing) return;
+    bushes?.update(dt, size, children.whereType<CatComponent>());
+    moon?.update(dt, size, children.whereType<CatComponent>());
+    rack?.update(dt, size, bait, children.whereType<CatComponent>());
+    storm
+      ?..time += dt
+      ..field.setFrom(size);
     bait.update(children.whereType<CatComponent>(), dt: dt);
     if (bait.limited) hud.fishLeft = bait.fishCount;
     _mapClock += dt;
@@ -316,7 +403,65 @@ class MeowShelterGame extends FlameGame {
           (bait.positions.isEmpty &&
               !children.whereType<CatComponent>().any((cat) => cat.hasEaten)));
 
-  void _placeFish(Vector2 point) {
+  bool _onNapMat(Vector2 point) => _map.napMats.any((m) => Rect.fromLTWH(
+          m.left * size.x, m.top * size.y, m.width * size.x, m.height * size.y)
+      .contains(point.toOffset()));
+
+  /// Straw mats glow with "Zz" once the orange boss needs only one more fish.
+  void _drawNapMats(Canvas canvas) {
+    if (_map.napMats.isEmpty) return;
+    final sleepy = children.whereType<CatComponent>().any((cat) =>
+        cat.isBoss &&
+        !cat.hasEaten &&
+        cat.meals >= cat.mealsNeeded - 1 &&
+        cat.mealsNeeded > 0);
+    if (!sleepy) return;
+    final pulse = .5 + .5 * sin(_mapClock * 4);
+    for (final m in _map.napMats) {
+      final r = Rect.fromLTWH(
+          m.left * size.x, m.top * size.y, m.width * size.x, m.height * size.y);
+      canvas.drawOval(
+          r.inflate(4),
+          Paint()
+            ..color = Color.fromRGBO(255, 214, 90, .5 + .4 * pulse)
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = 3);
+      final zz = TextPainter(
+          text: const TextSpan(
+              text: 'Zz',
+              style: TextStyle(
+                  color: Color(0xFF5A3214),
+                  fontSize: 14,
+                  fontWeight: FontWeight.w900)),
+          textDirection: TextDirection.ltr)
+        ..layout();
+      zz.paint(canvas, r.topCenter + Offset(-zz.width / 2, -18 - pulse * 4));
+    }
+  }
+
+  /// Yarn is free; it only needs an empty spot to land on.
+  bool get canPlaceToy => isLoaded && hud.status == RoundStatus.playing;
+
+  Vector2 _randomRoll(double speed) {
+    final angle = random.nextDouble() * pi * 2;
+    return Vector2(cos(angle), sin(angle)) * speed;
+  }
+
+  void _placeFish(Vector2 point, [Dish dish = Dish.fish]) {
+    if (storm?.inWater(point) == true) {
+      hud.showBanner(['Cá trôi mất! Thả trên chỗ khô nhé'], 1.5);
+      return;
+    }
+    if (dish == Dish.yarn) {
+      final reach = Vector2(catWidth, catHeight);
+      if (!canPlaceToy || _isMapBlocked(point - reach / 2, reach)) return;
+      // Dropped yarn rolls a little in a random direction before it stops.
+      if (bait.place(point, size, children.whereType<CatComponent>(),
+          free: true, dish: Dish.yarn, roll: _randomRoll(110))) {
+        GameAudio.instance.playRescue(GameSound.baitDrop);
+      }
+      return;
+    }
     if (!canPlaceFish) return;
     if (night?.scene.ownsBait == true) {
       if (night!.scene.placeBait(point.toOffset())) {
@@ -334,11 +479,34 @@ class MeowShelterGame extends FlameGame {
       hud.showBanner(['Mèo không tới được chỗ này'], 1.5);
       return;
     }
-    if (bait.place(point, size, children.whereType<CatComponent>())) {
+    final cats = children.whereType<CatComponent>().toList();
+    if (bait.place(point, size, cats, dish: dish)) {
       GameAudio.instance.playRescue(GameSound.baitDrop);
       stats.fishUsed += 1;
       if (bait.limited) hud.fishLeft = bait.fishCount;
+      if (level.dishes) _judgeDish(point, dish, cats);
+      bushes?.noise(point);
     }
+  }
+
+  /// A dish served to a hungry Scottish (the closest hungry cat) that
+  /// wanted something else counts as a wrong dish, and the cat says so.
+  void _judgeDish(Vector2 point, Dish dish, List<CatComponent> cats) {
+    CatComponent? nearest;
+    for (final cat in cats) {
+      if (cat.isDelivered || cat.hasEaten || cat.isCarried) continue;
+      if ((cat.center - point).length > wrongDishReach) continue;
+      if (nearest == null ||
+          (cat.center - point).length2 < (nearest.center - point).length2) {
+        nearest = cat;
+      }
+    }
+    // Only the closest hungry cat counts as the one being served.
+    final wants = nearest?.craving;
+    if (nearest == null || wants == null || wants == dish) return;
+    stats.wrongDishes += 1;
+    nearest.refuseDish(dish);
+    GameAudio.instance.playRescue(GameSound.catWrong);
   }
 
   /// No fish left, none on the ground, and someone still needs a meal.
@@ -349,6 +517,8 @@ class MeowShelterGame extends FlameGame {
           bait.fishCount <= 0 &&
           night!.run!.rescuedTonight < night!.run!.quota;
     }
+    // The drying rack keeps dropping free fish, so nobody runs out.
+    if (rack != null) return false;
     if (!bait.limited || bait.fishCount > 0 || bait.hasBaitOut) {
       return false;
     }
@@ -394,7 +564,14 @@ class MeowShelterGame extends FlameGame {
       yield (shelter.center.toOffset(), 80);
     }
     for (final cat in children.whereType<CatComponent>()) {
-      // Every cat glows faintly so calico can still be found.
+      // Every cat glows faintly so calico can still be found; in the attic
+      // a black cat is only seen in moonlight or once it is busy with you.
+      if (moon != null &&
+          cat.catType == 'black' &&
+          !cat.isLit &&
+          !moon!.lit(cat.center)) {
+        continue;
+      }
       yield (cat.center.toOffset(), cat.isLit ? 85 : 40);
     }
   }
@@ -414,21 +591,31 @@ class MeowShelterGame extends FlameGame {
         position.y / this.size.y, size.x / this.size.x, size.y / this.size.y);
     final night = this.night;
     if (night != null) return night.blocks(bounds);
-    return _map.blockersAt(_mapClock).any(bounds.overlaps);
+    return _map.obstacles.any(bounds.overlaps);
   }
 
   double _terrainSpeed(Vector2 center) {
-    final point = Offset(center.x / size.x, center.y / size.y);
-    return _map.mud.any((mud) => mud.contains(point)) ? ShelterMap.mudSpeed : 1;
+    return storm?.inWater(center) == true ? .55 : 1;
   }
+
+  /// How close a dish must land to a Scottish to count as offered to it.
+  static const wrongDishReach = 150.0;
 
   @override
   void render(Canvas canvas) {
     super.render(canvas);
     if (!isLoaded || paused || hud.status != RoundStatus.playing) return;
-    for (final fish in bait.positions) {
-      drawFish(canvas, Offset(fish.x, fish.y));
+    for (final (point, dish, spin) in bait.dishesOut) {
+      if (dish == Dish.yarn) {
+        drawYarn(canvas, Offset(point.x, point.y), spin);
+      } else {
+        drawDish(canvas, Offset(point.x, point.y), dish);
+      }
     }
+    bushes?.render(canvas);
+    moon?.render(canvas);
+    rack?.render(canvas);
+    _drawNapMats(canvas);
   }
 
   Vector2 _randomCatPosition() {

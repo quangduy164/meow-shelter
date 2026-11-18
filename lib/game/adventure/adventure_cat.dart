@@ -133,7 +133,7 @@ class AdventureCat extends SpriteAnimationGroupComponent<CatState>
       velocity += (target - velocity) *
           min(1, dt * (_bumpTimer > 0 ? bumpedGrip : grip));
     }
-    if (velocity.x.abs() > 2) _facing = velocity.x.sign;
+    _turnTowards(velocity);
     if (_bumpTimer > 0) _bumpTimer -= dt;
     if (invulnerable > 0) invulnerable = max(0, invulnerable - dt);
     if (_sprintTimer > 0) _sprintTimer = max(0, _sprintTimer - dt);
@@ -153,6 +153,15 @@ class AdventureCat extends SpriteAnimationGroupComponent<CatState>
             : velocity.length > idleSpeed
                 ? (phasing ? CatState.run : CatState.walk)
                 : CatState.idle;
+  }
+
+  /// The sprite only faces left or right. Turn on clear sideways motion only,
+  /// so a thumb wobbling while walking up or down does not flip it each frame.
+  void _turnTowards(Vector2 motion) {
+    final x = motion.x.abs();
+    if (x < .4 * motion.y.abs()) return;
+    if (motion.length > 1 && x < idleSpeed) return;
+    _facing = motion.x.sign;
   }
 
   /// Small dead zone so a resting thumb does not creep the cat, then a gentle
@@ -216,7 +225,7 @@ class AdventureCat extends SpriteAnimationGroupComponent<CatState>
         final input = game.joystick.relativeDelta;
         final dir = input.length > .1 ? input.normalized() : Vector2(facing, 0);
         velocity = dir * dashSpeed;
-        if (dir.x.abs() > .01) _facing = dir.x.sign;
+        _turnTowards(dir);
       case 'calico':
         // Patches up one heart, never above the starting count.
         if (game.lives < AdventureGame.startingLives) {

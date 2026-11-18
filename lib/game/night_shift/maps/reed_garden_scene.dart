@@ -47,7 +47,8 @@ class ReedGardenScene extends NightScene {
   @override
   List<String> get rules => [
         'Vết lau: mèo đổi bụi để lại vết chân vàng',
-        'Lùa mèo: chạm bụi cạnh mèo, mèo chạy ra xa chỗ chạm',
+        'Lùa mèo: chạm bụi sát mèo, mèo chạy thẳng 1 bụi ra xa chỗ chạm',
+        'Lùa hụt: chạm mà không mèo nào chạy, mèo gần đó đổi chỗ',
         if (!garden.softParting) 'Chạm trúng mèo: mèo chạy loạn, tính lỗi',
       ];
   @override
@@ -145,6 +146,7 @@ class ReedGardenScene extends NightScene {
     _hidden[patch] = cat;
     _moveLeft[cat] = garden.moveSeconds * (.65 + game.random.nextDouble() * .7);
     cat.hideInCover(_coverSpot(patch, cat));
+    patch.shake = 1.5; // New arrivals give themselves away once.
   }
 
   void _move(ReedPatch from, ReedPatch to) {
@@ -222,6 +224,10 @@ class ReedGardenScene extends NightScene {
     return helped;
   }
 
+  @override
+  int helperBoost(int count) => helpNear(
+      Offset(game.size.x / 2, game.size.y / 2), double.infinity, count);
+
   void tapPatch(ReedPatch patch) {
     final night = game.night!;
     if (game.paused || night.phase != NightPhase.playing || patch.cool > 0) {
@@ -256,6 +262,20 @@ class ReedGardenScene extends NightScene {
         _move(from, to);
       }
     }
+    if (moved == 0 && !patch.occupied && !night.assist.calm) {
+      // A rustle that moves nobody alerts the cats around it.
+      game.stats.startles++;
+      for (final from in garden
+          .neighbors(patch, reach: 2)
+          .where((p) => p.occupied)
+          .toList()) {
+        final to = garden.emptyNear(from, game.random);
+        if (to != null) _move(from, to);
+      }
+      game.hud.showBanner(['Lùa hụt! Mèo quanh đó đổi chỗ'], 1.4);
+      GameAudio.instance.playRescue(GameSound.catWrong);
+      return;
+    }
     GameAudio.instance.playRescue(
         saved > 0 ? GameSound.catRescue : GameSound.baitDrop,
         important: saved > 0);
@@ -273,7 +293,13 @@ class ReedGardenScene extends NightScene {
   @override
   void update(double dt) {
     moon.update(dt);
-    if (garden.update(dt) != null) {
+    // Calico helper: every bush with a cat keeps rustling.
+    if (game.night!.acceptsAnyBed) {
+      for (final p in _hidden.keys) {
+        p.shake = math.max(p.shake, .35);
+      }
+    }
+    if (garden.update(dt, game.random) != null) {
       game.hud.showBanner(['Chuông lau: có bụi vừa rung mạnh'], 1.2);
     }
     for (final cat in game.children.whereType<CatComponent>()) {
@@ -304,9 +330,11 @@ class ReedGardenScene extends NightScene {
             walking: true);
       }
     }
+    // Orange helper freezes, Scottish slows the cats' own bush hopping.
+    final hop = game.night!.assist.frozen ? 0.0 : dt * game.night!.assist.pace;
     for (final entry in _hidden.entries.toList()) {
       final cat = entry.value;
-      final left = (_moveLeft[cat] ?? garden.moveSeconds) - dt;
+      final left = (_moveLeft[cat] ?? garden.moveSeconds) - hop;
       if (left > 0) {
         _moveLeft[cat] = left;
         continue;

@@ -52,22 +52,16 @@ class NightHelperEffects {
     GameAudio.instance.playRescue(GameSound.rescueNotice, important: true);
     night.game.hud.showBanner([
       CampState.instance.nameOf(type),
-      night.scene.usesTraps
-          ? switch (type) {
-              'orange' => 'Mèo trong lồng nán lại 6 giây',
-              'black' => 'Đóng hụt ít gây hoảng cho mèo trong 8 giây',
-              'scottish' => 'Cửa sổ chốt lồng hao chậm một nửa trong 6 giây',
-              'calico' => 'Chốt được từ khi mèo đã vào 70% trong 10 giây',
-              _ => '2 mèo tin mồi, lần vào lồng tới nán lại thêm 2 giây',
-            }
-          : skill.effect
+      NightHelperSkill.effectOn(type, night.run!.map)
     ], 2.5);
     if (skill.duration > 0) {
       _effects[type] = skill.duration;
       _syncAssist();
       return;
     }
-    // Himalaya: two hungry cats are full at once.
+    // Himalaya: maps without carrying use their own boost.
+    if (night.scene.helperBoost(2) >= 0) return;
+    // Otherwise two hungry cats are full at once.
     final cats = night.game.children
         .whereType<CatComponent>()
         .where((cat) => cat.canBless)

@@ -32,7 +32,12 @@ enum NightMap {
   station('Nhà ga đêm', 'Đưa mèo ra đúng vạch toa trước khi tàu dừng',
       mission: 'Đưa mèo lên đúng toa tàu',
       control: 'Xếp vạch lần đầu',
-      light: 'cửa toa');
+      light: 'cửa toa'),
+  clawMachine('Máy gắp mèo',
+      'Giữ nút trái phải để ngắm, bấm THẢ để gắp mèo vào miệng máy',
+      mission: 'Gắp mèo thả vào miệng máy',
+      control: 'Thả càng lần đầu',
+      light: 'miệng thả');
 
   const NightMap(this.title, this.rule,
       {required this.mission, required this.control, required this.light});
@@ -153,7 +158,15 @@ enum NightCard {
   sharedCar('Toa chung', 'Toa giữa nhận mọi giống mèo',
       limit: 1, map: NightMap.station),
   porter('Nhân viên ga', 'Mèo đi ra vạch nhanh hơn 50%',
-      limit: 1, map: NightMap.station);
+      limit: 1, map: NightMap.station),
+  strongClaw('Càng chắc', 'Vùng gắp chắc rộng thêm 20%/cấp',
+      limit: 2, map: NightMap.clawMachine),
+  wideClaw('Càng rộng', 'Tầm gắp rộng hơn 25%/cấp',
+      limit: 2, map: NightMap.clawMachine),
+  fastClaw('Càng nhanh', 'Càng chạy và hạ nhanh hơn 35%',
+      limit: 1, map: NightMap.clawMachine),
+  doubleGrab('Gắp đôi', 'Hai mèo cùng trong tầm gắp được cả hai',
+      limit: 1, map: NightMap.clawMachine);
 
   const NightCard(this.title, this.perk, {this.cost, this.limit = 3, this.map});
   final String title, perk;
@@ -171,7 +184,8 @@ enum NightCard {
             NightMap.warehouse,
             NightMap.reedGarden,
             NightMap.harbor,
-            NightMap.station
+            NightMap.station,
+            NightMap.clawMachine
           ].contains(next) ||
           !const [warmHug, patience, wideBeds, nailedBeds, nurturingMeal]
               .contains(this));
@@ -210,6 +224,10 @@ enum NightCard {
         longStop => 'Ghép Toa chung để mèo tới muộn vẫn kịp lên tàu.',
         sharedCar => 'Mèo khó xếp có thể đưa vào toa giữa.',
         porter => 'Ghép Còi báo sớm để đổi vạch nhiều lần trước khi tàu tới.',
+        strongClaw => 'Ghép Càng rộng: ngắm dễ mà gắp vẫn chắc.',
+        wideClaw => 'Ghép Gắp đôi để tầm rộng bắt được hai mèo.',
+        fastClaw => 'Ghép Cá để gom mèo rồi gắp liên tục.',
+        doubleGrab => 'Thả cá cho mèo tụ lại rồi gắp một lần hai con.',
         _ => null,
       };
 }

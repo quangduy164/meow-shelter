@@ -139,6 +139,24 @@ class HarborFlowScene extends NightScene {
     return near.length;
   }
 
+  @override
+  int helperBoost(int count) {
+    var steered = 0;
+    for (final raft in flow.rafts) {
+      if (steered >= count || raft.x >= HarborFlow.gateX.last) continue;
+      final lane = flow.dockBreeds.keys
+          .where((l) => flow.accepts(l, raft.breed))
+          .firstOrNull;
+      if (lane == null || lane == raft.lane) continue;
+      raft
+        ..fromLane = raft.lane
+        ..lane = lane
+        ..shift = 0;
+      steered++;
+    }
+    return steered;
+  }
+
   void tapGate(HarborGate gate) {
     if (game.paused || game.night?.phase != NightPhase.playing) return;
     flow.turn(gate);
@@ -231,6 +249,9 @@ class HarborFlowScene extends NightScene {
       _cats[raft] = cat;
       _seat(raft, cat);
     }
+    flow
+      ..shielded = night.assist.calm
+      ..anyDock = night.acceptsAnyBed;
     final pace = night.assist.frozen ? 0.0 : night.assist.pace;
     for (final (raft, event) in flow.update(dt, pace: pace)) {
       final cat = _cats[raft];

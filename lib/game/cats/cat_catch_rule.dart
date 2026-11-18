@@ -14,6 +14,9 @@ class CatCatchRule {
   static const scottishMeals = 2;
   static const calicoTaps = 3;
 
+  /// Non-Calico cats this close to a stopped ball of yarn run to bat it.
+  static const yarnPull = 170.0;
+
   /// Orange naps this many times longer than the normal catch window.
   static const orangeNap = 2.0;
 
@@ -31,7 +34,26 @@ class CatCatchRule {
         _ => boss ? 2 : 1,
       };
 
-  static String bossHint(String type) => switch (type) {
+  /// The kitchen boss orders a menu in sequence and changes its mind once.
+  static const kitchenBossCourses = 3, kitchenCourses = 2;
+
+  static String bossHint(String type,
+          {bool dishes = false,
+          bool bushes = false,
+          bool toys = false,
+          bool moon = false,
+          bool yard = false}) =>
+      switch (type) {
+        'orange' when yard =>
+          'Mèo cam béo phải ăn 3 cá, và chỉ chịu ngủ khi ăn cá cuối trên ổ rơm',
+        'black' when moon =>
+          'Mèo đen bóng ma nhảy giữa các góc tối; dấu chân tím chỉ chỗ sắp hiện',
+        'calico' when toys =>
+          'Tam thể quậy: chạm đúng nhịp vòng vàng 6 lần, sai nhịp là bé hất đồ chơi',
+        'himalaya' when bushes =>
+          'Himalaya siêu nhát lẻn từ bụi này sang bụi khác: thả cá thật xa để chặn đường',
+        'scottish' when dishes =>
+          'Scottish sành ăn gọi 3 món theo thứ tự, ăn xong món đầu sẽ đổi ý',
         'orange' => 'Mèo cam béo phải ăn 3 cá',
         'himalaya' => 'Himalaya siêu nhát: 2 cá, đặt thật xa',
         'scottish' => 'Scottish sành ăn phải ăn 4 cá',

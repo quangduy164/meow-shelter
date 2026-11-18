@@ -45,7 +45,10 @@ enum NightGuideGlyph {
   harborDock,
   stationSign,
   stationMark,
-  stationTrain
+  stationTrain,
+  clawAim,
+  clawDrop,
+  clawChute
 }
 
 /// Hand-drawn guide art, matching the card icons without the round badge.
@@ -115,6 +118,24 @@ class _NightGuidePainter extends _NightCardPainter {
         _catHead(canvas, const Offset(24, 22), 9, _orange);
       case NightGuideGlyph.stationTrain:
         _trainCar(canvas, open: true);
+      case NightGuideGlyph.clawAim:
+        _claw(canvas, const Offset(24, 16), open: true);
+        _arrow(canvas, const Offset(16, 36), const Offset(6, 36));
+        _arrow(canvas, const Offset(32, 36), const Offset(42, 36));
+      case NightGuideGlyph.clawDrop:
+        _catHead(canvas, const Offset(24, 34), 8, _orange);
+        _claw(canvas, const Offset(24, 18), open: true);
+      case NightGuideGlyph.clawChute:
+        _claw(canvas, const Offset(20, 14), open: false);
+        _catHead(canvas, const Offset(20, 28), 7, _orange);
+        _shape(
+            canvas,
+            Path()
+              ..addRRect(RRect.fromRectAndRadius(
+                  const Rect.fromLTWH(28, 30, 14, 12),
+                  const Radius.circular(3))),
+            _mint,
+            1.6);
       case NightGuideGlyph.reedExit:
         _reeds(canvas, const Offset(17, 41), 25);
         _fishBasketOnly(canvas);
@@ -196,6 +217,11 @@ class _NightCardPainter extends CustomPainter {
       case NightCard.deepBait:
       case NightCard.linkedDoors:
         _trapCard(canvas);
+      case NightCard.strongClaw:
+      case NightCard.wideClaw:
+      case NightCard.fastClaw:
+      case NightCard.doubleGrab:
+        _clawCard(canvas);
       case NightCard.earlyWhistle:
       case NightCard.longStop:
       case NightCard.sharedCar:
@@ -295,8 +321,56 @@ class _NightCardPainter extends CustomPainter {
     }
   }
 
+  void _clawCard(Canvas canvas) {
+    switch (card) {
+      case NightCard.strongClaw:
+        _claw(canvas, const Offset(24, 14), open: false);
+        _catHead(canvas, const Offset(24, 30), 8, _orange);
+        _featureSpark(canvas, const Offset(38, 12), 6, _gold);
+      case NightCard.wideClaw:
+        _claw(canvas, const Offset(24, 14), open: true);
+        canvas.drawOval(
+            const Rect.fromLTWH(6, 34, 36, 8), _line(2.4, _goldDark));
+      case NightCard.fastClaw:
+        _claw(canvas, const Offset(28, 16), open: true);
+        for (final y in const [12.0, 18.0, 24.0]) {
+          canvas.drawLine(Offset(4, y), Offset(14, y), _line(2, _blue));
+        }
+      default:
+        _claw(canvas, const Offset(24, 12), open: false);
+        _catHead(canvas, const Offset(18, 30), 7, _orange);
+        _catHead(canvas, const Offset(31, 30), 7, const Color(0xFFE4D3B2));
+    }
+  }
+
+  void _claw(Canvas canvas, Offset c, {required bool open}) {
+    canvas.drawLine(Offset(c.dx, 2), c - const Offset(0, 4), _line(2, _ink));
+    _shape(
+        canvas,
+        Path()
+          ..addRRect(RRect.fromRectAndRadius(
+              Rect.fromCenter(center: c, width: 14, height: 7),
+              const Radius.circular(3))),
+        const Color(0xFFB8C2CC),
+        1.5);
+    final spread = open ? 10.0 : 5.0;
+    for (final dir in const [-1.0, 0.0, 1.0]) {
+      canvas.drawPath(
+          Path()
+            ..moveTo(c.dx + dir * 4, c.dy + 3)
+            ..lineTo(c.dx + dir * spread, c.dy + 11)
+            ..lineTo(c.dx + dir * spread * .5, c.dy + 17),
+          _line(2.6, _ink));
+    }
+  }
+
   void _stationCard(Canvas canvas) {
     switch (card) {
+      case NightCard.strongClaw:
+      case NightCard.wideClaw:
+      case NightCard.fastClaw:
+      case NightCard.doubleGrab:
+        _clawCard(canvas);
       case NightCard.earlyWhistle:
         _trainCar(canvas, open: false);
         for (final r in const [5.0, 9.0]) {
@@ -356,6 +430,11 @@ class _NightCardPainter extends CustomPainter {
   void _harborCard(Canvas canvas) {
     _water(canvas);
     switch (card) {
+      case NightCard.strongClaw:
+      case NightCard.wideClaw:
+      case NightCard.fastClaw:
+      case NightCard.doubleGrab:
+        _clawCard(canvas);
       case NightCard.earlyWhistle:
       case NightCard.longStop:
       case NightCard.sharedCar:

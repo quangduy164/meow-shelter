@@ -23,6 +23,10 @@ class LevelConfig {
     this.bossType,
     this.goals = const [],
     this.map,
+    this.dishes = false,
+    this.toys = false,
+    this.flood = 0,
+    this.bossParade = false,
   });
 
   /// Field layout with its own rule; null keeps the open lawn.
@@ -54,6 +58,21 @@ class LevelConfig {
   /// The first cat of this breed is a big boss with a harder catch rule.
   final String? bossType;
 
+  /// Kitchen chapter: the tray offers three dishes and Scottish cats only
+  /// eat the one in their thought bubble.
+  final bool dishes;
+
+  /// Playroom chapter: the tray adds a ball of yarn. It rolls when dropped;
+  /// Calico plays with it, but any other cat nearby bats it away.
+  final bool toys;
+
+  /// Storm chapter: highest the flood water rises (fraction of the field
+  /// from the top); 0 means no flood. Lower beds can go under.
+  final double flood;
+
+  /// Finale: every cat is a boss, one after another.
+  final bool bossParade;
+
   /// Up to two missions; winning is the first star, each goal one more.
   final List<LevelGoal> goals;
 
@@ -67,7 +86,14 @@ class LevelConfig {
   /// Short toast lines about this level's twist, shown when it starts.
   List<String> get twistLines => [
         if (map != null) '${map!.name}: ${map!.rule}',
-        if (bossType != null) 'Trùm: ${CatCatchRule.bossHint(bossType!)}',
+        if (bossType != null)
+          'Trùm: ${CatCatchRule.bossHint(bossType!, dishes: dishes, bushes: map?.bushes.isNotEmpty == true, toys: toys, moon: map?.moonbeams.isNotEmpty == true, yard: map?.rack != null)}',
+        if (dishes) 'Kéo đúng món Scottish đang nghĩ trong bong bóng',
+        if (toys)
+          'Thả cuộn len cho Tam thể chơi; mèo khác ở gần cũng chạy theo',
+        if (flood > 0)
+          'Nước dâng! Xe cứu hộ đỗ một lúc: thả mèo nào lên xe cũng được',
+        if (bossParade) 'Cả nhà trùm kéo đến, từng con một',
         if (fishLimit > 0) 'Chỉ có $fishLimit cá mồi',
         if (waveSize > 0) 'Mèo đến từng đợt',
         if (movingBeds) 'Các ổ sẽ dời chỗ',

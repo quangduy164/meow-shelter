@@ -3,6 +3,8 @@ import 'package:flutter/painting.dart';
 import 'package:flame/components.dart';
 import 'package:flame/events.dart';
 
+import '../cats/dish.dart';
+
 void drawFish(Canvas canvas, Offset center) {
   final body = Paint()..color = const Color(0xFF53C9EF);
   canvas.drawOval(Rect.fromCenter(center: center, width: 30, height: 17), body);
@@ -22,8 +24,15 @@ class FishItemComponent extends PositionComponent with DragCallbacks {
       {required this.enabled,
       required this.visible,
       required this.placeFish,
-      this.remaining})
+      this.remaining,
+      this.dish = Dish.fish,
+      this.slot = 0,
+      this.slots = 1})
       : super(size: Vector2(64, 48), priority: 90);
+
+  /// What this slot hands out; the kitchen tray shows three slots in a row.
+  final Dish dish;
+  final int slot, slots;
 
   final bool Function() enabled;
   final bool Function() visible;
@@ -45,7 +54,10 @@ class FishItemComponent extends PositionComponent with DragCallbacks {
   @override
   void onGameResize(Vector2 size) {
     super.onGameResize(size);
-    position.setValues((size.x - this.size.x) / 2, size.y - this.size.y - 8);
+    const gap = 8.0;
+    final row = slots * this.size.x + (slots - 1) * gap;
+    position.setValues((size.x - row) / 2 + slot * (this.size.x + gap),
+        size.y - this.size.y - 8);
   }
 
   @override
@@ -78,7 +90,8 @@ class FishItemComponent extends PositionComponent with DragCallbacks {
     canvas.save();
     canvas.translate(count == null ? size.x / 2 : size.x * .4, size.y / 2);
     canvas.scale(0.75);
-    drawFish(canvas, const Offset(4.5, 0));
+    drawDish(
+        canvas, dish == Dish.fish ? const Offset(4.5, 0) : Offset.zero, dish);
     canvas.restore();
     if (count != null) {
       if (_lastCount != count || _countLabel == null) {
@@ -112,7 +125,7 @@ class FishItemComponent extends PositionComponent with DragCallbacks {
       label.paint(canvas, center - Offset(label.width / 2, label.height / 2));
     }
     final preview = _preview;
-    if (preview != null) drawFish(canvas, Offset(preview.x, preview.y));
+    if (preview != null) drawDish(canvas, Offset(preview.x, preview.y), dish);
   }
 
   @override

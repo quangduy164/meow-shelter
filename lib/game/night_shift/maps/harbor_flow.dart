@@ -43,6 +43,9 @@ class HarborFlow {
   final columnDirection = [0, 0];
   double speed = .052;
   bool sturdy = false, rope = false, linked = false, collisions = false;
+
+  /// Helper effects, refreshed by the scene every frame.
+  bool shielded = false, anyDock = false;
   int? sharedDock;
   int stage = 1, _id = 0;
 
@@ -82,7 +85,7 @@ class HarborFlow {
 
   bool accepts(int lane, String breed) =>
       dockBreeds.containsKey(lane) &&
-      (lane == sharedDock || dockBreeds[lane] == breed);
+      (anyDock || lane == sharedDock || dockBreeds[lane] == breed);
 
   /// Makes sure some dock takes [breed]. Returns the relabelled lane, -1 when
   /// nothing changed, or null when every dock is still needed.
@@ -173,7 +176,7 @@ class HarborFlow {
       final rock = rocks.where((r) =>
           r.$1 == raft.lane && before < r.$2 - .035 && raft.x >= r.$2 - .035);
       if (rock.isNotEmpty) {
-        if (sturdy) {
+        if (sturdy || shielded) {
           raft
             ..x = rock.first.$2 + .04
             ..stun = 1.5;
@@ -209,7 +212,13 @@ class HarborFlow {
         for (var j = i + 1; j < moving.length; j++) {
           final a = moving[i], b = moving[j];
           if ((a.x - b.x).abs() < .085 && (a.y - b.y).abs() < .07) {
-            hit.addAll([a, b]);
+            if (shielded) {
+              // Black helper: the raft behind waits instead of crashing.
+              final behind = a.x < b.x ? a : b;
+              behind.stun = math.max(behind.stun, 1.2);
+            } else {
+              hit.addAll([a, b]);
+            }
           }
         }
       }

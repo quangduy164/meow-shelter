@@ -247,6 +247,15 @@ class NightInfoOverlay extends StatelessWidget {
             (NightGuideGlyph.cageWatch, 'Chờ xanh', 'Mèo vào trọn lồng'),
             (NightGuideGlyph.cageLock, 'Chốt lồng', 'Chạm khi lồng xanh'),
           ],
+        NightMap.clawMachine => [
+            (NightGuideGlyph.clawAim, 'Ngắm', 'Giữ nút ◀ ▶ để dời càng'),
+            (
+              NightGuideGlyph.clawDrop,
+              'Thả càng',
+              'Hạ giữa người mèo thì chắc'
+            ),
+            (NightGuideGlyph.clawChute, 'Về miệng', 'Mèo rơi vào miệng là cứu'),
+          ],
         NightMap.station => [
             (
               NightGuideGlyph.stationSign,

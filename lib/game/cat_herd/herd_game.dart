@@ -216,14 +216,21 @@ class HerdGame extends FlameGame {
     if (round.isTutorial && !round.ended && round.tutorialStep > 1) {
       _tutorialGuide(canvas);
     }
-    for (final cat in round.cats.where((c) => !c.home)) {
-      if (!cat.following) {
-        canvas.drawCircle(
-            cat.position.toOffset(),
-            19,
-            Paint()
-              ..color =
-                  cat.scared > 0 ? const Color(0x44E97159) : traitRing(cat));
+    final visible = round.cats.where((c) => !c.home).toList();
+    // Ground rings first, so no ring is drawn over a cat.
+    for (final cat in visible) {
+      if (cat.following) continue;
+      _ring.color = cat.scared > 0 ? const Color(0x44E97159) : traitRing(cat);
+      canvas.drawCircle(cat.position.toOffset(), 19, _ring);
+    }
+    // Depth order: lower on screen is nearer, so it is drawn last. Without
+    // this, walking up or down made overlapping cats pop in front/behind.
+    visible.sort((a, b) => a.position.y.compareTo(b.position.y));
+    var leaderDrawn = false;
+    for (final cat in visible) {
+      if (!leaderDrawn && round.leader.y < cat.position.y) {
+        _drawLeader(canvas);
+        leaderDrawn = true;
       }
       _cat(canvas, cat.type, cat.position,
           moving:
@@ -243,13 +250,7 @@ class HerdGame extends FlameGame {
       paintCatChill(canvas, cat, round.time);
       paintCatTrait(canvas, cat, round.time);
     }
-    if (round.immune == 0 || (round.time * 10).floor().isEven) {
-      _cat(canvas, 'orange', round.leader,
-          moving: round.velocity.length > 2,
-          leader: true,
-          facingLeft: round.leaderFacingLeft,
-          tumble: round.landingTime);
-    }
+    if (!leaderDrawn) _drawLeader(canvas);
     paintMarketDarkness(canvas, round);
     if (round.map.kind == HerdMapKind.dunes && round.started) {
       paintDesertStorm(canvas, Size(size.x, size.y), round);
@@ -281,6 +282,17 @@ class HerdGame extends FlameGame {
           Paint()..color = const Color(0xEEFFF4DA));
       text.paint(canvas, at);
     }
+  }
+
+  final _ring = Paint();
+
+  void _drawLeader(Canvas canvas) {
+    if (round.immune > 0 && (round.time * 10).floor().isOdd) return;
+    _cat(canvas, 'orange', round.leader,
+        moving: round.velocity.length > 2,
+        leader: true,
+        facingLeft: round.leaderFacingLeft,
+        tumble: round.landingTime);
   }
 
   void _tutorialGuide(Canvas canvas) {

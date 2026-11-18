@@ -5,17 +5,19 @@ import 'package:flutter/painting.dart';
 import 'package:flutter/rendering.dart' show CustomPainter;
 import '../world/shelter_garden_painter.dart';
 import '../world/shelter_map.dart';
-import '../world/map_backgrounds.dart';
+import '../world/kitchen_painter.dart';
+import '../world/hedge_garden_painter.dart';
+import '../world/playroom_painter.dart';
+import '../world/attic_painter.dart';
+import '../world/yard_painter.dart';
+import '../world/storm_station_painter.dart';
 
 class ShelterGardenComponent extends PositionComponent {
-  ShelterGardenComponent(
-      {required this.isPlaying, required this.map, required this.mapTime})
+  ShelterGardenComponent({required this.isPlaying, required this.map})
       : super(priority: -100);
   final bool Function() isPlaying;
   final ShelterMap Function() map;
 
-  /// Seconds on the current map; drives the gate and the crates.
-  final double Function() mapTime;
   ui.Picture? _background;
   ShelterMapKind? _backgroundKind;
   double _clock = 0;
@@ -46,17 +48,26 @@ class ShelterGardenComponent extends PositionComponent {
       final recorder = ui.PictureRecorder();
       final CustomPainter painter = switch (kind) {
         ShelterMapKind.garden => const ShelterGardenPainter(),
-        ShelterMapKind.warehouse => const WarehousePainter(),
-        ShelterMapKind.pond => const PondPainter(),
+        ShelterMapKind.kitchen => const KitchenPainter(),
+        ShelterMapKind.hedge => const HedgeGardenPainter(),
+        ShelterMapKind.playroom => const PlayroomPainter(),
+        ShelterMapKind.attic => const AtticPainter(),
+        ShelterMapKind.yard => const YardPainter(),
+        ShelterMapKind.storm => const StormStationPainter(),
       };
       painter.paint(Canvas(recorder), Size(size.x, size.y));
       _background = recorder.endRecording();
       _backgroundKind = kind;
     }
+    // Map obstacles are static and live in the cached background.
     canvas.drawPicture(_background!);
-    _drawMap(canvas, mapConfig);
     // Butterflies belong outdoors.
-    if (kind == ShelterMapKind.warehouse) return;
+    if (kind == ShelterMapKind.kitchen ||
+        kind == ShelterMapKind.playroom ||
+        kind == ShelterMapKind.attic ||
+        kind == ShelterMapKind.storm) {
+      return;
+    }
     canvas.save();
     canvas.scale(size.x / 1000, size.y / 500);
     for (var i = 0; i < 2; i++) {
@@ -93,323 +104,5 @@ class ShelterGardenComponent extends PositionComponent {
       canvas.restore();
     }
     canvas.restore();
-  }
-
-  void _drawMap(Canvas canvas, ShelterMap mapConfig) {
-    if (mapConfig.name.isEmpty) return;
-    canvas.save();
-    canvas.scale(size.x / 1000, size.y / 500);
-    final t = mapTime();
-    // Pulses during the last 1.5 s before the gate or crates move.
-    final warn =
-        mapConfig.untilChange(t) < 1.5 ? .5 + .5 * math.sin(_clock * 14) : 0.0;
-    switch (mapConfig.kind) {
-      case ShelterMapKind.garden:
-        _drawGarden(canvas, mapConfig, t);
-      case ShelterMapKind.warehouse:
-        _drawWarehouse(canvas, mapConfig, t, warn);
-      case ShelterMapKind.pond:
-        _drawPond(canvas, mapConfig);
-    }
-    canvas.restore();
-  }
-
-  static Rect _px(Rect r) =>
-      Rect.fromLTWH(r.left * 1000, r.top * 500, r.width * 1000, r.height * 500);
-
-  void _shadow(Canvas canvas, Rect r) => canvas.drawOval(
-      Rect.fromLTWH(r.left - 4, r.bottom - 8, r.width + 8, 16),
-      Paint()..color = const Color(0x33402A14));
-
-  void _drawGarden(Canvas canvas, ShelterMap m, double t) {
-    // Dirt path with stepping stones running through the gate.
-    final path = Path()
-      ..moveTo(470, 112)
-      ..cubicTo(455, 220, 540, 330, 480, 500)
-      ..lineTo(540, 500)
-      ..cubicTo(600, 330, 515, 220, 530, 112)
-      ..close();
-    canvas.drawPath(path, Paint()..color = const Color(0x88D9C18E));
-    for (var i = 0; i < 11; i++) {
-      final y = 140.0 + i * 33;
-      final x = 500 + math.sin(i * .9) * 22;
-      final stone =
-          Rect.fromCenter(center: Offset(x, y), width: 34, height: 13);
-      canvas.drawOval(stone.shift(const Offset(0, 2)),
-          Paint()..color = const Color(0x44706448));
-      canvas.drawOval(stone, Paint()..color = const Color(0xFFEDE3C4));
-    }
-    for (final bed in m.obstacles.take(2).map(_px)) {
-      _shadow(canvas, bed);
-      final frame = RRect.fromRectAndRadius(bed, const Radius.circular(10));
-      canvas.drawRRect(frame, Paint()..color = const Color(0xFFB0714A));
-      for (var x = bed.left + 6; x < bed.right - 4; x += 16) {
-        canvas.drawLine(
-            Offset(x, bed.top + 2),
-            Offset(x, bed.top + 8),
-            Paint()
-              ..color = const Color(0xFF8C5537)
-              ..strokeWidth = 1.5);
-      }
-      final soil = bed.deflate(8);
-      canvas.drawRRect(RRect.fromRectAndRadius(soil, const Radius.circular(6)),
-          Paint()..color = const Color(0xFF6E4A30));
-      var i = 0;
-      for (var y = soil.top + 9; y < soil.bottom - 4; y += 14) {
-        for (var x = soil.left + 9; x < soil.right - 4; x += 14) {
-          final sway = math.sin(_clock * 2 + i) * 1.5;
-          final head = Offset(x + sway, y);
-          canvas.drawCircle(head + const Offset(-4, 4), 3.5,
-              Paint()..color = const Color(0xFF5E9A55));
-          const petals = [
-            Color(0xFFF6A6B8),
-            Color(0xFFFFE08A),
-            Color(0xFFFFF6E8)
-          ];
-          for (var k = 0; k < 5; k++) {
-            canvas.drawCircle(head + Offset.fromDirection(k * 1.2566, 3.2), 2.6,
-                Paint()..color = petals[i % 3]);
-          }
-          canvas.drawCircle(
-              head, 1.8, Paint()..color = const Color(0xFFE59A3B));
-          i++;
-        }
-      }
-    }
-    // A flower arch frames the path, leaving the passage underneath clear.
-    final timber = Paint()
-      ..color = const Color(0xFF98754E)
-      ..strokeWidth = 7
-      ..strokeCap = StrokeCap.round;
-    for (final x in [382.0, 618.0]) {
-      canvas.drawLine(Offset(x, 185), Offset(x, 120), timber);
-      canvas.drawCircle(
-          Offset(x, 185), 6, Paint()..color = const Color(0xFF75934C));
-    }
-    final arch = Path()
-      ..moveTo(382, 120)
-      ..quadraticBezierTo(500, 65, 618, 120);
-    canvas.drawPath(arch, timber..style = PaintingStyle.stroke);
-    for (var i = 0; i <= 18; i++) {
-      final u = i / 18;
-      final x = 382 + 236 * u;
-      final y = 120 - 110 * u * (1 - u);
-      canvas.drawOval(
-          Rect.fromCenter(center: Offset(x, y), width: 20, height: 12),
-          Paint()..color = const Color(0xFF538B54));
-      if (i.isEven) {
-        for (var petal = 0; petal < 5; petal++) {
-          canvas.drawCircle(
-              Offset(x, y) + Offset.fromDirection(petal * 1.2566, 4),
-              3,
-              Paint()..color = const Color(0xFFF2AEC2));
-        }
-        canvas.drawCircle(
-            Offset(x, y), 2, Paint()..color = const Color(0xFFFFDF88));
-      }
-    }
-    final spray = _px(m.sprinkler!);
-    final active = m.spraying(t);
-    final center = spray.center;
-    // Hose runs to the sprinkler along the path.
-    canvas.drawPath(
-        Path()
-          ..moveTo(495, 260)
-          ..cubicTo(470, 242, 530, 225, center.dx, center.dy),
-        Paint()
-          ..color = const Color(0xFF527B4D)
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = 4);
-    if (active) {
-      canvas.drawRRect(
-          RRect.fromRectAndRadius(spray, const Radius.circular(16)),
-          Paint()..color = const Color(0x5555BDE2));
-      canvas.drawRRect(
-          RRect.fromRectAndRadius(spray, const Radius.circular(16)),
-          Paint()
-            ..color = const Color(0xAA91E6F2)
-            ..style = PaintingStyle.stroke
-            ..strokeWidth = 2);
-    }
-    if (active) {
-      canvas.save();
-      canvas.clipRect(spray);
-      for (var jet = 0; jet < 4; jet++) {
-        final angle = t * 3 + jet * math.pi / 2;
-        final end = center + Offset(math.cos(angle) * 90, math.sin(angle) * 62);
-        canvas.drawLine(
-            center,
-            end,
-            Paint()
-              ..color = const Color(0xBBCEFAFF)
-              ..strokeWidth = 2
-              ..strokeCap = StrokeCap.round);
-        for (var drop = 1; drop <= 6; drop++) {
-          final f = ((t * 2 + drop / 6) % 1);
-          canvas.drawCircle(Offset.lerp(center, end, f)!, 1.5 + f,
-              Paint()..color = const Color(0xDDE0FBFF));
-        }
-      }
-      canvas.restore();
-    }
-    canvas.drawOval(
-        Rect.fromCenter(
-            center: center + const Offset(0, 4), width: 26, height: 12),
-        Paint()..color = const Color(0x44402A14));
-    canvas.drawCircle(center, 10, Paint()..color = const Color(0xFF537F6B));
-    canvas.drawCircle(center, 5, Paint()..color = const Color(0xFFD7DDD1));
-    canvas.save();
-    canvas.translate(center.dx, center.dy);
-    canvas.rotate(active ? t * 3 : 0);
-    canvas.drawLine(
-        const Offset(-13, 0),
-        const Offset(13, 0),
-        Paint()
-          ..color = const Color(0xFFDBC287)
-          ..strokeWidth = 4
-          ..strokeCap = StrokeCap.round);
-    canvas.restore();
-  }
-
-  void _drawWarehouse(Canvas canvas, ShelterMap m, double t, double warn) {
-    final swapped = m.cratesSwapped(t);
-    final now = (swapped ? m.altObstacles : m.obstacles).map(_px);
-    final next = (swapped ? m.obstacles : m.altObstacles).map(_px);
-    if (warn > 0) {
-      for (final ghost in next) {
-        canvas.drawRRect(
-            RRect.fromRectAndRadius(ghost, const Radius.circular(6)),
-            Paint()..color = Color.fromRGBO(232, 120, 60, .12 + .2 * warn));
-        canvas.drawRRect(
-            RRect.fromRectAndRadius(ghost, const Radius.circular(6)),
-            Paint()
-              ..color = Color.fromRGBO(232, 120, 60, .5 + .4 * warn)
-              ..style = PaintingStyle.stroke
-              ..strokeWidth = 3);
-      }
-    }
-    for (final crate in now) {
-      _shadow(canvas, crate);
-      final body = RRect.fromRectAndRadius(crate, const Radius.circular(5));
-      canvas.drawRRect(body, Paint()..color = const Color(0xFFC48C50));
-      final edge = Paint()
-        ..color = const Color(0xFF7A4B24)
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 4;
-      canvas.drawRRect(body, edge);
-      canvas.drawRect(crate.deflate(9), edge..strokeWidth = 3);
-      canvas.drawLine(crate.deflate(9).topLeft, crate.deflate(9).bottomRight,
-          edge..strokeWidth = 5);
-      canvas.drawLine(
-          Offset(crate.left + 6, crate.top + 4),
-          Offset(crate.right - 6, crate.top + 4),
-          Paint()
-            ..color = const Color(0x66FFE2B0)
-            ..strokeWidth = 2);
-      for (final corner in [
-        crate.topLeft + const Offset(5, 5),
-        crate.topRight + const Offset(-5, 5),
-        crate.bottomLeft + const Offset(5, -5),
-        crate.bottomRight + const Offset(-5, -5)
-      ]) {
-        canvas.drawCircle(corner, 2, Paint()..color = const Color(0xFF4E3018));
-      }
-    }
-  }
-
-  void _drawPond(Canvas canvas, ShelterMap m) {
-    for (final mud in m.mud.map(_px)) {
-      canvas.drawRRect(RRect.fromRectAndRadius(mud, const Radius.circular(70)),
-          Paint()..color = const Color(0x8A8A6A42));
-      final speck = math.Random(7);
-      for (var i = 0; i < 40; i++) {
-        canvas.drawCircle(
-            Offset(mud.left + 20 + speck.nextDouble() * (mud.width - 40),
-                mud.top + 12 + speck.nextDouble() * (mud.height - 24)),
-            1.5 + speck.nextDouble() * 2,
-            Paint()..color = const Color(0x55513A1E));
-      }
-    }
-    for (final water in m.obstacles.map(_px)) {
-      final rim =
-          RRect.fromRectAndRadius(water.inflate(5), const Radius.circular(45));
-      canvas.drawRRect(rim, Paint()..color = const Color(0xFFB9A57C));
-      final pond = RRect.fromRectAndRadius(water, const Radius.circular(40));
-      canvas.drawRRect(
-          pond,
-          Paint()
-            ..shader = const RadialGradient(
-                    colors: [Color(0xFF7FD0D6), Color(0xFF3E8C9E)])
-                .createShader(water));
-      canvas.save();
-      canvas.clipRRect(pond);
-      for (var i = 0; i < 3; i++) {
-        final phase = (_clock * .35 + i / 3) % 1;
-        canvas.drawOval(
-            Rect.fromCenter(
-                center: water.center + Offset(-30 + i * 30.0, -6 + i * 6.0),
-                width: 20 + phase * 70,
-                height: 7 + phase * 24),
-            Paint()
-              ..color = Color.fromRGBO(230, 252, 250, .5 * (1 - phase))
-              ..style = PaintingStyle.stroke
-              ..strokeWidth = 1.5);
-      }
-      for (final (dx, dy, r) in const [
-        (-.32, -.2, 13.0),
-        (.3, .18, 11.0),
-        (.12, -.28, 9.0),
-        (-.1, .3, 10.0)
-      ]) {
-        final c = water.center +
-            Offset(dx * water.width, dy * water.height) +
-            Offset(math.sin(_clock + r) * 1.5, 0);
-        canvas.drawArc(Rect.fromCircle(center: c, radius: r), .5, 5.6, true,
-            Paint()..color = const Color(0xFF5FA45A));
-        canvas.drawCircle(c + const Offset(-2, -2), r * .35,
-            Paint()..color = const Color(0x3389D27E));
-      }
-      final lotus = water.center + Offset(water.width * .3, water.height * .18);
-      for (var k = 0; k < 6; k++) {
-        canvas.drawOval(
-            Rect.fromCenter(
-                center: lotus + Offset.fromDirection(k * 1.047, 4),
-                width: 7,
-                height: 5),
-            Paint()..color = const Color(0xFFF4A3C0));
-      }
-      canvas.drawCircle(lotus, 2.5, Paint()..color = const Color(0xFFFFE07A));
-      canvas.restore();
-      for (final base in [
-        water.bottomLeft + const Offset(12, -6),
-        water.topRight + const Offset(-14, 10),
-        water.bottomRight + const Offset(-20, -2),
-      ]) {
-        for (var k = 0; k < 4; k++) {
-          final sway = math.sin(_clock * 1.6 + k + base.dx) * 2;
-          final top = base + Offset(k * 5 - 8 + sway, -26 - (k % 2) * 8.0);
-          canvas.drawLine(
-              base + Offset(k * 5 - 8, 0),
-              top,
-              Paint()
-                ..color = const Color(0xFF5E8B4A)
-                ..strokeWidth = 2);
-          if (k.isOdd) {
-            canvas.drawRRect(
-                RRect.fromRectAndRadius(
-                    Rect.fromCenter(center: top, width: 5, height: 12),
-                    const Radius.circular(3)),
-                Paint()..color = const Color(0xFF8A5A33));
-          }
-        }
-      }
-    }
-  }
-
-  @override
-  void onRemove() {
-    _background?.dispose();
-    _background = null;
-    super.onRemove();
   }
 }

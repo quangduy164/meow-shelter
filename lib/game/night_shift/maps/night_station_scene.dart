@@ -194,6 +194,9 @@ class NightStationScene extends NightScene {
     return helped;
   }
 
+  @override
+  int helperBoost(int count) => helpNear(Offset.zero, 0, count);
+
   void tapMark(int car) {
     if (game.paused || game.night?.phase != NightPhase.playing) return;
     final cat = selected;
@@ -264,6 +267,7 @@ class NightStationScene extends NightScene {
     for (var car = 0; car < marks.length; car++) {
       final cat = marks[car];
       if (cat == null || _walks.containsKey(cat)) continue;
+      if (!line.accepts(car, cat.catType) && night.assist.calm) continue;
       marks[car] = null;
       if (line.accepts(car, cat.catType)) {
         _walks[cat] = _Walk(doorSpot(car, cat), board: true);
@@ -293,6 +297,7 @@ class NightStationScene extends NightScene {
       cat.positionInTrap(benchSpot(slot, cat), walking: false);
       _arrived.add(cat);
     }
+    line.anyCar = night.acceptsAnyBed;
     final pace = night.assist.frozen ? 0.0 : night.assist.pace;
     line.update(dt * pace);
     _plan();
