@@ -180,10 +180,11 @@
   `movingBeds`, `darkness`) or a `bossType`, plus up to two `LevelGoal`s
   (`levels/level_goal.dart`) for stars 2 and 3.
 - **Yard rack (chapter 1, levels 202-203):** `ShelterMap.yard` has a `rack`;
-  `systems/rack_system.dart` shakes one hanging fish, then drops it as free
-  bait every 8-11 s (rounds with a rack never end "out of fish"). The orange
-  boss only naps when its last fish is eaten on a `napMats` straw mat
-  (`CatComponent.napMat`); the mats glow once it needs one more fish.
+  `systems/rack_system.dart` holds only 5 fish; it shakes one, then drops it
+  as free bait every 8-11 s. The orange boss may eat its last fish anywhere,
+  then walks to the nearest `napMats` straw mat (`CatComponent.napSpot`) and
+  only becomes catchable once asleep there; the mats glow from its last fish
+  until it naps.
   Level 201 stays the plain guided tutorial. Art: `world/yard_painter.dart`.
 - **Garden bushes (chapter 2):** `ShelterMap.hedge` lists bush centres;
   `systems/bush_system.dart` hides every Himalaya in one (`hideInCover`)

@@ -1,8 +1,10 @@
 import 'dart:async';
 import 'package:material_ui/material_ui.dart';
 import '../../game/night_shift/night_game.dart';
+import '../../game/night_shift/night_helpers.dart';
 import '../design.dart';
 import 'adventure_buttons.dart';
+import 'night_skill_icon.dart';
 
 /// Helper skill buttons during the night shift, between the middle bed and
 /// the bottom-right bed so they never cover a drop spot.
@@ -35,17 +37,38 @@ class _NightSkillBarState extends State<NightSkillBar> {
   Widget build(BuildContext context) {
     final game = widget.game;
     if (game.run == null) return const SizedBox.shrink();
-    return SafeArea(
-      child: Align(
-        alignment: const Alignment(.4, 1),
-        child: Padding(
-          padding: const EdgeInsets.only(bottom: DS.spaceXs),
-          child: Row(mainAxisSize: MainAxisSize.min, children: [
-            for (final type in game.helpers) ...[
-              _compact(game, type),
-              const SizedBox(width: DS.spaceSm),
-            ],
-          ]),
+    return TooltipTheme(
+      data: TooltipThemeData(
+        triggerMode: TooltipTriggerMode.longPress,
+        preferBelow: false,
+        verticalOffset: 34,
+        showDuration: const Duration(seconds: 3),
+        margin: const EdgeInsets.symmetric(horizontal: DS.spaceXl),
+        padding: const EdgeInsets.symmetric(
+            horizontal: DS.spaceMd, vertical: DS.spaceSm),
+        decoration: BoxDecoration(
+            color: DS.cream,
+            borderRadius: BorderRadius.circular(DS.radiusMd),
+            border: Border.all(color: DS.wood, width: 2),
+            boxShadow: DS.controlShadow),
+        textStyle: const TextStyle(
+            color: DS.ink,
+            fontSize: DS.fontBody,
+            fontWeight: FontWeight.w700,
+            height: 1.35),
+      ),
+      child: SafeArea(
+        child: Align(
+          alignment: const Alignment(.4, 1),
+          child: Padding(
+            padding: const EdgeInsets.only(bottom: DS.spaceXs),
+            child: Row(mainAxisSize: MainAxisSize.min, children: [
+              for (final type in game.helpers) ...[
+                _compact(game, type),
+                const SizedBox(width: DS.spaceSm),
+              ],
+            ]),
+          ),
         ),
       ),
     );
@@ -59,6 +82,9 @@ class _NightSkillBarState extends State<NightSkillBar> {
         cooldownLeft: game.helperCooldown[type] ?? 0,
         cooldownTotal: game.helperCooldownTotal(type),
         onPressed: () => game.useHelper(type),
+        // Long press explains what this helper does on the current map.
+        icon: NightSkillIcon(type, size: size * .64),
+        tooltip: NightHelperSkill.effectOn(type, game.run!.map),
       );
 
   Widget _tag(String text, bool active) => Container(

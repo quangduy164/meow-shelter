@@ -38,8 +38,16 @@ class AdventureSkillButton extends StatelessWidget {
     required this.cooldownTotal,
     required this.onPressed,
     this.size = 76,
+    this.tooltip,
+    this.icon,
   });
+
+  /// Replaces the Adventure skill glyph, e.g. with night-shift art.
+  final Widget? icon;
   final String catType;
+
+  /// Long-press text; defaults to the skill name.
+  final String? tooltip;
   final double size;
   final bool ready;
   final double cooldownLeft, cooldownTotal;
@@ -53,13 +61,13 @@ class AdventureSkillButton extends StatelessWidget {
         ? 0.0
         : (cooldownLeft / cooldownTotal).clamp(0.0, 1.0);
     return RoundGameButton(
-      tooltip: label,
+      tooltip: tooltip ?? label,
       size: size,
       face: ready ? color : DS.mutedFill,
       base: ready ? Color.lerp(color, Colors.black, .35)! : DS.mutedBorder,
       onPressed: ready ? onPressed : null,
       child: Stack(alignment: Alignment.center, children: [
-        if (ready) SkillGlyphView(glyph, size: size * .6),
+        if (ready) icon ?? SkillGlyphView(glyph, size: size * .6),
         if (!ready) ...[
           SizedBox.square(
               dimension: size - 12,

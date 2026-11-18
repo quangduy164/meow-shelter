@@ -5,10 +5,10 @@ import '../../game/cats/cat_breed.dart';
 import '../../game/night_shift/night_game.dart';
 import '../../game/night_shift/night_helpers.dart';
 import '../design.dart';
+import 'night_skill_icon.dart';
 import 'cat_sprite.dart';
 import 'game_glyphs.dart';
 import 'round_button.dart';
-import 'skill_glyphs.dart';
 
 /// Before the night shift: pick up to two camp cats to bring along. Each one
 /// adds an active skill with the same recharge regardless of affection.
@@ -178,11 +178,11 @@ class _NightSetupOverlayState extends State<NightSetupOverlay> {
                   height: 24,
                   decoration: BoxDecoration(
                       color: breed.homeSkill.color, shape: BoxShape.circle),
-                  child: SkillGlyphView(breed.homeSkill.glyph, size: 18),
+                  child: Center(child: NightSkillIcon(breed.id, size: 18)),
                 ),
                 const SizedBox(width: DS.spaceXs),
                 Flexible(
-                  child: Text(breed.homeSkill.label,
+                  child: Text(skill.title,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
@@ -193,7 +193,7 @@ class _NightSetupOverlayState extends State<NightSetupOverlay> {
               ]),
               const SizedBox(height: DS.spaceXs),
               Expanded(
-                child: Text(owned ? skill.effect : 'Mua ở cửa hàng trại mèo',
+                child: Text(owned ? skill.summary : 'Mua ở cửa hàng trại mèo',
                     textAlign: TextAlign.center,
                     style: const TextStyle(
                         color: DS.soft, fontSize: DS.fontCaption, height: 1.2)),

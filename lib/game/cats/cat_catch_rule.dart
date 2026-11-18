@@ -45,7 +45,7 @@ class CatCatchRule {
           bool yard = false}) =>
       switch (type) {
         'orange' when yard =>
-          'Mèo cam béo phải ăn 3 cá, và chỉ chịu ngủ khi ăn cá cuối trên ổ rơm',
+          'Mèo cam béo phải ăn 3 cá, no rồi sẽ về ổ rơm ngủ, ngủ rồi mới bế được',
         'black' when moon =>
           'Mèo đen bóng ma nhảy giữa các góc tối; dấu chân tím chỉ chỗ sắp hiện',
         'calico' when toys =>

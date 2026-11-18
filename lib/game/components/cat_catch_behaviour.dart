@@ -200,16 +200,18 @@ extension CatCatchBehaviour on CatComponent {
   void _eat() {
     _meals += 1;
     onFed?.call(this);
-    if (_meals >= _mealsNeeded &&
-        isBoss &&
-        napMat != null &&
-        !napMat!(_center)) {
-      // The fat orange boss only naps on a straw mat; elsewhere it keeps
-      // running and needs one more fish.
-      _meals = _mealsNeeded - 1;
+    final mat =
+        _meals >= _mealsNeeded && isBoss ? napSpot?.call(_center) : null;
+    if (mat != null) {
+      // Full: the fat orange boss waddles to the nearest straw mat first
+      // and can only be picked up once it is asleep there.
       GameAudio.instance.playRescue(GameSound.catEat);
-      _dialogue.say('Chưa buồn ngủ ở đây! Ổ rơm cơ!');
-      _pickNextAction();
+      _goingToNap = true;
+      fishTarget = mat;
+      _lureDish = Dish.fish;
+      _velocityY = 0;
+      _setState(CatState.walk);
+      _dialogue.say('No căng bụng! Về ổ rơm ngủ thôi…');
       return;
     }
     if (_meals < _mealsNeeded) {
@@ -294,6 +296,16 @@ extension CatCatchBehaviour on CatComponent {
   }
 
   /// Calico ignores fish; three quick taps tire it out instead.
+  /// Reached the straw mat (or gave up getting there): fall asleep.
+  void _napNow() {
+    _goingToNap = false;
+    hasEaten = true;
+    GameAudio.instance.playRescue(GameSound.catFed, important: true);
+    _setState(CatState.idle);
+    catchWindow.open(CatCatchRule.orangeNap);
+    _dialogue.say('Khò khò… bế em đi');
+  }
+
   /// Seconds per beat the Calico boss taps along to; taps count only on it.
   static const _beat = .9;
   double get beatPhase => (_bubbleClock % _beat) / _beat;

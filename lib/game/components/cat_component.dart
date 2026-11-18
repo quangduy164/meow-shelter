@@ -48,7 +48,7 @@ class CatComponent extends SpriteAnimationGroupComponent<CatState>
     this.onKickToy,
     this.onTantrum,
     this.moonlit,
-    this.napMat,
+    this.napSpot,
     super.priority,
   })  : catchWindow = CatchWindow(
             readySeconds: level.readySeconds,
@@ -77,8 +77,10 @@ class CatComponent extends SpriteAnimationGroupComponent<CatState>
   /// Attic: black cats only take fish lying in moonlight.
   final bool Function(Vector2 point)? moonlit;
 
-  /// Yard: whether a point lies on a straw mat (orange boss naps only there).
-  final bool Function(Vector2 point)? napMat;
+  /// Yard: centre of the straw mat nearest to a point; the full orange boss
+  /// walks there to sleep before it can be caught.
+  final Vector2? Function(Vector2 from)? napSpot;
+  bool _goingToNap = false;
 
   /// What the cat is walking to: food, or a ball of yarn to play with.
   Dish _lureDish = Dish.fish;
@@ -496,6 +498,12 @@ class CatComponent extends SpriteAnimationGroupComponent<CatState>
       if (_yarnPlay <= 0) _pickNextAction();
       return;
     }
+    if (_goingToNap && fishTarget == null) {
+      // A startle knocked it off course: head for the straw mat again.
+      fishTarget = napSpot?.call(_center);
+      if (fishTarget == null) _napNow();
+      _setState(CatState.walk);
+    }
     final target = fishTarget;
     if (target != null) {
       final waypoint =
@@ -510,7 +518,9 @@ class CatComponent extends SpriteAnimationGroupComponent<CatState>
       if (waypoint == target && distance <= speed * dt + 4) {
         fishTarget = null;
         _lureStuck = 0;
-        if (_lureDish == Dish.yarn) {
+        if (_goingToNap) {
+          _napNow();
+        } else if (_lureDish == Dish.yarn) {
           _reachYarn();
         } else {
           _eat();
@@ -523,7 +533,11 @@ class CatComponent extends SpriteAnimationGroupComponent<CatState>
         // shortcut: a fish nobody can reach is dropped, not refunded.
         fishTarget = null;
         _lureStuck = 0;
-        _pickNextAction();
+        if (_goingToNap) {
+          _napNow();
+        } else {
+          _pickNextAction();
+        }
       }
       return;
     }

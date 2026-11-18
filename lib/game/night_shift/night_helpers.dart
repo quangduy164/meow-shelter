@@ -1,11 +1,18 @@
 import 'night_cards.dart';
 
 /// One camp cat brought along as a helper: its active skill on this shift.
-/// Names and icons are the breed's home skill so they match Adventure.
+/// Names and icons are night-shift specific (see NightSkillIcon).
 class NightHelperSkill {
-  const NightHelperSkill(this.effect, this.cooldown, this.duration);
+  const NightHelperSkill(
+      this.title, this.summary, this.effect, this.cooldown, this.duration);
 
-  /// What the skill does on the rescue field, shown in the picker and toast.
+  /// Short skill name shown in the helper picker.
+  final String title;
+
+  /// Map-independent gist for the helper picker; the shift rotates maps.
+  final String summary;
+
+  /// What the skill does on maps where cats are carried to beds.
   final String effect;
   final double cooldown;
 
@@ -13,16 +20,36 @@ class NightHelperSkill {
   final double duration;
 
   static const of = <String, NightHelperSkill>{
-    'orange':
-        NightHelperSkill('Đồng hồ chờ bế và bế mèo đứng yên 6 giây', 14, 6),
-    'black':
-        NightHelperSkill('Mèo không giật mình, không giở chiêu 8 giây', 18, 8),
-    'scottish':
-        NightHelperSkill('Sân đóng băng: mèo chậm một nửa 6 giây', 12, 6),
-    'calico':
-        NightHelperSkill('Thả vào ổ nào cũng bật về đúng ổ 10 giây', 20, 10),
-    'himalaya':
-        NightHelperSkill('2 mèo trên sân no ngay, sẵn sàng để bế', 22, 0),
+    'orange': NightHelperSkill(
+        'Giữ giờ',
+        'Mèo, bè, tàu và đồng hồ chờ đứng yên 6 giây',
+        'Đồng hồ chờ bế và bế mèo đứng yên 6 giây',
+        14,
+        6),
+    'black': NightHelperSkill(
+        'Trấn an',
+        'Mèo không hoảng, làm hụt không bị phạt 8 giây',
+        'Mèo không giật mình, không giở chiêu 8 giây',
+        18,
+        8),
+    'scottish': NightHelperSkill(
+        'Làm chậm',
+        'Mèo, dòng nước và tàu chậm một nửa 6 giây',
+        'Sân đóng băng: mèo chậm một nửa 6 giây',
+        12,
+        6),
+    'calico': NightHelperSkill(
+        'Chắc ăn',
+        'Cứu dễ hơn 10 giây: ổ, bến, toa nào cũng nhận',
+        'Thả vào ổ nào cũng bật về đúng ổ 10 giây',
+        20,
+        10),
+    'himalaya': NightHelperSkill(
+        'Gọi mèo',
+        'Ngay lập tức giúp 2 mèo dễ cứu hơn',
+        '2 mèo trên sân no ngay, sẵn sàng để bế',
+        22,
+        0),
   };
 
   /// The same skill worded for the map it is used on.

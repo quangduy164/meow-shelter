@@ -26,6 +26,10 @@ class RackSystem {
   double? _shakeX;
   final _drops = <_Drop>[];
 
+  /// Dried fish left on the rack; free fish run out like any other.
+  int stock = startStock;
+  static const startStock = 5;
+
   /// Seconds between drops, the warning shake and the fall itself.
   static const minGap = 8.0, maxGap = 11.0, shake = 1.0, fall = .55;
 
@@ -39,12 +43,18 @@ class RackSystem {
       double dt, Vector2 size, BaitSystem bait, Iterable<CatComponent> cats) {
     _size = size;
     _clock += dt;
-    _timer -= dt;
-    if (_timer <= shake && _shakeX == null) {
-      final r = _rack;
-      _shakeX = r.left + 14 + random.nextDouble() * (r.width - 28);
+    if (stock <= 0) {
+      _shakeX = null;
+    } else {
+      _timer -= dt;
     }
-    if (_timer <= 0) {
+    if (stock > 0 && _timer <= shake && _shakeX == null) {
+      // The last fish on the line shakes, then falls.
+      final r = _rack;
+      _shakeX = r.left + 18 + (stock - 1) * (r.width - 36) / 4;
+    }
+    if (stock > 0 && _timer <= 0) {
+      stock -= 1;
       final r = _rack;
       final x = _shakeX ?? r.center.dx;
       final land = Vector2(x + (random.nextDouble() - .5) * 30,
@@ -65,9 +75,10 @@ class RackSystem {
   void render(Canvas canvas) {
     final r = _rack;
     if (r.width <= 0) return;
-    for (var i = 0; i < 5; i++) {
+    // Only the fish still hanging are drawn, so the rack empties visibly.
+    for (var i = 0; i < stock; i++) {
       final x = r.left + 18 + i * (r.width - 36) / 4;
-      final shaking = _shakeX != null && (x - _shakeX!).abs() < 30;
+      final shaking = _shakeX != null && (x - _shakeX!).abs() < 4;
       final sway =
           shaking ? sin(_clock * 40) * .35 : sin(_clock * 1.5 + i) * .08;
       canvas.save();

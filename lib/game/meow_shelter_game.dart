@@ -238,7 +238,7 @@ class MeowShelterGame extends FlameGame {
         bushes?.noise(cat.center, BushSystem.startleNoise);
       },
       moonlit: moon?.lit,
-      napMat: _map.napMats.isEmpty ? null : _onNapMat,
+      napSpot: _map.napMats.isEmpty ? null : _nearestMat,
       onKickToy: (cat) {
         stats.distractions += 1;
         bait.kickYarn(cat.center, _randomRoll(170));
@@ -403,11 +403,12 @@ class MeowShelterGame extends FlameGame {
           (bait.positions.isEmpty &&
               !children.whereType<CatComponent>().any((cat) => cat.hasEaten)));
 
-  bool _onNapMat(Vector2 point) => _map.napMats.any((m) => Rect.fromLTWH(
-          m.left * size.x, m.top * size.y, m.width * size.x, m.height * size.y)
-      .contains(point.toOffset()));
+  Vector2 _nearestMat(Vector2 from) => _map.napMats
+      .map((m) => Vector2(
+          (m.left + m.width / 2) * size.x, (m.top + m.height / 2) * size.y))
+      .reduce((a, b) => a.distanceTo(from) < b.distanceTo(from) ? a : b);
 
-  /// Straw mats glow with "Zz" once the orange boss needs only one more fish.
+  /// Straw mats glow with "Zz" from the boss's last fish until it sleeps.
   void _drawNapMats(Canvas canvas) {
     if (_map.napMats.isEmpty) return;
     final sleepy = children.whereType<CatComponent>().any((cat) =>
@@ -517,8 +518,8 @@ class MeowShelterGame extends FlameGame {
           bait.fishCount <= 0 &&
           night!.run!.rescuedTonight < night!.run!.quota;
     }
-    // The drying rack keeps dropping free fish, so nobody runs out.
-    if (rack != null) return false;
+    // Dried fish still on the rack will fall, so the round is not lost yet.
+    if ((rack?.stock ?? 0) > 0) return false;
     if (!bait.limited || bait.fishCount > 0 || bait.hasBaitOut) {
       return false;
     }
