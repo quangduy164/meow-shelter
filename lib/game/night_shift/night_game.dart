@@ -242,6 +242,9 @@ class NightGame {
         : twists[random.nextInt(twists.length)];
     _thickClouds = twist == 1;
     _bedTwist = twist == 2;
+    // Every cat of the last night was rescued; anything left (a cat that
+    // finished walking after the night ended) must not follow onto this map.
+    game.removeAll(game.children.whereType<CatComponent>().toList());
     if (scene.map != run.map) {
       scene.remove();
       _scene = createNightScene(run.map, game,
@@ -372,6 +375,10 @@ class NightGame {
       return;
     }
     run.cards.add(card);
+    if (card.paysOnPick) {
+      run.earnMoonlight(NightCard.mapCardBonus);
+      game.hud.silver = run.silver;
+    }
     _afterCards();
   }
 

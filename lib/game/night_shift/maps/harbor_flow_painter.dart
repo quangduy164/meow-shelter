@@ -6,7 +6,7 @@ import 'package:flutter/painting.dart';
 import '../static_layer.dart';
 import '../moonlight.dart';
 import '../moonlight_art.dart';
-import '../../cats/cat_breed.dart';
+import '../night_colors.dart';
 import 'harbor_flow.dart';
 
 Offset _px(Offset p, Vector2 size) => Offset(p.dx * size.x, p.dy * size.y);
@@ -195,7 +195,7 @@ class HarborBackground extends PositionComponent with HasGameReference {
           ? const Color(0xFFFFE08A)
           : breed == null
               ? const Color(0xFF8A9A9E)
-              : CatBreed.of(breed).color;
+              : nightBreedColor(breed);
       final glow = .45 + math.sin(_clock * 4 + lane) * .15;
       final lamp = Offset(rect.center.dx + 4, rect.top - 11);
       c.drawCircle(
@@ -204,7 +204,22 @@ class HarborBackground extends PositionComponent with HasGameReference {
           _stroke(_ink, 2.4));
       c.drawCircle(lamp, 14, Paint()..color = color);
       c.drawCircle(lamp, 14, _stroke(_ink, 2));
-      _paw(c, lamp, shared ? const Color(0xFF6A3E1E) : const Color(0xFFFFF4DA));
+      if (shared || breed == null) {
+        _paw(c, lamp, const Color(0xFF6A3E1E));
+      } else {
+        paintBreedMark(c, lamp, 7.5, breed);
+      }
+      // Coloured mooring edge facing the water, so the dock reads from afar.
+      c.drawRRect(
+          RRect.fromRectAndRadius(
+              Rect.fromLTWH(rect.left - 5, rect.top + 2, 7, rect.height - 4),
+              const Radius.circular(3)),
+          Paint()..color = color);
+      c.drawRRect(
+          RRect.fromRectAndRadius(
+              Rect.fromLTWH(rect.left - 5, rect.top + 2, 7, rect.height - 4),
+              const Radius.circular(3)),
+          _stroke(_ink, 1.6));
     }
   }
 
@@ -257,6 +272,12 @@ class HarborRaftsComponent extends PositionComponent with HasGameReference {
   void update(double dt) => _clock += dt;
 
   static final _raftArt = StaticLayer();
+
+  @override
+  void onRemove() {
+    _raftArt.clear();
+    super.onRemove();
+  }
 
   /// Identical for every raft, so it is rasterised once and stamped.
   static void _paintRaft(Canvas canvas, Rect body) {
@@ -313,13 +334,14 @@ class HarborRaftsComponent extends PositionComponent with HasGameReference {
       canvas.restore();
       final pole = Offset(body.right - 8, body.top + 4);
       canvas.drawLine(pole, pole - const Offset(0, 25), _stroke(_ink, 2.5));
-      final flag = Path()
-        ..moveTo(pole.dx, pole.dy - 25)
-        ..lineTo(pole.dx + 18, pole.dy - 20)
-        ..lineTo(pole.dx, pole.dy - 14)
-        ..close();
-      canvas.drawPath(flag, Paint()..color = CatBreed.of(raft.breed).color);
-      canvas.drawPath(flag, _stroke(_ink, 1.5));
+      // Square banner with the breed's mark: same colour and shape as its dock.
+      final flag = RRect.fromRectAndCorners(
+          Rect.fromLTWH(pole.dx, pole.dy - 27, 22, 17),
+          topRight: const Radius.circular(4),
+          bottomRight: const Radius.circular(4));
+      canvas.drawRRect(flag, Paint()..color = nightBreedColor(raft.breed));
+      canvas.drawRRect(flag, _stroke(_ink, 1.6));
+      paintBreedMark(canvas, flag.center, 5.5, raft.breed);
       if (raft.anchor > 0) {
         final fish = c + const Offset(-24, 1);
         final fishPaint = Paint()..color = const Color(0xFF8ED7E8);

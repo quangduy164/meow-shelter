@@ -35,8 +35,7 @@ class StormSystem {
 
   double get _phase => (time + truckOffset) % truckPeriod;
   bool get truckParked => _phase >= arrive && _phase < arrive + park;
-  double get truckLeavesIn =>
-      truckParked ? arrive + park - _phase : 0;
+  double get truckLeavesIn => truckParked ? arrive + park - _phase : 0;
 
   /// Truck bed area in pixels, sliding in from the left and out to the right.
   Rect get truckRect {
@@ -98,12 +97,11 @@ class StormSystem {
   void _truck(Canvas canvas) {
     final r = truckRect;
     if (r.left > field.x || r.right < 0) return;
-    canvas.drawOval(
-        Rect.fromLTWH(r.left, r.bottom - 6, r.width, 14),
+    canvas.drawOval(Rect.fromLTWH(r.left, r.bottom - 6, r.width, 14),
         Paint()..color = const Color(0x55101828));
     // Open cargo bed (the drop zone) with a red cross on the cab.
-    final cab = Rect.fromLTWH(r.right - r.width * .28, r.top - 6,
-        r.width * .28, r.height + 6);
+    final cab = Rect.fromLTWH(
+        r.right - r.width * .28, r.top - 6, r.width * .28, r.height + 6);
     final bed = Rect.fromLTWH(r.left, r.top + 10, r.width * .74, r.height - 10);
     canvas.drawRRect(RRect.fromRectAndRadius(bed, const Radius.circular(8)),
         Paint()..color = const Color(0xFFF2EBDD));
@@ -128,15 +126,17 @@ class StormSystem {
     canvas.drawRRect(
         RRect.fromRectAndRadius(
             Rect.fromCenter(
-                center: Offset(cab.center.dx, cab.top - 3), width: 18, height: 7),
+                center: Offset(cab.center.dx, cab.top - 3),
+                width: 18,
+                height: 7),
             const Radius.circular(3)),
         Paint()
           ..color = flash ? const Color(0xFFE0533E) : const Color(0xFF5A9BE0));
     for (final x in [r.left + r.width * .18, r.right - r.width * .16]) {
-      canvas.drawCircle(Offset(x, r.bottom), 9,
-          Paint()..color = const Color(0xFF343C49));
-      canvas.drawCircle(Offset(x, r.bottom), 4,
-          Paint()..color = const Color(0xFFC6C6BB));
+      canvas.drawCircle(
+          Offset(x, r.bottom), 9, Paint()..color = const Color(0xFF343C49));
+      canvas.drawCircle(
+          Offset(x, r.bottom), 4, Paint()..color = const Color(0xFFC6C6BB));
     }
     if (truckParked) {
       // Countdown blocks on the bed rail: the truck leaves when they run out.

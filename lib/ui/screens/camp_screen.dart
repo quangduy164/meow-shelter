@@ -138,8 +138,12 @@ class _CampScreenState extends State<CampScreen>
       final codec = await ui.instantiateImageCodec(data.buffer.asUint8List(),
           targetHeight: (_CampCatsPainter.spriteSize * dpr).ceil(),
           allowUpscaling: false);
-      final frame = await codec.getNextFrame();
-      codec.dispose();
+      final ui.FrameInfo frame;
+      try {
+        frame = await codec.getNextFrame();
+      } finally {
+        codec.dispose();
+      }
       if (!mounted) return frame.image.dispose();
       _sprites[path] = frame.image;
     } catch (_) {
@@ -221,8 +225,10 @@ class _CampScreenState extends State<CampScreen>
       ),
     );
     if (!mounted || name == null) return;
+    final oldName = camp.nameOf(breed.id);
     final saved = await camp.renameCat(breed.id, name);
     if (!mounted) return;
+    if (saved) _labels.forget(oldName);
     setState(() {});
     if (!saved) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
@@ -1201,6 +1207,8 @@ class _CatLabels {
         ),
         textDirection: TextDirection.ltr,
       )..layout();
+
+  void forget(String text) => _names.remove(text)?.dispose();
 
   void dispose() {
     for (final painter in _names.values) {

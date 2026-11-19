@@ -144,8 +144,9 @@ class ClawMachineScene extends NightScene {
     }
   }
 
+  /// Chuẩn bị kỹ: the night opens with a fish in the middle of the tank.
   @override
-  void prepareBait() {}
+  void prepareBait() => machine.putFish(.5);
 
   @override
   bool placeBait(Offset point, {bool free = false}) {
@@ -222,8 +223,9 @@ class ClawMachineScene extends NightScene {
       cat.enterTrap();
       cat.size.setValues(catHeight, catHeight);
     }
+    // Scottish helper widens the claw here instead of slowing the cats.
+    machine.reachBoost = night.effectLeft('scottish') > 0 ? 1.5 : 1;
     final events = machine.update(dt, game.random,
-        pace: night.assist.pace,
         frozen: night.assist.frozen,
         calm: night.assist.calm,
         firm: night.acceptsAnyBed);

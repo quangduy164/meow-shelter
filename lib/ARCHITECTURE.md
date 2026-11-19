@@ -239,6 +239,22 @@
 - Draw cats in widgets only through `CatSprite` / `CatFace`.
 - Saves never crash the app: unreadable data is kept under `<key>_broken`
   and the game starts fresh; failed writes are logged with `debugPrint`.
+- Releasing resources (checked for rescue and herd modes):
+  - A component that caches a `ui.Picture`/`ui.Image` disposes it in
+    `onRemove` and before re-recording (map or size change). Leaving a game
+    screen calls `onDispose`/`onRemove`; restarts remove every component.
+  - Never build a `TextPainter` inside `render`/`paint`. Use `TextCache`
+    (rescue/camp) or `herdLabel` (herd); both evict only the least recently
+    used label, and callers must not dispose what they return. A label kept
+    in a field (e.g. fish tray count) is disposed when replaced and in
+    `onRemove`.
+  - Sprite sheets live in Flame's shared image cache: never call
+    `game.images.clearCache()` or a game's `dispose` on screen exit.
+  - Widgets dispose their `AnimationController`s, `ScrollController`s and
+    timers, and remove every listener/observer they add (`CampState`
+    notifiers, `WidgetsBinding` observers).
+  - Game sounds go through `GameAudio`; do not create `AudioPlayer`s per
+    event or start loops a screen does not stop.
 
 Validation: `flutter analyze` and Android builds. Do not add project-local
 tools or test files.

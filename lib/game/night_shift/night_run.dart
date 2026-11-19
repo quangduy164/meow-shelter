@@ -134,7 +134,13 @@ class NightRun {
   /// Cats on the field at once.
   int get fieldSize =>
       min(min(2 + night ~/ 2, 5) + count(NightCard.crowd), quota);
-  int get seconds => (22 + quota * 8) + 10 * count(NightCard.longNight);
+  int get seconds {
+    final base = (22 + quota * 8) + 10 * count(NightCard.longNight);
+    // Khế ước trăng's speed cost only bites where cats roam; elsewhere the
+    // night is shorter instead.
+    if (NightCard.carryMaps.contains(map)) return base;
+    return (base * pow(.9, count(NightCard.hotCoins))).round();
+  }
 
   /// Rotate rescue maps each night.
   // Test order: put the newest maps first.

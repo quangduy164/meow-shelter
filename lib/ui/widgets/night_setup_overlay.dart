@@ -30,8 +30,13 @@ class _NightSetupOverlayState extends State<NightSetupOverlay> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance
-        .addPostFrameCallback((_) => widget.game.game.pauseEngine());
+    // Let the first round finish mounting before pausing: components still
+    // queued while paused would survive the restart below as duplicates
+    // (extra cats, a second HUD).
+    final game = widget.game.game;
+    game.lifecycleEventsProcessed.then((_) {
+      if (mounted) game.pauseEngine();
+    });
   }
 
   void _toggle(String type) {
@@ -50,6 +55,9 @@ class _NightSetupOverlayState extends State<NightSetupOverlay> {
     final game = widget.game
       ..helpers = List.of(_picked)
       ..game.overlays.remove('nightSetup');
+    // Anything still queued must mount first so the restart can remove it.
+    game.game.resumeEngine();
+    await game.game.lifecycleEventsProcessed;
     await game.game.restartRound();
     if (!game.game.overlays.isActive('nightInfo')) {
       game.game.overlays.add('nightSkills');

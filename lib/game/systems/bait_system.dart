@@ -90,6 +90,14 @@ class BaitSystem {
     for (final bait in _baits) {
       if (bait.rolling) _roll(bait, dt);
     }
+    // A cat that left the field (escaped, rescued) can no longer eat it.
+    for (final bait in _baits) {
+      final eater = bait.eater;
+      if (eater != null && (!eater.isMounted || eater.isDelivered)) {
+        eater.fishTarget = null;
+        bait.portions = max(bait.portions, 1);
+      }
+    }
     _baits.removeWhere((bait) =>
         bait.eater != null &&
         bait.eater!.fishTarget == null &&

@@ -119,6 +119,13 @@ void paintAdventureHud(
 /// text rarely changes, and text layout is one of the costliest paint steps.
 final _labels = <(String, double, Color, TextAlign, double), TextPainter>{};
 
+void clearAdventureHudCache() {
+  for (final painter in _labels.values) {
+    painter.dispose();
+  }
+  _labels.clear();
+}
+
 void _label(
   Canvas canvas,
   String text,

@@ -1,4 +1,5 @@
 import '../../ui/design.dart';
+import '../text_cache.dart';
 import 'package:flutter/painting.dart';
 
 import 'package:flame/components.dart';
@@ -69,16 +70,16 @@ class ShelterZoneComponent extends PositionComponent {
               height: unit * 1.1),
           paw);
     }
-    final text = TextPainter(
-        text: TextSpan(
-            text: label,
-            style: const TextStyle(
-                color: Color(0xFF5B3516),
-                fontSize: DS.fontBody,
-                fontWeight: FontWeight.bold)),
-        textDirection: TextDirection.ltr,
-        textAlign: TextAlign.center)
-      ..layout(maxWidth: size.x * .85);
+    // Cached: a new TextPainter per bed per frame was never disposed.
+    final text = TextCache.layout(
+        label,
+        const TextStyle(
+            color: Color(0xFF5B3516),
+            fontSize: DS.fontBody,
+            fontWeight: FontWeight.bold),
+        maxWidth: size.x * .85,
+        maxLines: 2,
+        textAlign: TextAlign.center);
     final badge = Rect.fromLTWH((size.x - text.width - 16) / 2, mat.bottom + 7,
         text.width + 16, text.height + 6);
     canvas.drawRRect(RRect.fromRectAndRadius(badge, const Radius.circular(8)),

@@ -9,10 +9,10 @@ enum NightMap {
       control: 'Thắp đèn lần đầu',
       light: 'đèn lồng'),
   marketAlley('Hẻm chợ đêm',
-      'Giữ độ ồn dưới 100; vùng đèn bảo vệ mèo khi xe đẩy đi qua',
+      'Giữ độ ồn dưới 100; chạm biển báo để ra hiệu xe đẩy đi êm',
       mission: 'Bế mỗi mèo vào đúng ổ',
-      control: 'Bật đèn đường lần đầu',
-      light: 'đèn đường'),
+      control: 'Ra hiệu xe lần đầu',
+      light: 'biển báo'),
   rooftops('Mái nhà', 'Đặt cá ở mái giữa; hạ cầu để mèo hai mái bên sang ăn',
       mission: 'Bế mỗi mèo vào đúng ổ',
       control: 'Hạ cầu lần đầu',
@@ -58,7 +58,7 @@ enum NightCard {
   eagerHelpers('Trợ thủ hăng hái', 'Kỹ năng trợ thủ hồi nhanh hơn 25%',
       limit: 2),
   hotCoins('Khế ước trăng', '+40% Nguyệt quang qua đêm',
-      cost: 'Mèo chạy nhanh hơn 15%'),
+      cost: 'Mèo nhanh hơn 15%; map không bế mèo: đêm ngắn hơn 10%'),
   nightWind('Gió đêm', '+25% Nguyệt quang qua đêm',
       cost: 'Đèn lồng cháy nhanh gấp đôi', limit: 1, map: NightMap.backyard),
   crowd('Nhà đông vui', '+25% Nguyệt quang qua đêm',
@@ -77,7 +77,7 @@ enum NightCard {
       limit: 2, map: NightMap.marketAlley),
   softWheels('Bánh xe bọc vải', 'Xe đẩy gây ít ồn hơn 30%',
       limit: 2, map: NightMap.marketAlley),
-  backupPower('Điện dự phòng', 'Đèn đường sáng thêm 8 giây',
+  backupPower('Biển báo sớm', 'Biển báo xe hiện sớm hơn 1.5s/cấp',
       limit: 2, map: NightMap.marketAlley),
   quietCorner('Góc yên tĩnh', 'Độ ồn giảm nhanh hơn 1 điểm mỗi giây',
       limit: 2, map: NightMap.marketAlley),
@@ -178,17 +178,37 @@ enum NightCard {
   /// How many times this card can be taken in one run.
   final int limit;
   bool get isDeal => cost != null;
-  bool availableOn(NightMap next) =>
-      (map == null || map == next) &&
-      (!const [
-            NightMap.warehouse,
-            NightMap.reedGarden,
-            NightMap.harbor,
-            NightMap.station,
-            NightMap.clawMachine
-          ].contains(next) ||
-          !const [warmHug, patience, wideBeds, nailedBeds, nurturingMeal]
-              .contains(this));
+
+  /// Maps where cats walk freely and are carried into beds.
+  static const carryMaps = [
+    NightMap.backyard,
+    NightMap.marketAlley,
+    NightMap.rooftops
+  ];
+
+  /// Offered only before a night where the card actually does something.
+  bool availableOn(NightMap next) {
+    if (map != null && map != next) return false;
+    final carry = carryMaps.contains(next);
+    return switch (this) {
+      warmHug ||
+      patience ||
+      wideBeds ||
+      nailedBeds ||
+      nurturingMeal ||
+      lazyLunch =>
+        carry,
+      scentedFish => carry || next == NightMap.warehouse,
+      preparedBait => next != NightMap.station,
+      fullMoon => next != NightMap.clawMachine,
+      _ => true,
+    };
+  }
+
+  /// Map cards only help one night in each rotation, so taking one pays a
+  /// little Moonlight straight away.
+  static const mapCardBonus = 5;
+  bool get paysOnPick => map != null && !isDeal;
   String? get comboHint => switch (this) {
         lanternRelay => 'Ghép Bấc dài để giữ nhiều đèn sáng cùng lúc.',
         moonEcho => 'Ghép Lăng kính: đốm trăng vẫn tạo giao sáng.',

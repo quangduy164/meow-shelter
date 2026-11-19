@@ -42,6 +42,10 @@ class ClawMachine {
   int steer = 0;
   double x = .5, target = .5, depth = 0, timer = 0, clock = 0;
   double radius = .055, secureShare = 0, speed = baseSpeed, catSpeed = .05;
+
+  /// Helper multiplier on [radius] (Scottish); calm cats never thrash loose.
+  double reachBoost = 1;
+  bool _calm = false;
   bool twinChutes = false, swing = false, doubleGrab = false;
   int stage = 1, _id = 0;
   final held = <TankCat>[];
@@ -149,6 +153,7 @@ class ClawMachine {
         if (timer <= 0) {
           phase = ClawPhase.closing;
           timer = closeSeconds;
+          _calm = calm;
           _grab(events, firm: firm);
         }
       case ClawPhase.closing:
@@ -210,6 +215,7 @@ class ClawMachine {
 
   void _grab(List<(TankCat, ClawEvent)> events, {required bool firm}) {
     final aim = aimX;
+    final radius = this.radius * reachBoost;
     final inRing = cats
         .where((c) => !c.held && (c.x - aim).abs() <= radius)
         .toList()
@@ -227,8 +233,9 @@ class ClawMachine {
       return;
     }
     for (final cat in take) {
-      final secure =
-          firm || (cat.x - aim).abs() <= radius * securePart(cat.breed);
+      final secure = firm ||
+          (cat.x - aim).abs() <=
+              radius * math.max(securePart(cat.breed), _calm ? .7 : 0);
       cat
         ..held = true
         // Negative scared marks a loose grip, resolved while lifting.

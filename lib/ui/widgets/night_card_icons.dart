@@ -48,7 +48,8 @@ enum NightGuideGlyph {
   stationTrain,
   clawAim,
   clawDrop,
-  clawChute
+  clawChute,
+  marketSignal
 }
 
 /// Hand-drawn guide art, matching the card icons without the round badge.
@@ -110,6 +111,8 @@ class _NightGuidePainter extends _NightCardPainter {
         _water(canvas);
         _raft(canvas, const Offset(18, 30));
         _dock(canvas);
+      case NightGuideGlyph.marketSignal:
+        _backupPower(canvas);
       case NightGuideGlyph.stationSign:
         _stationSign(canvas, const Offset(24, 20), _orange);
         canvas.drawLine(const Offset(24, 28), const Offset(24, 42), _line(3));
@@ -188,6 +191,9 @@ class _NightCardPainter extends CustomPainter {
         _brightLantern(canvas);
       case NightCard.fullMoon:
         _fullMoon(canvas);
+        // Clouds are crossed out: this card keeps the moon clear.
+        canvas.drawLine(
+            const Offset(34, 7), const Offset(46, 19), _line(2.6, _pink));
       case NightCard.crowd:
         _crowd(canvas);
       case NightCard.hiddenFish:
@@ -648,28 +654,41 @@ class _NightCardPainter extends CustomPainter {
               _fill(_blue.withValues(alpha: .3 + i * .2)));
         }
       case NightCard.restingLight:
-        _warmHug(canvas);
-        _featureSpark(canvas, const Offset(35, 12), 6, _gold);
+        // A cat dozing in a lantern's glow.
+        canvas.drawCircle(
+            const Offset(24, 30), 17, _fill(const Color(0x55FFD992)));
+        _miniLantern(canvas, const Offset(35, 14));
+        _catHead(canvas, const Offset(19, 31), 9, _orange);
+        canvas.drawArc(
+            const Rect.fromLTWH(13, 26, 5, 4), .2, 2.7, false, _line(1.6));
+        canvas.drawArc(
+            const Rect.fromLTWH(20, 26, 5, 4), .2, 2.7, false, _line(1.6));
       case NightCard.fewerLanterns:
         _extraLantern(canvas);
         canvas.drawLine(
             const Offset(9, 38), const Offset(38, 9), _line(4, _pink));
       case NightCard.cartFish:
-      case NightCard.gentleCart:
         _softWheels(canvas);
-        if (card == NightCard.cartFish) {
-          _fish(canvas, const Offset(25, 17), 24, _blue);
-        } else {
-          canvas.drawArc(const Rect.fromLTWH(8, 8, 31, 24), math.pi, math.pi,
-              false, _line(2, _blue));
+        _fish(canvas, const Offset(25, 17), 24, _blue);
+      case NightCard.gentleCart:
+        // A cart creeping along: speed lines turned into slow dots.
+        _cart(canvas, const Offset(27, 28));
+        for (final x in const [5.0, 10.0, 15.0]) {
+          canvas.drawCircle(Offset(x, 28), 1.8, _fill(_blue));
         }
+        _pill(canvas, const Rect.fromLTWH(23, 6, 20, 9), '-50%');
       case NightCard.afterHours:
-        _longNight(canvas);
-        _featureSpark(canvas, const Offset(36, 34), 5, _blue);
+        // The cart rolls away; a long "shh" follows it.
+        _cart(canvas, const Offset(32, 32));
+        _shh(canvas, const Offset(15, 15));
+        _pill(canvas, const Rect.fromLTWH(4, 32, 16, 9), '+2s');
       case NightCard.closingBell:
-        _extraLantern(canvas);
-        canvas.drawArc(const Rect.fromLTWH(6, 11, 36, 22), math.pi, math.pi,
-            false, _line(2, _blue));
+        canvas.save();
+        canvas.translate(-11, -3);
+        canvas.scale(1.45);
+        _bell(canvas, const Offset(24, 20));
+        canvas.restore();
+        _shh(canvas, const Offset(38, 36));
       case NightCard.pairedBridges:
         _widePlanks(canvas);
         _arrow(canvas, const Offset(10, 11), const Offset(38, 11));
@@ -688,28 +707,94 @@ class _NightCardPainter extends CustomPainter {
         canvas.drawLine(
             const Offset(23, 14), const Offset(23, 25), _line(1.5, _cream));
       case NightCard.relayRescue:
-        _eagerHelpers(canvas);
-        _featureSpark(canvas, const Offset(36, 12), 6, _gold);
+        // A rescue spins the helper's cooldown back.
+        _catHead(canvas, const Offset(24, 26), 10, _orange);
+        canvas.drawArc(const Rect.fromLTWH(6, 7, 36, 36), -2.6, 4.4, false,
+            _line(2.6, _goldDark));
+        _arrow(canvas, const Offset(33, 10), const Offset(39, 17));
+        _check(canvas, const Offset(36, 36));
       case NightCard.fishReserve:
         _fish(canvas, const Offset(25, 25), 29, _blue);
         canvas.drawArc(const Rect.fromLTWH(6, 7, 35, 34), math.pi * .7,
             math.pi * 1.3, false, _line(2.5, _goldDark));
         _arrow(canvas, const Offset(12, 12), const Offset(7, 23));
       case NightCard.rescueRhythm:
-        _fish(canvas, const Offset(20, 29), 23, _blue);
-        _featureSpark(canvas, const Offset(33, 15), 9, _gold);
-        _featureSpark(canvas, const Offset(13, 11), 4, _gold);
-      case NightCard.preparedBait:
-        _fishBasket(canvas);
-        _featureSpark(canvas, const Offset(35, 12), 7, _blue);
-      case NightCard.nurturingMeal:
-        _fish(canvas, const Offset(24, 27), 27, _blue);
-        for (final x in [12.0, 24.0, 36.0]) {
-          _featureSpark(canvas, Offset(x, 12), 4, _pink);
+        // Three rescues in a row, inside a short beat.
+        for (final x in const [11.0, 24.0, 37.0]) {
+          _check(canvas, Offset(x, 30));
         }
+        canvas.drawLine(
+            const Offset(9, 18), const Offset(39, 18), _line(2.2, _goldDark));
+        for (final x in const [9.0, 24.0, 39.0]) {
+          canvas.drawLine(Offset(x, 14), Offset(x, 22), _line(2.2, _goldDark));
+        }
+      case NightCard.preparedBait:
+        // A fish already waiting on the ground at dusk.
+        canvas.drawOval(
+            const Rect.fromLTWH(7, 31, 34, 9), _fill(const Color(0x55B27A3E)));
+        _fish(canvas, const Offset(23, 29), 26, _blue);
+        _check(canvas, const Offset(37, 13));
+      case NightCard.nurturingMeal:
+        // One meal spreads calm to the cats around it.
+        canvas.drawCircle(const Offset(24, 31), 13, _line(1.8, _pink));
+        _fish(canvas, const Offset(24, 32), 17, _blue);
+        _catHead(canvas, const Offset(10, 15), 6.5, _orange);
+        _catHead(canvas, const Offset(38, 15), 6.5, const Color(0xFFE4D3B2));
+        _smallHeart(canvas, const Offset(24, 12));
       default:
         break;
     }
+  }
+
+  /// Small market cart (box on two wheels with a handle), centred on [c].
+  void _cart(Canvas canvas, Offset c) {
+    canvas.drawLine(
+        c + const Offset(-13, -3), c + const Offset(-19, -9), _line(2.4));
+    _shape(
+        canvas,
+        Path()
+          ..addRRect(RRect.fromRectAndRadius(
+              Rect.fromCenter(center: c, width: 24, height: 11),
+              const Radius.circular(2))),
+        _woodLight,
+        1.8);
+    _shape(canvas, _oval(c + const Offset(-4, -9), 9, 8), _wood, 1.4);
+    for (final dx in const [-7.0, 7.0]) {
+      _shape(canvas, _oval(c + Offset(dx, 7), 6, 6), _ink, 1);
+    }
+  }
+
+  /// "Quiet": two sound waves struck through.
+  void _shh(Canvas canvas, Offset c) {
+    canvas.drawCircle(c, 8, _fill(_cream));
+    for (final r in const [3.0, 6.0]) {
+      canvas.drawArc(Rect.fromCircle(center: c - const Offset(3, 0), radius: r),
+          -.8, 1.6, false, _line(1.6, _blue));
+    }
+    canvas.drawLine(
+        c + const Offset(-6, 6), c + const Offset(6, -6), _line(2, _pink));
+  }
+
+  void _miniLantern(Canvas canvas, Offset c) {
+    _shape(
+        canvas,
+        Path()
+          ..addRRect(RRect.fromRectAndRadius(
+              Rect.fromCenter(center: c, width: 11, height: 13),
+              const Radius.circular(4))),
+        const Color(0xFFE85D4A),
+        1.5);
+    canvas.drawLine(
+        c + const Offset(0, -10), c + const Offset(0, -7), _line(1.6));
+  }
+
+  void _smallHeart(Canvas canvas, Offset c) {
+    final heart = Path()
+      ..moveTo(c.dx, c.dy + 5)
+      ..cubicTo(c.dx - 9, c.dy - 1, c.dx - 4, c.dy - 8, c.dx, c.dy - 3)
+      ..cubicTo(c.dx + 4, c.dy - 8, c.dx + 9, c.dy - 1, c.dx, c.dy + 5)
+      ..close();
+    _shape(canvas, heart, _pink, 1.4);
   }
 
   void _featureSpark(Canvas canvas, Offset center, double radius, Color color) {
@@ -989,6 +1074,7 @@ class _NightCardPainter extends CustomPainter {
         textDirection: TextDirection.ltr)
       ..layout();
     z.paint(canvas, const Offset(35, 13));
+    z.dispose();
   }
 
   void _lazyLunch(Canvas canvas) {
@@ -1134,6 +1220,7 @@ class _NightCardPainter extends CustomPainter {
         textDirection: TextDirection.ltr)
       ..layout();
     text.paint(canvas, Offset(32.5 - text.width / 2, 36.5 - text.height / 2));
+    text.dispose();
   }
 
   void _eagerHelpers(Canvas canvas) {
@@ -1217,6 +1304,7 @@ class _NightCardPainter extends CustomPainter {
         textDirection: TextDirection.ltr)
       ..layout();
     label.paint(canvas, r.center - Offset(label.width / 2, label.height / 2));
+    label.dispose();
   }
 
   void _longWick(Canvas canvas) {
@@ -1334,6 +1422,7 @@ class _NightCardPainter extends CustomPainter {
         textDirection: TextDirection.ltr)
       ..layout();
     mark.paint(canvas, Offset(24 - mark.width / 2, 33 - mark.height / 2 + 1));
+    mark.dispose();
   }
 
   void _quietSteps(Canvas canvas) {
@@ -1371,24 +1460,23 @@ class _NightCardPainter extends CustomPainter {
     canvas.drawCircle(const Offset(24, 26), 3, _fill(_ink));
   }
 
+  /// Market: a "slow down" sign raised at the alley mouth.
   void _backupPower(Canvas canvas) {
+    canvas.drawLine(const Offset(24, 30), const Offset(24, 43), _line(3.5));
     _shape(
         canvas,
         Path()
-          ..addRRect(RRect.fromRectAndRadius(
-              const Rect.fromLTWH(12, 11, 25, 29), const Radius.circular(4))),
-        _blue);
-    _shape(canvas, Path()..addRect(const Rect.fromLTWH(19, 7, 11, 4)),
-        _woodLight, 1.5);
-    final bolt = Path()
-      ..moveTo(26, 14)
-      ..lineTo(17, 27)
-      ..lineTo(24, 27)
-      ..lineTo(21, 37)
-      ..lineTo(33, 22)
-      ..lineTo(26, 22)
-      ..close();
-    _shape(canvas, bolt, _gold, 1.3);
+          ..addOval(Rect.fromCircle(center: const Offset(24, 19), radius: 14)),
+        _orange);
+    final hand = Path()
+      ..addRRect(RRect.fromRectAndRadius(
+          const Rect.fromLTWH(18.5, 19, 11, 9), const Radius.circular(3.5)));
+    for (var i = 0; i < 4; i++) {
+      hand.addRRect(RRect.fromRectAndRadius(
+          Rect.fromLTWH(18.5 + i * 2.9, 10.5, 2.5, 10),
+          const Radius.circular(1.2)));
+    }
+    canvas.drawPath(hand, Paint()..color = _cream);
   }
 
   void _quietCorner(Canvas canvas) {

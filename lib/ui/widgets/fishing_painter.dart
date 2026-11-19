@@ -1,3 +1,4 @@
+import '../../game/text_cache.dart';
 import '../design.dart';
 import 'dart:math' as math;
 import 'package:material_ui/material_ui.dart';
@@ -87,16 +88,14 @@ class FishingPainter extends CustomPainter {
             center: bobber - const Offset(0, 3), width: 9, height: 9),
         Paint()..color = const Color(0xFFE25536));
     if (phase == FishingPhase.bite || phase == FishingPhase.caught) {
-      final painter = TextPainter(
-          text: TextSpan(
-              text: phase == FishingPhase.bite ? '!' : '+1',
-              style: const TextStyle(
-                  fontSize: DS.fontSymbol,
-                  fontWeight: FontWeight.w900,
-                  color: Color(0xFFFFF0AF),
-                  shadows: [Shadow(color: Color(0xFF573215), blurRadius: 3)])),
-          textDirection: TextDirection.ltr)
-        ..layout();
+      // Cached: this painter repaints every frame.
+      final painter = TextCache.layout(
+          phase == FishingPhase.bite ? '!' : '+1',
+          const TextStyle(
+              fontSize: DS.fontSymbol,
+              fontWeight: FontWeight.w900,
+              color: Color(0xFFFFF0AF),
+              shadows: [Shadow(color: Color(0xFF573215), blurRadius: 3)]));
       painter.paint(canvas, bobber - Offset(painter.width / 2, 58));
     }
   }
@@ -364,16 +363,13 @@ class FishingPainter extends CustomPainter {
           ..strokeCap = StrokeCap.round
           ..color = const Color(0xFFFFE066));
     if (combo > 0) {
-      final comboText = TextPainter(
-          text: TextSpan(
-              text: 'x$combo',
-              style: const TextStyle(
-                  fontSize: DS.fontValue,
-                  fontWeight: FontWeight.w900,
-                  color: Color(0xFFFFE066),
-                  shadows: [Shadow(color: Color(0xFF5A3A10), blurRadius: 3)])),
-          textDirection: TextDirection.ltr)
-        ..layout();
+      final comboText = TextCache.layout(
+          'x$combo',
+          const TextStyle(
+              fontSize: DS.fontValue,
+              fontWeight: FontWeight.w900,
+              color: Color(0xFFFFE066),
+              shadows: [Shadow(color: Color(0xFF5A3A10), blurRadius: 3)]));
       comboText.paint(
           canvas, center + Offset(-comboText.width / 2, -radius - 28));
     }
@@ -401,15 +397,12 @@ class FishingPainter extends CustomPainter {
           ..color = const Color(0xFF253D38)
           ..strokeWidth = 3
           ..strokeCap = StrokeCap.round);
-    final label = TextPainter(
-        text: TextSpan(
-            text: '${(tension * 100).round()}%',
-            style: const TextStyle(
-                fontSize: DS.fontMicro,
-                fontWeight: FontWeight.w900,
-                color: Color(0xFF294941))),
-        textDirection: TextDirection.ltr)
-      ..layout();
+    final label = TextCache.layout(
+        '${(tension * 100).round()}%',
+        const TextStyle(
+            fontSize: DS.fontMicro,
+            fontWeight: FontWeight.w900,
+            color: Color(0xFF294941)));
     label.paint(canvas, center - Offset(label.width / 2, label.height / 2));
   }
 

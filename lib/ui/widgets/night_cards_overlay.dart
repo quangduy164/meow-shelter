@@ -115,6 +115,7 @@ class NightCardsOverlay extends StatelessWidget {
       card.title,
       card.perk,
       if (card.cost != null) 'Đổi lại: ${card.cost}',
+      if (card.paysOnPick) 'Chọn ngay: +${NightCard.mapCardBonus} Nguyệt quang',
       for (final relic in combos) '${relic.title}: ${relic.cardCombos[card]}',
       if (card.comboHint != null) card.comboHint!,
     ].join('\n');
@@ -184,6 +185,16 @@ class NightCardsOverlay extends StatelessWidget {
                                       fontSize: 11,
                                       height: 1.25,
                                       fontWeight: FontWeight.w800)),
+                              if (card.paysOnPick) ...[
+                                const SizedBox(height: 5),
+                                const Text(
+                                    'Chọn ngay: +${NightCard.mapCardBonus} Nguyệt quang',
+                                    textAlign: TextAlign.center,
+                                    style: TextStyle(
+                                        color: DS.goldEdge,
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.w800)),
+                              ],
                               if (card.cost != null) ...[
                                 const SizedBox(height: 5),
                                 Text('Đổi lại: ${card.cost}',

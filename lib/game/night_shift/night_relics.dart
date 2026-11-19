@@ -5,7 +5,7 @@ enum NightRelic {
   embers('Than hồng', 22,
       'Kéo dài lợi thế của map: đèn, cầu, lồng, vết, bè, tàu.', {
     NightCard.longWick: '+2s dư sáng mỗi cấp',
-    NightCard.backupPower: '+2s dư sáng mỗi cấp',
+    NightCard.backupPower: '+1s yên tĩnh sau xe mỗi cấp',
     NightCard.sturdyPlanks: '+2s dư sáng mỗi cấp',
     NightCard.lanternRelay: 'Kéo dài đèn trước khi chuyển sang dư sáng',
     NightCard.lastStep: 'Giữ cầu đến khi qua hết, rồi mới dư sáng',
@@ -69,7 +69,7 @@ enum NightRelic {
   String effectOn(NightMap map) => switch (this) {
         NightRelic.embers => switch (map) {
             NightMap.backyard => 'Đèn tắt còn sáng thêm',
-            NightMap.marketAlley => 'Đèn đường tắt còn sáng thêm',
+            NightMap.marketAlley => 'Yên tĩnh sau xe lâu hơn',
             NightMap.rooftops => 'Cầu thu lại còn sáng thêm',
             NightMap.warehouse => 'Mèo nán trong lồng lâu hơn',
             NightMap.reedGarden => 'Vết chân hiện lâu hơn',

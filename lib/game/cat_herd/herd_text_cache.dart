@@ -12,14 +12,12 @@ TextPainter herdLabel(String text, double size, Color color,
     List<Shadow>? shadows}) {
   final key = '$text|$size|${color.toARGB32()}|${weight.value}|$maxWidth|'
       '${align.index}|$height|${shadows?.length}';
-  final hit = _cache[key];
-  if (hit != null) return hit;
-  if (_cache.length > 120) {
-    for (final painter in _cache.values) {
-      painter.dispose();
-    }
-    _cache.clear();
-  }
+  // Least recently used first: a hit moves to the back, and only the oldest
+  // label is dropped when full. Clearing everything at once could dispose a
+  // painter a caller is still holding for the same frame.
+  final hit = _cache.remove(key);
+  if (hit != null) return _cache[key] = hit;
+  if (_cache.length >= 120) _cache.remove(_cache.keys.first)?.dispose();
   return _cache[key] = TextPainter(
       text: TextSpan(
           text: text,

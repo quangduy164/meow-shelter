@@ -1,3 +1,4 @@
+import '../text_cache.dart';
 import '../../ui/design.dart';
 import 'dart:math' as math;
 import 'package:flame/components.dart';
@@ -101,16 +102,16 @@ class CatchTutorialComponent extends PositionComponent {
   }
 
   void _caption(Canvas canvas, Vector2 screen, String text) {
-    final caption = TextPainter(
-        text: TextSpan(
-            text: text,
-            style: const TextStyle(
-                color: Color(0xFF28564C),
-                fontSize: DS.fontBody,
-                fontWeight: FontWeight.bold)),
-        textAlign: TextAlign.center,
-        textDirection: TextDirection.ltr)
-      ..layout(maxWidth: screen.x * .68);
+    // Cached: a fresh TextPainter every frame was never disposed.
+    final caption = TextCache.layout(
+        text,
+        const TextStyle(
+            color: Color(0xFF28564C),
+            fontSize: DS.fontBody,
+            fontWeight: FontWeight.bold),
+        maxWidth: screen.x * .68,
+        maxLines: 4,
+        textAlign: TextAlign.center);
     final box = Rect.fromLTWH((screen.x - caption.width) / 2 - 12, 66,
         caption.width + 24, caption.height + 16);
     canvas.drawRRect(RRect.fromRectAndRadius(box, const Radius.circular(8)),

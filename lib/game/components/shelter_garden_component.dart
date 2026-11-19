@@ -22,6 +22,15 @@ class ShelterGardenComponent extends PositionComponent {
   ShelterMapKind? _backgroundKind;
   double _clock = 0;
 
+  /// Restarts and leaving the screen drop this component; free the cached
+  /// scene picture right away instead of waiting for the garbage collector.
+  @override
+  void onRemove() {
+    _background?.dispose();
+    _background = null;
+    super.onRemove();
+  }
+
   @override
   void onGameResize(Vector2 size) {
     super.onGameResize(size);

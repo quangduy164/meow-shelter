@@ -5,22 +5,18 @@ import '../night_cards.dart';
 import '../night_run.dart';
 import '../night_variants.dart';
 
-class MarketLamp {
-  MarketLamp(this.spot);
-  final Offset spot;
-  double burn = 0, cool = 0, ember = 0;
-  bool firstLight = true;
-  bool get lit => burn > 0;
-  Offset center(Size size) =>
-      Offset(spot.dx * size.width, spot.dy * size.height);
-}
-
-/// Traffic and mistakes build noise; a loud burst scares only unprotected cats.
+/// Traffic and mistakes build noise; a loud burst scares the cats. The player
+/// flags each cart down before it passes so it rolls by quietly.
 class NightMarket {
   final moon = Moonlight();
-  final lamps = <MarketLamp>[];
   double clock = 0, noise = 0, alarm = 0;
-  double lampDuration = 18, lightScale = 1, afterglow = 0;
+
+  /// Seconds of warning before a cart; signs card adds more.
+  double warnSeconds = 2;
+
+  /// Trip index already flagged, and whether it was flagged before it came.
+  int _hushedTrip = -1;
+  bool _hushedEarly = false;
   double _mistakeScale = 1, _trafficScale = 1, _quietRate = 1.5;
   final _tripEnds = <double>[];
   int _noiseIndex = 0;
@@ -46,14 +42,13 @@ class NightMarket {
     quietLeft = 0;
     carryingFish = false;
     quietDuration = 4 + 2.0 * run.count(NightCard.afterHours);
+    warnSeconds = 2 + 1.5 * run.count(NightCard.backupPower);
     cartDuration = run.has(NightCard.gentleCart) ? 6 : 4;
     closingBonus = 8 * run.count(NightCard.closingBell);
-    afterglow = afterglowSeconds;
+    // Embers relic: the hush after a cart lingers.
+    quietDuration += afterglowSeconds / 2;
+    _hushedTrip = -1;
     moon.reset(fullMoon: run.has(NightCard.fullMoon), thickClouds: thickClouds);
-    lampDuration = (18 + 8 * run.count(NightCard.backupPower)) *
-        (1 + .5 * run.count(NightCard.longWick)) /
-        (run.has(NightCard.nightWind) ? 2 : 1);
-    lightScale = run.lanternLight;
     _mistakeScale = math.pow(.5, run.count(NightCard.quietSteps)).toDouble();
     _trafficScale = math.pow(.7, run.count(NightCard.softWheels)).toDouble() *
         (run.has(NightCard.gentleCart) ? .5 : 1);
@@ -72,13 +67,6 @@ class NightMarket {
               (run.has(NightCard.busyMarket) ? .75 : 1));
       _tripEnds.add(total);
     }
-    lamps
-      ..clear()
-      ..addAll([
-        MarketLamp(const Offset(.27, .43)),
-        MarketLamp(const Offset(.5, .55)),
-        MarketLamp(const Offset(.73, .43)),
-      ]);
   }
 
   void mistake() => noise = (noise + 8 * _mistakeScale).clamp(0.0, 100.0);
@@ -101,20 +89,10 @@ class NightMarket {
       _noiseIndex++;
       passed++;
     }
-    if (passed > 0) {
-      noise = (noise + 42 * _trafficScale * passed).clamp(0.0, 100.0);
-    }
-    for (final lamp in lamps) {
-      if (lamp.lit) {
-        lamp.burn = math.max(0, lamp.burn - dt);
-        if (!lamp.lit) {
-          lamp.cool = 5;
-          lamp.ember = afterglow;
-        }
-      } else {
-        lamp.cool = math.max(0, lamp.cool - dt);
-        lamp.ember = math.max(0, lamp.ember - dt);
-      }
+    for (var i = _noiseIndex - passed; i < _noiseIndex; i++) {
+      // A flagged cart rolls by softly; flagged before it came, silently.
+      final hush = i == _hushedTrip ? (_hushedEarly ? 0.0 : .35) : 1.0;
+      noise = (noise + 42 * _trafficScale * hush).clamp(0.0, 100.0);
     }
     if (!alreadyLoud && noise < 100) return false;
     noise = 25;
@@ -126,24 +104,29 @@ class NightMarket {
     if (quietLeft > 0) noise = math.max(0, noise - closingBonus);
   }
 
-  bool light(MarketLamp lamp) {
-    if (lamp.lit || lamp.cool > 0) return false;
-    lamp.burn = lampDuration;
+  /// The cart about to pass (or passing) can still be flagged down.
+  bool get canHush =>
+      (cartWarning || cartProgress != null) &&
+      _hushedTrip != cartTrips &&
+      _noiseIndex == cartTrips;
+
+  /// Whether the current cart has been flagged down.
+  bool get hushed => _hushedTrip == cartTrips;
+
+  /// Flags the coming cart; returns false when there is nothing to flag.
+  bool hush() {
+    if (!canHush) return false;
+    _hushedTrip = cartTrips;
+    _hushedEarly = cartProgress == null;
     return true;
   }
 
   double get _phase => clock - _tripStart;
   bool get cartWarning =>
-      _phase >= trafficPeriod - cartDuration - 2 &&
+      _phase >= trafficPeriod - cartDuration - warnSeconds &&
       _phase < trafficPeriod - cartDuration;
   double? get cartProgress => _phase >= trafficPeriod - cartDuration
       ? (_phase - trafficPeriod + cartDuration) / cartDuration
       : null;
-  double radius(Size size) => size.height * .2 * lightScale;
-  bool lampLit(Offset point, Size size) => lamps.any((lamp) =>
-      (lamp.lit || lamp.ember > 0) &&
-      (point - lamp.center(size)).distance <=
-          radius(size) * .85 * (lamp.lit ? 1 : .75));
-  bool isLit(Offset point, Size size) =>
-      moon.contains(point, size) || lampLit(point, size);
+  bool isLit(Offset point, Size size) => moon.contains(point, size);
 }

@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'text_cache.dart';
 import 'dart:math';
 import '../audio/game_audio.dart';
 
@@ -82,6 +83,16 @@ class MeowShelterGame extends FlameGame {
   Future<void> onLoad() async {
     await super.onLoad();
     await restartRound();
+  }
+
+  /// Leaving the screen: run every component's onRemove so cached scene
+  /// images and labels are released now. Not [dispose], which would also
+  /// clear Flame's global image cache that other screens still use.
+  @override
+  void onDispose() {
+    removeAll(children);
+    processLifecycleEvents();
+    super.onDispose();
   }
 
   /// A restart asked for while one is running (e.g. the night-shift picker
@@ -427,15 +438,12 @@ class MeowShelterGame extends FlameGame {
             ..color = Color.fromRGBO(255, 214, 90, .5 + .4 * pulse)
             ..style = PaintingStyle.stroke
             ..strokeWidth = 3);
-      final zz = TextPainter(
-          text: const TextSpan(
-              text: 'Zz',
-              style: TextStyle(
-                  color: Color(0xFF5A3214),
-                  fontSize: 14,
-                  fontWeight: FontWeight.w900)),
-          textDirection: TextDirection.ltr)
-        ..layout();
+      final zz = TextCache.layout(
+          'Zz',
+          const TextStyle(
+              color: Color(0xFF5A3214),
+              fontSize: 14,
+              fontWeight: FontWeight.w900));
       zz.paint(canvas, r.topCenter + Offset(-zz.width / 2, -18 - pulse * 4));
     }
   }

@@ -18,18 +18,18 @@ class NightMarketScene extends NightScene {
   final void Function(Offset, double) onFirstLight;
   final market = NightMarket();
   final _components = <Component>[];
-  final _lamps = <MarketLampComponent>[];
 
   @override
   double get notificationTop => 104;
   @override
   NightMap get map => NightMap.marketAlley;
   @override
-  double get lanternBurn => market.lampDuration;
+  double get lanternBurn => 0;
   @override
   bool get cloudy => market.moon.cloudy;
   @override
   List<String> get rules => const [
+        'Ra hiệu xe: chạm xe đẩy để nó đi nhẹ; chạm khi biển báo còn sáng thì xe đi êm hẳn',
         'Yên tĩnh sau xe: mèo ngoan, độ ồn giảm nhanh',
         'Xe chở cá: cá chưa ai nhận ven đường được chở đi',
       ];
@@ -46,15 +46,14 @@ class NightMarketScene extends NightScene {
   @override
   bool isLit(Offset point, Size size) => market.isLit(point, size);
   @override
-  bool overlappingLights(Offset point, Size size) =>
-      market.moon.contains(point, size) && market.lampLit(point, size);
+  bool overlappingLights(Offset point, Size size) => false;
 
   @override
   void mount() {
     _components.addAll([
       NightMarketBackground(),
-      MarketLightPools(market),
       NightMarketAtmosphere(market),
+      MarketCartSignal(market, onSignal: _signal),
       DarknessComponent(
           lights: _lights,
           additionalLights: _eraseMoon,
@@ -66,9 +65,8 @@ class NightMarketScene extends NightScene {
 
   @override
   void remove() {
-    game.removeAll([..._components, ..._lamps]);
+    game.removeAll(_components);
     _components.clear();
-    _lamps.clear();
   }
 
   @override
@@ -76,24 +74,27 @@ class NightMarketScene extends NightScene {
       {required bool thickClouds, required double afterglowSeconds}) {
     market.begin(run,
         thickClouds: thickClouds, afterglowSeconds: afterglowSeconds);
-    game.removeAll(_lamps);
-    _lamps
-      ..clear()
-      ..addAll([
-        for (final lamp in market.lamps)
-          MarketLampComponent(lamp, market, onTapLamp: _tapLamp)
-      ]);
-    game.addAll(_lamps);
+    _signalled = false;
   }
 
-  void _tapLamp(MarketLamp lamp) {
+  bool _signalled = false;
+
+  void _signal() {
     if (game.paused || game.hud.status != RoundStatus.playing) return;
-    if (!market.light(lamp)) return;
-    GameAudio.instance.playRescue(GameSound.baitDrop);
-    if (lamp.firstLight) {
-      lamp.firstLight = false;
-      onFirstLight(lamp.center(game.size.toSize()),
-          market.radius(game.size.toSize()) * .85);
+    if (!market.hush()) return;
+    GameAudio.instance.playRescue(GameSound.click);
+    final screen = game.size;
+    final at = Offset(
+        market.cartProgress == null
+            ? (market.cartFromRight ? screen.x - 40 : 40)
+            : market.cartX(screen.x),
+        screen.y * .85);
+    game.hud.showBanner(
+        [market.cartProgress == null ? 'Xe sẽ đi êm hẳn' : 'Xe đi nhẹ lại'],
+        1.1);
+    if (!_signalled) {
+      _signalled = true;
+      onFirstLight(at, screen.x * .2);
     }
   }
 
@@ -131,15 +132,6 @@ class NightMarketScene extends NightScene {
   }
 
   Iterable<(Offset, double)> _lights() sync* {
-    final screen = game.size.toSize();
-    for (final lamp in market.lamps) {
-      if (lamp.lit || lamp.ember > 0) {
-        yield (
-          lamp.center(screen),
-          market.radius(screen) * (lamp.lit ? 1 : .75)
-        );
-      }
-    }
     for (final shelter in game.shelters) {
       yield (shelter.center.toOffset(), 75);
     }

@@ -47,18 +47,21 @@ vào cây nguồn của dự án.
 ## Hẻm chợ đêm
 
 Luân phiên Sân sau → Hẻm chợ → Mái nhà → Kho hàng. Lần đầu gặp mỗi bản đồ không có luật phụ
-ngẫu nhiên. `night_market.dart` giữ độ ồn, xe đẩy và đèn; `night_market_scene.dart`
+ngẫu nhiên. `night_market.dart` giữ độ ồn, xe đẩy và việc ra hiệu xe; `night_market_scene.dart`
 nhận thao tác, xử lý báo động; `night_market_painter.dart` vẽ sạp hàng và xe.
 
-- Xe đẩy có báo trước 2s, đi qua trong 4s, tăng 42 độ ồn khi tới giữa đường.
+- Xe đẩy có biển báo trước 2s, đi qua trong 4s, tăng 42 độ ồn khi tới giữa đường.
+- Ra hiệu xe (không có đèn): chạm biển báo khi nó còn sáng thì chuyến đó không
+  gây ồn; chạm vào xe đang đi trước khi tới giữa đường thì chỉ gây 35% ồn. Mỗi
+  chuyến ra hiệu một lần. Lần ra hiệu đầu đêm là điểm điều khiển của Chuông đèn.
 - Mỗi lần làm mèo giật mình/thả nhầm ổ tăng 8 độ ồn; tự giảm 1.5 mỗi giây.
-- Tới 100, mèo ngoài vùng sáng né chạy, độ ồn hạ về 25. Mèo đang bế hoặc được
-  ánh sáng/kỹ năng mèo đen bảo vệ không chịu tác động. Báo động không bị tính
+- Tới 100, mèo ngoài ánh trăng né chạy, độ ồn hạ về 25. Mèo đang bế hoặc được
+  ánh trăng/kỹ năng mèo đen bảo vệ không chịu tác động. Báo động không bị tính
   thêm thành lỗi thao tác, tránh vòng lặp cộng độ ồn.
-- Ba đèn đường bật bằng chạm: sáng 18s, nguội 5s. Than hồng/Chuông đèn/Lăng kính
-  và các hiệu ứng ánh trăng vẫn hoạt động. Moonlight và phần vẽ trăng dùng chung
+- Than hồng: khoảng yên tĩnh sau xe dài thêm nửa số giây dư sáng. Các hiệu ứng
+  ánh trăng vẫn hoạt động. Moonlight và phần vẽ trăng dùng chung
   với sân sau, không nhân đôi logic mây/vệt sáng.
-- Thẻ riêng: Đệm chân êm, Bánh xe bọc vải, Điện dự phòng, Góc yên tĩnh; giao kèo
+- Thẻ riêng: Đệm chân êm, Bánh xe bọc vải, Biển báo sớm (+1.5s báo trước/cấp), Góc yên tĩnh; giao kèo
   Chợ đông đổi +50% tiền lấy xe đẩy thường xuyên hơn. Chỉ được chào trước đêm ở hẻm.
 
 
@@ -123,8 +126,14 @@ sau đó hồi 6 giây. Vẫn có thể bế mèo qua khe như trước.
   trần 3 lần thời gian chờ gốc. Hiệu ứng bữa ăn từ cổ vật cũng phát lan tỏa.
 - Logic thẻ chung: `night_card_effects.dart`; phần ăn và hoàn cá:
   `../systems/bait_system.dart`. Map không hợp lệ không được chào thẻ riêng;
-  Kho hàng không chào thẻ bế/ổ/Chăm sóc lan tỏa. Thẻ đã có vẫn dùng khi quay lại
+  Thẻ chung chỉ được chào trước đêm mà nó có tác dụng (NightCard.availableOn):
+  thẻ bế/ổ/Chăm sóc lan tỏa/Bữa trưa no nê chỉ ở 3 map bế mèo, Cá thơm thêm Kho hàng,
+  Chuẩn bị kỹ trừ Nhà ga, Trăng tròn trừ Máy gắp. Thẻ đã có vẫn dùng khi quay lại
   các map phù hợp. Mọi tiền thưởng mới là Nguyệt quang.
+- Thẻ bản đồ (không phải giao kèo) chỉ có tác dụng 1 đêm mỗi vòng map nên chọn
+  được thưởng ngay +5 Nguyệt quang (NightCard.mapCardBonus).
+- Khế ước trăng: ở 5 map không bế mèo, cái giá là đêm ngắn hơn 10%/cấp thay cho
+  mèo nhanh hơn (NightRun.seconds).
 
 ## Biến thể và nhịp mèo
 
@@ -249,11 +258,15 @@ Ba map bế mèo dùng tác dụng gốc. Map không bế mèo đọc cùng cờ
 
 | Trợ thủ | Kho hàng | Vườn lau | Bến thuyền | Nhà ga |
 | --- | --- | --- | --- | --- |
-| Cam | Mèo nán trong lồng | Mèo ngừng đổi bụi | Bè đứng yên | Tàu đứng yên |
-| Đen | Đóng hụt không hoảng | Không phạt chạm trúng/lùa hụt | Đâm đá/va bè chỉ dừng | Mèo sai toa đứng chờ |
-| Tai cụp | Cửa sổ chốt hao chậm | Mèo đổi bụi chậm | Dòng chảy chậm | Tàu chạy chậm |
-| Tam thể | Chốt từ 70% | Bụi có mèo rung | Bến nhận mọi màu | Toa nhận mọi giống |
+| Cam | Mèo nán trong lồng | Mèo ngừng đổi bụi | Bè đứng yên | Tàu đang dừng giữ cửa |
+| Đen | Đóng hụt không hoảng | Không phạt chạm trúng/lùa hụt | Đâm đá/va bè chỉ dừng | Ra vạch nhanh x2, sai toa đứng chờ |
+| Tai cụp (10s, hồi 15s) | Cửa sổ chốt hao chậm | Mèo đổi bụi chậm | Dòng chảy chậm | Tàu đang dừng đóng cửa chậm |
+| Tam thể (hồi 24s) | Chốt từ 70% | Bụi có mèo rung | Bến nhận mọi màu | Toa nhận mọi giống |
 | Himalaya | 2 mèo tin mồi | 2 mèo nhích về giỏ | 2 bè sang luồng đúng bến | 2 mèo ra đúng vạch |
+
+Nhà ga: cam/tai cụp chỉ tác động khi tàu đang dừng. Máy gắp: tai cụp làm tầm gắp
+rộng thêm 50% (ClawMachine.reachBoost), mèo đen giữ mọi mèo không quẫy rơi
+(vùng gắp chắc tối thiểu 70%).
 
 ## Máy gắp mèo
 
@@ -273,3 +286,10 @@ mèo tuột khi càng nâng giữa chừng. Gắp trượt chỉ tốn thời gi
 - Biến thể: Máy chuẩn, Hai miệng (về miệng gần nhất), Càng lắc (càng đung đưa).
   Lần gặp thứ hai mèo đi nhanh hơn; thứ ba càng luôn lắc.
 - Thẻ riêng: Càng chắc, Càng rộng, Càng nhanh, Gắp đôi.
+
+## Màu giống mèo trên biển báo
+
+
+ight_colors.dart giữ một bảng màu riêng cho biển ga tàu, cờ bè và đèn bến (cam,
+xám đậm, xanh trời, tím, hồng đỏ) cùng một ký hiệu trắng theo giống (● ▲ ◆ ■ ★).
+Màu lông thật của mèo cam/tam thể/tai cụp quá giống nhau nên không dùng cho biển báo.

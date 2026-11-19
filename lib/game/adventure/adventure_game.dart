@@ -1106,6 +1106,16 @@ class AdventureGame extends FlameGame {
   bool blockedByLog(Rect box) => _spawner.obstacles.any((obstacle) =>
       obstacle.kind == AdventureObstacleKind.log && obstacle.hits(box));
 
+  /// Leaving the screen runs component cleanup now. Flame's image cache is
+  /// shared with other screens, so this deliberately does not call [dispose].
+  @override
+  void onDispose() {
+    removeAll(children);
+    processLifecycleEvents();
+    clearAdventureHudCache();
+    super.onDispose();
+  }
+
   @override
   Future<void> onLoad() async {
     await super.onLoad();

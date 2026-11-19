@@ -155,6 +155,11 @@ class CatComponent extends SpriteAnimationGroupComponent<CatState>
   /// Speed factor of the ground under the cat (mud on the pond map).
   final double Function(Vector2 center)? terrainSpeed;
   double _lureStuck = 0;
+
+  /// Closest the cat got to its current [fishTarget]; progress resets
+  /// [_lureStuck] so sliding back and forth along a wall still counts as stuck.
+  double _lureBest = double.infinity;
+  Vector2? _lureFor;
   double _detourSide = 1;
   CatSkill get skill => level.skillFor(catType);
   final bool Function(CatComponent cat) onDrop;
@@ -202,7 +207,9 @@ class CatComponent extends SpriteAnimationGroupComponent<CatState>
 
   @override
   void render(Canvas canvas) {
-    if (hiddenInCover) return;
+    // A trap rescue removes the cat on the next tick; the night pauses on the
+    // last rescue, so hide it now instead of leaving it on the next map.
+    if (hiddenInCover || (_isDelivered && trapManaged)) return;
     if (!trapCapture && (catchWindow.canCatch || _isDragged)) {
       final fraction =
           _isDragged ? catchWindow.gripFraction : catchWindow.readyFraction;
@@ -463,7 +470,12 @@ class CatComponent extends SpriteAnimationGroupComponent<CatState>
     super.update(dt);
     _dialogue.update(dt);
     _bubbleClock += dt;
-    if (trapManaged) return;
+    if (trapManaged) {
+      // A startle still wears off while a system (bushes, traps) moves the
+      // cat; otherwise a frozen dodge timer makes it refuse fish for good.
+      if (_dodgeTime > 0) _dodgeTime = max(0, _dodgeTime - dt);
+      return;
+    }
     if (_playTimer > 0) {
       _playTimer -= dt;
       if (_playTimer <= 0) _playTaps = 0;
@@ -515,7 +527,17 @@ class CatComponent extends SpriteAnimationGroupComponent<CatState>
       final delta = waypoint - (position + size / 2);
       final distance = delta.length;
       final speed = catWalkSpeed * _pace * _terrain * (assist?.lure ?? 1);
-      if (waypoint == target && distance <= speed * dt + 4) {
+      if (!identical(_lureFor, target)) {
+        _lureFor = target;
+        _lureBest = double.infinity;
+        _lureStuck = 0;
+      }
+      // Blocked right beside the food (a big boss under the drying rack):
+      // close enough to reach it with a paw.
+      final reach = max(size.x, size.y) * .6;
+      final pawReach =
+          waypoint == target && _lureStuck > 1 && distance <= reach;
+      if (waypoint == target && distance <= speed * dt + 4 || pawReach) {
         fishTarget = null;
         _lureStuck = 0;
         if (_goingToNap) {
@@ -527,7 +549,9 @@ class CatComponent extends SpriteAnimationGroupComponent<CatState>
         }
       } else if (distance < .1) {
         _lureStuck = 0;
-      } else if (_steer(delta / distance, min(distance, speed * dt))) {
+      } else if (_steer(delta / distance, min(distance, speed * dt)) &&
+          distance < _lureBest - .5) {
+        _lureBest = distance;
         _lureStuck = 0;
       } else if ((_lureStuck += dt) > 2.5) {
         // shortcut: a fish nobody can reach is dropped, not refunded.

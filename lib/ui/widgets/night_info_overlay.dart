@@ -233,7 +233,11 @@ class NightInfoOverlay extends StatelessWidget {
             (NightGuideGlyph.carry, 'Bế vào ổ', 'Kéo mèo vào đúng ổ'),
           ],
         NightMap.marketAlley => [
-            (NightGuideGlyph.lantern, 'Bật đèn', 'Đèn giúp mèo bình tĩnh'),
+            (
+              NightGuideGlyph.marketSignal,
+              'Ra hiệu xe',
+              'Chạm biển báo khi xe sắp qua'
+            ),
             (NightGuideGlyph.quiet, 'Giữ yên', 'Tránh để độ ồn đầy'),
             (NightGuideGlyph.carry, 'Bế vào ổ', 'Kéo mèo vào đúng ổ'),
           ],

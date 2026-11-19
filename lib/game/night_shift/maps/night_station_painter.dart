@@ -8,6 +8,7 @@ import '../static_layer.dart';
 import '../moonlight.dart';
 import '../moonlight_art.dart';
 import '../../components/cat_component.dart';
+import '../night_colors.dart';
 import 'night_station.dart';
 import 'night_station_scene.dart';
 
@@ -20,16 +21,8 @@ Paint _stroke(Color color, double width) => Paint()
   ..strokeJoin = StrokeJoin.round;
 
 /// Sign colours are picked to be told apart at a glance, not breed fur.
-Color _signColor(String? breed, bool shared) => shared
-    ? const Color(0xFFFFE08A)
-    : switch (breed) {
-        'orange' => const Color(0xFFF07A2A),
-        'black' => const Color(0xFF3C4450),
-        'himalaya' => const Color(0xFF59B7D0),
-        'scottish' => const Color(0xFF8B66B8),
-        'calico' => const Color(0xFFE0566E),
-        _ => const Color(0xFF7C8790),
-      };
+Color _signColor(String? breed, bool shared) =>
+    shared ? const Color(0xFFFFE08A) : nightBreedColor(breed);
 
 void _paw(Canvas c, Offset center, double s, Color color) {
   final paint = Paint()..color = color;

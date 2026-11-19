@@ -298,11 +298,19 @@ class NightStationScene extends NightScene {
       _arrived.add(cat);
     }
     line.anyCar = night.acceptsAnyBed;
-    final pace = night.assist.frozen ? 0.0 : night.assist.pace;
+    // Helpers only hold a train that is already at the platform: holding an
+    // arriving train would just make everyone wait longer.
+    final stopped = line.phase == TrainPhase.stopped;
+    final pace = !stopped
+        ? 1.0
+        : night.assist.frozen
+            ? 0.0
+            : night.assist.pace;
     line.update(dt * pace);
     _plan();
     if (line.phase == TrainPhase.stopped) _boardReady();
-    final step = 150 * line.walkSpeed * dt;
+    // Calm cats (black helper) trot to their marks twice as fast.
+    final step = 150 * line.walkSpeed * (night.assist.calm ? 2 : 1) * dt;
     for (final entry in _walks.entries.toList()) {
       final cat = entry.key, walk = entry.value;
       final delta = walk.target - cat.position;

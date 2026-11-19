@@ -1,6 +1,5 @@
 import '../../components/fish_item_component.dart';
 import 'dart:math' as math;
-import 'dart:ui' as ui;
 import 'package:flame/components.dart';
 import 'package:flame/events.dart';
 import 'package:flutter/painting.dart';
@@ -197,41 +196,6 @@ void paintNightMarket(Canvas canvas, Size size) {
   canvas.restore();
 }
 
-class MarketLightPools extends PositionComponent with HasGameReference {
-  MarketLightPools(this.market) : super(priority: -20);
-  final NightMarket market;
-  @override
-  void render(Canvas canvas) {
-    final screen = game.size.toSize();
-    for (final lamp in market.lamps) {
-      if (!lamp.lit && lamp.ember <= 0) continue;
-      final c = lamp.center(screen);
-      final r = market.radius(screen) * (lamp.lit ? 1 : .75);
-      final strength = lamp.lit ? (lamp.burn / 2).clamp(.6, 1.0) : .45;
-      canvas.drawCircle(
-          c,
-          r,
-          Paint()
-            ..shader = ui.Gradient.radial(c, r, [
-              const Color(0xFFFFD992).withValues(alpha: .44 * strength),
-              const Color(0xFFFFD992).withValues(alpha: .24 * strength),
-              const Color(0x00FFD992),
-            ], const [
-              0,
-              .65,
-              1
-            ]));
-      canvas.drawCircle(
-          c,
-          r * .85,
-          Paint()
-            ..color = const Color(0x77FFE1A5)
-            ..style = PaintingStyle.stroke
-            ..strokeWidth = 1.5);
-    }
-  }
-}
-
 class NightMarketAtmosphere extends PositionComponent with HasGameReference {
   NightMarketAtmosphere(this.market) : super(priority: 84);
   final NightMarket market;
@@ -272,8 +236,10 @@ class NightMarketAtmosphere extends PositionComponent with HasGameReference {
       _text(
           canvas,
           market.alarm > 0
-              ? 'SUỴT! MÈO NGOÀI SÁNG ĐANG HOẢNG'
-              : 'XE ĐẨY SẮP QUA',
+              ? 'SUỴT! MÈO ĐANG HOẢNG'
+              : market.hushed
+                  ? 'ĐÃ RA HIỆU · XE SẼ ĐI ÊM'
+                  : 'XE ĐẨY SẮP QUA · CHẠM BIỂN ĐỂ RA HIỆU',
           Offset(screen.width / 2, 81),
           const Color(0xFFFFC792),
           centered: true);
@@ -348,6 +314,21 @@ class NightMarketAtmosphere extends PositionComponent with HasGameReference {
     canvas.drawOval(const Rect.fromLTWH(-86, -48, 28, 8),
         Paint()..color = const Color(0xFFA99067));
     if (market.carryingFish) drawFish(canvas, const Offset(10, -54));
+    if (market.hushed) {
+      // Flagged down: a calm green bubble over the cart.
+      canvas.drawCircle(
+          const Offset(-10, -66), 11, Paint()..color = const Color(0xFF6CC28E));
+      canvas.drawPath(
+          Path()
+            ..moveTo(-15, -66)
+            ..lineTo(-11, -62)
+            ..lineTo(-4, -71),
+          Paint()
+            ..color = const Color(0xFFFFF4DA)
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = 2.5
+            ..strokeCap = StrokeCap.round);
+    }
     canvas.restore();
   }
 
@@ -359,64 +340,84 @@ class NightMarketAtmosphere extends PositionComponent with HasGameReference {
   }
 }
 
-class MarketLampComponent extends PositionComponent
+/// Tap target for flagging carts down: the warning sign at the alley mouth
+/// before a cart comes, then the cart itself while it rolls past.
+class MarketCartSignal extends PositionComponent
     with HasGameReference, TapCallbacks {
-  MarketLampComponent(this.lamp, this.market, {required this.onTapLamp})
-      : super(size: Vector2(42, 66), priority: 86);
-  final MarketLamp lamp;
+  MarketCartSignal(this.market, {required this.onSignal}) : super(priority: 83);
   final NightMarket market;
-  final void Function(MarketLamp) onTapLamp;
+  final VoidCallback onSignal;
+  double _clock = 0;
+
   @override
   void onGameResize(Vector2 size) {
     super.onGameResize(size);
-    position = Vector2(lamp.spot.dx * size.x - 21, lamp.spot.dy * size.y - 17);
+    this.size = size;
   }
 
   @override
-  void onTapDown(TapDownEvent event) => onTapLamp(lamp);
+  void update(double dt) => _clock += dt;
+
+  Offset get _sign =>
+      Offset(market.cartFromRight ? size.x - 34 : 34, size.y * .88);
+
+  @override
+  bool containsLocalPoint(Vector2 point) {
+    if (!market.canHush) return false;
+    final p = point.toOffset();
+    if (market.cartProgress == null) return (p - _sign).distance < 40;
+    final cart = Rect.fromCenter(
+        center: Offset(market.cartX(size.x), size.y * .89 - 14),
+        width: 150,
+        height: 90);
+    return cart.contains(p);
+  }
+
+  @override
+  void onTapDown(TapDownEvent event) => onSignal();
+
   @override
   void render(Canvas canvas) {
-    const c = Offset(21, 17);
-    canvas.drawOval(const Rect.fromLTWH(8, 59, 26, 6),
-        Paint()..color = const Color(0x44000000));
-    canvas.drawRect(const Rect.fromLTWH(19, 29, 4, 33),
-        Paint()..color = const Color(0xFF354B56));
-    if (lamp.lit) {
-      canvas.drawCircle(c, 25, Paint()..color = const Color(0x33FFE3A5));
+    if (!market.cartWarning) return;
+    final c = _sign;
+    final ready = market.canHush;
+    final pulse = ready ? .5 + .5 * math.sin(_clock * 8) : 0.0;
+    canvas.drawLine(
+        c + const Offset(0, 14),
+        c + const Offset(0, 40),
+        Paint()
+          ..color = const Color(0xFF354B56)
+          ..strokeWidth = 4);
+    if (ready) {
+      canvas.drawCircle(c, 22 + 5 * pulse,
+          Paint()..color = const Color(0xFFFFC56B).withValues(alpha: .35));
     }
+    canvas.drawCircle(
+        c,
+        18,
+        Paint()
+          ..color = ready ? const Color(0xFFF28A3A) : const Color(0xFF6CC28E));
+    canvas.drawCircle(
+        c,
+        18,
+        Paint()
+          ..color = const Color(0xFFFFF4DA)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 2.5);
+    // Raised hand: palm and fingers.
+    final hand = Paint()..color = const Color(0xFFFFF4DA);
     canvas.drawRRect(
         RRect.fromRectAndRadius(
-            const Rect.fromLTWH(10, 8, 22, 21), const Radius.circular(3)),
-        Paint()
-          ..color =
-              lamp.lit ? const Color(0xFFFFE0A3) : const Color(0xFF7C8D89));
-    canvas.drawPath(
-        Path()
-          ..moveTo(7, 8)
-          ..lineTo(21, 0)
-          ..lineTo(35, 8)
-          ..close(),
-        Paint()..color = const Color(0xFF354B56));
-    canvas.drawLine(
-        const Offset(21, 9),
-        const Offset(21, 28),
-        Paint()
-          ..color = const Color(0x88516462)
-          ..strokeWidth = 2);
-    canvas.drawRect(const Rect.fromLTWH(8, 28, 26, 4),
-        Paint()..color = const Color(0xFF354B56));
-    final arc = Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 2.5
-      ..strokeCap = StrokeCap.round
-      ..color = lamp.lit ? const Color(0xFFFFD186) : const Color(0xFF94B8C0);
-    if (lamp.lit || lamp.cool > 0) {
-      final fraction =
-          lamp.lit ? lamp.burn / market.lampDuration : 1 - lamp.cool / 5;
-      canvas.drawArc(Rect.fromCircle(center: c, radius: 19), -math.pi / 2,
-          math.pi * 2 * fraction, false, arc);
-    } else {
-      canvas.drawCircle(c, 19, arc..color = const Color(0x99C5DEE0));
+            Rect.fromCenter(
+                center: c + const Offset(0, 4), width: 13, height: 11),
+            const Radius.circular(4)),
+        hand);
+    for (var i = 0; i < 4; i++) {
+      canvas.drawRRect(
+          RRect.fromRectAndRadius(
+              Rect.fromLTWH(c.dx - 6.5 + i * 3.4, c.dy - 9, 2.8, 10),
+              const Radius.circular(1.4)),
+          hand);
     }
   }
 }

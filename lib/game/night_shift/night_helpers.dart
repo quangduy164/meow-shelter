@@ -22,7 +22,7 @@ class NightHelperSkill {
   static const of = <String, NightHelperSkill>{
     'orange': NightHelperSkill(
         'Giữ giờ',
-        'Mèo, bè, tàu và đồng hồ chờ đứng yên 6 giây',
+        'Mèo, bè và đồng hồ chờ đứng yên; tàu giữ cửa 6 giây',
         'Đồng hồ chờ bế và bế mèo đứng yên 6 giây',
         14,
         6),
@@ -34,15 +34,15 @@ class NightHelperSkill {
         8),
     'scottish': NightHelperSkill(
         'Làm chậm',
-        'Mèo, dòng nước và tàu chậm một nửa 6 giây',
-        'Sân đóng băng: mèo chậm một nửa 6 giây',
-        12,
-        6),
+        'Chậm một nửa 10 giây; máy gắp: càng gắp rộng hơn',
+        'Sân đóng băng: mèo chậm một nửa 10 giây',
+        15,
+        10),
     'calico': NightHelperSkill(
         'Chắc ăn',
         'Cứu dễ hơn 10 giây: ổ, bến, toa nào cũng nhận',
         'Thả vào ổ nào cũng bật về đúng ổ 10 giây',
-        20,
+        24,
         10),
     'himalaya': NightHelperSkill(
         'Gọi mèo',
@@ -57,21 +57,25 @@ class NightHelperSkill {
         ('orange', NightMap.warehouse) => 'Mèo trong lồng nán lại 6 giây',
         ('orange', NightMap.reedGarden) => 'Mèo ngừng đổi bụi 6 giây',
         ('orange', NightMap.harbor) => 'Mọi bè đứng yên 6 giây',
-        ('orange', NightMap.station) => 'Tàu đứng yên 6 giây',
+        ('orange', NightMap.station) => 'Tàu đang dừng giữ cửa mở 6 giây',
         ('orange', NightMap.clawMachine) => 'Mèo trong thùng nằm yên 6 giây',
         ('black', NightMap.warehouse) => 'Đóng hụt không làm mèo hoảng 8 giây',
         ('black', NightMap.reedGarden) =>
           'Chạm trúng hay lùa hụt không bị phạt 8 giây',
         ('black', NightMap.harbor) =>
           'Bè đâm đá hay va nhau chỉ dừng lại 8 giây',
-        ('black', NightMap.clawMachine) => 'Mèo không né càng 8 giây',
-        ('black', NightMap.station) => 'Mèo sai toa đứng chờ chuyến sau 8 giây',
+        ('black', NightMap.clawMachine) =>
+          'Mèo không né càng, không quẫy rơi 8 giây',
+        ('black', NightMap.station) =>
+          'Mèo ra vạch nhanh gấp đôi, sai toa đứng chờ 8 giây',
         ('scottish', NightMap.warehouse) =>
-          'Cửa sổ chốt lồng hao chậm một nửa 6 giây',
-        ('scottish', NightMap.reedGarden) => 'Mèo đổi bụi chậm một nửa 6 giây',
-        ('scottish', NightMap.harbor) => 'Dòng nước chảy chậm một nửa 6 giây',
-        ('scottish', NightMap.station) => 'Tàu chạy chậm một nửa 6 giây',
-        ('scottish', NightMap.clawMachine) => 'Mèo đi chậm một nửa 6 giây',
+          'Cửa sổ chốt lồng hao chậm một nửa 10 giây',
+        ('scottish', NightMap.reedGarden) => 'Mèo đổi bụi chậm một nửa 10 giây',
+        ('scottish', NightMap.harbor) => 'Dòng nước chảy chậm một nửa 10 giây',
+        ('scottish', NightMap.station) =>
+          'Tàu đang dừng đóng cửa chậm một nửa 10 giây',
+        ('scottish', NightMap.clawMachine) =>
+          'Tầm gắp rộng thêm 50% trong 10 giây',
         ('calico', NightMap.warehouse) =>
           'Chốt được khi mèo đã vào 70% trong 10 giây',
         ('calico', NightMap.reedGarden) => 'Bụi có mèo rung lên trong 10 giây',
