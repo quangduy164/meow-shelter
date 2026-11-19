@@ -265,6 +265,12 @@ class CampState {
     await _save();
   }
 
+  /// A fish from the basket: rarer fish add more affection at once.
+  Future<void> feed(String type, int amount) async {
+    affection[type] = (affection[type] ?? 0) + amount;
+    await _save();
+  }
+
   /// Returns false when the player cannot afford it or already owns it.
   Future<bool> buy(CampDecoration item) async {
     if (owned.contains(item.id) || coins < item.price) return false;

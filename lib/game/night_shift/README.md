@@ -24,8 +24,12 @@ Chọn trợ thủ → hướng dẫn đêm → chơi → chọn thẻ miễn ph
 (shop nếu vừa qua đêm chẵn) → hướng dẫn đêm tiếp theo.
 Hết thẻ hợp lệ vẫn có nút tiếp tục; không bỏ qua shop ở đêm chẵn.
 Đóng hướng dẫn mới chạy đồng hồ. Chỉ giai đoạn `playing` cập nhật luật đêm.
-Trong shop có thể bán cổ vật với 50% giá mua để nhận Nguyệt quang và trống ô;
-hiệu ứng và combo của món đã bán không còn ở đêm tiếp theo.
+Trong shop có thể bán cổ vật (nhận lại 50% tổng đã trả, gồm cả nâng cấp) để trống ô;
+cổ vật đã có vẫn được bày lại trên quầy: mua lần nữa lên bậc 2 (giá gốc), lần nữa lên bậc 3
+(150% giá gốc), không cần ô trống; mỗi bậc thêm hiệu ứng ghi ở
+NightRelic.levelPerk; đổi hàng giá 5, mỗi lần đổi trong cùng lần ghé tiệm +5; mở
+ô thứ 4 một lần giá 80 (NightRun.slotPrice).
+Hiệu ứng và combo của món đã bán không còn ở đêm tiếp theo.
 Ví Nguyệt quang và cổ vật đặt lại khi chơi lại; xu trại vẫn lưu như trước.
 
 ## Mở rộng
@@ -80,7 +84,7 @@ sau đó hồi 6 giây. Vẫn có thể bế mèo qua khe như trước.
 
 ## Combo và Nguyệt quang
 
-- Cứu mèo: +2 Nguyệt quang; qua đêm: 12 + min(2 × đêm, 20),
+- Cứu mèo: +1 Nguyệt quang; qua đêm: 12 + min(2 × đêm, 20),
   thêm 0–4 nếu nhanh, +3 nếu không có lỗi. Giao kèo tăng thưởng qua đêm:
   Khế ước trăng +40% mỗi cấp, giao kèo khác +25% mỗi cấp; giao kèo bản đồ
   chỉ thưởng ở bản đồ chịu bất lợi. Xu trại là thưởng phụ cố định 5/mèo.

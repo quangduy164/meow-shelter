@@ -15,14 +15,18 @@ class FishingPainter extends CustomPainter {
       required this.progress,
       required this.tension,
       required this.pulling,
+      this.boat = const Offset(.5, .75),
+      this.pawColor = const Color(0xFFF4A34E),
+      this.facingRight = false,
       this.drift = 0,
       this.sweetCenter = .45,
       this.combo = 0});
   final FishingPhase phase;
   final FishSpecies fish;
-  final Offset spot;
+  final Offset spot, boat;
+  final Color pawColor;
   final double clock, elapsed, progress, tension;
-  final bool pulling;
+  final bool pulling, facingRight;
   final double drift, sweetCenter;
   final int combo;
 
@@ -92,6 +96,7 @@ class FishingPainter extends CustomPainter {
       final painter = TextCache.layout(
           phase == FishingPhase.bite ? '!' : '+1',
           const TextStyle(
+              fontFamily: 'Roboto',
               fontSize: DS.fontSymbol,
               fontWeight: FontWeight.w900,
               color: Color(0xFFFFF0AF),
@@ -104,7 +109,9 @@ class FishingPainter extends CustomPainter {
     Offset point(double x, double y) => Offset(x * size.width, y * size.height);
     final load = phase == FishingPhase.reeling ? tension : 0.0;
     final motion = _rodMotion();
-    final base = point(.73, .88);
+    final scale = math.min(size.width / 800, size.height / 327);
+    final side = facingRight ? 1.0 : -1.0;
+    final base = point(boat.dx, boat.dy) + Offset(side * 9, -5) * scale;
     // Rotate the whole rod around the hand, then bend the tip.
     Offset swing(Offset p) {
       final v = p - base;
@@ -112,10 +119,16 @@ class FishingPainter extends CustomPainter {
       return base + Offset(v.dx * c - v.dy * s, v.dx * s + v.dy * c);
     }
 
-    final control = swing(point(.65, .45 - (pulling ? .025 : 0))) +
-        Offset(0, motion.bend * .35 * size.height);
-    final tip = swing(point(.595 - load * .025 + drift * load * .03,
-            .43 + load * .10 + (pulling ? math.sin(clock * 9) * .004 : 0))) +
+    final control =
+        swing(base + Offset(side * 24, pulling ? -49 : -44) * scale) +
+            Offset(0, motion.bend * .35 * size.height);
+    final tip = swing(base +
+            Offset(
+                    side * 60 + drift * load * 8,
+                    -65 +
+                        load * 15 +
+                        (pulling ? math.sin(clock * 9) * 1.5 : 0)) *
+                scale) +
         Offset(0, motion.bend * size.height);
     Offset shaft(double t) =>
         base * ((1 - t) * (1 - t)) +
@@ -134,6 +147,8 @@ class FishingPainter extends CustomPainter {
     final reel = base +
         Offset(-12 * math.cos(handleAngle) + 17 * math.sin(handleAngle),
             -12 * math.sin(handleAngle) - 17 * math.cos(handleAngle));
+    final characterScale = math.min(size.width / 800, size.height / 327);
+    final grip = base + Offset.fromDirection(handleAngle - math.pi / 2, 14);
     if (phase == FishingPhase.reeling) {
       _drawTensionGauge(canvas, reel + const Offset(-34, 0));
     }
@@ -234,6 +249,9 @@ class FishingPainter extends CustomPainter {
           ..strokeWidth = 2);
     canvas.drawCircle(crank, 2.5, Paint()..color = const Color(0xFF725338));
     canvas.restore();
+    // The cat's paw overlaps the handle.
+    canvas.drawCircle(
+        grip, 3.2 * characterScale, Paint()..color = const Color(0xFFF2BE91));
     return guide(1);
   }
 
@@ -366,6 +384,7 @@ class FishingPainter extends CustomPainter {
       final comboText = TextCache.layout(
           'x$combo',
           const TextStyle(
+              fontFamily: 'Roboto',
               fontSize: DS.fontValue,
               fontWeight: FontWeight.w900,
               color: Color(0xFFFFE066),
@@ -400,6 +419,7 @@ class FishingPainter extends CustomPainter {
     final label = TextCache.layout(
         '${(tension * 100).round()}%',
         const TextStyle(
+            fontFamily: 'Roboto',
             fontSize: DS.fontMicro,
             fontWeight: FontWeight.w900,
             color: Color(0xFF294941)));

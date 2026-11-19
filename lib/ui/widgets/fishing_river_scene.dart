@@ -1,0 +1,328 @@
+import 'dart:math' as math;
+import 'dart:ui' as ui;
+import 'package:material_ui/material_ui.dart';
+
+import '../../fishing/fishing_river.dart';
+import '../../fishing/fishing_controller.dart';
+import '../../collection/fish_species.dart';
+import '../../game/text_cache.dart';
+import 'fishing_river_art.dart';
+
+/// Like Adventure's cached background: only the visible stretch is replayed.
+class FishingRiverBackdrop extends StatefulWidget {
+  const FishingRiverBackdrop(
+      {super.key, required this.round, required this.frames});
+  final FishingRiverRound round;
+  final Listenable frames;
+
+  @override
+  State<FishingRiverBackdrop> createState() => _FishingRiverBackdropState();
+}
+
+class _FishingRiverBackdropState extends State<FishingRiverBackdrop> {
+  late final _pictures = [recordFishingRiver(0), recordFishingRiver(1)];
+
+  @override
+  void dispose() {
+    for (final picture in _pictures) {
+      picture.dispose();
+    }
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => RepaintBoundary(
+      child: CustomPaint(
+          painter:
+              _RiverBackdropPainter(widget.round, _pictures, widget.frames)));
+}
+
+class _RiverBackdropPainter extends CustomPainter {
+  _RiverBackdropPainter(this.round, this.pictures, Listenable frames)
+      : super(repaint: frames);
+  final FishingRiverRound round;
+  final List<ui.Picture> pictures;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    canvas.save();
+    canvas.clipRect(Offset.zero & size);
+    canvas.scale(round.scale);
+    canvas.translate(-round.cameraLeft, 0);
+    for (var i = 0; i < pictures.length; i++) {
+      final start = i * FishingRiver.sectionLength;
+      if (start > round.cameraLeft + round.visibleWidth ||
+          start + FishingRiver.sectionLength < round.cameraLeft) {
+        continue;
+      }
+      canvas.drawPicture(pictures[i]);
+    }
+    canvas.restore();
+  }
+
+  @override
+  bool shouldRepaint(_RiverBackdropPainter oldDelegate) =>
+      oldDelegate.round != round;
+}
+
+class FishingRiverSurface extends CustomPainter {
+  FishingRiverSurface(this.round, Listenable frames, {this.fishing})
+      : super(repaint: frames);
+  final FishingRiverRound round;
+  final FishingController? fishing;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    canvas.save();
+    canvas.clipRect(Offset.zero & size);
+    canvas.scale(round.scale);
+    canvas.translate(-round.cameraLeft, 0);
+    final left = math.max(0.0, round.cameraLeft - 30);
+    final right = math.min(
+        FishingRiver.length, round.cameraLeft + round.visibleWidth + 30);
+    final paint = Paint()
+      ..strokeCap = StrokeCap.round
+      ..strokeWidth = 1.5;
+    final firstColumn = (left / 57).floor();
+    for (var col = firstColumn; col * 57 < right; col++) {
+      final x = col * 57.0 + (round.clock * 8) % 30;
+      for (var row = 0; row < 7; row++) {
+        final y = FishingRiver.center(x) + (row - 3) * 26;
+        if (y < FishingRiver.top(x) + 10 || y > FishingRiver.bottom(x) - 10) {
+          continue;
+        }
+        final phase = round.clock * 1.4 + col * 1.7 + row;
+        canvas.drawLine(
+            Offset(x, y),
+            Offset(x + 15 + math.sin(phase) * 6, y - 1),
+            paint
+              ..color = Color.fromRGBO(
+                  218, 255, 237, .12 + math.sin(phase).abs() * .13));
+      }
+    }
+    // Faint little fish and floating leaves make the long channel feel alive.
+    for (var i = (left / 240).floor(); i * 240 < right; i++) {
+      final x = i * 240.0 + 80 + math.sin(round.clock * .6 + i) * 18;
+      final y = FishingRiver.center(x) + math.sin(i * 4.0) * 48;
+      canvas.drawOval(
+          Rect.fromCenter(center: Offset(x, y), width: 15, height: 5),
+          Paint()..color = const Color(0x44355E65));
+      canvas.drawPath(
+          Path()
+            ..moveTo(x - 6, y)
+            ..lineTo(x - 12, y - 4)
+            ..lineTo(x - 12, y + 4)
+            ..close(),
+          Paint()..color = const Color(0x44355E65));
+      final leaf = Offset(x + 70, FishingRiver.center(x + 70) + 60);
+      canvas.drawOval(Rect.fromCenter(center: leaf, width: 7, height: 3),
+          Paint()..color = const Color(0xCCB5C68A));
+    }
+    final controller = fishing;
+    if (controller != null) {
+      if (controller.canSail) {
+        for (final shoal in FishingRiver.shoals) {
+          if (shoal.dx < left - 45 || shoal.dx > right + 45) continue;
+          canvas.drawOval(Rect.fromCenter(center: shoal, width: 83, height: 45),
+              Paint()..color = const Color(0x4478C6C0));
+          canvas.drawOval(
+              Rect.fromCenter(center: shoal, width: 83, height: 45),
+              Paint()
+                ..color = const Color(0xCCECF7D3)
+                ..style = PaintingStyle.stroke
+                ..strokeWidth = 2);
+          for (var j = 0; j < 3; j++) {
+            final p = shoal +
+                Offset((j - 1) * 15 + math.sin(round.clock * 2 + j) * 4,
+                    math.sin(round.clock + j) * 4);
+            canvas.drawOval(Rect.fromCenter(center: p, width: 16, height: 7),
+                Paint()..color = const Color(0xBB335F65));
+            canvas.drawPath(
+                Path()
+                  ..moveTo(p.dx - 7, p.dy)
+                  ..lineTo(p.dx - 14, p.dy - 4)
+                  ..lineTo(p.dx - 14, p.dy + 4)
+                  ..close(),
+                Paint()..color = const Color(0xBB335F65));
+          }
+          final label = TextCache.layout(
+              'CÂU',
+              const TextStyle(
+                  fontFamily: 'Roboto',
+                  fontSize: 13,
+                  fontWeight: FontWeight.w900,
+                  color: Color(0xFF295D60),
+                  backgroundColor: Color(0xCCF0F4D7)));
+          label.paint(canvas, shoal + Offset(-label.width / 2, 26));
+        }
+      } else if (controller.phase == FishingPhase.reeling ||
+          controller.phase == FishingPhase.bite) {
+        final p = controller.spot;
+        final diving = controller.fish == FishSpecies.catfish &&
+            controller.elapsed % 3.2 < .7;
+        if (!diving) {
+          canvas.drawOval(
+              Rect.fromCenter(
+                  center: p + const Offset(0, 8), width: 36, height: 13),
+              Paint()..color = const Color(0x88335661));
+        } else {
+          for (var i = 0; i < 3; i++) {
+            canvas.drawCircle(
+                p + Offset(i * 7.0, -i * 3.0),
+                3,
+                Paint()
+                  ..color = const Color(0xBBE9FFF0)
+                  ..style = PaintingStyle.stroke
+                  ..strokeWidth = 1.5);
+          }
+        }
+      }
+    }
+    final destination = round.destination;
+    if (destination != null) {
+      final radius = 12 + math.sin(round.clock * 5) * 2;
+      canvas.drawOval(
+          Rect.fromCenter(
+              center: destination, width: radius * 2, height: radius),
+          Paint()
+            ..color = const Color(0xDDFFF0B2)
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = 2.5);
+      canvas.drawCircle(
+          destination, 2, Paint()..color = const Color(0xFFFFF5CE));
+    }
+    canvas.restore();
+  }
+
+  @override
+  bool shouldRepaint(FishingRiverSurface oldDelegate) =>
+      oldDelegate.round != round;
+}
+
+class FishingRiverBoatPainter extends CustomPainter {
+  FishingRiverBoatPainter(this.round, {this.front = false});
+  final FishingRiverRound round;
+  final bool front;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final point = round.toScreen(round.boat);
+    canvas.save();
+    canvas.translate(
+        point.dx, point.dy + math.sin(round.clock * 2.5) * 1.8 * round.scale);
+    canvas.scale(round.scale);
+    final p = Paint();
+    const rim = Rect.fromLTWH(-52, -21, 104, 48);
+    if (!front) {
+      if (round.wake > .02) {
+        for (var i = 0; i < 3; i++) {
+          final t = (round.clock * 1.5 + i / 3) % 1;
+          canvas.drawOval(
+              Rect.fromCenter(
+                  center: Offset(-round.heading.dx * t * 22, 10),
+                  width: 105 + t * 60,
+                  height: 40 + t * 25),
+              Paint()
+                ..color =
+                    Color.fromRGBO(220, 255, 243, (1 - t) * .45 * round.wake)
+                ..style = PaintingStyle.stroke
+                ..strokeWidth = 2);
+        }
+      }
+      canvas.drawOval(const Rect.fromLTWH(-55, -9, 112, 51),
+          p..color = const Color(0x33466360));
+      canvas.drawOval(
+          rim.shift(const Offset(0, 10)), p..color = const Color(0xFF8A603B));
+      canvas.drawOval(
+          rim.shift(const Offset(0, 5)),
+          Paint()
+            ..color = const Color(0xFFC39960)
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = 6);
+      canvas.drawOval(rim, p..color = const Color(0xFFE0BB7B));
+      canvas.drawOval(rim.deflate(7), p..color = const Color(0xFFA77D4C));
+      canvas.save();
+      canvas.clipPath(Path()..addOval(rim.deflate(7)));
+      for (var i = -3; i < 5; i++) {
+        canvas.drawLine(
+            Offset(-50, i * 6.0),
+            Offset(50, i * 6.0),
+            Paint()
+              ..color = const Color(0xFF947044)
+              ..strokeWidth = 1.3);
+        canvas.drawLine(
+            Offset(i * 12.0, -25),
+            Offset(i * 12.0, 25),
+            Paint()
+              ..color = const Color(0x55E3C085)
+              ..strokeWidth = 1.5);
+      }
+      canvas.restore();
+      canvas.drawOval(
+          rim,
+          Paint()
+            ..color = const Color(0xFF795837)
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = 3);
+      canvas.drawOval(
+          rim.deflate(4),
+          Paint()
+            ..color = const Color(0xFFF0D49B)
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = 2);
+    } else {
+      canvas.drawArc(
+          rim,
+          0,
+          math.pi,
+          false,
+          Paint()
+            ..color = const Color(0xFFCEAA6E)
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = 7);
+      for (var i = 0; i < 17; i++) {
+        final a = i * math.pi / 16;
+        final outer = rim.center + Offset(math.cos(a) * 51, math.sin(a) * 23);
+        canvas.drawLine(
+            outer,
+            outer + const Offset(0, 5),
+            Paint()
+              ..color = const Color(0xFF997344)
+              ..strokeWidth = 1.3);
+      }
+      final swing = round.rowing ? math.sin(round.clock * 7) : .2;
+      final tip = Offset(70 + swing * 8, 23 + swing * 12);
+      canvas.drawLine(
+          const Offset(7, -7),
+          tip,
+          Paint()
+            ..color = const Color(0xFF805C3D)
+            ..strokeWidth = 4
+            ..strokeCap = StrokeCap.round);
+      canvas.drawOval(Rect.fromCenter(center: tip, width: 25, height: 12),
+          p..color = const Color(0xFFD2AA6C));
+      canvas.drawLine(
+          tip - const Offset(9, 0),
+          tip + const Offset(9, 0),
+          Paint()
+            ..color = const Color(0xFFAE824F)
+            ..strokeWidth = 1.5);
+      canvas.drawRRect(
+          RRect.fromRectAndRadius(
+              const Rect.fromLTWH(-42, 1, 23, 20), const Radius.circular(4)),
+          p..color = const Color(0xFFE2BE7B));
+      for (var i = 0; i < 3; i++) {
+        canvas.drawLine(
+            Offset(-40, 6 + i * 5.0),
+            Offset(-21, 6 + i * 5.0),
+            Paint()
+              ..color = const Color(0xFFAC8553)
+              ..strokeWidth = 1.5);
+      }
+    }
+    canvas.restore();
+  }
+
+  @override
+  bool shouldRepaint(FishingRiverBoatPainter oldDelegate) => true;
+}

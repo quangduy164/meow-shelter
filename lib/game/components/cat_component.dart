@@ -402,6 +402,11 @@ class CatComponent extends SpriteAnimationGroupComponent<CatState>
       return;
     }
     fishTarget = null;
+    // Picked up mid-play or mid-bolt: those timers must not take over the
+    // drop animation later (the cat would never leave its bed).
+    _yarnPlay = 0;
+    _dodgeTime = 0;
+    _goingToNap = false;
     _isDragged = true;
     GameAudio.instance.playRescue(GameSound.catGrab);
     _isTapTriggered = false;

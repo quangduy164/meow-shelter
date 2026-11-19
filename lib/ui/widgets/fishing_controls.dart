@@ -42,10 +42,10 @@ class FishingControls extends StatelessWidget {
             onPressed: controller.error == null ? null : controller.retrySave),
         _ => FishingActionButton(
             tool: FishingTool.float,
-            tooltip: 'Thả câu',
+            tooltip: 'Câu ở đàn cá gần nhất',
             primary: true,
             onPressed: controller.phase == FishingPhase.casting
                 ? null
-                : () => controller.cast(controller.spot)),
+                : controller.castNearest),
       };
 }

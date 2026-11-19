@@ -20,7 +20,18 @@ class NightRun {
   int totalRescued = 0, coins = 0;
   int silver = 0, lastSilverReward = 0, earnedMoonlight = 0;
   final relics = <NightRelic>[];
-  static const relicSlots = 3;
+
+  /// Relic bag size; a 4th slot can be bought once in the shop.
+  int relicSlots = 3;
+  static const maxRelicSlots = 4, slotPrice = 80;
+
+  /// Relic levels 1..3 (owned relics only) and what was paid for each.
+  final relicLevels = <NightRelic, int>{};
+  final _relicPaid = <NightRelic, int>{};
+
+  /// Shop rerolls this visit; each one costs 5 more.
+  int rerolls = 0;
+  int get rerollPrice => 5 + 5 * rerolls;
 
   /// Separate run currency; never credited to the camp wallet.
   void rewardSilver({required int secondsLeft, required bool clean}) {
@@ -38,8 +49,21 @@ class NightRun {
     earnedMoonlight += amount;
   }
 
+  int relicLevel(NightRelic relic) =>
+      relics.contains(relic) ? relicLevels[relic] ?? 1 : 0;
+  int _up(NightRelic relic) => max(0, relicLevel(relic) - 1);
+
+  /// Next level's price, or null at max level / not owned.
+  int? upgradePrice(NightRelic relic) => switch (relicLevel(relic)) {
+        1 => relic.price,
+        2 => (relic.price * 1.5).round(),
+        _ => null,
+      };
+  int sellPrice(NightRelic relic) => (_relicPaid[relic] ?? relic.price) ~/ 2;
+
   double get afterglowSeconds => relics.contains(NightRelic.embers)
       ? 4 +
+          2.0 * _up(NightRelic.embers) +
           2.0 *
               (count(NightCard.longWick) +
                   count(NightCard.backupPower) +
@@ -50,35 +74,49 @@ class NightRun {
                   count(NightCard.longStop))
       : 0;
   int get bellTargets => min(
-      3,
+      3 + _up(NightRelic.bell),
       1 +
+          _up(NightRelic.bell) +
           count(NightCard.extraLantern) +
           count(NightCard.widePlanks) +
           count(NightCard.reedBell) +
           count(NightCard.porter));
   double get bellReach =>
       1 +
+      .2 * _up(NightRelic.bell) +
       .25 * count(NightCard.brightLantern) +
       (has(NightCard.railLights) ? .5 : 0);
   double get lightRecharge =>
       2 +
+      _up(NightRelic.moonPouch) +
       (has(NightCard.fullMoon) ? 2 : 0) +
       count(NightCard.eagerHelpers).toDouble();
-  double get cloudRecharge => 3 + count(NightCard.eagerHelpers).toDouble();
-  double get chainWindow => 8 + 2.0 * count(NightCard.warmHug);
+  double get cloudRecharge =>
+      3 + _up(NightRelic.moonPouch) + count(NightCard.eagerHelpers).toDouble();
+  double get chainWindow =>
+      8 + 2.0 * (count(NightCard.warmHug) + _up(NightRelic.feastCharm));
   double get chainReach => 240 * (1 + .35 * count(NightCard.scentedFish));
   int chainTargets(int chain) =>
       chain < 2 ? 1 : 2 + (chain >= 3 && has(NightCard.patience) ? 1 : 0);
   int get prismReward =>
-      3 + (has(NightCard.fullMoon) ? 2 : 0) + count(NightCard.hotCoins);
+      3 +
+      _up(NightRelic.prism) +
+      (has(NightCard.fullMoon) ? 2 : 0) +
+      count(NightCard.hotCoins);
 
   List<NightRelic> relicOffer(Random random) =>
-      (NightRelic.values.where((r) => !relics.contains(r)).toList()
+      // Owned relics come back on the counter until they reach tier 3.
+      (NightRelic.values.where((r) => relicLevel(r) < 3).toList()
             ..shuffle(random))
           .take(3)
           .toList();
 
+  /// Counter price: new relics cost their base price, owned ones the next tier.
+  int shopPrice(NightRelic relic) => upgradePrice(relic) ?? relic.price;
+
+  /// Buys a new relic, or a second/third copy that raises its tier.
   bool buyRelic(NightRelic relic) {
+    if (relics.contains(relic)) return upgradeRelic(relic);
     if (relics.length >= relicSlots ||
         relics.contains(relic) ||
         silver < relic.price) {
@@ -86,12 +124,33 @@ class NightRun {
     }
     silver -= relic.price;
     relics.add(relic);
+    relicLevels[relic] = 1;
+    _relicPaid[relic] = relic.price;
     return true;
   }
 
   bool sellRelic(NightRelic relic) {
-    if (!relics.remove(relic)) return false;
-    silver += relic.sellPrice;
+    if (!relics.contains(relic)) return false;
+    silver += sellPrice(relic);
+    relics.remove(relic);
+    relicLevels.remove(relic);
+    _relicPaid.remove(relic);
+    return true;
+  }
+
+  bool upgradeRelic(NightRelic relic) {
+    final price = upgradePrice(relic);
+    if (price == null || silver < price) return false;
+    silver -= price;
+    relicLevels[relic] = relicLevel(relic) + 1;
+    _relicPaid[relic] = (_relicPaid[relic] ?? relic.price) + price;
+    return true;
+  }
+
+  bool buySlot() {
+    if (relicSlots >= maxRelicSlots || silver < slotPrice) return false;
+    silver -= slotPrice;
+    relicSlots++;
     return true;
   }
 

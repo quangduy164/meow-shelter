@@ -35,6 +35,9 @@ class NightGame {
   bool _thickClouds = false, _bedTwist = false;
   List<NightCard> cardOffer = const [];
   List<NightRelic> shopOffer = const [];
+
+  /// Counter items already bought this visit (one purchase per item).
+  final shopBought = <NightRelic>{};
   int _nightStartles = 0, _nightWrongDrops = 0;
   double _secondAccumulator = 0;
   late final relicEffects = NightRelicEffects(this);
@@ -116,7 +119,7 @@ class NightGame {
     cardEffects.onRescue(cat);
     scene.onRescue();
     run.coins += 5; // Camp rescue pays this small, fixed side reward.
-    run.earnMoonlight(2);
+    run.earnMoonlight(1);
     game.hud.silver = run.silver;
     if (run.rescuedTonight >= run.quota) {
       _endNight();
@@ -393,6 +396,8 @@ class NightGame {
     game.overlays.remove('nightCards');
     if (run.night.isEven) {
       phase = NightPhase.shop;
+      run.rerolls = 0;
+      shopBought.clear();
       shopOffer = run.relicOffer(random);
       game.overlays.add('nightShop');
     } else {
@@ -405,9 +410,11 @@ class NightGame {
     if (run == null ||
         phase != NightPhase.shop ||
         !shopOffer.contains(relic) ||
+        shopBought.contains(relic) ||
         !run.buyRelic(relic)) {
       return false;
     }
+    shopBought.add(relic);
     game.hud.silver = run.silver;
     GameAudio.instance.playRescue(GameSound.rescueMilestone, important: true);
     return true;
@@ -419,6 +426,28 @@ class NightGame {
       return false;
     }
     game.hud.silver = run.silver;
+    GameAudio.instance.playRescue(GameSound.rescueMilestone, important: true);
+    return true;
+  }
+
+  bool upgradeRelic(NightRelic relic) =>
+      _shopSpend(() => run!.upgradeRelic(relic));
+  bool buyRelicSlot() => _shopSpend(() => run!.buySlot());
+
+  /// New relics on the counter; the price climbs with each reroll this visit.
+  bool rerollShop() => _shopSpend(() {
+        final run = this.run!;
+        if (run.silver < run.rerollPrice) return false;
+        run.silver -= run.rerollPrice;
+        run.rerolls++;
+        shopBought.clear();
+        shopOffer = run.relicOffer(random);
+        return true;
+      });
+
+  bool _shopSpend(bool Function() spend) {
+    if (run == null || phase != NightPhase.shop || !spend()) return false;
+    game.hud.silver = run!.silver;
     GameAudio.instance.playRescue(GameSound.rescueMilestone, important: true);
     return true;
   }

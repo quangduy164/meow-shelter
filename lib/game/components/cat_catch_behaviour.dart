@@ -338,7 +338,11 @@ extension CatCatchBehaviour on CatComponent {
 
   /// Pulsing beat ring around the Calico boss: tap when it flashes gold.
   void _drawBeat(Canvas canvas) {
-    if (!_keepsRhythm || hasEaten || _isDelivered || _isDragged) return;
+    // Shown whenever taps are judged on the beat, including after an unused
+    // catch window ran out (hasEaten stays true then).
+    if (!_keepsRhythm || catchWindow.canCatch || _isDelivered || _isDragged) {
+      return;
+    }
     final on = _onBeat;
     final pulse = 1 - (beatPhase < .5 ? beatPhase : 1 - beatPhase) * 2;
     final center = Offset(size.x / 2, size.y * .55);

@@ -17,10 +17,10 @@ class FishCollectionDialog extends StatefulWidget {
 }
 
 int _rarityLevel(FishSpecies fish) => switch (fish.rarity) {
-      'Elite' => 1,
-      'Special' => 2,
-      'Epic' => 3,
-      'Legend' => 4,
+      'Hiếm' => 1,
+      'Quý' => 2,
+      'Cực hiếm' => 3,
+      'Huyền thoại' => 4,
       _ => 0,
     };
 
@@ -196,50 +196,59 @@ class _RarityOrnament extends CustomPainter {
       color != old.color || level != old.level || motion != old.motion;
 }
 
+/// Stars shown with the rarity: one for common up to five for legendary.
+class _RarityStars extends StatelessWidget {
+  const _RarityStars(this.fish, {this.dim = false});
+  final FishSpecies fish;
+  final bool dim;
+
+  @override
+  Widget build(BuildContext context) {
+    final level = _rarityLevel(fish);
+    final tone = level == 0 ? DS.wood : _rarityTone(fish);
+    return Row(mainAxisSize: MainAxisSize.min, children: [
+      for (var i = 0; i <= level; i++)
+        Icon(Icons.star_rounded,
+            size: 11,
+            color: dim ? const Color(0xCCFFD877) : tone,
+            shadows: const [Shadow(color: Color(0x55FFFFFF), blurRadius: 1)]),
+    ]);
+  }
+}
+
 class _RarityTag extends StatelessWidget {
   const _RarityTag(this.fish);
   final FishSpecies fish;
 
   @override
   Widget build(BuildContext context) {
-    final color = _rarityTone(fish);
     final level = _rarityLevel(fish);
-    final icon = switch (level) {
-      1 => Icons.shield_outlined,
-      2 => Icons.diamond_outlined,
-      3 => Icons.auto_awesome_rounded,
-      4 => Icons.workspace_premium_rounded,
-      _ => Icons.label_outline_rounded
-    };
-    final foreground = level == 0
-        ? color
-        : (level == 4 ? const Color(0xFF69350C) : Colors.white);
+    final color = _rarityTone(fish);
+    final foreground = level == 4 ? const Color(0xFF69350C) : Colors.white;
     return Container(
-      padding: const EdgeInsets.symmetric(
-          horizontal: DS.spaceSm, vertical: DS.spaceXs),
+      padding: const EdgeInsets.fromLTRB(DS.spaceSm, 3, DS.spaceSm, 3),
       decoration: BoxDecoration(
           gradient: LinearGradient(
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
-              colors: level == 0
-                  ? [const Color(0xFFF2EFEB), const Color(0xFFE7E1DB)]
+              colors: fish.isJunk || level == 0
+                  ? const [Color(0xFF9C8D7C), Color(0xFF7C6E60)]
                   : level == 4
-                      ? [const Color(0xFFFFE5A1), const Color(0xFFECAF35)]
+                      ? const [Color(0xFFFFE5A1), Color(0xFFECAF35)]
                       : [
                           Color.lerp(color, Colors.white, .1)!,
                           Color.lerp(color, Colors.black, .2)!
                         ]),
-          boxShadow: level >= 3
-              ? [BoxShadow(color: color.withValues(alpha: .25), blurRadius: 5)]
-              : null,
-          borderRadius: BorderRadius.circular(DS.radiusSm),
-          border: Border.all(color: color)),
+          borderRadius: BorderRadius.circular(DS.radiusLg)),
       child: Row(mainAxisSize: MainAxisSize.min, children: [
-        Icon(icon, size: 12, color: foreground),
-        const SizedBox(width: DS.spaceXs),
+        if (!fish.isJunk) ...[
+          for (var i = 0; i <= level; i++)
+            Icon(Icons.star_rounded, size: 11, color: foreground),
+          const SizedBox(width: DS.spaceXs),
+        ],
         Text(fish.rarity,
             style: TextStyle(
-                color: foreground,
+                color: fish.isJunk || level == 0 ? Colors.white : foreground,
                 fontSize: DS.fontCaption,
                 height: 1.1,
                 fontWeight: FontWeight.w900)),
@@ -248,15 +257,35 @@ class _RarityTag extends StatelessWidget {
   }
 }
 
+/// When a species bites most, matching the lake's time-of-day weights.
+(IconData, String) _biteTime(FishSpecies fish) => switch (fish) {
+      FishSpecies.perch || FishSpecies.tilapia => (
+          Icons.wb_sunny_rounded,
+          'Ban ngày'
+        ),
+      FishSpecies.carp => (Icons.wb_twilight_rounded, 'Sáng sớm'),
+      FishSpecies.koi => (Icons.wb_twilight_rounded, 'Sáng sớm, ban đêm'),
+      FishSpecies.catfish || FishSpecies.goldfish || FishSpecies.catMew => (
+          Icons.bedtime_rounded,
+          'Ban đêm'
+        ),
+      _ => (Icons.schedule_rounded, 'Lúc nào cũng có'),
+    };
+
 class _FishCollectionDialogState extends State<FishCollectionDialog> {
   bool _junkTab = false;
   late FishSpecies _selected = _entries.firstWhere(
       (fish) => widget.collection.countOf(fish) > 0,
       orElse: () => _entries.first);
 
-  List<FishSpecies> get _entries => FishSpecies.values
-      .where((fish) => fish.isJunk == _junkTab)
+  List<FishSpecies> _of(bool junk) => FishSpecies.values
+      .where((fish) => fish.isJunk == junk)
       .toList(growable: false);
+
+  List<FishSpecies> get _entries => _of(_junkTab);
+
+  int _found(bool junk) =>
+      _of(junk).where((fish) => widget.collection.countOf(fish) > 0).length;
 
   void _switchTab(bool junk) {
     if (junk == _junkTab) return;
@@ -271,71 +300,63 @@ class _FishCollectionDialogState extends State<FishCollectionDialog> {
   @override
   Widget build(BuildContext context) {
     final screen = MediaQuery.sizeOf(context);
-    final width = (screen.width - 48).clamp(320.0, 780.0);
+    final width = (screen.width - 48).clamp(320.0, 820.0);
     // Detail column takes a share of the card so narrow (4:3) screens still
     // leave room for the grid.
-    final detailWidth = (width * .36).clamp(170.0, 240.0);
+    final detailWidth = (width * .34).clamp(190.0, 260.0);
     return GameDialog(
-      maxWidth: 780,
+      maxWidth: 820,
       padding: EdgeInsets.zero,
       insetPadding: const EdgeInsets.symmetric(
-          horizontal: DS.spaceXl, vertical: DS.spaceLg),
+          horizontal: DS.spaceXl, vertical: DS.spaceMd),
       child: Container(
         width: width,
-        height: (screen.height * .88).clamp(260.0, 460.0),
+        height: (screen.height * .9).clamp(260.0, 480.0),
         padding: const EdgeInsets.fromLTRB(
-            DS.spaceMd, DS.spaceSm, DS.spaceMd, DS.spaceMd),
+            DS.spaceLg, DS.spaceSm, DS.spaceSm, DS.spaceMd),
         child: Column(children: [
-          GameDialogHeader(
-              title: 'BỘ SƯU TẬP',
-              icon: Icons.menu_book_rounded,
-              closeTooltip: 'Đóng bộ sưu tập',
-              onClose: () => Navigator.pop(context)),
+          SizedBox(
+            height: 44,
+            child: Row(children: [
+              const Icon(Icons.menu_book_rounded,
+                  color: DS.goldEdge, size: DS.iconLg),
+              const SizedBox(width: DS.spaceSm),
+              const Text('BỘ SƯU TẬP', style: DS.title),
+              const Spacer(),
+              _Tabs(
+                  junk: _junkTab,
+                  fishFound: '${_found(false)}/${_of(false).length}',
+                  junkFound: '${_found(true)}/${_of(true).length}',
+                  onChanged: _switchTab),
+              IconButton(
+                tooltip: 'Đóng bộ sưu tập',
+                onPressed: () => Navigator.pop(context),
+                icon: const Icon(Icons.close_rounded, size: DS.iconMd),
+              ),
+            ]),
+          ),
           const SizedBox(height: DS.spaceSm),
           Expanded(
             child:
                 Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
               Expanded(
-                child: Column(children: [
-                  FittedBox(
-                    fit: BoxFit.scaleDown,
-                    alignment: Alignment.centerLeft,
-                    child: Row(mainAxisSize: MainAxisSize.min, children: [
-                      _TabChip(
-                          label: 'Cá',
-                          count: widget.collection.count,
-                          active: !_junkTab,
-                          onTap: () => _switchTab(false)),
-                      const SizedBox(width: DS.spaceSm),
-                      _TabChip(
-                          label: 'Đồ thất lạc',
-                          count: widget.collection.junkCount,
-                          active: _junkTab,
-                          onTap: () => _switchTab(true)),
-                    ]),
-                  ),
-                  const SizedBox(height: DS.spaceSm),
-                  Expanded(
-                    child: GridView.builder(
-                      padding: EdgeInsets.zero,
-                      gridDelegate:
-                          const SliverGridDelegateWithMaxCrossAxisExtent(
-                              maxCrossAxisExtent: 170,
-                              mainAxisExtent: 132,
-                              crossAxisSpacing: 8,
-                              mainAxisSpacing: 8),
-                      itemCount: _entries.length,
-                      itemBuilder: (context, index) {
-                        final fish = _entries[index];
-                        return _FishTile(
-                            fish: fish,
-                            count: widget.collection.countOf(fish),
-                            selected: fish == _selected,
-                            onTap: () => setState(() => _selected = fish));
-                      },
-                    ),
-                  ),
-                ]),
+                child: GridView.builder(
+                  padding: const EdgeInsets.only(bottom: DS.spaceXs),
+                  gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+                      maxCrossAxisExtent: 132,
+                      mainAxisExtent: 114,
+                      crossAxisSpacing: DS.spaceSm,
+                      mainAxisSpacing: DS.spaceSm),
+                  itemCount: _entries.length,
+                  itemBuilder: (context, index) {
+                    final fish = _entries[index];
+                    return _FishTile(
+                        fish: fish,
+                        count: widget.collection.countOf(fish),
+                        selected: fish == _selected,
+                        onTap: () => setState(() => _selected = fish));
+                  },
+                ),
               ),
               const SizedBox(width: DS.spaceMd),
               SizedBox(
@@ -344,6 +365,7 @@ class _FishCollectionDialogState extends State<FishCollectionDialog> {
                     fish: _selected,
                     count: widget.collection.countOf(_selected)),
               ),
+              const SizedBox(width: DS.spaceSm),
             ]),
           ),
         ]),
@@ -352,48 +374,55 @@ class _FishCollectionDialogState extends State<FishCollectionDialog> {
   }
 }
 
-class _TabChip extends StatelessWidget {
-  const _TabChip(
-      {required this.label,
-      required this.count,
-      required this.active,
-      required this.onTap});
-  final String label;
-  final int count;
-  final bool active;
-  final VoidCallback onTap;
+/// Two-way segmented switch between fish and lost items.
+class _Tabs extends StatelessWidget {
+  const _Tabs(
+      {required this.junk,
+      required this.fishFound,
+      required this.junkFound,
+      required this.onChanged});
+  final bool junk;
+  final String fishFound, junkFound;
+  final ValueChanged<bool> onChanged;
 
   @override
-  Widget build(BuildContext context) => GestureDetector(
-        onTap: onTap,
+  Widget build(BuildContext context) => Container(
+        padding: const EdgeInsets.all(3),
+        decoration: BoxDecoration(
+            color: DS.surfaceMuted,
+            borderRadius: BorderRadius.circular(DS.radiusControl),
+            border: Border.all(color: DS.borderMedium)),
+        child: Row(mainAxisSize: MainAxisSize.min, children: [
+          _segment('Cá', fishFound, !junk, () => onChanged(false)),
+          _segment('Đồ thất lạc', junkFound, junk, () => onChanged(true)),
+        ]),
+      );
+
+  Widget _segment(String label, String count, bool active, VoidCallback tap) =>
+      GestureDetector(
+        onTap: tap,
         child: AnimatedContainer(
-          duration: const Duration(milliseconds: 160),
+          duration: DS.fastDuration,
           padding: const EdgeInsets.symmetric(
               horizontal: DS.spaceMd, vertical: DS.spaceXs),
           decoration: BoxDecoration(
-              color: active ? DS.gold : DS.cream,
-              borderRadius: BorderRadius.circular(DS.radiusControl),
-              border:
-                  Border.all(color: active ? DS.goldEdge : DS.wood, width: 2)),
+              color: active ? DS.gold : Colors.transparent,
+              borderRadius: BorderRadius.circular(DS.radiusMd),
+              boxShadow: active
+                  ? const [BoxShadow(color: DS.goldEdge, offset: Offset(0, 2))]
+                  : null),
           child: Row(mainAxisSize: MainAxisSize.min, children: [
             Text(label,
-                style: const TextStyle(
-                    color: DS.ink,
+                style: TextStyle(
+                    color: active ? DS.ink : DS.soft,
                     fontSize: DS.fontBody,
                     fontWeight: FontWeight.w900)),
             const SizedBox(width: DS.spaceXs),
-            Container(
-              padding: const EdgeInsets.symmetric(
-                  horizontal: DS.spaceXs, vertical: 1),
-              decoration: BoxDecoration(
-                  color: DS.ink,
-                  borderRadius: BorderRadius.circular(DS.radiusSm)),
-              child: Text('$count',
-                  style: const TextStyle(
-                      color: DS.cream,
-                      fontSize: DS.fontCaption,
-                      fontWeight: FontWeight.w900)),
-            ),
+            Text(count,
+                style: TextStyle(
+                    color: active ? DS.ink : DS.mutedText,
+                    fontSize: DS.fontCaption,
+                    fontWeight: FontWeight.w700)),
           ]),
         ),
       );
@@ -415,10 +444,15 @@ class _FishTile extends StatelessWidget {
     final locked = count == 0;
     final level = _rarityLevel(fish);
     final tone = _rarityTone(fish);
+    final edge = locked
+        ? _mysteryEdge
+        : level > 0
+            ? tone
+            : DS.wood;
     return GestureDetector(
       onTap: onTap,
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 160),
+        duration: DS.fastDuration,
         decoration: BoxDecoration(
           gradient: locked
               ? _mysteryGradient
@@ -428,78 +462,63 @@ class _FishTile extends StatelessWidget {
                   colors: _rarityFill(fish)),
           borderRadius: BorderRadius.circular(DS.radiusControl),
           border: Border.all(
-              color: level > 0
-                  ? tone
-                  : (selected
-                      ? DS.goldEdge
-                      : (locked ? _mysteryEdge : DS.wood)),
-              width: level > 0 ? (selected ? 5 : 4) : (selected ? 3 : 2)),
-          boxShadow: level > 0
-              ? [
-                  BoxShadow(
-                      color: tone.withValues(alpha: selected ? .3 : .15),
-                      blurRadius: 4.0 + level * 2,
-                      spreadRadius: selected ? 1 : 0)
-                ]
-              : null,
+              color: selected ? DS.goldEdge : edge, width: selected ? 3 : 2),
+          boxShadow: [
+            if (selected)
+              const BoxShadow(
+                  color: Color(0x99FFC24D), blurRadius: 8, spreadRadius: 1)
+            else
+              const BoxShadow(color: Color(0x22000000), offset: Offset(0, 2)),
+          ],
         ),
         child: ClipRRect(
           borderRadius: BorderRadius.circular(DS.radiusMd),
           child: Stack(children: [
-            if (level > 0)
+            if (level > 0 && !locked)
               Positioned.fill(child: IgnorePointer(child: _RarityAura(fish))),
             Positioned.fill(
-              top: 8,
-              child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    SizedBox(
-                        width: 100,
-                        height: 62,
-                        child: locked
-                            ? _MysteryArt(fish: fish, mark: 26)
-                            : CustomPaint(painter: FishingFishArt(fish))),
-                    const SizedBox(height: DS.spaceXs),
-                    Padding(
-                      padding:
-                          const EdgeInsets.symmetric(horizontal: DS.spaceXs),
-                      child: FittedBox(
-                        fit: BoxFit.scaleDown,
-                        child: Text(locked ? '???' : fish.label,
-                            style: TextStyle(
-                                color: locked ? DS.gold : DS.ink,
-                                fontSize: DS.fontBody,
-                                fontWeight: FontWeight.w900)),
-                      ),
-                    ),
-                    const SizedBox(height: DS.spaceXs),
-                    _RarityTag(fish),
-                  ]),
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(4, 10, 4, 6),
+                child: Column(children: [
+                  Expanded(
+                    child: locked
+                        ? _MysteryArt(fish: fish, mark: 22)
+                        : CustomPaint(
+                            size: Size.infinite, painter: FishingFishArt(fish)),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(locked ? '???' : fish.label,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                          color: locked ? DS.gold : DS.ink,
+                          fontSize: DS.fontBody,
+                          fontWeight: FontWeight.w900)),
+                  const SizedBox(height: 2),
+                  if (!fish.isJunk)
+                    _RarityStars(fish, dim: locked)
+                  else
+                    const SizedBox(height: 11),
+                ]),
+              ),
             ),
             if (!locked)
               Positioned(
                 right: 5,
-                top: 9,
+                top: 5,
                 child: Container(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: DS.spaceXs, vertical: 1),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
                   decoration: BoxDecoration(
-                      color: DS.cream,
-                      borderRadius: BorderRadius.circular(DS.radiusSm),
-                      border: Border.all(color: DS.goldEdge, width: 1.5)),
+                      color: DS.ink,
+                      borderRadius: BorderRadius.circular(DS.radiusSm)),
                   child: Text('×$count',
                       style: const TextStyle(
-                          color: DS.ink,
-                          fontSize: DS.fontCaption,
+                          color: DS.cream,
+                          fontSize: DS.fontMicro,
                           fontWeight: FontWeight.w900)),
                 ),
               ),
-            if (locked)
-              const Positioned(
-                  right: 6,
-                  top: 10,
-                  child: Icon(Icons.auto_awesome_rounded,
-                      size: 14, color: DS.gold)),
           ]),
         ),
       ),
@@ -530,25 +549,19 @@ class _DetailPanel extends StatelessWidget {
     final locked = count == 0;
     final level = _rarityLevel(fish);
     final tone = _rarityTone(fish);
+    final (timeIcon, timeText) = _biteTime(fish);
     return Container(
-      padding: const EdgeInsets.all(DS.spaceSm),
       decoration: BoxDecoration(
-          gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: _rarityFill(fish)),
+          color: DS.surfaceRaised,
           borderRadius: BorderRadius.circular(DS.radiusLg),
           border: Border.all(
-              color: level > 0 ? tone : DS.wood, width: level > 0 ? 4 : 2),
-          boxShadow: level > 0
-              ? [BoxShadow(color: tone.withValues(alpha: .2), blurRadius: 10)]
-              : null),
+              color: level > 0 && !locked ? tone : DS.wood, width: 2.5),
+          boxShadow: DS.cardShadow),
+      clipBehavior: Clip.antiAlias,
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         Expanded(
-          flex: 5,
-          child: Container(
+          child: DecoratedBox(
             decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(DS.radiusMd),
               gradient: LinearGradient(
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
@@ -556,10 +569,10 @@ class _DetailPanel extends StatelessWidget {
                       ? const [Color(0xFF4A3B6B), Color(0xFF241B38)]
                       : level > 0
                           ? _rarityFill(fish)
-                          : const [Color(0xFF9ED8D2), Color(0xFF4E9A9A)]),
+                          : const [Color(0xFFA9DED6), Color(0xFF5BA6A2)]),
             ),
             child: Stack(children: [
-              if (level > 0)
+              if (level > 0 && !locked)
                 Positioned.fill(child: IgnorePointer(child: _RarityAura(fish))),
               for (final b in const [
                 Offset(.15, .7),
@@ -577,68 +590,87 @@ class _DetailPanel extends StatelessWidget {
                             color: const Color(0x88FFFFFF), width: 1.2)),
                   ),
                 ),
-              Center(
-                child: SizedBox(
-                    width: 150,
-                    height: 90,
-                    child: locked
-                        ? _MysteryArt(fish: fish, mark: 46)
-                        : CustomPaint(painter: FishingFishArt(fish))),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(18, 14, 18, 8),
+                child: locked
+                    ? _MysteryArt(fish: fish, mark: 40)
+                    : CustomPaint(
+                        size: Size.infinite, painter: FishingFishArt(fish)),
               ),
+              if (!locked)
+                Positioned(
+                  left: DS.spaceSm,
+                  bottom: DS.spaceSm,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: DS.spaceSm, vertical: 2),
+                    decoration: BoxDecoration(
+                        color: const Color(0xCC2B1A0C),
+                        borderRadius: BorderRadius.circular(DS.radiusSm)),
+                    child: Text('Đã câu ×$count',
+                        style: const TextStyle(
+                            color: DS.cream,
+                            fontSize: DS.fontCaption,
+                            fontWeight: FontWeight.w900)),
+                  ),
+                ),
             ]),
           ),
         ),
-        const SizedBox(height: DS.spaceSm),
-        Row(children: [
-          Expanded(
-            child: FittedBox(
-              alignment: Alignment.centerLeft,
-              fit: BoxFit.scaleDown,
-              child: Text(locked ? '???' : fish.label,
-                  style: const TextStyle(
-                      color: DS.ink,
-                      fontSize: DS.fontHeading,
-                      fontWeight: FontWeight.w900)),
-            ),
-          ),
-        ]),
-        const SizedBox(height: DS.spaceXs),
-        Align(alignment: Alignment.centerLeft, child: _RarityTag(fish)),
-        const SizedBox(height: DS.space2),
-        Text(locked ? 'Chưa câu được' : 'Đã câu: $count lần',
-            style: TextStyle(
-                color: locked ? DS.mutedText : DS.goldEdge,
-                fontSize: DS.fontBody,
-                fontWeight: FontWeight.w700)),
-        const SizedBox(height: DS.spaceXs),
-        _StatBar(
-            label: 'Sức kéo',
-            value: locked ? 0 : (fish.pullStrength / 1.2).clamp(0.0, 1.0)),
-        const SizedBox(height: DS.spaceXs),
-        _StatBar(
-            label: 'Tốc độ',
-            value: locked ? 0 : (fish.movementSpeed / 1.7).clamp(0.0, 1.0)),
-        const SizedBox(height: DS.spaceXs),
-        Flexible(
-          flex: 2,
-          child: Text(locked ? 'Hãy tiếp tục câu để khám phá.' : _note,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                  color: DS.soft,
-                  fontSize: DS.fontCaption,
-                  fontStyle: FontStyle.italic,
-                  fontWeight: FontWeight.w600)),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(
+              DS.spaceMd, DS.spaceSm, DS.spaceMd, DS.spaceSm),
+          child:
+              Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Row(children: [
+              Expanded(
+                child: Text(locked ? '???' : fish.label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                        color: DS.ink,
+                        fontSize: DS.fontDisplay,
+                        fontWeight: FontWeight.w900)),
+              ),
+              _RarityTag(fish),
+            ]),
+            const SizedBox(height: DS.spaceSm),
+            _InfoRow(
+                icon: timeIcon,
+                label: fish.isJunk ? 'Hay gặp' : 'Hay cắn',
+                value: timeText),
+            if (!fish.isJunk) ...[
+              const SizedBox(height: DS.spaceXs),
+              _Pips(
+                  label: 'Sức kéo',
+                  value: locked ? 0 : fish.pullStrength / 1.6),
+              const SizedBox(height: DS.spaceXs),
+              _Pips(
+                  label: 'Tốc độ',
+                  value: locked ? 0 : fish.movementSpeed / 1.7),
+            ],
+            const SizedBox(height: DS.spaceSm),
+            Text(locked ? 'Chưa câu được. Thử câu vào lúc trên nhé!' : _note,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                    color: DS.soft,
+                    fontSize: DS.fontCaption,
+                    height: 1.3,
+                    fontStyle: FontStyle.italic,
+                    fontWeight: FontWeight.w600)),
+          ]),
         ),
       ]),
     );
   }
 }
 
-class _StatBar extends StatelessWidget {
-  const _StatBar({required this.label, required this.value});
-  final String label;
-  final double value;
+class _InfoRow extends StatelessWidget {
+  const _InfoRow(
+      {required this.icon, required this.label, required this.value});
+  final IconData icon;
+  final String label, value;
 
   @override
   Widget build(BuildContext context) => Row(children: [
@@ -650,23 +682,49 @@ class _StatBar extends StatelessWidget {
                   fontSize: DS.fontCaption,
                   fontWeight: FontWeight.w900)),
         ),
+        Icon(icon, size: 14, color: DS.goldEdge),
+        const SizedBox(width: DS.spaceXs),
         Expanded(
-          child: Container(
-            height: 8,
-            decoration: BoxDecoration(
-                color: DS.mutedFill,
-                borderRadius: BorderRadius.circular(DS.radiusXs)),
-            child: FractionallySizedBox(
-              alignment: Alignment.centerLeft,
-              widthFactor: value,
-              child: Container(
-                  decoration: BoxDecoration(
-                      color: DS.wood,
-                      borderRadius: BorderRadius.circular(DS.radiusXs))),
-            ),
-          ),
+          child: Text(value,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                  color: DS.ink,
+                  fontSize: DS.fontCaption,
+                  fontWeight: FontWeight.w700)),
         ),
       ]);
+}
+
+/// Five rounded pips instead of a bare bar, easier to compare at a glance.
+class _Pips extends StatelessWidget {
+  const _Pips({required this.label, required this.value});
+  final String label;
+  final double value;
+
+  @override
+  Widget build(BuildContext context) {
+    final filled = (value.clamp(0.0, 1.0) * 5).round();
+    return Row(children: [
+      SizedBox(
+        width: 58,
+        child: Text(label,
+            style: const TextStyle(
+                color: DS.label,
+                fontSize: DS.fontCaption,
+                fontWeight: FontWeight.w900)),
+      ),
+      for (var i = 0; i < 5; i++)
+        Container(
+          width: 16,
+          height: 7,
+          margin: const EdgeInsets.only(right: 3),
+          decoration: BoxDecoration(
+              color: i < filled ? DS.wood : DS.mutedFill,
+              borderRadius: BorderRadius.circular(4)),
+        ),
+    ]);
+  }
 }
 
 const _mysteryGradient = LinearGradient(

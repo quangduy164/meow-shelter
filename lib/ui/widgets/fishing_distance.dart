@@ -7,12 +7,11 @@ class FishingDistance extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Semantics(
-        label: 'Khoảng cách còn lại đến bờ',
+        label: 'Khoảng cách từ cá đến thuyền',
         value: '${((1 - progress) * 100).round()} phần trăm',
         child: Column(children: [
-          const Icon(Icons.landscape_rounded,
-              size: 23, color: Color(0xFF395D48)),
-          const Text('BỜ',
+          const Icon(Icons.sailing_rounded, size: 23, color: Color(0xFF395D48)),
+          const Text('THUYỀN',
               style: TextStyle(
                   fontSize: DS.fontCaption,
                   fontWeight: FontWeight.w900,
@@ -65,7 +64,7 @@ class FishingDistance extends StatelessWidget {
                   fontSize: DS.fontValue,
                   fontWeight: FontWeight.w900,
                   color: Color(0xFF253F36))),
-          const Text('CÁCH BỜ',
+          const Text('CÒN LẠI',
               style: TextStyle(
                   fontSize: DS.fontCaption,
                   fontWeight: FontWeight.w800,

@@ -5,12 +5,65 @@ import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'fish_species.dart';
 
-/// Permanent catches, never consumed by feeding cats.
+/// Permanent catch counts for the journal, plus the basket of fish that can
+/// still be fed to camp cats. Feeding empties the basket, never the journal.
 class FishCollection {
-  FishCollection(this.preferences) : _counts = _load(preferences);
+  FishCollection(this.preferences) : _counts = _load(preferences) {
+    _basket = _loadBasket(preferences, _counts);
+  }
   final SharedPreferences preferences;
   Map<String, int> _counts;
+  late Map<String, int> _basket;
   static const _key = 'fish_collection_species_v1';
+  static const _basketKey = 'fish_basket_v1';
+
+  /// Fish waiting in the basket (lost items never go in).
+  int stockOf(FishSpecies fish) => _basket[fish.name] ?? 0;
+
+  /// Edible species with at least one fish in the basket, in journal order.
+  List<FishSpecies> get basket => [
+        for (final fish in FishSpecies.values)
+          if (!fish.isJunk && stockOf(fish) > 0) fish
+      ];
+
+  static Map<String, int> _loadBasket(
+      SharedPreferences preferences, Map<String, int> counts) {
+    final saved = preferences.getString(_basketKey);
+    if (saved == null) {
+      // Saves from before the basket: everything caught so far is in it.
+      return {
+        for (final fish in FishSpecies.values)
+          if (!fish.isJunk && (counts[fish.name] ?? 0) > 0)
+            fish.name: counts[fish.name]!
+      };
+    }
+    try {
+      final decoded = jsonDecode(saved) as Map<String, dynamic>;
+      return {
+        for (final e in decoded.entries)
+          if (e.value is int && (e.value as int) > 0) e.key: e.value as int
+      };
+    } catch (error) {
+      debugPrint('FishCollection: unreadable basket, starting empty ($error)');
+      preferences.setString('${_basketKey}_broken', saved);
+      return {};
+    }
+  }
+
+  /// Takes one fish out of the basket for a cat; false if none is left or
+  /// the save failed (the fish stays in the basket then).
+  Future<bool> takeOne(FishSpecies fish) async {
+    final left = stockOf(fish);
+    if (fish.isJunk || left <= 0) return false;
+    final next = {..._basket, fish.name: left - 1}
+      ..removeWhere((_, n) => n <= 0);
+    if (!await preferences.setString(_basketKey, jsonEncode(next))) {
+      return false;
+    }
+    _basket = next;
+    return true;
+  }
+
   static late FishCollection instance;
   int get count => FishSpecies.values
       .where((fish) => !fish.isJunk && fish != FishSpecies.catMew)
@@ -50,5 +103,14 @@ class FishCollection {
       throw StateError('Could not save collection');
     }
     _counts = next;
+    if (fish.isJunk) return;
+    final basket = {..._basket, fish.name: stockOf(fish) + 1};
+    // The journal already counts it; a failed basket write only loses the
+    // snack, so it is logged instead of failing the catch.
+    if (await preferences.setString(_basketKey, jsonEncode(basket))) {
+      _basket = basket;
+    } else {
+      debugPrint('FishCollection: basket save was rejected');
+    }
   }
 }

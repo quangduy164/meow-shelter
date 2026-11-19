@@ -366,7 +366,7 @@ class NightInfoOverlay extends StatelessWidget {
 
   Widget _footer() {
     final slots = [
-      for (var i = 0; i < NightRun.relicSlots; i++)
+      for (var i = 0; i < run.relicSlots; i++)
         i < run.relics.length ? run.relics[i] : null
     ];
     return Container(

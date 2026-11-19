@@ -2,10 +2,10 @@ enum FishSpecies {
   perch('Cá rô', 24, 'Phổ biến'),
   tilapia('Cá rô phi', 21, 'Phổ biến'),
   carp('Cá chép', 18, 'Phổ biến'),
-  catfish('Cá trê', 12, 'Elite'),
-  koi('Cá koi', 7, 'Special'),
-  goldfish('Cá vàng', 2, 'Epic'),
-  catMew('Cá mèo', 0, 'Legend'),
+  catfish('Cá trê', 12, 'Hiếm'),
+  koi('Cá koi', 7, 'Quý'),
+  goldfish('Cá vàng', 2, 'Cực hiếm'),
+  catMew('Cá mèo', 0, 'Huyền thoại'),
   flipFlop('Dép tông', 8, 'Đồ thất lạc', isJunk: true),
   oldBoot('Ủng cũ', 5, 'Đồ thất lạc', isJunk: true),
   tinCan('Lon rỗng', 3, 'Đồ thất lạc', isJunk: true);
@@ -16,15 +16,17 @@ enum FishSpecies {
   final int weight;
   final bool isJunk;
 
+  /// Line strain per pull, ordered by rarity: common fish are gentle, rare
+  /// ones fight harder. Each species keeps its own rhythm in the controller.
   double get pullStrength => switch (this) {
-        perch => .92,
-        tilapia => .82,
-        carp => 1.08,
-        catfish => 1.18,
-        koi => .72,
-        goldfish => .58,
-        catMew => .96,
-        flipFlop || oldBoot || tinCan => .66,
+        perch => .64,
+        tilapia => .7,
+        carp => .7,
+        catfish => 1.02,
+        koi => 1.4,
+        goldfish => 1.55,
+        catMew => 1.3,
+        flipFlop || oldBoot || tinCan => .6,
       };
 
   double get movementSpeed => switch (this) {
@@ -50,6 +52,17 @@ enum FishSpecies {
       };
 
   bool get nightActive => this == catfish || this == koi;
+
+  /// Affection a camp cat gains from eating one; rarer fish mean more.
+  /// Lost items are not food.
+  int get affection => switch (this) {
+        perch || tilapia || carp => 2,
+        catfish => 3,
+        koi => 4,
+        goldfish => 6,
+        catMew => 10,
+        flipFlop || oldBoot || tinCan => 0,
+      };
 
   static FishSpecies fromRollAtTime(int roll, double hour) {
     assert(roll >= 0);

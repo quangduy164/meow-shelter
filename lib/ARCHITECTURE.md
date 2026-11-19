@@ -156,7 +156,31 @@
     three-cat formation, rejecting walls, overlap and traffic lanes; keep all
     anchors reachable and off traffic when adding a route. Viewport resize scales positions in place through `HerdRound.resize`; repeated
     layout notifications preserve the run, score and result overlay.
-- `fishing/`: fishing controller (rules, timing, saving catches).
+- `fishing/`: fishing rules and the river exploration scene.
+  - `fishing_river.dart`: a continuous 3600 x 600 world with two 1800-unit
+    stretches. One shared centerline and width define both painted banks and
+    movement limits. Click-to-row paths follow bends without cutting over land;
+    screen/world transforms share the camera, which follows smoothly and clamps
+    to world ends. Resizing preserves boat position and its destination.
+  - `ui/widgets/fishing_river_art.dart`: detailed village/flower banks blend into
+    bamboo/rock and rice-field banks; props use seeded world coordinates.
+  - `fishing_river_scene.dart`: owns and disposes two cached background Pictures,
+    draws only visible stretches, then animated water, boat hull and front rim.
+    `FishingScreen` draws the selected owned cat through `CatSprite`, handles
+    river taps and pauses for dialogs/app backgrounding. Bright shoal rings
+    are actual fishing targets; faint fish outside them are ambient scenery.
+  - `FishingController` owns the river round and casting/reeling/save phases.
+    A distant shoal click rows into range before casting; active fishing locks
+    ordinary navigation until canceled or finished. Fish pull the boat along
+    the river; swipes steer, banks constrain movement and contact has a cooldown.
+    `FishingPainter` receives positions through the same camera transform as
+    the boat and draws the attached rod, line, float and tension gauge.
+  - `FishingRiver.rollFish` owns regional weights: village (perch, tilapia,
+    carp, rare goldfish), bamboo (catfish, koi, very rare catMew), and lost items.
+    Pools blend across x=1560..2040; night boosts nocturnal fish. A fish is rolled
+    at the shoal when casting starts, so crossing regions while reeling never
+    changes the catch. Catches use the existing journal/basket and camp coin
+    save. First-catch help uses `mode:fishing:boat:v1` in saved seen guides.
 - `camp/`: the cat camp.
   - `camp_state.dart`: coins, bought cats (`cat:<breed>` in owned), optional
     `catNames` by breed (fallback to breed name), rescue counts, affection, owned and placed
@@ -168,7 +192,11 @@
   layout.
 - `levels/`: `level_config.dart` (data model) and `level_goal.dart` (missions), `levels.dart` (chapters,
   levels, stars and unlock rules).
-- `collection/`: caught fish.
+- `collection/`: caught fish. `FishCollection` keeps permanent journal counts
+  and a separate basket (`fish_basket_v1`) of edible fish. Camp "GIỎ CÁ":
+  drag a fish (upward; sideways scrolls) onto a cat; it leaves the basket (never the journal) and adds
+  `FishSpecies.affection` (2 common up to 10 legendary). Lost items are not
+  food. Saves from before the basket start with everything caught so far.
 
 ## Common changes
 

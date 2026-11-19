@@ -8,6 +8,9 @@ import 'package:flutter/services.dart';
 import '../../audio/game_audio.dart';
 
 import '../../camp/camp_state.dart';
+import '../../collection/fish_collection.dart';
+import '../../collection/fish_species.dart';
+import '../widgets/fishing_fish_art.dart';
 import '../../camp/camp_room_painter.dart';
 import '../../camp/camp_resident.dart';
 import '../../camp/camp_social.dart';
@@ -43,6 +46,16 @@ class _CampScreenState extends State<CampScreen>
   CampResident? _pressed;
   Size _room = Size.zero;
   _Panel _panel = _Panel.none;
+
+  /// Fish being dragged out of the basket, and the cat under it.
+  FishSpecies? _dragging;
+  CampResident? _hover;
+  bool _fedThisDrag = false;
+  final _roomKey = GlobalKey();
+
+  /// Short line after feeding ("Mướp ăn cá rô · +2 ♥").
+  String? _toast;
+  Timer? _toastTimer;
 
   /// Panels are built the first time they open, not with the room.
   final _builtPanels = <_Panel>{};
@@ -180,6 +193,7 @@ class _CampScreenState extends State<CampScreen>
   void dispose() {
     _tick.dispose();
     _clock.cancel();
+    _toastTimer?.cancel();
     _animation.dispose();
     _labels.dispose();
     for (final image in _sprites.values) {
@@ -214,6 +228,61 @@ class _CampScreenState extends State<CampScreen>
         reachesBond ? GameSound.campBond : GameSound.campPet,
         priority: reachesBond ? 3 : 2);
     setState(() {});
+  }
+
+  /// Picking a fish up slides the basket away so every cat is reachable.
+  void _startDrag(FishSpecies fish) {
+    GameAudio.instance.play(GameSound.click);
+    _fedThisDrag = false;
+    setState(() {
+      _dragging = fish;
+      _hover = null;
+      _panel = _Panel.none;
+    });
+  }
+
+  /// The cat under a dragged fish ([global] is the pointer position).
+  CampResident? _catAtGlobal(Offset global) {
+    final box = _roomKey.currentContext?.findRenderObject() as RenderBox?;
+    if (box == null) return null;
+    return _catAt(box.globalToLocal(global));
+  }
+
+  void _endDrag() {
+    if (!mounted) return;
+    final fed = _fedThisDrag;
+    setState(() {
+      _dragging = null;
+      _hover = null;
+      // Missed every cat: bring the basket back to try again.
+      if (!fed && FishCollection.instance.basket.isNotEmpty) {
+        _panel = _Panel.basket;
+      }
+    });
+  }
+
+  Future<void> _feed(CampResident cat, FishSpecies fish) async {
+    final basket = FishCollection.instance;
+    if (!await basket.takeOne(fish)) return;
+    final before = camp.affection[cat.type] ?? 0;
+    cat.pet();
+    await camp.feed(cat.type, fish.affection);
+    if (!mounted) return;
+    final reachesBond = before < CampState.bondedAffection &&
+        before + fish.affection >= CampState.bondedAffection;
+    GameAudio.instance.playGameplay(
+        reachesBond ? GameSound.campBond : GameSound.catEat,
+        priority: reachesBond ? 3 : 2);
+    _toastTimer?.cancel();
+    _toastTimer = Timer(const Duration(milliseconds: 1800), () {
+      if (mounted) setState(() => _toast = null);
+    });
+    setState(() {
+      _toast = reachesBond
+          ? '${camp.nameOf(cat.type)} đã thân thiết với bạn!'
+          : '${camp.nameOf(cat.type)} ăn ${fish.label.toLowerCase()}'
+              ' · +${fish.affection}';
+    });
   }
 
   Future<void> _renameCat(CatBreed breed) async {
@@ -271,46 +340,64 @@ class _CampScreenState extends State<CampScreen>
             // without rebuilding widgets. One gesture detector serves every
             // cat; touches that miss a cat fall through to the decorations.
             Positioned.fill(
-              child: RepaintBoundary(
-                child: GestureDetector(
-                  onTapUp: (d) {
-                    final cat = _catAt(d.localPosition);
-                    if (cat != null) _pet(cat);
-                  },
-                  onPanDown: (d) {
-                    if (_carried == null) _pressed = _catAt(d.localPosition);
-                  },
-                  // Only one cat can be carried at a time.
-                  onPanStart: (_) {
-                    final cat = _pressed;
-                    if (cat == null || _carried != null) return;
-                    _carried = cat..pickUp();
-                    GameAudio.instance
-                        .playGameplay(GameSound.campLift, priority: 1);
-                  },
-                  onPanUpdate: (d) {
-                    final cat = _carried;
-                    if (cat == null) return;
-                    cat.x = (cat.x + d.delta.dx / w).clamp(.03, .97);
-                    cat.y = (cat.y + d.delta.dy / h).clamp(.3, .95);
-                  },
-                  onPanEnd: (_) {
-                    final cat = _carried;
-                    if (cat != null) _drop(cat);
-                  },
-                  onPanCancel: () {
-                    final cat = _carried;
-                    if (cat != null) _drop(cat, sound: false);
-                  },
-                  child: CustomPaint(
-                    size: Size.infinite,
-                    painter: _CampCatsPainter(
-                      cats: _cats,
-                      sprites: _sprites,
-                      missing: _missing,
-                      labels: _labels,
-                      hit: (p) => _catAt(p) != null,
-                      repaint: _animation,
+              key: _roomKey,
+              // A fish dragged out of the basket is dropped onto a cat here.
+              child: DragTarget<FishSpecies>(
+                onMove: (d) {
+                  final cat = _catAtGlobal(d.offset);
+                  if (cat != _hover) setState(() => _hover = cat);
+                },
+                onLeave: (_) => setState(() => _hover = null),
+                // Accept anywhere in the room (the check runs once on entry,
+                // far from any cat); a drop that misses every cat is ignored.
+                onWillAcceptWithDetails: (_) => true,
+                onAcceptWithDetails: (d) {
+                  final cat = _catAtGlobal(d.offset);
+                  if (cat == null) return;
+                  _fedThisDrag = true;
+                  _feed(cat, d.data);
+                },
+                builder: (context, _, __) => RepaintBoundary(
+                  child: GestureDetector(
+                    onTapUp: (d) {
+                      final cat = _catAt(d.localPosition);
+                      if (cat != null) _pet(cat);
+                    },
+                    onPanDown: (d) {
+                      if (_carried == null) _pressed = _catAt(d.localPosition);
+                    },
+                    // Only one cat can be carried at a time.
+                    onPanStart: (_) {
+                      final cat = _pressed;
+                      if (cat == null || _carried != null) return;
+                      _carried = cat..pickUp();
+                      GameAudio.instance
+                          .playGameplay(GameSound.campLift, priority: 1);
+                    },
+                    onPanUpdate: (d) {
+                      final cat = _carried;
+                      if (cat == null) return;
+                      cat.x = (cat.x + d.delta.dx / w).clamp(.03, .97);
+                      cat.y = (cat.y + d.delta.dy / h).clamp(.3, .95);
+                    },
+                    onPanEnd: (_) {
+                      final cat = _carried;
+                      if (cat != null) _drop(cat);
+                    },
+                    onPanCancel: () {
+                      final cat = _carried;
+                      if (cat != null) _drop(cat, sound: false);
+                    },
+                    child: CustomPaint(
+                      size: Size.infinite,
+                      painter: _CampCatsPainter(
+                        cats: _cats,
+                        sprites: _sprites,
+                        missing: _missing,
+                        labels: _labels,
+                        hit: (p) => _catAt(p) != null,
+                        repaint: _animation,
+                      ),
                     ),
                   ),
                 ),
@@ -345,6 +432,15 @@ class _CampScreenState extends State<CampScreen>
                     onRename: _renameCat,
                   ),
                 ),
+              if (_builtPanels.contains(_Panel.basket))
+                (
+                  _Panel.basket,
+                  _BasketBar(
+                    onDragStart: _startDrag,
+                    onDragEnd: _endDrag,
+                    onClose: () => setState(() => _panel = _Panel.none),
+                  ),
+                ),
             ])
               AnimatedPositioned(
                 duration: DS.transitionDuration,
@@ -352,7 +448,7 @@ class _CampScreenState extends State<CampScreen>
                 left: 0,
                 right: 0,
                 bottom: _panel == panel ? 0 : -(h * .36 + 20),
-                height: h * .36,
+                height: panel == _Panel.basket ? 82 : h * .36,
                 child: child,
               ),
             Align(
@@ -386,6 +482,13 @@ class _CampScreenState extends State<CampScreen>
                                     ),
                                     const SizedBox(width: DS.spaceSm),
                                     _PanelButton(
+                                      label: 'GIỎ CÁ',
+                                      icon: _CampIcon.fish,
+                                      active: _panel == _Panel.basket,
+                                      onTap: () => _toggle(_Panel.basket),
+                                    ),
+                                    const SizedBox(width: DS.spaceSm),
+                                    _PanelButton(
                                       label: 'THÂN THIẾT',
                                       icon: _CampIcon.heart,
                                       active: _panel == _Panel.cats,
@@ -401,6 +504,23 @@ class _CampScreenState extends State<CampScreen>
             ),
           ]);
         }),
+        // While dragging: who will eat it; right after: what it gave.
+        if (_dragging != null || _toast != null)
+          IgnorePointer(
+            child: Align(
+              alignment: Alignment.topCenter,
+              child: SafeArea(
+                child: Padding(
+                  padding: const EdgeInsets.only(top: 66),
+                  child: _FeedHint(
+                    fish: _dragging,
+                    target: _hover == null ? null : camp.nameOf(_hover!.type),
+                    toast: _toast,
+                  ),
+                ),
+              ),
+            ),
+          ),
         if (!_coverGone)
           // Same loader as the game modes; fades out once the cats can show.
           IgnorePointer(
@@ -804,9 +924,9 @@ const _categoryIcons = {
   CampCategory.plants: Icons.local_florist_rounded,
 };
 
-enum _Panel { none, shop, cats }
+enum _Panel { none, shop, cats, basket }
 
-enum _CampIcon { shop, heart }
+enum _CampIcon { shop, heart, fish }
 
 /// Top-bar toggle for a bottom panel, with a hand-drawn icon.
 class _PanelButton extends StatelessWidget {
@@ -858,7 +978,30 @@ class _CampIconPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     canvas.scale(size.width / 30, size.height / 30);
     Paint p(int c) => Paint()..color = Color(c);
-    if (icon == _CampIcon.shop) {
+    if (icon == _CampIcon.fish) {
+      // A little wicker basket with a blue fish peeking out.
+      final fish = Path()
+        ..addOval(Rect.fromCenter(
+            center: const Offset(14, 11), width: 15, height: 8.5))
+        ..moveTo(20.5, 11)
+        ..lineTo(26, 6.5)
+        ..lineTo(26, 15.5)
+        ..close();
+      canvas.drawPath(fish, p(0xFF5AA7D6));
+      canvas.drawCircle(const Offset(10, 10), 1.3, p(0xFF2B3A4A));
+      canvas.drawRRect(
+          RRect.fromRectAndRadius(
+              const Rect.fromLTWH(4, 14, 22, 12), const Radius.circular(4)),
+          p(0xFFC98B4E));
+      final weave = p(0xFF8C5A34)..strokeWidth = 1.4;
+      for (final y in [18.0, 22.0]) {
+        canvas.drawLine(Offset(6, y), Offset(24, y), weave);
+      }
+      canvas.drawRRect(
+          RRect.fromRectAndRadius(
+              const Rect.fromLTWH(3, 13, 24, 3), const Radius.circular(1.5)),
+          p(0xFF8C5A34));
+    } else if (icon == _CampIcon.shop) {
       canvas.drawRRect(
           RRect.fromRectAndRadius(
               const Rect.fromLTWH(5, 12, 20, 15), const Radius.circular(2)),
@@ -918,6 +1061,205 @@ class _CampIconPainter extends CustomPainter {
   bool shouldRepaint(_CampIconPainter oldDelegate) => oldDelegate.icon != icon;
 }
 
+/// One inventory slot per edible species; only stocked fish can be dragged.
+class _BasketBar extends StatelessWidget {
+  const _BasketBar(
+      {required this.onDragStart,
+      required this.onDragEnd,
+      required this.onClose});
+  final ValueChanged<FishSpecies> onDragStart;
+  final VoidCallback onDragEnd;
+  final VoidCallback onClose;
+
+  @override
+  Widget build(BuildContext context) {
+    final basket = FishCollection.instance;
+    final fish = FishSpecies.values.where((f) => !f.isJunk);
+    return SafeArea(
+      top: false,
+      child: Align(
+        alignment: Alignment.bottomCenter,
+        child: SizedBox(
+          height: 74,
+          child: Row(mainAxisSize: MainAxisSize.min, children: [
+            Flexible(
+              child: SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.fromLTRB(12, 8, 8, 12),
+                child: Row(mainAxisSize: MainAxisSize.min, children: [
+                  for (final f in fish) _draggable(f, basket.stockOf(f)),
+                ]),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.only(right: 12),
+              child: RoundButton(
+                  glyph: GameGlyph.close, size: 30, onPressed: onClose),
+            ),
+          ]),
+        ),
+      ),
+    );
+  }
+
+  /// Sideways swipes scroll the basket; dragging up lifts the fish out.
+  Widget _draggable(FishSpecies fish, int left) => Padding(
+        padding: const EdgeInsets.only(right: DS.spaceSm),
+        child: left == 0
+            ? _fishCard(fish, left)
+            : Draggable<FishSpecies>(
+                data: fish,
+                affinity: Axis.vertical,
+                dragAnchorStrategy: pointerDragAnchorStrategy,
+                onDragStarted: () => onDragStart(fish),
+                onDragEnd: (_) => onDragEnd(),
+                feedback: Transform.translate(
+                  offset: const Offset(-40, -30),
+                  child: Transform.rotate(
+                    angle: -.25,
+                    child: SizedBox(
+                        width: 80,
+                        height: 52,
+                        child: CustomPaint(painter: FishingFishArt(fish))),
+                  ),
+                ),
+                childWhenDragging:
+                    Opacity(opacity: .4, child: _fishCard(fish, left)),
+                child: _fishCard(fish, left),
+              ),
+      );
+
+  Widget _fishCard(FishSpecies fish, int left) => Tooltip(
+        message: '${fish.label} · +${fish.affection} thân thiết · Còn $left',
+        child: Semantics(
+          label: '${fish.label}, còn $left, kéo vào mèo để cho ăn',
+          child: SizedBox.square(
+            dimension: 54,
+            child: Stack(clipBehavior: Clip.none, children: [
+              Positioned(
+                left: 1.5,
+                right: 1.5,
+                top: 1.5,
+                bottom: 1,
+                child: Container(
+                  padding: const EdgeInsets.fromLTRB(6, 6, 6, 9),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: left > 0
+                          ? const [Color(0xFFFFDE85), Color(0xFFF7B940)]
+                          : const [Color(0xFFD2C6B0), Color(0xFFB4A58C)],
+                    ),
+                    borderRadius: BorderRadius.circular(13),
+                    border:
+                        Border.all(color: const Color(0xFF774016), width: 2.5),
+                    boxShadow: const [
+                      BoxShadow(color: Color(0x44402616), offset: Offset(0, 3)),
+                    ],
+                  ),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: left > 0
+                          ? const Color(0xFFFFF4DA)
+                          : const Color(0xFFE8E0D0),
+                      borderRadius: BorderRadius.circular(9),
+                      border: Border.all(
+                          color: const Color(0x55B27A3E), width: 1.5),
+                    ),
+                    child: Opacity(
+                      opacity: left > 0 ? 1 : .3,
+                      child: Padding(
+                        padding: const EdgeInsets.all(2),
+                        child: CustomPaint(painter: FishingFishArt(fish)),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              Positioned(
+                right: -5,
+                top: -5,
+                child: Container(
+                  constraints:
+                      const BoxConstraints(minWidth: 21, minHeight: 21),
+                  padding: const EdgeInsets.symmetric(horizontal: 4),
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: left > 0
+                        ? const Color(0xFF31586C)
+                        : const Color(0xFFC0503A),
+                    borderRadius: BorderRadius.circular(12),
+                    border:
+                        Border.all(color: const Color(0xFFFFEFCA), width: 1.5),
+                  ),
+                  child: Text('$left',
+                      style: const TextStyle(
+                          color: Color(0xFFFFFAEE),
+                          fontSize: 11,
+                          fontWeight: FontWeight.w900)),
+                ),
+              ),
+            ]),
+          ),
+        ),
+      );
+}
+
+/// Floating pill while a fish is dragged, or the result right after feeding.
+class _FeedHint extends StatelessWidget {
+  const _FeedHint(
+      {required this.fish, required this.target, required this.toast});
+  final FishSpecies? fish;
+  final String? target;
+  final String? toast;
+
+  @override
+  Widget build(BuildContext context) {
+    final held = fish;
+    return Column(mainAxisSize: MainAxisSize.min, children: [
+      if (held != null)
+        Container(
+          padding: const EdgeInsets.symmetric(
+              horizontal: DS.spaceMd, vertical: DS.spaceXs),
+          decoration: BoxDecoration(
+              color: target == null ? DS.cream : DS.gold,
+              borderRadius: BorderRadius.circular(DS.radiusXl),
+              border: Border.all(
+                  color: target == null ? DS.wood : DS.goldEdge, width: 2),
+              boxShadow: DS.controlShadow),
+          child: Text(
+              target == null
+                  ? 'Thả lên bé mèo để cho ăn ${held.label.toLowerCase()}'
+                  : 'Thả cho $target ăn · +${held.affection}',
+              style: const TextStyle(
+                  color: DS.ink,
+                  fontSize: DS.fontBody,
+                  fontWeight: FontWeight.w900)),
+        )
+      else if (toast != null)
+        Container(
+          padding: const EdgeInsets.symmetric(
+              horizontal: DS.spaceMd, vertical: DS.spaceXs),
+          decoration: BoxDecoration(
+              color: const Color(0xE6FFF0F2),
+              borderRadius: BorderRadius.circular(DS.radiusLg),
+              border: Border.all(color: const Color(0xFFE85D6F), width: 1.5)),
+          child: Row(mainAxisSize: MainAxisSize.min, children: [
+            Text(toast!,
+                style: const TextStyle(
+                    color: Color(0xFFB23A4E),
+                    fontSize: DS.fontBody,
+                    fontWeight: FontWeight.w900)),
+            const SizedBox(width: DS.spaceXs),
+            const Icon(Icons.favorite_rounded,
+                size: 14, color: Color(0xFFE85D6F)),
+          ]),
+        ),
+    ]);
+  }
+}
+
 /// Bond panel: one card per breed with its face, a heart meter toward the
 /// bonus, and what the bond unlocks. Locked breeds show how to get them.
 class _BondBar extends StatelessWidget {
@@ -949,7 +1291,8 @@ class _BondBar extends StatelessWidget {
                       letterSpacing: 1)),
               const SizedBox(width: DS.spaceSm),
               const Expanded(
-                child: Text('Chạm vào mèo để vuốt ve và tăng độ thân thiết',
+                child: Text(
+                    'Vuốt ve hoặc cho ăn cá trong giỏ để tăng độ thân thiết',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(color: DS.soft, fontSize: DS.fontCaption)),

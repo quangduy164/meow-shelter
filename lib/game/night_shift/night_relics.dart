@@ -56,8 +56,16 @@ enum NightRelic {
   const NightRelic(this.title, this.price, this.description, this.cardCombos);
   final String title, description;
   final int price;
-  int get sellPrice => price ~/ 2;
   final Map<NightCard, String> cardCombos;
+
+  /// What each level above 1 adds (levels go up to 3).
+  String get levelPerk => switch (this) {
+        embers => '+2s dư sáng',
+        bell => '+1 mèo nhận chuông, +20% tầm',
+        moonPouch => '+1s hồi trợ thủ mỗi nhịp',
+        feastCharm => '+2s cửa sổ nối chuỗi',
+        prism => '+1 Nguyệt quang mỗi lần cứu ở giao sáng',
+      };
   Iterable<NightCard> get comboCards => cardCombos.keys;
   String get details => [
         description,
