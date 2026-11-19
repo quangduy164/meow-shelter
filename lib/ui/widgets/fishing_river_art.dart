@@ -4,6 +4,7 @@ import 'package:flutter/painting.dart';
 
 import '../../fishing/fishing_river.dart';
 import '../../game/world/nature_art.dart';
+import 'fishing_coast_art.dart';
 
 /// Recorded once per stretch; seeds and world positions agree across seams.
 ui.Picture recordFishingRiver(int section) {
@@ -12,7 +13,8 @@ ui.Picture recordFishingRiver(int section) {
   final left = section * FishingRiver.sectionLength;
   final right = left + FishingRiver.sectionLength;
   canvas.clipRect(
-      Rect.fromLTWH(left, 0, FishingRiver.sectionLength, FishingRiver.height));
+      Rect.fromLTWH(left, 0, FishingRiver.sectionLength, FishingRiver.height),
+      doAntiAlias: false);
   _paintLandscape(canvas, left, right);
   return recorder.endRecording();
 }
@@ -22,8 +24,10 @@ double _blend(double x) {
   return t * t * (3 - 2 * t);
 }
 
-Color _tone(double x, Color first, Color second) =>
-    Color.lerp(first, second, _blend(x))!;
+Color _tone(double x, Color first, Color second) => Color.lerp(
+    Color.lerp(first, second, _blend(x)),
+    const Color(0xFFE4D4A5),
+    FishingRiver.coastBlend(x))!;
 
 Path _strip(double left, double right, double Function(double) upper,
     double Function(double) lower) {
@@ -46,14 +50,15 @@ void _paintLandscape(Canvas canvas, double left, double right) {
   final p = Paint();
   // Layered land and horizon, with a gentle palette change between sections.
   for (var x = from; x < to; x += 20) {
-    final sky = Rect.fromLTWH(x, 0, 21, 125);
+    final sky = Rect.fromLTWH(x, 0, 21, 130);
     canvas.drawRect(
         sky,
         p
           ..shader = ui.Gradient.linear(sky.topCenter, sky.bottomCenter,
               const [Color(0xFF9FD7DA), Color(0xFFE1EEDA)]));
     p.shader = null;
-    canvas.drawRect(Rect.fromLTWH(x, 100, 21, 500),
+    final groundTop = 100 + FishingRiver.coastBlend(x) * 25;
+    canvas.drawRect(Rect.fromLTWH(x, groundTop, 21, 600 - groundTop),
         p..color = _tone(x, const Color(0xFFA7BF78), const Color(0xFF8DA979)));
   }
   for (var layer = 0; layer < 2; layer++) {
@@ -69,10 +74,21 @@ void _paintLandscape(Canvas canvas, double left, double right) {
         Paint()
           ..shader = ui.Gradient.linear(
               const Offset(1560, 0),
-              const Offset(2040, 0),
+              const Offset(4080, 0),
               layer == 0
-                  ? const [Color(0xFFA0C6AF), Color(0xFFA0B9B0)]
-                  : const [Color(0xFF89B69B), Color(0xFF8EA9A2)]));
+                  ? const [
+                      Color(0xFFA0C6AF),
+                      Color(0xFFA0B9B0),
+                      Color(0xFFA0B9B0),
+                      Color(0x00A0B9B0)
+                    ]
+                  : const [
+                      Color(0xFF89B69B),
+                      Color(0xFF8EA9A2),
+                      Color(0xFF8EA9A2),
+                      Color(0x008EA9A2)
+                    ],
+              const [0, 480 / 2520, 1800 / 2520, 1]));
   }
   for (var i = (from / 420).floor(); i <= (to / 420).ceil(); i++) {
     paintPuffyCloud(
@@ -83,18 +99,32 @@ void _paintLandscape(Canvas canvas, double left, double right) {
   canvas.drawPath(
       _strip(from, to, (x) => FishingRiver.top(x) - 48,
           (x) => FishingRiver.top(x) - 23),
-      p..color = const Color(0xFFC7BE8D));
+      Paint()
+        ..shader = ui.Gradient.linear(
+            const Offset(3360, 0),
+            const Offset(3960, 0),
+            const [Color(0xFFC7BE8D), Color(0x00C7BE8D)]));
   canvas.drawPath(
       _strip(from, to, (x) => FishingRiver.bottom(x) + 52,
           (x) => FishingRiver.bottom(x) + 73),
-      p..color = const Color(0xFFD8C898));
+      Paint()
+        ..shader = ui.Gradient.linear(
+            const Offset(3360, 0),
+            const Offset(3960, 0),
+            const [Color(0xFFD8C898), Color(0x00D8C898)]));
   // Exposed sandy shelf, dark damp rim, deep channel, then shallow margins.
   canvas.drawPath(
-      _strip(from, to, (x) => FishingRiver.top(x) - 14,
+      _strip(
+          from,
+          to,
+          (x) => FishingRiver.top(x) - 14 * (1 - FishingRiver.coastBlend(x)),
           (x) => FishingRiver.bottom(x) + 14),
       p..color = const Color(0xFF8C9A65));
   canvas.drawPath(
-      _strip(from, to, (x) => FishingRiver.top(x) - 8,
+      _strip(
+          from,
+          to,
+          (x) => FishingRiver.top(x) - 8 * (1 - FishingRiver.coastBlend(x)),
           (x) => FishingRiver.bottom(x) + 8),
       p..color = const Color(0xFFE0CFA2));
   final water = _strip(from, to, FishingRiver.top, FishingRiver.bottom);
@@ -107,11 +137,23 @@ void _paintLandscape(Canvas canvas, double left, double right) {
             const [Color(0xFF478F98), Color(0xFF66B4B2), Color(0xFF91CDC0)],
             const [0, .5, 1]));
   p.shader = null;
+  canvas.drawPath(
+      water,
+      Paint()
+        ..shader = ui.Gradient.linear(
+            const Offset(3360, 0),
+            const Offset(4200, 0),
+            const [Color(0x003C9FB9), Color(0xFF3C9FB9)]));
   for (final side in [-1, 1]) {
     double edge(double x) =>
         side < 0 ? FishingRiver.top(x) : FishingRiver.bottom(x);
-    final shallows = _strip(from, to, (x) => side < 0 ? edge(x) : edge(x) - 16,
-        (x) => side < 0 ? edge(x) + 15 : edge(x));
+    final shallows = _strip(
+        from,
+        to,
+        (x) => side < 0 ? edge(x) : edge(x) - 16,
+        (x) => side < 0
+            ? edge(x) + 15 * (1 - FishingRiver.coastBlend(x))
+            : edge(x));
     canvas.drawPath(shallows, p..color = const Color(0x446CD3BE));
     final rim = Path()..moveTo(from, edge(from) + side * 2);
     for (var x = from + 10; x <= to; x += 10) {
@@ -120,6 +162,10 @@ void _paintLandscape(Canvas canvas, double left, double right) {
     canvas.drawPath(
         rim,
         Paint()
+          ..shader = side < 0
+              ? ui.Gradient.linear(const Offset(3360, 0), const Offset(3960, 0),
+                  const [Color(0x99F0E7BF), Color(0x00F0E7BF)])
+              : null
           ..color = const Color(0x99F0E7BF)
           ..style = PaintingStyle.stroke
           ..strokeWidth = 2);
@@ -127,7 +173,7 @@ void _paintLandscape(Canvas canvas, double left, double right) {
   final rng = math.Random(732);
   // Grass strokes, loose pebbles and clover stay off the river and paths.
   for (var i = 0; i < 1450; i++) {
-    final x = rng.nextDouble() * FishingRiver.length;
+    final x = rng.nextDouble() * FishingRiver.seaStart;
     final y = 115 + rng.nextDouble() * 485;
     if (x < from || x > to) continue;
     if (y > FishingRiver.top(x) - 18 && y < FishingRiver.bottom(x) + 23) {
@@ -160,6 +206,7 @@ void _paintLandscape(Canvas canvas, double left, double right) {
   // Stable shoreline stones and reeds connect both banks visually.
   for (var i = (from / 55).floor(); i <= (to / 55).ceil(); i++) {
     final x = i * 55.0 + 13;
+    if (x >= FishingRiver.seaStart - 60) continue;
     final side = i.isEven ? -1.0 : 1.0;
     final y = side < 0 ? FishingRiver.top(x) - 3 : FishingRiver.bottom(x) + 5;
     _stone(canvas, Offset(x, y), 9 + (i % 3) * 3.0);
@@ -168,6 +215,7 @@ void _paintLandscape(Canvas canvas, double left, double right) {
   // Far bank: cottage gardens become bamboo and a rocky green ridge.
   for (var i = (from / 175).floor(); i <= (to / 175).ceil(); i++) {
     final x = i * 175.0 + 80;
+    if (x >= FishingRiver.seaStart - 40) continue;
     final y = FishingRiver.top(x) - 15;
     if (x < 1780) {
       if (i % 3 != 1) {
@@ -195,6 +243,7 @@ void _paintLandscape(Canvas canvas, double left, double right) {
   // Near bank: flower meadow gives way to golden rice terraces.
   for (var i = (from / 210).floor(); i <= (to / 210).ceil(); i++) {
     final x = i * 210.0 + 45;
+    if (x >= FishingRiver.seaStart - 160) continue;
     final y = FishingRiver.bottom(x);
     if (x < 1800) {
       _flowers(canvas, Offset(x, y + 36), seed: i);
@@ -219,6 +268,7 @@ void _paintLandscape(Canvas canvas, double left, double right) {
     if (x < from || x > to) continue;
     _lotus(canvas, Offset(x, FishingRiver.bottom(x) - 10));
   }
+  paintFishingCoast(canvas, from, to);
 }
 
 void _stone(Canvas c, Offset p, double size) {

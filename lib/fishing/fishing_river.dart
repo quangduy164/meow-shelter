@@ -6,29 +6,15 @@ import '../collection/fish_species.dart';
 class FishingRiver {
   static const height = 600.0;
   static const sectionLength = 1800.0;
-  static const length = sectionLength * 2;
-  static const boatMargin = 30.0;
-  static const castReach = 200.0;
-  static final shoals = [
-    for (final x in [
-      460.0,
-      850.0,
-      1220.0,
-      1570.0,
-      1850.0,
-      2220.0,
-      2650.0,
-      3080.0,
-      3420.0
-    ])
-      Offset(x, center(x) + math.sin(x / 230) * 45),
-  ];
-  static int? shoalAt(Offset point) {
-    for (var i = 0; i < shoals.length; i++) {
-      if ((point - shoals[i]).distance < 42) return i;
-    }
-    return null;
+  static const sectionCount = 3;
+  static const seaStart = sectionLength * 2;
+  static const length = sectionLength * sectionCount;
+  static double coastBlend(double x) {
+    final t = ((x - (seaStart - 240)) / 720).clamp(0.0, 1.0);
+    return t * t * (3 - 2 * t);
   }
+
+  static const boatMargin = 30.0;
 
   /// Exclusive regional pools cross-fade around the join; weights are relative.
   static FishSpecies rollFish(int roll, double x, double hour) {
@@ -47,11 +33,22 @@ class FishingRiver {
       FishSpecies.oldBoot: 4.0,
       FishSpecies.tinCan: 3.0
     };
+    const sea = {
+      FishSpecies.sardine: 54.0,
+      FishSpecies.mackerel: 29.0,
+      FishSpecies.clownfish: 12.0,
+      FishSpecies.pufferfish: 3.0,
+      FishSpecies.flipFlop: 1.0,
+      FishSpecies.tinCan: 1.0,
+    };
     final mix = ((x - 1560) / 480).clamp(0.0, 1.0);
+    final marineMix = ((x - (seaStart - 240)) / 480).clamp(0.0, 1.0);
     final night = hour < 6 || hour >= 18;
     final weights = <FishSpecies, double>{
       for (final fish in FishSpecies.values)
-        fish: ((village[fish] ?? 0) * (1 - mix) + (bamboo[fish] ?? 0) * mix) *
+        fish: (((village[fish] ?? 0) * (1 - mix) + (bamboo[fish] ?? 0) * mix) *
+                    (1 - marineMix) +
+                (sea[fish] ?? 0) * marineMix) *
             (night && fish.nightActive ? 1.35 : 1),
     };
     final total = weights.values.fold(0.0, (sum, weight) => sum + weight);
@@ -63,10 +60,19 @@ class FishingRiver {
     return FishSpecies.tinCan;
   }
 
-  static double center(double x) =>
-      310 + 36 * math.sin(x / 340 - .4) + 18 * math.sin(x / 155 + .5);
-  static double halfWidth(double x) =>
-      112 + 12 * math.sin(x / 500 + .4) + 8 * math.cos(x / 180);
+  static double center(double x) {
+    final river =
+        310 + 36 * math.sin(x / 340 - .4) + 18 * math.sin(x / 155 + .5);
+    final sea = (110 + 510 + math.sin(x / 380) * 12) / 2;
+    return river + (sea - river) * coastBlend(x);
+  }
+
+  static double halfWidth(double x) {
+    final river = 112 + 12 * math.sin(x / 500 + .4) + 8 * math.cos(x / 180);
+    final sea = (510 + math.sin(x / 380) * 12 - 110) / 2;
+    return river + (sea - river) * coastBlend(x);
+  }
+
   static double top(double x) => center(x) - halfWidth(x);
   static double bottom(double x) => center(x) + halfWidth(x);
   static bool contains(Offset p) =>
@@ -77,8 +83,11 @@ class FishingRiver {
     return Offset(x, p.dy.clamp(top(x) + boatMargin, bottom(x) - boatMargin));
   }
 
-  static String sectionName(double x) =>
-      x < sectionLength ? 'Làng ven sông' : 'Khúc sông tre';
+  static String sectionName(double x) => x < sectionLength
+      ? 'Làng ven sông'
+      : x < seaStart
+          ? 'Khúc sông tre'
+          : 'Cửa biển nắng vàng';
 }
 
 /// Click-to-row movement and a smoothly following horizontal camera.
@@ -99,7 +108,7 @@ class FishingRiverRound {
       viewport.height > 0 ? viewport.height / FishingRiver.height : 1;
   double get visibleWidth => viewport.width / scale;
   double get maxCamera => math.max(0, FishingRiver.length - visibleWidth);
-  int get section => boat.dx < FishingRiver.sectionLength ? 1 : 2;
+  int get section => (boat.dx / FishingRiver.sectionLength).floor() + 1;
 
   void resize(Size size) {
     if (viewport == size) return;
@@ -142,6 +151,10 @@ class FishingRiverRound {
       {required bool pulling, required bool beginner}) {
     final weave = switch (fish) {
       FishSpecies.perch => math.sin(elapsed * 3) * .9,
+      FishSpecies.sardine => math.sin(elapsed * 2.5) * .55,
+      FishSpecies.mackerel => math.sin(elapsed * .8) * .45,
+      FishSpecies.clownfish => math.sin(elapsed * 2.2) * 1.05,
+      FishSpecies.pufferfish => math.sin(elapsed * .7) * .3,
       FishSpecies.carp => math.sin(elapsed * .5) * .25,
       FishSpecies.catfish => math.sin(elapsed * 1.3) * .6,
       FishSpecies.koi => math.sin(elapsed * 1.2) * .9,

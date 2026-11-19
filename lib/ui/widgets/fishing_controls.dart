@@ -41,11 +41,11 @@ class FishingControls extends StatelessWidget {
             busy: controller.error == null,
             onPressed: controller.error == null ? null : controller.retrySave),
         _ => FishingActionButton(
-            tool: FishingTool.float,
-            tooltip: 'Câu ở đàn cá gần nhất',
+            tool: FishingTool.rod,
+            tooltip: 'Thả câu tại đây',
             primary: true,
             onPressed: controller.phase == FishingPhase.casting
                 ? null
-                : controller.castNearest),
+                : controller.castHere),
       };
 }

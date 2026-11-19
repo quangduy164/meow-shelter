@@ -5,7 +5,6 @@ import 'package:material_ui/material_ui.dart';
 import '../../fishing/fishing_river.dart';
 import '../../fishing/fishing_controller.dart';
 import '../../collection/fish_species.dart';
-import '../../game/text_cache.dart';
 import 'fishing_river_art.dart';
 
 /// Like Adventure's cached background: only the visible stretch is replayed.
@@ -20,7 +19,9 @@ class FishingRiverBackdrop extends StatefulWidget {
 }
 
 class _FishingRiverBackdropState extends State<FishingRiverBackdrop> {
-  late final _pictures = [recordFishingRiver(0), recordFishingRiver(1)];
+  late final _pictures = [
+    for (var i = 0; i < FishingRiver.sectionCount; i++) recordFishingRiver(i)
+  ];
 
   @override
   void dispose() {
@@ -86,8 +87,9 @@ class FishingRiverSurface extends CustomPainter {
     final firstColumn = (left / 57).floor();
     for (var col = firstColumn; col * 57 < right; col++) {
       final x = col * 57.0 + (round.clock * 8) % 30;
-      for (var row = 0; row < 7; row++) {
-        final y = FishingRiver.center(x) + (row - 3) * 26;
+      final rows = 7 + (FishingRiver.coastBlend(x) * 7).round();
+      for (var row = 0; row < rows; row++) {
+        final y = FishingRiver.center(x) + (row - (rows - 1) / 2) * 26;
         if (y < FishingRiver.top(x) + 10 || y > FishingRiver.bottom(x) - 10) {
           continue;
         }
@@ -99,6 +101,21 @@ class FishingRiverSurface extends CustomPainter {
               ..color = Color.fromRGBO(
                   218, 255, 237, .12 + math.sin(phase).abs() * .13));
       }
+    }
+    for (var col = (left / 90).floor(); col * 90 < right; col++) {
+      final x = col * 90.0;
+      final sea = FishingRiver.coastBlend(x);
+      if (sea <= 0) continue;
+      final wave = math.sin(round.clock * 1.8 + col) * 3;
+      final y = FishingRiver.bottom(x) - 9 - wave;
+      canvas.drawPath(
+          Path()
+            ..moveTo(x, y)
+            ..quadraticBezierTo(x + 18, y + 3, x + 38, y - 1),
+          Paint()
+            ..color = Color.fromRGBO(237, 255, 239, .65 * sea)
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = 2.3);
     }
     // Faint little fish and floating leaves make the long channel feel alive.
     for (var i = (left / 240).floor(); i * 240 < right; i++) {
@@ -115,47 +132,14 @@ class FishingRiverSurface extends CustomPainter {
             ..close(),
           Paint()..color = const Color(0x44355E65));
       final leaf = Offset(x + 70, FishingRiver.center(x + 70) + 60);
-      canvas.drawOval(Rect.fromCenter(center: leaf, width: 7, height: 3),
-          Paint()..color = const Color(0xCCB5C68A));
+      if (FishingRiver.coastBlend(x) < .8) {
+        canvas.drawOval(Rect.fromCenter(center: leaf, width: 7, height: 3),
+            Paint()..color = const Color(0xCCB5C68A));
+      }
     }
     final controller = fishing;
     if (controller != null) {
-      if (controller.canSail) {
-        for (final shoal in FishingRiver.shoals) {
-          if (shoal.dx < left - 45 || shoal.dx > right + 45) continue;
-          canvas.drawOval(Rect.fromCenter(center: shoal, width: 83, height: 45),
-              Paint()..color = const Color(0x4478C6C0));
-          canvas.drawOval(
-              Rect.fromCenter(center: shoal, width: 83, height: 45),
-              Paint()
-                ..color = const Color(0xCCECF7D3)
-                ..style = PaintingStyle.stroke
-                ..strokeWidth = 2);
-          for (var j = 0; j < 3; j++) {
-            final p = shoal +
-                Offset((j - 1) * 15 + math.sin(round.clock * 2 + j) * 4,
-                    math.sin(round.clock + j) * 4);
-            canvas.drawOval(Rect.fromCenter(center: p, width: 16, height: 7),
-                Paint()..color = const Color(0xBB335F65));
-            canvas.drawPath(
-                Path()
-                  ..moveTo(p.dx - 7, p.dy)
-                  ..lineTo(p.dx - 14, p.dy - 4)
-                  ..lineTo(p.dx - 14, p.dy + 4)
-                  ..close(),
-                Paint()..color = const Color(0xBB335F65));
-          }
-          final label = TextCache.layout(
-              'CÂU',
-              const TextStyle(
-                  fontFamily: 'Roboto',
-                  fontSize: 13,
-                  fontWeight: FontWeight.w900,
-                  color: Color(0xFF295D60),
-                  backgroundColor: Color(0xCCF0F4D7)));
-          label.paint(canvas, shoal + Offset(-label.width / 2, 26));
-        }
-      } else if (controller.phase == FishingPhase.reeling ||
+      if (controller.phase == FishingPhase.reeling ||
           controller.phase == FishingPhase.bite) {
         final p = controller.spot;
         final diving = controller.fish == FishSpecies.catfish &&

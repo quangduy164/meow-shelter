@@ -6,6 +6,10 @@ enum FishSpecies {
   koi('Cá koi', 7, 'Quý'),
   goldfish('Cá vàng', 2, 'Cực hiếm'),
   catMew('Cá mèo', 0, 'Huyền thoại'),
+  sardine('Cá mòi', 0, 'Phổ biến'),
+  mackerel('Cá thu', 0, 'Hiếm'),
+  clownfish('Cá hề', 0, 'Quý'),
+  pufferfish('Cá nóc', 0, 'Cực hiếm'),
   flipFlop('Dép tông', 8, 'Đồ thất lạc', isJunk: true),
   oldBoot('Ủng cũ', 5, 'Đồ thất lạc', isJunk: true),
   tinCan('Lon rỗng', 3, 'Đồ thất lạc', isJunk: true);
@@ -20,6 +24,10 @@ enum FishSpecies {
   /// ones fight harder. Each species keeps its own rhythm in the controller.
   double get pullStrength => switch (this) {
         perch => .64,
+        sardine => .66,
+        mackerel => 1.02,
+        clownfish => 1.25,
+        pufferfish => 1.45,
         tilapia => .7,
         carp => .7,
         catfish => 1.02,
@@ -31,6 +39,10 @@ enum FishSpecies {
 
   double get movementSpeed => switch (this) {
         perch => 1.35,
+        sardine => 1.25,
+        mackerel => 1.4,
+        clownfish => 1.1,
+        pufferfish => .65,
         tilapia => 1.0,
         carp => .62,
         catfish => .48,
@@ -42,6 +54,10 @@ enum FishSpecies {
 
   double get movementAmplitude => switch (this) {
         perch => 1.25,
+        sardine => .85,
+        mackerel => 1.1,
+        clownfish => 1.25,
+        pufferfish => .7,
         tilapia => .85,
         carp => .55,
         catfish => .7,
@@ -51,15 +67,21 @@ enum FishSpecies {
         flipFlop || oldBoot || tinCan => .3,
       };
 
+  bool get isSea =>
+      this == sardine ||
+      this == mackerel ||
+      this == clownfish ||
+      this == pufferfish;
+
   bool get nightActive => this == catfish || this == koi;
 
   /// Affection a camp cat gains from eating one; rarer fish mean more.
   /// Lost items are not food.
   int get affection => switch (this) {
-        perch || tilapia || carp => 2,
-        catfish => 3,
-        koi => 4,
-        goldfish => 6,
+        perch || tilapia || carp || sardine => 2,
+        catfish || mackerel => 3,
+        koi || clownfish => 4,
+        goldfish || pufferfish => 6,
         catMew => 10,
         flipFlop || oldBoot || tinCan => 0,
       };

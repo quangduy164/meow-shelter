@@ -539,6 +539,11 @@ class _DetailPanel extends StatelessWidget {
         FishSpecies.koi => 'Vảy óng ánh, ít khi cắn câu.',
         FishSpecies.goldfish => 'Nhỏ xíu mà lượn rất nhanh.',
         FishSpecies.catMew => 'Truyền thuyết của hồ, chưa ai thấy rõ.',
+        FishSpecies.sardine => 'Cá biển nhỏ, đi theo đàn và khá dễ câu.',
+        FishSpecies.mackerel => 'Ở cửa biển, lao thẳng rồi bất ngờ giật mạnh.',
+        FishSpecies.clownfish => 'Áo sọc cam trắng, lượn zíc zắc ở biển.',
+        FishSpecies.pufferfish =>
+          'Bé tròn ở biển, phồng lên rồi mới chịu kéo về.',
         FishSpecies.flipFlop => 'Ai đó làm rơi khi lội suối.',
         FishSpecies.oldBoot => 'Đã cũ nhưng vẫn còn nguyên đế.',
         FishSpecies.tinCan => 'Nhớ nhặt rác giúp hồ sạch nhé.',

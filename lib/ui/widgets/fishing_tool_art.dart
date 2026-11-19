@@ -1,6 +1,6 @@
 import 'package:material_ui/material_ui.dart';
 
-enum FishingTool { back, basket, float, hook, reel, save }
+enum FishingTool { back, basket, float, rod, hook, reel, save }
 
 class FishingToolArt extends CustomPainter {
   const FishingToolArt(
@@ -20,6 +20,40 @@ class FishingToolArt extends CustomPainter {
     canvas.drawOval(const Rect.fromLTWH(19, 87, 65, 7),
         Paint()..color = const Color(0x28443626));
     switch (tool) {
+      case FishingTool.rod:
+        final shaft = Path()
+          ..moveTo(23, 81)
+          ..quadraticBezierTo(43, 10, 70, 15);
+        _line(canvas, shaft, ink, 7);
+        _line(canvas, shaft, const Color(0xFF709D85), 3.5);
+        _line(
+            canvas,
+            Path()
+              ..moveTo(20, 88)
+              ..lineTo(30, 61),
+            const Color(0xFFBD8D55),
+            9);
+        canvas.drawCircle(const Offset(37, 66), 9, Paint()..color = ink);
+        canvas.drawCircle(
+            const Offset(37, 66), 6, Paint()..color = const Color(0xFFE7C987));
+        _line(
+            canvas,
+            Path()
+              ..moveTo(37, 66)
+              ..lineTo(46, 70),
+            ink,
+            2);
+        _line(
+            canvas,
+            Path()
+              ..moveTo(70, 15)
+              ..quadraticBezierTo(85, 24, 79, 65),
+            const Color(0xFF879B92),
+            1.8);
+        canvas.drawOval(const Rect.fromLTWH(74, 61, 10, 18),
+            Paint()..color = const Color(0xFFFFF7DF));
+        canvas.drawOval(const Rect.fromLTWH(74, 61, 10, 9),
+            Paint()..color = const Color(0xFFDC7861));
       case FishingTool.back:
         final arrow = Path()
           ..moveTo(9, 48)

@@ -29,15 +29,13 @@ class FishingController extends ChangeNotifier {
   final river = FishingRiverRound();
   static const boatGuideKey = 'mode:fishing:boat:v1';
   bool get beginner => !CampState.instance.seenGuides.contains(boatGuideKey);
-  int? _pendingShoal;
-  int _shoal = 0;
   bool get canSail =>
       _phase == FishingPhase.ready || _phase == FishingPhase.lost;
   bool get surging => _surging;
   String get guide => switch (_phase) {
         FishingPhase.ready => river.moving
-            ? 'Đang chèo đến chỗ câu…'
-            : 'Bấm mặt sông để chèo · Bấm vòng cá để câu',
+            ? 'Đang chèo · Bấm cần câu góc phải để câu tại đây'
+            : 'Bấm mặt nước để chèo · Bấm cần câu góc phải để câu',
         FishingPhase.casting => 'Mèo đang thả cần…',
         FishingPhase.waiting => 'Chờ phao động rồi bấm giật cần',
         FishingPhase.bite => 'Cá cắn! Bấm nút giật cần!',
@@ -49,21 +47,20 @@ class FishingController extends ChangeNotifier {
         FishingPhase.saving => _error ?? 'Đang cất cá vào giỏ…',
         FishingPhase.caught => message,
         FishingPhase.lost =>
-          '${_error ?? "Cá thoát rồi"} · Bấm bóng cá để thử lại',
+          '${_error ?? "Cá thoát rồi"} · Bấm cần câu để thử lại',
       };
 
   void tapRiver(Offset screen) {
-    if (!canSail) return;
+    if (_phase == FishingPhase.saving || _phase == FishingPhase.caught) return;
     final point = river.toWorld(screen);
     if (!FishingRiver.contains(point)) return;
-    final shoal = FishingRiver.shoalAt(point);
-    if (shoal != null) {
-      cast(FishingRiver.shoals[shoal]);
-    } else {
-      _pendingShoal = null;
-      river.sailTo(point);
-      notifyListeners();
+    if (active) cancelCast();
+    if (_phase == FishingPhase.lost) {
+      _error = null;
+      _setPhase(FishingPhase.ready);
     }
+    river.sailTo(point);
+    notifyListeners();
   }
 
   void steerBoat(Offset delta) {
@@ -73,7 +70,6 @@ class FishingController extends ChangeNotifier {
   void stopSteering() => river.steering = Offset.zero;
 
   void cancelNavigation() {
-    _pendingShoal = null;
     river.stop();
   }
 
@@ -136,6 +132,10 @@ class FishingController extends ChangeNotifier {
       FishSpecies.catfish => (t % 3.2) < .7 ? 1.0 : .2,
       // Gentle pull; it mostly changes direction.
       FishSpecies.goldfish => .35,
+      FishSpecies.sardine => .25 + math.sin(t * 3).abs() * .25,
+      FishSpecies.mackerel => t % 2.6 < .5 ? 1.0 : .25,
+      FishSpecies.clownfish => .3 + math.sin(t * 2.8).abs() * .3,
+      FishSpecies.pufferfish => t % 4.2 < 1.1 ? 1.0 : .15,
       FishSpecies.koi => .4 + math.sin(t * 2) * .2,
       // Pretends to be tired, then bursts.
       FishSpecies.catMew => (t % 4.5) > 3.6 ? 1.0 : .1,
@@ -189,17 +189,6 @@ class FishingController extends ChangeNotifier {
     assert(dt >= 0 && dt <= .05);
     _clock += dt;
     _elapsed += dt;
-    final wasSailing = canSail;
-    if (wasSailing) {
-      river.update(dt);
-      final pending = _pendingShoal;
-      if (pending != null &&
-          (river.boat - FishingRiver.shoals[pending]).distance <=
-              FishingRiver.castReach) {
-        _pendingShoal = null;
-        _beginCast(pending);
-      }
-    }
     switch (_phase) {
       case FishingPhase.casting:
         if (_elapsed >= .65) _setPhase(FishingPhase.waiting);
@@ -266,7 +255,7 @@ class FishingController extends ChangeNotifier {
       default:
         break;
     }
-    if (!wasSailing) river.update(dt);
+    river.update(dt);
     notifyListeners();
   }
 
@@ -278,49 +267,32 @@ class FishingController extends ChangeNotifier {
     _vibrate(HapticFeedback.heavyImpact);
   }
 
-  void cast(Offset position) {
+  void castHere() {
     if (!canSail) return;
-    final index = FishingRiver.shoalAt(position) ?? nearestShoal;
-    if ((river.boat - FishingRiver.shoals[index]).distance >
-        FishingRiver.castReach) {
-      _pendingShoal = index;
-      river.sailTo(FishingRiver.shoals[index]);
-    } else {
-      _pendingShoal = null;
-      _beginCast(index);
-    }
-    notifyListeners();
-  }
-
-  int get nearestShoal {
-    var best = 0;
-    for (var i = 1; i < FishingRiver.shoals.length; i++) {
-      if ((river.boat - FishingRiver.shoals[i]).distance <
-          (river.boat - FishingRiver.shoals[best]).distance) {
-        best = i;
-      }
-    }
-    return best;
-  }
-
-  void _beginCast(int index) {
-    _shoal = index;
+    final location = river.boat;
+    final direction = river.heading.dx >= 0 ? 1.0 : -1.0;
     river.stop();
-    _spot = FishingRiver.shoals[index];
+    _spot = FishingRiver.constrain(location + Offset(direction * 140, -25));
+    if ((_spot - location).distance < 80) {
+      _spot = FishingRiver.constrain(location + Offset(-direction * 140, -25));
+    }
+    // The boat's casting location owns the pool, even if the float lands
+    // across a regional boundary or the fish later pulls the boat elsewhere.
     _fish = beginner
-        ? (_spot.dx < FishingRiver.sectionLength
-            ? FishSpecies.tilapia
-            : FishSpecies.catfish)
-        : FishingRiver.rollFish(_random.nextInt(10000), _spot.dx, _worldHour);
+        ? (location.dx >= FishingRiver.seaStart
+            ? FishSpecies.sardine
+            : location.dx < FishingRiver.sectionLength
+                ? FishSpecies.tilapia
+                : FishSpecies.catfish)
+        : FishingRiver.rollFish(
+            _random.nextInt(10000), location.dx, _worldHour);
     _wait = 1.2 + _random.nextDouble() * 2;
     _fight = _random.nextDouble() * math.pi * 2;
     _error = null;
     _setPhase(FishingPhase.casting);
     _vibrate(HapticFeedback.selectionClick);
+    notifyListeners();
   }
-
-  void castNearest() => cast(FishingRiver.shoals[nearestShoal]);
-  int get selectedShoal => _shoal;
 
   void dismissResult() {
     if (_phase != FishingPhase.caught && _phase != FishingPhase.lost) return;
