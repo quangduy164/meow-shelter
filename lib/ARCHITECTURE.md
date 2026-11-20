@@ -157,8 +157,8 @@
     anchors reachable and off traffic when adding a route. Viewport resize scales positions in place through `HerdRound.resize`; repeated
     layout notifications preserve the run, score and result overlay.
 - `fishing/`: fishing rules and the river exploration scene.
-  - `fishing_river.dart`: a continuous 5400 x 2200 world with three 1800-unit
-    stretches. One shared centerline and width define both painted banks and
+  - `fishing_river.dart`: a continuous 9000 x 3600 world with five cached 1800-unit
+    stretches (two river stretches and three open-sea stretches). One shared centerline and width define both painted banks and
     movement limits. Click-to-row paths follow bends without cutting over land;
     screen/world transforms share the camera, which follows smoothly and clamps
     to all four world edges. The viewport stays 600 world units high, so the
@@ -168,12 +168,49 @@
   - `ui/widgets/fishing_river_art.dart`: detailed village/flower banks blend into
     bamboo/rock and rice-field banks; props use seeded world coordinates.
     `fishing_coast_art.dart` adds the estuary/beach, palms, lighthouse and islands.
+    `river_sea_land.dart` defines a solid 430-unit sand island at (5700,1750)
+    and fourteen sea rocks in six clusters. The cached island artwork, solid-prop
+    clearance and A* routing share these footprints. Water queries and cast
+    positions exclude dry island land; surface waves and fish are clipped out.
+    Bank-hit penalties still use bank-only bounds, so island contact is harmless.
+    `fishing_island.dart` owns the prototype visit: click the pier/island to route
+    to its fixed mooring, hop ashore, walk within the circular beach, collect six
+    shells by proximity and chase three fleeing crabs. Clicking the parked boat
+    walks back to the landing then hops aboard. The on-island `Về thuyền`
+    button does the same when the parked boat is off camera. `FishingRiverRound` keeps the
+    boat parked and follows the cat while ashore; `FishingController` dispatches
+    island/water taps and blocks casting during a visit. Water taps cancel a
+    pending docking approach; saving and catch results retain their input guard.
+    `fishing_island_art.dart` draws the cached pier and live shells/crabs. The
+    selected `CatSprite` switches to walk/idle on land, and the rod is hidden.
+    The larger island has a coconut grove to the north, winding sandy paths,
+    a central clearing, open southern beach and a marked western landing. Mooring,
+    pier and walk limits derive from island radius. Six shells and the three
+    crabs are spread across the enlarged island. The view scale stays unchanged;
+    the camera follows the cat while crossing the island. Terrain details are
+    recorded once in the chunk cache, including across the island's chunk seam.
+    Shells remain collected across visits in this round, without persistent
+    currency, inventory writes or changes to fishing rewards.
     `fishing_river_details.dart` caches mossy rocks and submerged coral. Visible
     lotus pads, vegetable rafts and driftwood bob/rotate on the animated surface;
-    duck families and fish schools flee the boat, while gulls fly overhead.
+    ducks swim independently with seeded scattered anchors, individual pace,
+    facing, separation and boat avoidance; fish schools flee and gulls fly overhead.
+    Duck movement is simulated in `RiverProps`, not a shared painted formation.
+    Sparse layout: 10 ducks in two loose groups, 45 lily pads, two vegetable
+    rafts and four logs. `river_encounters.dart` adds separated basking turtles
+    on existing rocks (dive when approached, return after the boat leaves) and
+    occasional nearby fish leaps with a cooldown. Landing positions validate
+    shared rock/island clearance. `river_encounter_art.dart` draws only visible
+    encounters, their jump arcs and splash rings, without labels or rewards.
     `river_props.dart` owns one seeded layout for artwork, solid rock clearance,
     buoyant spring/damped props, contact ripples and wildlife avoidance. Floating
     props yield to the hull and slow it gently, without damaging the boat.
+    Five paper boats drift downstream, rotate when nudged and deflect off rocks;
+    they use the same floating-prop simulation. `river_frog.dart` keeps each frog
+    on a separate lily: sitting -> jumping -> submerged -> returning. Frogs stay
+    hidden while the boat is near and hop back onto their moving lily after it
+    leaves. `river_toy_art.dart` draws paper folds, frog leaps and landing splashes.
+    These encounters do not modify fishing rewards or saved progress.
     `river_navigation.dart` runs A* only when a click's lane route crosses rocks;
     exact segment/circle checks and sampled bank edges keep detours navigable.
     Clicking a rock resolves to clear water, and fight steering slides off rocks
@@ -184,7 +221,7 @@
     submerged scenery. Floating props do not block click-to-row routes.
     `coastBlend` widens the shared channel into open sea from x=3360..4080.
     Chunk clips disable antialiasing so fractional camera offsets do not expose seams.
-  - `fishing_river_scene.dart`: owns and disposes three cached background Pictures,
+  - `fishing_river_scene.dart`: owns and disposes five cached background Pictures,
     draws only visible stretches, then animated water, boat hull and front rim.
     `FishingScreen` first shows owned cats; selecting one starts the ticker and
     mounts the river. Leaving this picker returns home. Only owned cats appear,

@@ -3,12 +3,14 @@ import 'dart:ui' as ui;
 import 'package:material_ui/material_ui.dart';
 
 import '../../fishing/fishing_river.dart';
+import '../../fishing/river_sea_land.dart';
 import '../../fishing/fishing_controller.dart';
 import 'fishing_river_art.dart';
 import 'fishing_oar_art.dart';
 import 'fishing_activity_art.dart';
 import 'fishing_fight_art.dart';
 import 'fishing_river_details.dart';
+import 'river_encounter_art.dart';
 
 /// Like Adventure's cached background: only the visible stretch is replayed.
 class FishingRiverBackdrop extends StatefulWidget {
@@ -81,6 +83,13 @@ class FishingRiverSurface extends CustomPainter {
     canvas.clipRect(Offset.zero & size);
     canvas.scale(round.scale);
     canvas.translate(-round.cameraLeft, -round.cameraTop);
+    // Surface ripples and swimming animals stay off the cached dry island.
+    canvas.clipPath(Path()
+      ..fillType = PathFillType.evenOdd
+      ..addRect(
+          const Rect.fromLTWH(0, 0, FishingRiver.length, FishingRiver.height))
+      ..addOval(Rect.fromCircle(
+          center: fishingSeaIsland.center, radius: fishingSeaIsland.radius)));
     final left = math.max(0.0, round.cameraLeft - 30);
     final right = math.min(
         FishingRiver.length, round.cameraLeft + round.visibleWidth + 30);
@@ -153,12 +162,29 @@ class FishingRiverSurface extends CustomPainter {
             Paint()..color = const Color(0xCCB5C68A));
       }
     }
+    if (right > fishingSeaIsland.center.dx - fishingSeaIsland.radius - 30 &&
+        left < fishingSeaIsland.center.dx + fishingSeaIsland.radius + 30) {
+      final radius =
+          fishingSeaIsland.radius + 7 + math.sin(round.clock * 1.8) * 3;
+      canvas.drawCircle(
+          fishingSeaIsland.center,
+          radius,
+          Paint()
+            ..color = const Color(0x99F2F5D5)
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = 2);
+    }
     paintFloatingRiverProps(
         canvas,
         round,
         Rect.fromLTWH(round.cameraLeft, round.cameraTop, round.visibleWidth,
             round.visibleHeight));
     paintRiverWildlife(
+        canvas,
+        round,
+        Rect.fromLTWH(round.cameraLeft, round.cameraTop, round.visibleWidth,
+            round.visibleHeight));
+    paintRiverEncounters(
         canvas,
         round,
         Rect.fromLTWH(round.cameraLeft, round.cameraTop, round.visibleWidth,

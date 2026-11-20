@@ -1,6 +1,7 @@
 import 'fishing_fight.dart';
 import 'fishing_activity.dart';
 import 'fishing_river.dart';
+import 'fishing_island.dart';
 import '../camp/camp_state.dart';
 import '../audio/game_audio.dart';
 import 'dart:math' as math;
@@ -36,34 +37,55 @@ class FishingController extends ChangeNotifier {
   bool get canSail =>
       _phase == FishingPhase.ready || _phase == FishingPhase.lost;
   bool get surging => _surging;
-  String get guide => switch (_phase) {
-        FishingPhase.ready => river.moving
-            ? 'Đang chèo · Bấm cần câu góc phải để câu tại đây'
-            : activities.nearby(river.clock, river.boat) != null
-                ? 'Có cá động gần đây! Bấm cần câu để thử vận may'
-                : 'Tìm cá quẫy, bọt nước · Mọi chỗ đều câu được',
-        FishingPhase.casting => _activeWater
-            ? 'Thả vào chỗ cá động · Cơ hội cá hiếm tăng!'
-            : 'Mèo đang thả cần…',
-        FishingPhase.waiting => 'Chờ phao động rồi bấm giật cần',
-        FishingPhase.bite => 'Cá cắn! Bấm nút giật cần!',
-        FishingPhase.reeling => '',
-        FishingPhase.saving => _error ?? 'Đang cất cá vào giỏ…',
-        FishingPhase.caught => message,
-        FishingPhase.lost =>
-          '${_error ?? "Cá thoát rồi"} · Bấm cần câu để thử lại',
-      };
+  String get guide => river.island.ashore
+      ? river.island.boardRequested
+          ? 'Mèo đang quay lại thuyền…'
+          : 'Sò ${river.island.collectedShells.length}/6 · Bấm Về thuyền để quay lại bến'
+      : river.island.dockRequested
+          ? 'Đang tới bến đảo…'
+          : (river.boat - FishingIslandVisit.mooring).distance < 600 && canSail
+              ? 'Bấm cầu gỗ trên đảo để cập bến khám phá'
+              : switch (_phase) {
+                  FishingPhase.ready => river.moving
+                      ? 'Đang chèo · Bấm cần câu góc phải để câu tại đây'
+                      : activities.nearby(river.clock, river.boat) != null
+                          ? 'Có cá động gần đây! Bấm cần câu để thử vận may'
+                          : 'Tìm cá quẫy, bọt nước · Mọi chỗ đều câu được',
+                  FishingPhase.casting => _activeWater
+                      ? 'Thả vào chỗ cá động · Cơ hội cá hiếm tăng!'
+                      : 'Mèo đang thả cần…',
+                  FishingPhase.waiting => 'Chờ phao động rồi bấm giật cần',
+                  FishingPhase.bite => 'Cá cắn! Bấm nút giật cần!',
+                  FishingPhase.reeling => '',
+                  FishingPhase.saving => _error ?? 'Đang cất cá vào giỏ…',
+                  FishingPhase.caught => message,
+                  FishingPhase.lost =>
+                    '${_error ?? "Cá thoát rồi"} · Bấm cần câu để thử lại',
+                };
 
   void tapRiver(Offset screen) {
     if (_phase == FishingPhase.saving || _phase == FishingPhase.caught) return;
     final point = river.toWorld(screen);
-    if (!FishingRiver.contains(point)) return;
+    final island = river.island;
+    if (island.ashore) {
+      if ((point - river.boat).distance < 70) {
+        island.returnToBoat();
+      } else if (FishingIslandVisit.contains(point)) {
+        island.walkTo(point);
+      }
+      notifyListeners();
+      return;
+    }
+    final docking = FishingIslandVisit.contains(point) ||
+        (point - FishingIslandVisit.dockTap).distance < 45;
+    if (!docking && !FishingRiver.contains(point)) return;
     if (active) cancelCast();
     if (_phase == FishingPhase.lost) {
       _error = null;
       _setPhase(FishingPhase.ready);
     }
-    river.sailTo(point);
+    island.dockRequested = docking;
+    river.sailTo(docking ? FishingIslandVisit.mooring : point);
     notifyListeners();
   }
 
@@ -298,7 +320,7 @@ class FishingController extends ChangeNotifier {
   }
 
   void castHere() {
-    if (!canSail) return;
+    if (!canSail || river.island.ashore) return;
     final location = river.boat;
     final direction = river.heading.dx >= 0 ? 1.0 : -1.0;
     river.stop();

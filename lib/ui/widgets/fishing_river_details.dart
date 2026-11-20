@@ -2,10 +2,12 @@ import 'dart:math' as math;
 import 'package:flutter/painting.dart';
 import '../../fishing/fishing_river.dart';
 import '../../fishing/river_props.dart';
+import 'river_toy_art.dart';
+import 'fishing_coast_art.dart';
 
 /// Solid rocks and submerged coral are recorded with the landscape.
 void paintRiverDetails(Canvas c, double left, double right) {
-  for (var i = 0; i < 18; i++) {
+  for (var i = 0; i < ((FishingRiver.length - 420) / 265).ceil(); i++) {
     final x = 420.0 + i * 265;
     if (x < left - 180 || x > right + 180) continue;
     final north = i.isEven;
@@ -46,8 +48,15 @@ void paintRiverDetails(Canvas c, double left, double right) {
     }
   }
   for (final rock in createRiverProps().where((p) => p.solid)) {
-    if (rock.anchor.dx < left - 80 || rock.anchor.dx > right + 80) continue;
-    _rock(c, rock.anchor, rock.radius);
+    if (rock.anchor.dx < left - rock.radius - 80 ||
+        rock.anchor.dx > right + rock.radius + 80) {
+      continue;
+    }
+    if (rock.kind == RiverPropKind.island) {
+      paintFishingIsland(c, rock.anchor, rock.radius);
+    } else {
+      _rock(c, rock.anchor, rock.radius);
+    }
   }
 }
 
@@ -77,10 +86,21 @@ void paintFloatingRiverProps(Canvas c, FishingRiverRound round, Rect visible) {
         _raft(c, p);
       case RiverPropKind.log:
         _log(c, p);
+      case RiverPropKind.paperBoat:
+        paintPaperBoat(c, p);
+      case RiverPropKind.island:
       case RiverPropKind.rock:
         break;
     }
     c.restore();
+  }
+  final frogView = visible.inflate(100);
+  for (final frog in round.props.frogs) {
+    if (frogView.contains(frog.position)) {
+      final lily = round.props.items[frog.lilyIndex];
+      paintRiverFrog(c, frog, round.clock,
+          bob: math.sin(round.clock * 1.8 + lily.anchor.dx) * 1.8);
+    }
   }
 }
 
@@ -222,7 +242,13 @@ void _coral(Canvas c, Offset p, int seed) {
 
 /// Only a few visible animals animate; no world-sized per-frame scene rebuild.
 void paintRiverWildlife(Canvas c, FishingRiverRound round, Rect visible) {
-  for (var group = 0; group < 12; group++) {
+  final duckView = visible.inflate(35);
+  for (final duck in round.props.ducks) {
+    if (!duckView.contains(duck.position)) continue;
+    final bob = math.sin(round.clock * 2.5 + duck.phase) * 1.2;
+    _duck(c, duck.position + Offset(0, bob), duck.size, duck.facing);
+  }
+  for (var group = 4; group < round.props.wildlifeOffsets.length; group++) {
     final x = 480 + group * 420.0;
     if (x < visible.left - 160 || x > visible.right + 160) continue;
     final sea = x >= FishingRiver.seaStart;
@@ -230,17 +256,7 @@ void paintRiverWildlife(Canvas c, FishingRiverRound round, Rect visible) {
         RiverProps.wildlifeHome(group) + round.props.wildlifeOffsets[group];
     if (!visible.inflate(140).contains(base)) continue;
     final time = round.clock;
-    if (!sea && x < 1800) {
-      for (var i = 0; i < 5; i++) {
-        final p = RiverProp.waterPoint(base +
-            Offset(math.sin(time * .25 + group) * 55 - i * 22,
-                math.sin(time * .7 - i * .6) * 5 + i * 9));
-        final facing = round.props.wildlifeOffsets[group].dx.abs() > 10
-            ? round.props.wildlifeOffsets[group].dx.sign
-            : math.cos(time * .25 + group).sign;
-        _duck(c, p, i == 0 ? 1 : .6, facing);
-      }
-    } else {
+    {
       for (var i = 0; i < 7; i++) {
         final p = RiverProp.waterPoint(base +
             Offset(math.sin(time * .35 + group) * 80 + (i % 3) * 23,

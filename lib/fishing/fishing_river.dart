@@ -1,16 +1,18 @@
 import 'fishing_fight.dart';
 import 'river_props.dart';
 import 'river_navigation.dart';
+import 'river_sea_land.dart';
+import 'fishing_island.dart';
 import 'dart:math' as math;
 import 'package:flutter/painting.dart';
 import '../collection/fish_species.dart';
 
 /// Continuous world coordinates, independent of the screen and camera.
 class FishingRiver {
-  static const height = 2200.0;
+  static const height = 3600.0;
   static const viewHeight = 600.0;
   static const sectionLength = 1800.0;
-  static const sectionCount = 3;
+  static const sectionCount = 5;
   static const seaStart = sectionLength * 2;
   static const length = sectionLength * sectionCount;
   static double coastBlend(double x) {
@@ -96,7 +98,7 @@ class FishingRiver {
   static double center(double x) {
     final river =
         1100 + 150 * math.sin(x / 620 - .4) + 65 * math.sin(x / 290 + .5);
-    final sea = 1050 + math.sin(x / 780) * 70;
+    final sea = 1750 + math.sin(x / 1000) * 70;
     return river +
         (sea - river) * coastBlend(x) +
         (_inlet(x, false) - _inlet(x, true)) / 2;
@@ -104,7 +106,7 @@ class FishingRiver {
 
   static double halfWidth(double x) {
     final river = 410 + 85 * math.sin(x / 500 + .4) + 45 * math.cos(x / 260);
-    final sea = 740 + math.sin(x / 580) * 60;
+    final sea = 1350 + math.sin(x / 850) * 65;
     return river +
         (sea - river) * coastBlend(x) +
         (_inlet(x, false) + _inlet(x, true)) / 2;
@@ -113,9 +115,25 @@ class FishingRiver {
   static double top(double x) => center(x) - halfWidth(x);
   static double bottom(double x) => center(x) + halfWidth(x);
   static bool contains(Offset p) =>
-      p.dx >= 0 && p.dx <= length && p.dy >= top(p.dx) && p.dy <= bottom(p.dx);
+      p.dx >= 0 &&
+      p.dx <= length &&
+      p.dy >= top(p.dx) &&
+      p.dy <= bottom(p.dx) &&
+      (p - fishingSeaIsland.center).distance > fishingSeaIsland.radius;
 
   static Offset constrain(Offset p) {
+    var safe = constrainBanks(p);
+    final delta = safe - fishingSeaIsland.center;
+    final clearance = fishingSeaIsland.radius + boatMargin;
+    if (delta.distance < clearance) {
+      final direction =
+          delta.distance > .001 ? delta / delta.distance : const Offset(0, 1);
+      safe = fishingSeaIsland.center + direction * clearance;
+    }
+    return safe;
+  }
+
+  static Offset constrainBanks(Offset p) {
     final x = p.dx.clamp(55.0, length - 55);
     return Offset(x, p.dy.clamp(top(x) + boatMargin, bottom(x) - boatMargin));
   }
@@ -130,6 +148,8 @@ class FishingRiver {
 /// Click-to-row movement and a smoothly following two-axis camera.
 class FishingRiverRound {
   final props = RiverProps();
+  final island = FishingIslandVisit();
+  Offset get cameraFocus => island.ashore ? island.cat : boat;
   Offset boat = FishingRiver.startBoat;
   Offset _lastBoat = FishingRiver.startBoat;
   Offset heading = const Offset(1, 0);
@@ -149,13 +169,14 @@ class FishingRiverRound {
   double get visibleHeight => viewport.height / scale;
   double get maxCameraTop => math.max(0, FishingRiver.height - visibleHeight);
   double get maxCamera => math.max(0, FishingRiver.length - visibleWidth);
-  int get section => (boat.dx / FishingRiver.sectionLength).floor() + 1;
+  int get section =>
+      (boat.dx / FishingRiver.sectionLength).floor().clamp(0, 2) + 1;
 
   void resize(Size size) {
     if (viewport == size) return;
     viewport = size;
-    cameraLeft = (boat.dx - visibleWidth * .42).clamp(0.0, maxCamera);
-    cameraTop = (boat.dy - visibleHeight * .5).clamp(0.0, maxCameraTop);
+    cameraLeft = (cameraFocus.dx - visibleWidth * .42).clamp(0.0, maxCamera);
+    cameraTop = (cameraFocus.dy - visibleHeight * .5).clamp(0.0, maxCameraTop);
   }
 
   Offset toWorld(Offset screen) =>
@@ -172,6 +193,7 @@ class FishingRiverRound {
 
   void stop() {
     _route.clear();
+    island.dockRequested = false;
     destination = null;
     speed = 0;
   }
@@ -230,7 +252,7 @@ class FishingRiverRound {
     final intended = boat + velocity * dt;
     boat = props.resolve(boat + velocity * dt * props.dragAt(boat));
     steering *= math.max(0, 1 - dt * 2.8);
-    if ((FishingRiver.constrain(intended) - intended).distance > .1 &&
+    if ((FishingRiver.constrainBanks(intended) - intended).distance > .1 &&
         hitTime <= 0) {
       hitTime = 1.4;
       return true;
@@ -319,14 +341,22 @@ class FishingRiverRound {
         speed = 0;
       }
     }
+    if (island.dockRequested &&
+        !moving &&
+        (boat - FishingIslandVisit.mooring).distance < 2) {
+      island.beginLanding();
+    }
+    island.update(dt);
     props.update(
         dt, clock, boat, dt > 0 ? (boat - _lastBoat) / dt : Offset.zero);
     _lastBoat = boat;
     wake += ((rowing ? 1 : 0) - wake) * (1 - math.exp(-4 * dt));
-    final targetCamera = (boat.dx - visibleWidth * .42).clamp(0.0, maxCamera);
+    final targetCamera =
+        (cameraFocus.dx - visibleWidth * .42).clamp(0.0, maxCamera);
     cameraLeft += (targetCamera - cameraLeft) * (1 - math.exp(-5 * dt));
     cameraLeft = cameraLeft.clamp(0.0, maxCamera);
-    final targetTop = (boat.dy - visibleHeight * .5).clamp(0.0, maxCameraTop);
+    final targetTop =
+        (cameraFocus.dy - visibleHeight * .5).clamp(0.0, maxCameraTop);
     cameraTop += (targetTop - cameraTop) * (1 - math.exp(-5 * dt));
     cameraTop = cameraTop.clamp(0.0, maxCameraTop);
   }

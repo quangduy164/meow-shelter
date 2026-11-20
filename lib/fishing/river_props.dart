@@ -1,8 +1,11 @@
 import 'dart:math' as math;
 import 'package:flutter/painting.dart';
 import 'fishing_river.dart';
+import 'river_frog.dart';
+import 'river_sea_land.dart';
+import 'river_encounters.dart';
 
-enum RiverPropKind { lily, raft, log, rock }
+enum RiverPropKind { lily, raft, log, rock, paperBoat, island }
 
 class RiverProp {
   RiverProp(this.kind, Offset point, {this.radius = 16, this.flower = false})
@@ -14,9 +17,12 @@ class RiverProp {
   final bool flower;
   Offset position, velocity = Offset.zero;
   double angle = 0, spin = 0, ripple = 0;
-  bool get solid => kind == RiverPropKind.rock;
-  static Offset waterPoint(Offset p) => Offset(p.dx,
-      p.dy.clamp(FishingRiver.top(p.dx) + 55, FishingRiver.bottom(p.dx) - 55));
+  bool get solid => kind == RiverPropKind.rock || kind == RiverPropKind.island;
+  static Offset waterPoint(Offset p) {
+    final x = p.dx.clamp(55.0, FishingRiver.length - 55);
+    return Offset(
+        x, p.dy.clamp(FishingRiver.top(x) + 55, FishingRiver.bottom(x) - 55));
+  }
 }
 
 /// One layout feeds cached rocks, moving artwork and boat collision/navigation.
@@ -28,12 +34,12 @@ List<RiverProp> createRiverProps() {
         x, i.isEven ? FishingRiver.top(x) + 95 : FishingRiver.bottom(x) - 100);
     final rng = math.Random(927 + i);
     if (x < 1800) {
-      for (var j = 0; j < 13; j++) {
+      for (var j = 0; j < 6; j++) {
         props.add(RiverProp(RiverPropKind.lily,
             p + Offset(rng.nextDouble() * 160 - 80, rng.nextDouble() * 65 - 32),
             flower: j % 4 == 0));
       }
-      if (i.isOdd) {
+      if (i == 1) {
         props.add(RiverProp(RiverPropKind.raft, p + const Offset(105, -12),
             radius: 40));
       }
@@ -43,8 +49,10 @@ List<RiverProp> createRiverProps() {
             RiverPropKind.rock, p + Offset(j * 27 - 50, math.sin(j * 2) * 18),
             radius: 14 + rng.nextDouble() * 12));
       }
-      props.add(
-          RiverProp(RiverPropKind.log, p + const Offset(40, 32), radius: 40));
+      if (i.isEven) {
+        props.add(
+            RiverProp(RiverPropKind.log, p + const Offset(40, 32), radius: 40));
+      }
     }
   }
   for (final cove in FishingRiver.coves.take(2)) {
@@ -54,7 +62,7 @@ List<RiverProp> createRiverProps() {
             ? FishingRiver.top(cove.x) + 75
             : FishingRiver.bottom(cove.x) - 75);
     if (cove.north) {
-      for (var i = 0; i < 18; i++) {
+      for (var i = 0; i < 9; i++) {
         props.add(RiverProp(
             RiverPropKind.lily,
             p +
@@ -69,12 +77,87 @@ List<RiverProp> createRiverProps() {
           RiverProp(RiverPropKind.log, p + const Offset(55, 10), radius: 40));
     }
   }
+  for (var i = 0; i < 5; i++) {
+    final x = 540 + i * 620.0;
+    props.add(RiverProp(RiverPropKind.paperBoat,
+        Offset(x, FishingRiver.center(x) + (i.isEven ? 130 : -160)),
+        radius: 22));
+  }
+  props.add(RiverProp(RiverPropKind.island, fishingSeaIsland.center,
+      radius: fishingSeaIsland.radius));
+  for (final rock in fishingSeaRocks) {
+    props.add(RiverProp(RiverPropKind.rock, rock.center, radius: rock.radius));
+  }
   return props;
+}
+
+class RiverDuck {
+  RiverDuck(this.anchor, this.size, this.phase, this.pace)
+      : position = anchor,
+        facing = math.cos(phase) < 0 ? -1 : 1;
+  final Offset anchor;
+  final double size, phase, pace;
+  Offset position, velocity = Offset.zero;
+  double facing;
+}
+
+List<RiverDuck> _createDucks() {
+  final rng = math.Random(541);
+  final ducks = <RiverDuck>[];
+  for (var group = 0; group < 4; group += 2) {
+    final home = RiverProps.wildlifeHome(group);
+    for (var i = 0; i < 5; i++) {
+      var p = home;
+      for (var attempt = 0; attempt < 80; attempt++) {
+        p = RiverProp.waterPoint(home +
+            Offset(rng.nextDouble() * 270 - 135, rng.nextDouble() * 200 - 100));
+        if (ducks.every((d) => (d.position - p).distance > 58)) break;
+      }
+      ducks.add(RiverDuck(p, i == 0 ? 1 : .65 + rng.nextDouble() * .22,
+          rng.nextDouble() * math.pi * 2, .18 + rng.nextDouble() * .2));
+    }
+  }
+  return ducks;
 }
 
 class RiverProps {
   final items = createRiverProps();
-  final wildlifeOffsets = List<Offset>.filled(12, Offset.zero);
+  final ducks = _createDucks();
+  late final frogs = _createFrogs();
+  late final turtles = _createTurtles();
+  List<RiverTurtle> _createTurtles() {
+    final result = <RiverTurtle>[];
+    for (var i = 0; i < rocks.length; i++) {
+      final rock = rocks[i];
+      if (rock.kind == RiverPropKind.rock &&
+          rock.radius >= 24 &&
+          result.every((t) => (t.rock - rock.anchor).distance > 600)) {
+        result.add(RiverTurtle(rock.anchor, rock.radius, i));
+      }
+    }
+    return result;
+  }
+
+  final jumpingFish = [
+    for (var i = 0; 600 + i * 900 < FishingRiver.length; i++)
+      RiverJumpFish(600 + i * 900.0, i)
+  ];
+
+  List<RiverFrog> _createFrogs() {
+    final result = <RiverFrog>[];
+    for (var i = 0; i < items.length; i++) {
+      final lily = items[i];
+      if (lily.kind != RiverPropKind.lily || lily.flower) continue;
+      if (result.every(
+          (f) => (items[f.lilyIndex].anchor - lily.anchor).distance > 210)) {
+        result.add(RiverFrog(i, i, lily.position));
+      }
+    }
+    return result;
+  }
+
+  final wildlifeOffsets = List<Offset>.filled(
+      ((FishingRiver.length - 480) / 420).ceil(), Offset.zero);
   static Offset wildlifeHome(int group) {
     final x = 480 + group * 420.0;
     return Offset(
@@ -141,6 +224,44 @@ class RiverProps {
   }
 
   void update(double dt, double time, Offset boat, Offset boatVelocity) {
+    // Compute every velocity before moving anyone, so spacing is order independent.
+    final velocities = <Offset>[];
+    for (final duck in ducks) {
+      final desired = RiverProp.waterPoint(duck.anchor +
+          Offset(math.sin(time * duck.pace + duck.phase) * 65,
+              math.sin(time * duck.pace * .73 + duck.phase * 2) * 45));
+      var velocity = (desired - duck.position) * .65;
+      final away = duck.position - boat;
+      if (away.distance < 190) {
+        velocity +=
+            (away.distance > .01 ? away / away.distance : const Offset(1, 0)) *
+                (190 - away.distance) *
+                .8;
+      }
+      for (final other in ducks) {
+        if (identical(duck, other)) continue;
+        final delta = duck.position - other.position;
+        if (delta.distance < 55) {
+          velocity += (delta.distance > .01
+                  ? delta / delta.distance
+                  : const Offset(0, 1)) *
+              (55 - delta.distance) *
+              3;
+        }
+      }
+      if (velocity.distance > 65) velocity = velocity / velocity.distance * 65;
+      velocities.add(
+          duck.velocity + (velocity - duck.velocity) * (1 - math.exp(-dt * 3)));
+    }
+    for (var i = 0; i < ducks.length; i++) {
+      final duck = ducks[i];
+      final before = duck.position;
+      duck.velocity = velocities[i];
+      duck.position = RiverProp.waterPoint(before + duck.velocity * dt);
+      if ((duck.position.dx - before.dx).abs() > dt * 2) {
+        duck.facing = duck.position.dx > before.dx ? 1 : -1;
+      }
+    }
     for (var group = 0; group < wildlifeOffsets.length; group++) {
       final home = wildlifeHome(group);
       final delta = home + wildlifeOffsets[group] - boat;
@@ -161,8 +282,14 @@ class RiverProps {
       p.ripple = math.max(0, p.ripple - dt);
       final drift = Offset(math.sin(time * .35 + p.anchor.dx) * 5,
           math.sin(time * .8 + p.anchor.dx * .01) * 2.5);
-      p.velocity +=
-          ((p.anchor + drift - p.position) * .5 - p.velocity * 1.4) * dt;
+      if (p.kind == RiverPropKind.paperBoat) {
+        final flow = Offset(p.position.dx > FishingRiver.length - 160 ? -6 : 8,
+            math.sin(time * .4 + p.anchor.dx) * 4);
+        p.velocity += (flow - p.velocity) * (1 - math.exp(-dt * .7));
+      } else {
+        p.velocity +=
+            ((p.anchor + drift - p.position) * .5 - p.velocity * 1.4) * dt;
+      }
       p.position = RiverProp.waterPoint(p.position + p.velocity * dt);
       final delta = p.position - boat;
       final reach = boatRadius + p.radius;
@@ -182,11 +309,32 @@ class RiverProps {
             dt;
         p.spin += (normal.dx * boatVelocity.dy - normal.dy * boatVelocity.dx) *
             dt *
-            .01;
+            (p.kind == RiverPropKind.paperBoat ? .08 : .01);
         p.ripple = .8;
+      }
+      if (p.kind == RiverPropKind.paperBoat) {
+        for (final rock in rocks) {
+          final away = p.position - rock.anchor;
+          final clearance = rock.radius + p.radius;
+          if (away.distance < clearance) {
+            final normal =
+                away.distance > .01 ? away / away.distance : const Offset(0, 1);
+            p.position = RiverProp.waterPoint(rock.anchor + normal * clearance);
+            p.velocity += normal * 12;
+          }
+        }
       }
       p.spin += (-p.angle * .4 - p.spin * 1.6) * dt;
       p.angle += p.spin * dt;
+    }
+    for (final turtle in turtles) {
+      turtle.update(dt, boat, clear);
+    }
+    for (final fish in jumpingFish) {
+      fish.update(dt, boat, clear);
+    }
+    for (final frog in frogs) {
+      frog.update(dt, items[frog.lilyIndex].position, boat);
     }
   }
 }

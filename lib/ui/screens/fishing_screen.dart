@@ -17,6 +17,7 @@ import '../widgets/cat_sprite.dart';
 import '../widgets/fish_collection_dialog.dart';
 import '../widgets/fishing_action_button.dart';
 import '../widgets/fishing_river_scene.dart';
+import '../widgets/fishing_island_art.dart';
 import '../widgets/fishing_oar_art.dart';
 import '../widgets/game_glyphs.dart';
 import '../widgets/game_surfaces.dart';
@@ -190,22 +191,23 @@ class _FishingScreenState extends State<FishingScreen>
     final frames = won ? framesCelebrate : framesIdle;
     return Stack(fit: StackFit.expand, children: [
       CustomPaint(painter: FishingRiverBoatPainter(_river, fishing: fishing)),
-      Positioned(
-          left: point.dx - catSize / 2,
-          top: point.dy -
-              catSize * .69 +
-              math.sin(_river.clock * 2.5) * 1.8 * _river.scale,
-          child: Transform.rotate(
-            angle: lean,
-            alignment: Alignment.bottomCenter,
-            child: CatSprite(
-                type: _cat,
-                size: catSize,
-                action: action,
-                frames: frames,
-                frame: (_river.clock * 7).floor() % frames,
-                flip: !facingRight),
-          )),
+      if (!_river.island.ashore)
+        Positioned(
+            left: point.dx - catSize / 2,
+            top: point.dy -
+                catSize * .69 +
+                math.sin(_river.clock * 2.5) * 1.8 * _river.scale,
+            child: Transform.rotate(
+              angle: lean,
+              alignment: Alignment.bottomCenter,
+              child: CatSprite(
+                  type: _cat,
+                  size: catSize,
+                  action: action,
+                  frames: frames,
+                  frame: (_river.clock * 7).floor() % frames,
+                  flip: !facingRight),
+            )),
       CustomPaint(
           painter: FishingRiverBoatPainter(_river,
               front: true,
@@ -255,6 +257,36 @@ class _FishingScreenState extends State<FishingScreen>
     ]);
   }
 
+  Widget _islandCat() {
+    final island = _river.island;
+    if (!island.ashore) return const SizedBox.shrink();
+    final point = _river.toScreen(island.cat);
+    final size = 84 * _river.scale;
+    final action = island.walking ? 'walk' : 'idle';
+    final frames = island.walking ? framesWalk : framesIdle;
+    return Stack(children: [
+      Positioned(
+          left: point.dx - 14 * _river.scale,
+          top: point.dy - 3 * _river.scale,
+          child: Container(
+              width: 28 * _river.scale,
+              height: 10 * _river.scale,
+              decoration: const BoxDecoration(
+                  color: Color(0x3359553B), shape: BoxShape.circle))),
+      Positioned(
+          left: point.dx - size / 2,
+          top: point.dy - size * .78 - island.jump * _river.scale,
+          child: CatSprite(
+              type: _cat,
+              size: size,
+              action: action,
+              frames: frames,
+              frame:
+                  (_river.clock * (island.walking ? 10 : 7)).floor() % frames,
+              flip: !island.facingRight)),
+    ]);
+  }
+
   @override
   Widget build(BuildContext context) => Scaffold(
         body: _choosingCat
@@ -273,6 +305,10 @@ class _FishingScreenState extends State<FishingScreen>
                               child: CustomPaint(
                                   painter: FishingRiverSurface(_river, _frames,
                                       fishing: _controller))),
+                          RepaintBoundary(
+                              child: CustomPaint(
+                                  painter:
+                                      FishingIslandPainter(_river, _frames))),
                           GestureDetector(
                             behavior: HitTestBehavior.opaque,
                             onTapUp: (event) {
@@ -288,7 +324,10 @@ class _FishingScreenState extends State<FishingScreen>
                                     event.delta.dx / 90, event.delta.dy / 70)),
                             onPanEnd: (_) => _controller.stopSteering(),
                             onPanCancel: _controller.stopSteering,
-                            child: IgnorePointer(child: _boat()),
+                            child: IgnorePointer(
+                                child: Stack(
+                                    fit: StackFit.expand,
+                                    children: [_boat(), _islandCat()])),
                           ),
                           Positioned(
                               left: padding.left + 8,
@@ -316,7 +355,9 @@ class _FishingScreenState extends State<FishingScreen>
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
-                                      'KHÚC ${_river.section} · ${FishingRiver.sectionName(_river.boat.dx).toUpperCase()}',
+                                      _river.island.ashore
+                                          ? 'ĐẢO DỪA'
+                                          : 'KHÚC ${_river.section} · ${FishingRiver.sectionName(_river.boat.dx).toUpperCase()}',
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
                                       style: const TextStyle(
@@ -354,12 +395,23 @@ class _FishingScreenState extends State<FishingScreen>
                                 child: IgnorePointer(
                                     child: FishingDistance(
                                         progress: _controller.progress))),
-                          Positioned(
-                              right: padding.right + 8,
-                              bottom: padding.bottom + 8,
-                              width: 80,
-                              height: 80,
-                              child: FishingControls(controller: _controller)),
+                          if (_river.island.ashore)
+                            Positioned(
+                                right: padding.right + 12,
+                                bottom: padding.bottom + 16,
+                                child: OutlinedButton.icon(
+                                    onPressed: _river.island.returnToBoat,
+                                    icon: const GameGlyphView(GameGlyph.back,
+                                        size: 22),
+                                    label: const Text('Về thuyền'))),
+                          if (!_river.island.ashore)
+                            Positioned(
+                                right: padding.right + 8,
+                                bottom: padding.bottom + 8,
+                                width: 80,
+                                height: 80,
+                                child:
+                                    FishingControls(controller: _controller)),
                           if (_controller.active &&
                               _controller.phase != FishingPhase.saving)
                             Positioned(
