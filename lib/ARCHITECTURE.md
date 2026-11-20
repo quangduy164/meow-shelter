@@ -157,11 +157,13 @@
     anchors reachable and off traffic when adding a route. Viewport resize scales positions in place through `HerdRound.resize`; repeated
     layout notifications preserve the run, score and result overlay.
 - `fishing/`: fishing rules and the river exploration scene.
-  - `fishing_river.dart`: a continuous 5400 x 600 world with three 1800-unit
+  - `fishing_river.dart`: a continuous 5400 x 2200 world with three 1800-unit
     stretches. One shared centerline and width define both painted banks and
     movement limits. Click-to-row paths follow bends without cutting over land;
     screen/world transforms share the camera, which follows smoothly and clamps
-    to world ends. Resizing preserves boat position and its destination.
+    to all four world edges. The viewport stays 600 world units high, so the
+    taller world scrolls vertically instead of shrinking the boat and artwork.
+    Resizing preserves boat position and its destination.
   - `ui/widgets/fishing_river_art.dart`: detailed village/flower banks blend into
     bamboo/rock and rice-field banks; props use seeded world coordinates.
     `fishing_coast_art.dart` adds the estuary/beach, palms, lighthouse and islands.
@@ -175,6 +177,13 @@
     `FishingScreen` draws the selected owned cat through `CatSprite`, handles
     water taps and pauses for dialogs/app backgrounding. Taps only choose a
     rowing destination; background fish are ambient scenery without target rings.
+    `fishing_activity.dart` schedules short-lived splash/bubble/large-shadow
+    sightings in world time. `fishing_activity_art.dart` draws them without
+    target circles or labels. The rod auto-aims at a nearby sighting (within 330
+    world units; very close sightings keep a normal-length cast), consuming its opportunity once even if the cast is canceled.
+    At active water, rare-species weights are x3 and junk weights x0.3 within
+    the existing regional pool. Normal water remains fishable. Scrolling does
+    not reset sightings; first-catch help still overrides the species roll.
   - `FishingController` owns the river round and casting/reeling/save phases.
     The bottom-right rod button calls `castHere`, stops rowing and casts from
     the current boat position. Any valid water point can be fished. Tapping a new
@@ -185,7 +194,17 @@
     `fishing_oar_art.dart` shares the entry/power/recovery pose between the cat,
     wooden paddle and water splashes. The paddle parks on the rim during fishing;
     rod artwork uses the river's world scale, extends ahead of the cat and draws
-    forepaws to the grip. The tension gauge stays outside the cat silhouette.
+    forepaws to the grip. The tension bar follows the float, flips below it near the top HUD, and
+    pulses at tension >= .82 together with a red line. It shows only colors,
+    a sweet-zone bracket and a needle, without labels or move instructions.
+    `fishing_fight.dart` is the shared per-species fight timeline for rules and art:
+    catfish warns with bubbles before diving, mackerel warns before a dash, puffer
+    warns before inflation (no reel progress, higher strain if pulled), koi's
+    vertical loops reward counter-steering, carp keeps a steady load. Rest windows
+    increase reel rate. Bursts start only after a warning; timelines reset at hook.
+    `fishing_fight_art.dart` draws the matching bubbles, body inflation, dash wakes
+    and koi steering arrows. Fish behavior is conveyed visually, without advance
+    text instructions in the HUD or the float's tension bar.
   - `FishingRiver.rollFish` owns regional weights: village (perch, tilapia,
     carp, rare goldfish), bamboo (catfish, koi, very rare catMew), and sea
     (sardine, mackerel, clownfish, pufferfish), plus lost items. Pools blend across
@@ -193,6 +212,12 @@
     at the boat position when casting starts, so crossing regions while reeling never
     changes the catch. Catches use the existing journal/basket and camp coin
     save. First-catch help uses `mode:fishing:boat:v1` in saved seen guides.
+    `FishSpecies.weightRange` and `rollGrams` set a per-species cubic size roll;
+    grams are fixed at casting, independently of species rarity. Relative weight
+    scales fish artwork and adds at most 15% pull/boat speed; it does not extend
+    the fight timer. First-catch help keeps the original force. The result popup
+    shows kilograms and the new-record badge only after saving. Retry flags keep
+    the measured catch and coin award from being applied twice.
 - `camp/`: the cat camp.
   - `camp_state.dart`: coins, bought cats (`cat:<breed>` in owned), optional
     `catNames` by breed (fallback to breed name), rescue counts, affection, owned and placed
@@ -209,6 +234,11 @@
   drag a fish (upward; sideways scrolls) onto a cat; it leaves the basket (never the journal) and adds
   `FishSpecies.affection` (2 common up to 10 legendary). Lost items are not
   food. Saves from before the basket start with everything caught so far.
+  Counts and heaviest whole grams commit atomically in `fish_collection_journal_v2`.
+  Missing v2 imports the legacy species counts without inventing old weights;
+  the basket retains its existing key. Invalid weight records are backed up and
+  discarded while valid counts are preserved. Feeding never alters best weights.
+  The journal detail panel shows the species record, or "Chưa cân" for old catches.
   The journal groups fish by `FishSpecies.habitat` in river/sea travel order,
   then rarity within each group. Lost items keep their own tab. Habitat and
   the real nocturnal bonus are shown in details; display order never rewrites saves.

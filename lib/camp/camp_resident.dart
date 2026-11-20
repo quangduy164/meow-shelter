@@ -1,4 +1,5 @@
 import 'dart:math';
+import '../audio/game_audio.dart';
 
 /// What a camp cat is doing; each maps to one sprite sheet.
 enum CampAct {
@@ -104,6 +105,10 @@ class CampResident {
     act = a;
     _anim = 0;
     _timer = time;
+    if (a == CampAct.vanish || a == CampAct.sulk) {
+      GameAudio.instance.playCampAmbient(
+          a == CampAct.vanish ? GameSound.moonCloud : GameSound.campSulk);
+    }
   }
 
   void _goTo(double tx, double ty, CampAct how, double speed) {
@@ -139,6 +144,14 @@ class CampResident {
         sleeping = _arriveSleep;
         _arriveSleep = false;
         atToy = _toyGoing;
+        final sound = sleeping
+            ? GameSound.catNap
+            : switch (atToy) {
+                'post' => GameSound.campScratch,
+                'yarn' => GameSound.yarnBounce,
+                _ => null,
+              };
+        if (sound != null) GameAudio.instance.playCampAmbient(sound);
         _toyGoing = null;
         _arrive = CampAct.idle;
         _arriveTime = 1.5 + random.nextDouble() * 3;
@@ -191,6 +204,7 @@ class CampResident {
       // A short nap right where it is.
       _play(CampAct.idle, 5 + random.nextDouble() * 4);
       sleeping = true;
+      GameAudio.instance.playCampAmbient(GameSound.catNap);
     } else {
       double target;
       do {
@@ -230,6 +244,7 @@ class CampResident {
   void nap(double time) {
     react(CampAct.idle, time: time);
     sleeping = true;
+    GameAudio.instance.playCampAmbient(GameSound.catNap);
   }
 
   /// Keeps sleeping a bit longer (a friend just lay down next to it).

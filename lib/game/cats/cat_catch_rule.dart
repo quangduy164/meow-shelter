@@ -49,7 +49,7 @@ class CatCatchRule {
         'black' when moon =>
           'Mèo đen bóng ma nhảy giữa các góc tối; dấu chân tím chỉ chỗ sắp hiện',
         'calico' when toys =>
-          'Tam thể quậy: chạm đúng nhịp vòng vàng 6 lần, sai nhịp là bé hất đồ chơi',
+          'Tam thể quậy: chạm đúng nhịp vòng vàng 6 lần, sai nhịp mất 1 lần và bé hất len',
         'himalaya' when bushes =>
           'Himalaya siêu nhát lẻn từ bụi này sang bụi khác: thả cá thật xa để chặn đường',
         'scottish' when dishes =>

@@ -3,6 +3,7 @@ import 'dart:ui';
 
 import 'package:flame/components.dart';
 
+import '../../audio/game_audio.dart';
 import '../components/cat_component.dart';
 import '../components/shelter_zone_component.dart';
 
@@ -17,6 +18,33 @@ class StormSystem {
   final double riseSeconds;
   Vector2 field = Vector2.zero();
   double time = 0;
+  final _warnedBeds = <ShelterZoneComponent>{};
+
+  void update(double dt, Vector2 size, Iterable<ShelterZoneComponent> beds) {
+    final wasParked = truckParked;
+    final leavesIn = truckLeavesIn;
+    time += dt;
+    field.setFrom(size);
+    if (!wasParked && truckParked) {
+      GameAudio.instance.playRescue(GameSound.rescueTruck, important: true);
+    } else if (truckParked && leavesIn > 3 && truckLeavesIn <= 3) {
+      GameAudio.instance
+          .playRescue(GameSound.rescueTruckLeaving, important: true);
+    }
+    final soon = (startTop +
+            (floodTop - startTop) *
+                ((time + 3) / riseSeconds).clamp(0.0, 1.0)) *
+        field.y;
+    var warn = false;
+    for (final bed in beds) {
+      if (bed.position.y + bed.size.y * .55 > soon && _warnedBeds.add(bed)) {
+        warn = true;
+      }
+    }
+    if (warn) {
+      GameAudio.instance.playRescue(GameSound.rescueFlood, important: true);
+    }
+  }
 
   static const startTop = .97, truckPeriod = 24.0, truckOffset = 20.0;
   static const arrive = 2.5, park = 10.5, leave = 2.5;

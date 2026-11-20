@@ -3,6 +3,7 @@ import 'dart:math';
 import 'package:flame/components.dart';
 import 'package:flutter/painting.dart';
 
+import '../../audio/game_audio.dart';
 import 'adventure_obstacle.dart';
 import 'adventure_skills.dart';
 
@@ -62,6 +63,7 @@ class DragonBrood extends AdventureObstacle {
     final wasHatched = hatched;
     age += dt;
     if (!wasHatched && hatched) {
+      GameAudio.instance.playGameplay(GameSound.adventureHatch, priority: 1);
       damage = 0;
       parent?.add(AdventureBurst(
           position: position.clone(),

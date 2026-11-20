@@ -14,6 +14,34 @@ enum GameSound {
   fishingSnap,
   fishingEscape,
   baitDrop,
+  rackShake,
+  catNap,
+  bushRustle,
+  dishPlace,
+  yarnBounce,
+  toyBeat,
+  moonReveal,
+  moonCloud,
+  rescueTruck,
+  rescueTruckLeaving,
+  rescueFlood,
+  rescueSplash,
+  nightLantern,
+  nightBridge,
+  nightLatch,
+  nightCart,
+  nightTrain,
+  nightDoor,
+  nightMotor,
+  nightCard,
+  adventureSpring,
+  adventureWings,
+  adventureWoodBreak,
+  adventureStoneBreak,
+  adventureThunder,
+  adventureTail,
+  adventureLand,
+  adventureHatch,
   catEat,
   catFed,
   catReady,
@@ -50,6 +78,10 @@ enum GameSound {
   herdIceBreak,
   herdWin,
   herdLose,
+  herdCuckoo,
+  herdHorn,
+  herdGoose,
+  herdRobot,
   campPet,
   campLift,
   campDrop,
@@ -57,6 +89,8 @@ enum GameSound {
   campBond,
   campBuy,
   campWelcome,
+  campScratch,
+  campSulk,
 }
 
 // Fishing WAVs: edited CC0 recordings from BigSoundBank, IDs 1529, 1531,
@@ -74,6 +108,39 @@ enum GameSound {
 // mixed with the above CC0 cat, ice, water and Kenney cues.
 // Camp: BigSoundBank CC0 0981 (purr), above 0494/1473 (meows), and Kenney
 // Interface Sounds CC0 drop_001/003, pluck_002, confirmation_001/003.
+// Catch chapters (trimmed, low-pass filtered, quiet mono WAVs, all CC0):
+// Kenney Impact Sounds: impactWood_light_000 (rackShake, toyBeat),
+// impactSoft_medium_000 (yarnBounce), impactGlass_light_000 (dishPlace,
+// moonReveal, rescueFlood). https://kenney.nl/assets/impact-sounds
+// BigSoundBank: 0981 cat purr (catNap), 0137 feet in leaves (bushRustle),
+// 0908 wind in tall grass (moonCloud), 1442 truck engine (rescueTruck),
+// 1298 reverse beeping (rescueTruckLeaving), 1529 splash (rescueSplash).
+// Source recordings: https://bigsoundbank.com/UPLOAD/ogg/<ID>.ogg
+// Night Shift, edited quiet CC0 clips: Kenney RPG Audio beltHandle1
+// (nightLantern), creak1 (nightBridge), metalLatch (nightLatch),
+// doorOpen_1 (nightDoor), bookFlip1 (nightCard).
+// https://kenney.nl/assets/rpg-audio
+// BigSoundBank 2516 squeaky wheelbarrow (nightCart), 2723 train in station
+// (nightTrain), 1502 electric car window opening (nightMotor).
+// Adventure additions (CC0, trimmed/low-pass filtered mono): BigSoundBank
+// 2277 boing (adventureSpring), 2891 bird flight (adventureWings/adventureTail),
+// 1299 broken twigs (adventureWoodBreak/adventureHatch), 1022 falling stone
+// (adventureStoneBreak), 3113 thunder (adventureThunder).
+// https://bigsoundbank.com/UPLOAD/ogg/<ID>.ogg
+// Kenney Impact Sounds impactPunch_heavy_000 (adventureLand).
+// https://kenney.nl/assets/impact-sounds
+// Herd additions, CC0 (trimmed, quiet, low-pass filtered mono):
+// herdCuckoo: DiArchangeli, Cuckoo Clock.wav
+// https://freesound.org/people/DiArchangeli/sounds/128177/
+// herdGoose: jahjahjahjah, goose honk
+// https://freesound.org/people/jahjahjahjah/sounds/805297/
+// herdHorn: https://bigsoundbank.com/train-horn-2-s2846.html
+// herdRobot: https://bigsoundbank.com/robot-vacuum-s1623.html
+// Camp additions (CC0, trimmed/quiet mono with a low-pass filter):
+// campScratch: Samantha_Dolman, Cat Scratching A Post
+// https://freesound.org/people/Samantha_Dolman/sounds/490730/
+// campSulk: Joseph SARDIN, Cat complaining
+// https://bigsoundbank.com/cat-complaining-s0658.html
 
 /// Music and reel playback are separate from preloaded, low-latency effects.
 class GameAudio with WidgetsBindingObserver {
@@ -103,6 +170,7 @@ class GameAudio with WidgetsBindingObserver {
   final _lastRescueSounds = <GameSound, int>{};
   final _lastGameplaySounds = <GameSound, int>{};
   int _gameplaySoundUntil = 0, _gameplaySoundPriority = 0;
+  int _nextCampAmbient = 0;
 
   void initialize(SharedPreferences preferences) {
     _exiting = false;
@@ -301,6 +369,18 @@ class GameAudio with WidgetsBindingObserver {
     // Reserve a quiet gap so crowds cannot cut off a warning or result.
     _nextRescueSound = now + (important ? 700 : 280);
     play(sound);
+  }
+
+  // Autonomous cats leave room for petting, feeding and shop feedback.
+  void playCampAmbient(GameSound sound) {
+    final now = _rescueClock.elapsedMilliseconds;
+    if (!_effectsAudible ||
+        now < _nextCampAmbient ||
+        now < _gameplaySoundUntil) {
+      return;
+    }
+    _nextCampAmbient = now + 4000;
+    playGameplay(sound);
   }
 
   void playGameplay(GameSound sound, {int priority = 0}) {

@@ -1,3 +1,9 @@
+import 'dart:math' as math;
+
+/// Store whole grams; round only when showing the catch to the player.
+String formatFishWeight(int grams) =>
+    '${(grams / 1000).toStringAsFixed(2).replaceAll('.', ',')} kg';
+
 enum FishSpecies {
   perch('Cá rô', 24, 'Phổ biến'),
   tilapia('Cá rô phi', 21, 'Phổ biến'),
@@ -19,6 +25,36 @@ enum FishSpecies {
   final String label, rarity;
   final int weight;
   final bool isJunk;
+
+  (int, int) get weightRange => switch (this) {
+        perch => (80, 1200),
+        tilapia => (150, 3500),
+        carp => (400, 10000),
+        catfish => (500, 18000),
+        koi => (300, 7000),
+        goldfish => (20, 500),
+        catMew => (800, 25000),
+        sardine => (40, 450),
+        mackerel => (500, 12000),
+        clownfish => (20, 250),
+        pufferfish => (150, 3000),
+        flipFlop || oldBoot || tinCan => (0, 0),
+      };
+
+  int rollGrams(math.Random random) {
+    if (isJunk) return 0;
+    final (minimum, maximum) = weightRange;
+    // Cubic distribution: most catches are small; top 10% sizes occur ~3.5%.
+    final t = math.pow(random.nextDouble(), 3).toDouble();
+    return minimum + ((maximum - minimum) * t).round();
+  }
+
+  double weightFraction(int grams) {
+    final (minimum, maximum) = weightRange;
+    return isJunk
+        ? 0
+        : ((grams - minimum) / (maximum - minimum)).clamp(0.0, 1.0);
+  }
 
   /// Line strain per pull, ordered by rarity: common fish are gentle, rare
   /// ones fight harder. Each species keeps its own rhythm in the controller.

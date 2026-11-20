@@ -59,6 +59,8 @@ class AdventureGame extends FlameGame {
   EdgeInsets hudPadding = EdgeInsets.zero;
   String zoneName = '';
   final _pickups = <AdventurePickup>[];
+  (AdventureCrossing, int)? _standingStone;
+  bool _windSoundPlayed = false;
 
   /// The breed's three secondary skills (see HomeAttack) and their state.
   List<HomeAttack> get attacks => CatBreed.of(selectedCat).attacks;
@@ -344,10 +346,9 @@ class AdventureGame extends FlameGame {
             HomeAttack.decoy ||
             HomeAttack.timeStop =>
               GameSound.homeShadow,
-            HomeAttack.roar ||
-            HomeAttack.stoneWall ||
-            HomeAttack.reflect =>
-              GameSound.homeShield,
+            HomeAttack.roar => GameSound.bossRoar,
+            HomeAttack.stoneWall => GameSound.adventureStoneBreak,
+            HomeAttack.reflect => GameSound.homeShield,
             HomeAttack.magnet ||
             HomeAttack.catEye ||
             HomeAttack.bolt =>
@@ -647,12 +648,17 @@ class AdventureGame extends FlameGame {
 
   /// One point of damage; logs need two, everything else breaks at once.
   void _hurt(AdventureObstacle o) {
-    GameAudio.instance.playGameplay(GameSound.homeImpact);
     o.damage += 1;
     if (o is DragonBrood) {
-      if (o.damage >= 2) _destroy(o);
+      if (o.damage >= 2) {
+        _destroy(o);
+      } else {
+        GameAudio.instance.playGameplay(GameSound.homeImpact);
+      }
     } else if (o.kind != AdventureObstacleKind.log || o.damage >= 2) {
       _destroy(o);
+    } else {
+      GameAudio.instance.playGameplay(GameSound.homeImpact);
     }
   }
 
@@ -799,6 +805,7 @@ class AdventureGame extends FlameGame {
           _destroy(o);
         }
       }
+      GameAudio.instance.playGameplay(GameSound.adventureThunder, priority: 1);
       if (markedHit) {
         final slot = attacks.indexOf(HomeAttack.bolt);
         if (slot >= 0) attackCooldown[slot] = max(0, attackCooldown[slot] - 2);
@@ -906,8 +913,13 @@ class AdventureGame extends FlameGame {
   }
 
   void _destroy(AdventureObstacle o, {bool icy = false}) {
-    GameAudio.instance
-        .playGameplay(icy ? GameSound.homeIce : GameSound.homeImpact);
+    GameAudio.instance.playGameplay(icy
+        ? GameSound.homeIce
+        : switch (o.kind) {
+            AdventureObstacleKind.log => GameSound.adventureWoodBreak,
+            AdventureObstacleKind.rock => GameSound.adventureStoneBreak,
+            _ => GameSound.homeImpact,
+          });
     if (o is DragonBrood) o.dismiss();
     _spawner.obstacles.remove(o);
     _contacts.remove(o);
@@ -939,7 +951,8 @@ class AdventureGame extends FlameGame {
         onSound: (sound) => GameAudio.instance.playGameplay(sound,
             priority: sound == GameSound.bossPhase
                 ? 2
-                : sound == GameSound.bossWarning
+                : sound == GameSound.bossWarning ||
+                        sound == GameSound.moonReveal
                     ? 1
                     : 0))
       ..arenaLeft = _arenaLeft
@@ -1319,7 +1332,8 @@ class AdventureGame extends FlameGame {
             !_contacts.contains(obstacle)) {
           _contacts.add(obstacle);
           obstacle.springT = springShowTime;
-          GameAudio.instance.playGameplay(GameSound.homeShadow, priority: 1);
+          GameAudio.instance
+              .playGameplay(GameSound.adventureSpring, priority: 1);
           _cat.launchBack();
         }
         continue;
@@ -1367,6 +1381,11 @@ class AdventureGame extends FlameGame {
   void _applyWind(double dt) {
     final wind = road.windAt(_cat.bodyCenterX);
     if (wind == 0) return;
+    if (!_windSoundPlayed &&
+        (sin(elapsed * 1.4) * sin(elapsed * .37 + 1)).abs() > .7) {
+      _windSoundPlayed = true;
+      GameAudio.instance.playGameplay(GameSound.moonCloud);
+    }
     _cat.nudge(sin(elapsed * 1.4) * sin(elapsed * .37 + 1) * wind * dt);
   }
 
@@ -1376,6 +1395,9 @@ class AdventureGame extends FlameGame {
       if (o.kind != AdventureObstacleKind.rock) continue;
       final p = Offset(o.position.x, o.position.y);
       if (!_crossings.any((c) => c.isWater(p)) || _onIce(p)) continue;
+      if ((o.position.x - _cat.bodyCenterX).abs() < size.x * .5) {
+        GameAudio.instance.playGameplay(GameSound.rescueSplash);
+      }
       _spawner.obstacles.remove(o);
       _contacts.remove(o);
       o.removeFromParent();
@@ -1384,14 +1406,24 @@ class AdventureGame extends FlameGame {
 
   /// A cat standing on a drifting stone drifts with it.
   void _rideStones() {
-    if (_cat.ignoresObstacles) return;
+    if (_cat.ignoresObstacles) {
+      _standingStone = null;
+      return;
+    }
+    (AdventureCrossing, int)? contact;
     for (final crossing in _crossings) {
+      final stone = crossing.stoneUnder(_cat.hitbox);
+      if (stone >= 0) contact = (crossing, stone);
       final dy = crossing.carryDy(_cat.hitbox);
       if (dy != 0) {
         _cat.nudge(dy);
-        return;
+        break;
       }
     }
+    if (contact != null && contact != _standingStone) {
+      GameAudio.instance.playGameplay(GameSound.rackShake);
+    }
+    _standingStone = contact;
   }
 
   void _checkWater() {
@@ -1415,7 +1447,11 @@ class AdventureGame extends FlameGame {
       final x = biome.from * road.worldWidth;
       if (_cat.position.x >= x && checkpointX < x) {
         checkpointX = x;
-        GameAudio.instance.playGameplay(GameSound.homeCheckpoint, priority: 2);
+        GameAudio.instance.playGameplay(
+            biome.scenery == AdventureScenery.bridge
+                ? GameSound.nightBridge
+                : GameSound.homeCheckpoint,
+            priority: 2);
         checkpointMessage = 1.8;
         zoneName = 'Đã lưu checkpoint';
         zoneSubtitle = '';
@@ -1428,7 +1464,7 @@ class AdventureGame extends FlameGame {
       if (!pickup.hits(_cat.hitbox)) continue;
       if (pickup.kind == AdventurePickupKind.fish) {
         fish += 1;
-        GameAudio.instance.playGameplay(GameSound.homeFish);
+        GameAudio.instance.playGameplay(GameSound.catEat);
       } else {
         lives = min(startingLives, lives + 1);
         GameAudio.instance.playGameplay(GameSound.homeHeal, priority: 1);

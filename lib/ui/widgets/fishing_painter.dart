@@ -50,9 +50,14 @@ class FishingPainter extends CustomPainter {
           math.sin(clock * (phase == FishingPhase.bite ? 22 : 3)) *
               (phase == FishingPhase.bite ? 7 : 2));
     }
+    final danger = phase == FishingPhase.reeling && tension >= .82;
+    final pulse = .5 + math.sin(clock * 10).abs() * .5;
     final line = Paint()
-      ..color = const Color(0xCCF4F5DB)
-      ..strokeWidth = 1.4
+      ..color = danger
+          ? Color.lerp(
+              const Color(0xFFFF7365), const Color(0xFFFFD0A0), pulse * .35)!
+          : const Color(0xCCF4F5DB)
+      ..strokeWidth = danger ? 1.8 : 1.4
       ..style = PaintingStyle.stroke;
     // Reeling in takes up all slack, regardless of the tension gauge value.
     final scale = artScale ?? 1.0;
@@ -102,15 +107,15 @@ class FishingPainter extends CustomPainter {
         Paint()
           ..color = const Color(0xFF593822)
           ..strokeWidth = 2);
-    if (phase == FishingPhase.reeling && drift.abs() > .2) {
-      _drawPullArrows(canvas, bobber, drift);
-    }
     canvas.drawOval(Rect.fromCenter(center: bobber, width: 9, height: 15),
         Paint()..color = Colors.white);
     canvas.drawOval(
         Rect.fromCenter(
             center: bobber - const Offset(0, 3), width: 9, height: 9),
         Paint()..color = const Color(0xFFE25536));
+    if (phase == FishingPhase.reeling) {
+      _drawTensionBar(canvas, bobber, size);
+    }
     if (phase == FishingPhase.bite || phase == FishingPhase.caught) {
       // Cached: this painter repaints every frame.
       final painter = TextCache.layout(
@@ -181,12 +186,6 @@ class FishingPainter extends CustomPainter {
     final grip =
         base + Offset.fromDirection(handleAngle - math.pi / 2, 14 * scale);
     final reelHand = base + (reel - base) * .55;
-    if (phase == FishingPhase.reeling) {
-      _drawTensionGauge(
-          canvas,
-          Offset((body.dx - side * 83 * scale).clamp(44.0, size.width - 44),
-              (body.dy - 9 * scale).clamp(82.0, size.height - 64)));
-    }
     for (final (root, hand) in [
       (body + Offset(side * 5, -5) * scale, reelHand),
       (body + Offset(side * 12, -7) * scale, grip),
@@ -364,126 +363,71 @@ class FishingPainter extends CustomPainter {
     }
   }
 
-  /// Chevrons show where the fish is running; swipe the other way.
-  void _drawPullArrows(Canvas canvas, Offset bobber, double drift) {
-    final dir = drift.sign;
-    final strength = ((drift.abs() - .2) / .6).clamp(0.0, 1.0);
-    final blink = .55 + math.sin(clock * 9).abs() * .45;
-    final paint = Paint()
-      ..color = Color.lerp(
-              const Color(0xFFFFC247), const Color(0xFFFF554C), strength)!
-          .withValues(alpha: blink)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 3
-      ..strokeCap = StrokeCap.round
-      ..strokeJoin = StrokeJoin.round;
-    for (var i = 0; i < 2; i++) {
-      final x = bobber.dx + dir * (16 + i * 9);
-      canvas.drawPath(
-          Path()
-            ..moveTo(x - dir * 4, bobber.dy - 7)
-            ..lineTo(x + dir * 3, bobber.dy)
-            ..lineTo(x - dir * 4, bobber.dy + 7),
-          paint);
-    }
-  }
-
-  void _drawTensionGauge(Canvas canvas, Offset center) {
-    const radius = 24.0;
-    final rect = Rect.fromCircle(center: center, radius: radius);
-    final stroke = Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 4
-      ..strokeCap = StrokeCap.round;
-    // A transparent left-facing half gauge keeps the reel and rod visible.
-    const start = math.pi * .5;
-    const sweep = math.pi;
-    final redPulse =
-        tension > .8 ? (.5 + math.sin(clock * 10).abs() * .5) : 0.0;
-    final glow = Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 8
-      ..strokeCap = StrokeCap.round
-      ..color = const Color(0xCCFFF7D6);
-    canvas.drawArc(rect, start, sweep, false, glow);
+  void _drawTensionBar(Canvas canvas, Offset bobber, Size size) {
+    const width = 112.0, height = 24.0;
+    final danger = tension >= .82;
+    final pulse = .5 + math.sin(clock * 10).abs() * .5;
+    final x = (bobber.dx - width / 2)
+        .clamp(8.0, math.max(8.0, size.width - width - 8))
+        .toDouble();
+    // Avoid the top-left guide and keep the fish/float clear beneath the bar.
+    final above = bobber.dy - height - 24;
+    final y = above >= 76
+        ? above
+        : math.min<double>(bobber.dy + 27, size.height - height - 12);
+    final rect = Rect.fromLTWH(x, y, width, height);
+    final panel = RRect.fromRectAndRadius(rect, const Radius.circular(8));
+    canvas.drawRRect(panel, Paint()..color = const Color(0xDE243F43));
+    canvas.drawRRect(
+        panel,
+        Paint()
+          ..color = danger
+              ? Color.lerp(
+                  const Color(0xFFFF6B5F), const Color(0xFFFFD59A), pulse)!
+              : const Color(0x998DC0B4)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = danger ? 1.8 : 1);
+    final track = Rect.fromLTWH(rect.left + 8, rect.top + 8, width - 16, 7);
+    canvas.save();
+    canvas.clipRRect(RRect.fromRectAndRadius(track, const Radius.circular(3)));
     for (final zone in [
-      (0.0, .55, const Color(0xFF36B887)),
-      (.58, .79, const Color(0xFFFFC247)),
-      (.82, 1.0, const Color(0xFFFF554C)),
+      (0.0, .55, const Color(0xFF4DBA91)),
+      (.55, .82, const Color(0xFFE3C26B)),
+      (.82, 1.0, const Color(0xFFED7167)),
     ]) {
-      final color = zone.$3 == const Color(0xFFFF554C) && redPulse > 0
-          ? Color.lerp(zone.$3, Colors.white, redPulse * .35)!
-          : zone.$3;
-      canvas.drawArc(rect, start + zone.$1 * sweep, (zone.$2 - zone.$1) * sweep,
-          false, stroke..color = color);
+      canvas.drawRect(
+          Rect.fromLTWH(track.left + track.width * zone.$1, track.top,
+              track.width * (zone.$2 - zone.$1), track.height),
+          Paint()..color = zone.$3);
     }
-    // Golden sweet zone: reeling inside it is faster and builds combo.
+    canvas.restore();
     const half = FishingController.sweetWidth / 2;
-    final sweetRect = Rect.fromCircle(center: center, radius: radius + 7);
-    canvas.drawArc(
-        sweetRect,
-        start + (sweetCenter - half) * sweep,
-        half * 2 * sweep,
-        false,
+    final sweet = Rect.fromLTRB(
+        track.left + track.width * (sweetCenter - half).clamp(0.0, 1.0),
+        track.top - 2,
+        track.left + track.width * (sweetCenter + half).clamp(0.0, 1.0),
+        track.bottom + 2);
+    canvas.drawRRect(
+        RRect.fromRectAndRadius(sweet, const Radius.circular(2)),
         Paint()
+          ..color = const Color(0xFFFFEC94)
           ..style = PaintingStyle.stroke
-          ..strokeWidth = 5
-          ..strokeCap = StrokeCap.round
-          ..color = const Color(0xFF8A5A12));
-    canvas.drawArc(
-        sweetRect,
-        start + (sweetCenter - half) * sweep,
-        half * 2 * sweep,
-        false,
-        Paint()
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = 3
-          ..strokeCap = StrokeCap.round
-          ..color = const Color(0xFFFFE066));
-    if (combo > 0) {
-      final comboText = TextCache.layout(
-          'x$combo',
-          const TextStyle(
-              fontFamily: 'Roboto',
-              fontSize: DS.fontValue,
-              fontWeight: FontWeight.w900,
-              color: Color(0xFFFFE066),
-              shadows: [Shadow(color: Color(0xFF5A3A10), blurRadius: 3)]));
-      comboText.paint(
-          canvas, center + Offset(-comboText.width / 2, -radius - 28));
-    }
-    final tickPaint = Paint()
-      ..color = const Color(0xFF294941)
-      ..strokeWidth = 1.5
-      ..strokeCap = StrokeCap.round;
-    for (var i = 0; i <= 10; i++) {
-      final angle = start + i / 10 * sweep;
-      final outer =
-          center + Offset(math.cos(angle), math.sin(angle)) * (radius + 4);
-      final inner = center +
-          Offset(math.cos(angle), math.sin(angle)) *
-              (radius - (i % 5 == 0 ? 8 : 5));
-      canvas.drawLine(inner, outer, tickPaint);
-    }
-    final angle = start + tension * sweep;
-    final direction = Offset(math.cos(angle), math.sin(angle));
-    final needleEnd = center + direction * (radius + 1);
-    final needleBase = center - direction * 7;
+          ..strokeWidth = 2);
+    final needleX = track.left + track.width * tension.clamp(0.0, 1.0);
     canvas.drawLine(
-        needleBase,
-        needleEnd,
+        Offset(needleX, track.top - 4),
+        Offset(needleX, track.bottom + 3),
         Paint()
-          ..color = const Color(0xFF253D38)
-          ..strokeWidth = 3
+          ..color = const Color(0xFF172F34)
+          ..strokeWidth = 3.5
           ..strokeCap = StrokeCap.round);
-    final label = TextCache.layout(
-        '${(tension * 100).round()}%',
-        const TextStyle(
-            fontFamily: 'Roboto',
-            fontSize: DS.fontMicro,
-            fontWeight: FontWeight.w900,
-            color: Color(0xFF294941)));
-    label.paint(canvas, center - Offset(label.width / 2, label.height / 2));
+    canvas.drawLine(
+        Offset(needleX, track.top - 4),
+        Offset(needleX, track.bottom + 3),
+        Paint()
+          ..color = const Color(0xFFFFF9E5)
+          ..strokeWidth = 1.6
+          ..strokeCap = StrokeCap.round);
   }
 
   @override

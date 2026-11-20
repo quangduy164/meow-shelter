@@ -58,7 +58,8 @@ void _paintLandscape(Canvas canvas, double left, double right) {
               const [Color(0xFF9FD7DA), Color(0xFFE1EEDA)]));
     p.shader = null;
     final groundTop = 100 + FishingRiver.coastBlend(x) * 25;
-    canvas.drawRect(Rect.fromLTWH(x, groundTop, 21, 600 - groundTop),
+    canvas.drawRect(
+        Rect.fromLTWH(x, groundTop, 21, FishingRiver.height - groundTop),
         p..color = _tone(x, const Color(0xFFA7BF78), const Color(0xFF8DA979)));
   }
   for (var layer = 0; layer < 2; layer++) {
@@ -132,8 +133,8 @@ void _paintLandscape(Canvas canvas, double left, double right) {
       water,
       p
         ..shader = ui.Gradient.linear(
-            const Offset(0, 170),
-            const Offset(0, 480),
+            const Offset(0, 200),
+            const Offset(0, 1900),
             const [Color(0xFF478F98), Color(0xFF66B4B2), Color(0xFF91CDC0)],
             const [0, .5, 1]));
   p.shader = null;
@@ -172,9 +173,9 @@ void _paintLandscape(Canvas canvas, double left, double right) {
   }
   final rng = math.Random(732);
   // Grass strokes, loose pebbles and clover stay off the river and paths.
-  for (var i = 0; i < 1450; i++) {
+  for (var i = 0; i < 4500; i++) {
     final x = rng.nextDouble() * FishingRiver.seaStart;
-    final y = 115 + rng.nextDouble() * 485;
+    final y = 130 + rng.nextDouble() * (FishingRiver.height - 130);
     if (x < from || x > to) continue;
     if (y > FishingRiver.top(x) - 18 && y < FishingRiver.bottom(x) + 23) {
       continue;

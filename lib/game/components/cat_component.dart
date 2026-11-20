@@ -72,7 +72,10 @@ class CatComponent extends SpriteAnimationGroupComponent<CatState>
 
   /// Playroom: a non-Calico batted the yarn away; the boss lost its rhythm.
   final void Function(CatComponent cat)? onKickToy;
-  final void Function(CatComponent cat)? onTantrum;
+
+  /// Off-beat tap on the Calico boss; [wasPlaying] when it sat at a ball of
+  /// yarn (that ball is swatted away).
+  final void Function(CatComponent cat, bool wasPlaying)? onTantrum;
 
   /// Attic: black cats only take fish lying in moonlight.
   final bool Function(Vector2 point)? moonlit;
@@ -474,7 +477,19 @@ class CatComponent extends SpriteAnimationGroupComponent<CatState>
     if (!isPlaying()) return;
     super.update(dt);
     _dialogue.update(dt);
+    final previousClock = _bubbleClock;
     _bubbleClock += dt;
+    if (_keepsRhythm &&
+        (_bubbleClock / CatCatchBehaviour._beat).floor() !=
+            (previousClock / CatCatchBehaviour._beat).floor() &&
+        !trapManaged &&
+        !catchWindow.canCatch &&
+        !_isDelivered &&
+        !_isDragged &&
+        !_isDropWrong &&
+        !_isEscaping) {
+      GameAudio.instance.playRescue(GameSound.toyBeat);
+    }
     if (trapManaged) {
       // A startle still wears off while a system (bushes, traps) moves the
       // cat; otherwise a frozen dodge timer makes it refuse fish for good.

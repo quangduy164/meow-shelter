@@ -378,6 +378,7 @@ class NightGame {
       return;
     }
     run.cards.add(card);
+    GameAudio.instance.playRescue(GameSound.nightCard, important: true);
     if (card.paysOnPick) {
       run.earnMoonlight(NightCard.mapCardBonus);
       game.hud.silver = run.silver;
@@ -416,7 +417,7 @@ class NightGame {
     }
     shopBought.add(relic);
     game.hud.silver = run.silver;
-    GameAudio.instance.playRescue(GameSound.rescueMilestone, important: true);
+    GameAudio.instance.playRescue(GameSound.campBuy, important: true);
     return true;
   }
 
@@ -426,7 +427,7 @@ class NightGame {
       return false;
     }
     game.hud.silver = run.silver;
-    GameAudio.instance.playRescue(GameSound.rescueMilestone, important: true);
+    GameAudio.instance.playRescue(GameSound.campBuy, important: true);
     return true;
   }
 
@@ -448,7 +449,7 @@ class NightGame {
   bool _shopSpend(bool Function() spend) {
     if (run == null || phase != NightPhase.shop || !spend()) return false;
     game.hud.silver = run!.silver;
-    GameAudio.instance.playRescue(GameSound.rescueMilestone, important: true);
+    GameAudio.instance.playRescue(GameSound.campBuy, important: true);
     return true;
   }
 
@@ -474,6 +475,9 @@ class NightGame {
     _updateArrivalHint();
     final wasCloudy = scene.cloudy;
     scene.update(dt);
+    if (!wasCloudy && scene.cloudy) {
+      GameAudio.instance.playRescue(GameSound.moonCloud);
+    }
     relicEffects.update(dt, cloudsStarted: !wasCloudy && scene.cloudy);
     helperEffects.update(dt);
     cardEffects.update(dt);

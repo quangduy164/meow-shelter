@@ -1,10 +1,12 @@
+import 'fishing_fight.dart';
 import 'dart:math' as math;
 import 'package:flutter/painting.dart';
 import '../collection/fish_species.dart';
 
 /// Continuous world coordinates, independent of the screen and camera.
 class FishingRiver {
-  static const height = 600.0;
+  static const height = 2200.0;
+  static const viewHeight = 600.0;
   static const sectionLength = 1800.0;
   static const sectionCount = 3;
   static const seaStart = sectionLength * 2;
@@ -17,7 +19,8 @@ class FishingRiver {
   static const boatMargin = 30.0;
 
   /// Exclusive regional pools cross-fade around the join; weights are relative.
-  static FishSpecies rollFish(int roll, double x, double hour) {
+  static FishSpecies rollFish(int roll, double x, double hour,
+      {bool activeWater = false}) {
     const village = {
       FishSpecies.perch: 32.0,
       FishSpecies.tilapia: 32.0,
@@ -49,7 +52,14 @@ class FishingRiver {
         fish: (((village[fish] ?? 0) * (1 - mix) + (bamboo[fish] ?? 0) * mix) *
                     (1 - marineMix) +
                 (sea[fish] ?? 0) * marineMix) *
-            (night && fish.nightActive ? 1.35 : 1),
+            (night && fish.nightActive ? 1.35 : 1) *
+            (activeWater
+                ? (fish.isJunk
+                    ? .3
+                    : fish.rarity == 'Phổ biến'
+                        ? 1
+                        : 3)
+                : 1),
     };
     final total = weights.values.fold(0.0, (sum, weight) => sum + weight);
     var ticket = (roll % 10000) / 10000 * total;
@@ -62,14 +72,14 @@ class FishingRiver {
 
   static double center(double x) {
     final river =
-        310 + 36 * math.sin(x / 340 - .4) + 18 * math.sin(x / 155 + .5);
-    final sea = (110 + 510 + math.sin(x / 380) * 12) / 2;
+        1100 + 150 * math.sin(x / 620 - .4) + 65 * math.sin(x / 290 + .5);
+    final sea = 1050 + math.sin(x / 780) * 70;
     return river + (sea - river) * coastBlend(x);
   }
 
   static double halfWidth(double x) {
-    final river = 112 + 12 * math.sin(x / 500 + .4) + 8 * math.cos(x / 180);
-    final sea = (510 + math.sin(x / 380) * 12 - 110) / 2;
+    final river = 410 + 85 * math.sin(x / 500 + .4) + 45 * math.cos(x / 260);
+    final sea = 740 + math.sin(x / 580) * 60;
     return river + (sea - river) * coastBlend(x);
   }
 
@@ -90,13 +100,13 @@ class FishingRiver {
           : 'Cửa biển nắng vàng';
 }
 
-/// Click-to-row movement and a smoothly following horizontal camera.
+/// Click-to-row movement and a smoothly following two-axis camera.
 class FishingRiverRound {
   Offset boat = Offset(260, FishingRiver.center(260));
   Offset heading = const Offset(1, 0);
   Offset? destination;
   Size viewport = Size.zero;
-  double cameraLeft = 0, clock = 0, speed = 0, wake = 0;
+  double cameraLeft = 0, cameraTop = 0, clock = 0, speed = 0, wake = 0;
   Offset steering = Offset.zero;
   bool chasing = false;
   double hitTime = 0;
@@ -105,8 +115,10 @@ class FishingRiverRound {
   bool get moving => destination != null;
   bool get rowing => moving || chasing;
   double get scale =>
-      viewport.height > 0 ? viewport.height / FishingRiver.height : 1;
+      viewport.height > 0 ? viewport.height / FishingRiver.viewHeight : 1;
   double get visibleWidth => viewport.width / scale;
+  double get visibleHeight => viewport.height / scale;
+  double get maxCameraTop => math.max(0, FishingRiver.height - visibleHeight);
   double get maxCamera => math.max(0, FishingRiver.length - visibleWidth);
   int get section => (boat.dx / FishingRiver.sectionLength).floor() + 1;
 
@@ -114,12 +126,13 @@ class FishingRiverRound {
     if (viewport == size) return;
     viewport = size;
     cameraLeft = (boat.dx - visibleWidth * .42).clamp(0.0, maxCamera);
+    cameraTop = (boat.dy - visibleHeight * .5).clamp(0.0, maxCameraTop);
   }
 
   Offset toWorld(Offset screen) =>
-      Offset(screen.dx / scale + cameraLeft, screen.dy / scale);
+      Offset(screen.dx / scale + cameraLeft, screen.dy / scale + cameraTop);
   Offset toScreen(Offset world) =>
-      Offset((world.dx - cameraLeft) * scale, world.dy * scale);
+      Offset((world.dx - cameraLeft) * scale, (world.dy - cameraTop) * scale);
 
   bool tap(Offset screen) {
     final world = toWorld(screen);
@@ -148,7 +161,7 @@ class FishingRiverRound {
   }
 
   bool chase(double dt, FishSpecies fish, double elapsed, double surge,
-      {required bool pulling, required bool beginner}) {
+      {required bool pulling, required bool beginner, double weightPull = 1}) {
     final weave = switch (fish) {
       FishSpecies.perch => math.sin(elapsed * 3) * .9,
       FishSpecies.sardine => math.sin(elapsed * 2.5) * .55,
@@ -157,18 +170,28 @@ class FishingRiverRound {
       FishSpecies.pufferfish => math.sin(elapsed * .7) * .3,
       FishSpecies.carp => math.sin(elapsed * .5) * .25,
       FishSpecies.catfish => math.sin(elapsed * 1.3) * .6,
-      FishSpecies.koi => math.sin(elapsed * 1.2) * .9,
+      FishSpecies.koi => FishingFight.at(fish, elapsed).lateral,
       FishSpecies.goldfish => math.sin(elapsed * 2) * .75,
       FishSpecies.catMew => math.sin(elapsed * 2.4) * .8,
       _ => math.sin(elapsed) * .4,
     };
-    final reverse = fish == FishSpecies.catMew && elapsed % 4.5 > 3.6;
+    final move = FishingFight.at(fish, elapsed).move;
+    final reverse = fish == FishSpecies.catMew && move == FishFightMove.dash;
     final forward = _chaseDirection * (reverse ? -1 : 1);
     final slope =
         (FishingRiver.center(boat.dx + 5) - FishingRiver.center(boat.dx - 5)) /
             10;
-    final pullSpeed =
-        (beginner ? 50 : 85) * (.65 + surge * .65) * (pulling ? .7 : 1);
+    final speedFactor = switch (move) {
+      FishFightMove.inflate => .12,
+      FishFightMove.dash => 1.6,
+      FishFightMove.rest => .45,
+      _ => 1.0,
+    };
+    final pullSpeed = (beginner ? 50 : 85) *
+        (.65 + surge * .65) *
+        (pulling ? .7 : 1) *
+        speedFactor *
+        weightPull;
     final velocity = Offset(
         forward * pullSpeed + steering.dx * 160,
         slope * forward * pullSpeed +
@@ -248,5 +271,8 @@ class FishingRiverRound {
     final targetCamera = (boat.dx - visibleWidth * .42).clamp(0.0, maxCamera);
     cameraLeft += (targetCamera - cameraLeft) * (1 - math.exp(-5 * dt));
     cameraLeft = cameraLeft.clamp(0.0, maxCamera);
+    final targetTop = (boat.dy - visibleHeight * .5).clamp(0.0, maxCameraTop);
+    cameraTop += (targetTop - cameraTop) * (1 - math.exp(-5 * dt));
+    cameraTop = cameraTop.clamp(0.0, maxCameraTop);
   }
 }

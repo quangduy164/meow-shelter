@@ -1,6 +1,7 @@
 import 'dart:math';
 import 'package:flame/components.dart';
 import 'package:flutter/painting.dart';
+import '../../audio/game_audio.dart';
 import 'adventure_game.dart';
 import 'adventure_view.dart';
 
@@ -18,7 +19,11 @@ class AdventureGate extends Component with HasGameReference<AdventureGame> {
   void update(double dt) {
     super.update(dt);
     _time += dt;
+    final wasOpen = _open >= .97;
     _open += ((game.bossDefeated ? 1.0 : 0.0) - _open) * (1 - exp(-5 * dt));
+    if (!wasOpen && _open >= .97) {
+      GameAudio.instance.playGameplay(GameSound.nightDoor);
+    }
     if (game.finished) _celebration += dt;
   }
 

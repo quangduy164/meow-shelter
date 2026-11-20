@@ -47,10 +47,18 @@ class HerdGame extends FlameGame {
       HerdSound.overheated => (GameSound.herdTired, 2),
       HerdSound.iceWarning => (GameSound.homeIce, 2),
       HerdSound.iceBreak => (GameSound.herdIceBreak, 3),
-      HerdSound.cuckoo => (GameSound.homeCheckpoint, 2),
-      HerdSound.stuck => (GameSound.catWrong, 2),
-      HerdSound.horn => (GameSound.homeImpact, 3),
-      HerdSound.doors => (GameSound.homeCheckpoint, 1),
+      HerdSound.cuckoo => (GameSound.herdCuckoo, 2),
+      HerdSound.stuck => (GameSound.nightLatch, 2),
+      HerdSound.horn => (GameSound.herdHorn, 3),
+      HerdSound.doors => (GameSound.nightDoor, 1),
+      HerdSound.gate => (GameSound.nightLatch, 1),
+      HerdSound.goose => (GameSound.herdGoose, 2),
+      HerdSound.robot => (GameSound.herdRobot, 0),
+      HerdSound.traffic => (GameSound.nightMotor, 0),
+      HerdSound.lantern => (GameSound.nightLantern, 0),
+      HerdSound.warning => (GameSound.rescueFlood, 1),
+      HerdSound.recovered => (GameSound.moonReveal, 0),
+      HerdSound.slide => (GameSound.homeIce, 0),
     };
     GameAudio.instance.playGameplay(sound, priority: priority);
   }

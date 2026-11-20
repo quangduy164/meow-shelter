@@ -61,8 +61,13 @@ class CampSocial {
     return list.isEmpty ? null : list[_random.nextInt(list.length)];
   }
 
-  static void _sound(GameSound sound) =>
+  static void _sound(GameSound sound) {
+    if (sound == GameSound.catStartle) {
       GameAudio.instance.playGameplay(sound, priority: 1);
+    } else {
+      GameAudio.instance.playCampAmbient(sound);
+    }
+  }
 
   // ---- for every cat ----
 
@@ -119,7 +124,6 @@ class CampSocial {
       if (sleeper.sleeping) {
         sleeper.sleepOn(8);
         friend.heart = sleeper.heart = 1.4;
-        _sound(GameSound.campPet);
       }
     });
     return true;
@@ -176,7 +180,7 @@ class CampSocial {
       if (greedy) {
         visitor.react(CampAct.celebrate,
             time: CampAct.celebrate.length * 2, faceX: eater.x);
-        _sound(GameSound.homeFish);
+        _sound(GameSound.rescueSplash);
       }
     });
     return true;
@@ -218,6 +222,7 @@ class CampSocial {
     calico.approach(_besideX(calico, sleeper, .07), sleeper.y, speed: .05,
         onArrive: () {
       calico.react(CampAct.dash, faceX: sleeper.x);
+      _sound(GameSound.yarnBounce);
       _later.add((
         CampAct.dash.length * .5,
         () {

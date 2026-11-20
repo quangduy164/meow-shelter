@@ -3,6 +3,7 @@ import 'dart:ui';
 
 import 'package:flame/components.dart';
 
+import '../../audio/game_audio.dart';
 import '../components/cat_component.dart';
 import '../world/shelter_map.dart';
 import 'bait_system.dart';
@@ -52,6 +53,7 @@ class RackSystem {
       // The last fish on the line shakes, then falls.
       final r = _rack;
       _shakeX = r.left + 18 + (stock - 1) * (r.width - 36) / 4;
+      GameAudio.instance.playRescue(GameSound.rackShake);
     }
     if (stock > 0 && _timer <= 0) {
       stock -= 1;
@@ -67,7 +69,9 @@ class RackSystem {
       drop.age += dt;
       if (drop.age < fall) continue;
       _drops.remove(drop);
-      bait.place(drop.land, size, cats, free: true);
+      if (bait.place(drop.land, size, cats, free: true)) {
+        GameAudio.instance.playRescue(GameSound.baitDrop);
+      }
     }
   }
 

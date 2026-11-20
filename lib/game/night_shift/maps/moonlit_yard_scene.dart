@@ -94,7 +94,12 @@ class MoonlitYardScene extends NightScene {
   }
 
   @override
-  void update(double dt) => yard.update(dt);
+  void update(double dt) {
+    if (yard.lanterns.any((l) => l.burn > 2 && l.burn - dt <= 2)) {
+      GameAudio.instance.playRescue(GameSound.rescueFlood);
+    }
+    yard.update(dt);
+  }
 
   /// Light pools for the night yard: lanterns and moonlight do the real
   /// lighting; fish, beds and cats glow just enough to be found.
@@ -121,7 +126,7 @@ class MoonlitYardScene extends NightScene {
       return;
     }
     if (yard.light(lantern)) {
-      GameAudio.instance.playRescue(GameSound.baitDrop);
+      GameAudio.instance.playRescue(GameSound.nightLantern);
       if (!lantern.chimed) {
         lantern.chimed = true;
         onFirstLight(lantern.lamp(game.size.toSize()),

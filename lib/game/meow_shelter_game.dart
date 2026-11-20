@@ -253,13 +253,14 @@ class MeowShelterGame extends FlameGame {
       onKickToy: (cat) {
         stats.distractions += 1;
         bait.kickYarn(cat.center, _randomRoll(170));
+        GameAudio.instance.playRescue(GameSound.yarnBounce);
       },
-      onTantrum: (cat) {
+      onTantrum: (cat, wasPlaying) {
         stats.offBeats += 1;
-        // The boss knocks two balls of yarn across the room.
-        for (var i = 0; i < 2; i++) {
-          bait.kickYarn(cat.center, _randomRoll(260));
-        }
+        // The boss swats away only yarn that is really there: the ball it
+        // was playing with and any lying close by. No yarn, no throwing.
+        if (wasPlaying) bait.kickYarn(cat.center, _randomRoll(260));
+        bait.knockYarnNear(cat.center, 150, () => _randomRoll(260));
       },
       onDrop: _handleDrop,
       onDelivered: _handleDelivered,
@@ -356,9 +357,7 @@ class MeowShelterGame extends FlameGame {
     bushes?.update(dt, size, children.whereType<CatComponent>());
     moon?.update(dt, size, children.whereType<CatComponent>());
     rack?.update(dt, size, bait, children.whereType<CatComponent>());
-    storm
-      ?..time += dt
-      ..field.setFrom(size);
+    storm?.update(dt, size, shelters);
     bait.update(children.whereType<CatComponent>(), dt: dt);
     if (bait.limited) hud.fishLeft = bait.fishCount;
     _mapClock += dt;
@@ -458,6 +457,7 @@ class MeowShelterGame extends FlameGame {
 
   void _placeFish(Vector2 point, [Dish dish = Dish.fish]) {
     if (storm?.inWater(point) == true) {
+      GameAudio.instance.playRescue(GameSound.rescueSplash);
       hud.showBanner(['Cá trôi mất! Thả trên chỗ khô nhé'], 1.5);
       return;
     }
@@ -467,7 +467,7 @@ class MeowShelterGame extends FlameGame {
       // Dropped yarn rolls a little in a random direction before it stops.
       if (bait.place(point, size, children.whereType<CatComponent>(),
           free: true, dish: Dish.yarn, roll: _randomRoll(110))) {
-        GameAudio.instance.playRescue(GameSound.baitDrop);
+        GameAudio.instance.playRescue(GameSound.yarnBounce);
       }
       return;
     }
@@ -490,7 +490,8 @@ class MeowShelterGame extends FlameGame {
     }
     final cats = children.whereType<CatComponent>().toList();
     if (bait.place(point, size, cats, dish: dish)) {
-      GameAudio.instance.playRescue(GameSound.baitDrop);
+      GameAudio.instance
+          .playRescue(level.dishes ? GameSound.dishPlace : GameSound.baitDrop);
       stats.fishUsed += 1;
       if (bait.limited) hud.fishLeft = bait.fishCount;
       if (level.dishes) _judgeDish(point, dish, cats);

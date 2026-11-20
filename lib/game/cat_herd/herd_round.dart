@@ -95,6 +95,14 @@ enum HerdSound {
   stuck,
   horn,
   doors,
+  gate,
+  goose,
+  robot,
+  traffic,
+  lantern,
+  warning,
+  recovered,
+  slide,
 }
 
 class HerdRound {
@@ -120,6 +128,7 @@ class HerdRound {
   int? shoutingVendor;
   int _stormAnnounced = -1, _cuckooRung = -1, _hornHeard = -1;
   int? _openStop;
+  bool _robotNear = false, _trafficNear = false;
 
   /// Farm gate state per pen, and how long each plate rests after pickup.
   final gateOpen = <bool>[];
@@ -177,6 +186,7 @@ class HerdRound {
     _cuckooRung = -1;
     _hornHeard = -1;
     _openStop = null;
+    _robotNear = _trafficNear = false;
     gateOpen
       ..clear()
       ..addAll(List.filled(map.pens.length, false));
@@ -267,9 +277,31 @@ class HerdRound {
     noticeTime = seconds;
   }
 
+  void _soundTransitions(double dt) {
+    final zone = map.lanternZoneAt(leader, field);
+    if (zone != null &&
+        HerdLanterns.lit(zone, time) != HerdLanterns.lit(zone, time - dt)) {
+      onSound?.call(HerdSound.lantern);
+    }
+    if (map.robots.isNotEmpty) {
+      final near = robotPositions
+          .any((p) => p.distanceTo(leader) < (_robotNear ? 135 : 90));
+      if (near && !_robotNear) onSound?.call(HerdSound.robot);
+      _robotNear = near;
+    }
+    if (map.kind == HerdMapKind.playground) {
+      final near = patrols.any((p) =>
+          p.position(patrolClock(p) * .7).distanceTo(leader) <
+          (_trafficNear ? 135 : 90));
+      if (near && !_trafficNear) onSound?.call(HerdSound.traffic);
+      _trafficNear = near;
+    }
+  }
+
   void update(double dt, Vector2 input) {
     if (!started || ended) return;
     time += dt;
+    _soundTransitions(dt);
     immune = max(0, immune - dt);
     vendorCooldown = max(0, vendorCooldown - dt);
     shoutTime = max(0, shoutTime - dt);
@@ -282,6 +314,8 @@ class HerdRound {
     if (direction.length > 1) direction.normalize();
     landingTime = max(0, landingTime - dt);
     final wasSliding = map.contains(map.slopes, leader, field);
+    final wasOnIce = map.contains(map.ice, leader, field) &&
+        !map.contains(map.snowPads, leader, field);
     final oldLeaderX = leader.x;
     final heavy = chain.any((c) => c.trait == HerdTrait.chubby)
         ? HerdTraits.chubbyLeaderFactor
@@ -297,6 +331,12 @@ class HerdRound {
         !map.contains(map.slopes, leader, field) &&
         map.contains(map.landings, leader, field)) {
       landingTime = .65;
+    }
+    if (!wasOnIce &&
+        velocity.length > 8 &&
+        map.contains(map.ice, leader, field) &&
+        !map.contains(map.snowPads, leader, field)) {
+      onSound?.call(HerdSound.slide);
     }
     if (isTutorial &&
         leader.distanceTo(map.route.point(map.route.main.first, field)) > 38) {
@@ -517,7 +557,15 @@ class HerdRound {
   void _station(double dt) {
     final stop = HerdTrain.stop(time);
     if (stop != null && _openStop == null) onSound?.call(HerdSound.doors);
-    if (_openStop != null && stop == null) _depart(_openStop!);
+    if (_openStop != null && stop == null) {
+      onSound?.call(HerdSound.doors);
+      _depart(_openStop!);
+    }
+    if (HerdTrain.closingIn(time - dt) > 1 &&
+        HerdTrain.closingIn(time) <= 1 &&
+        stop != null) {
+      onSound?.call(HerdSound.warning);
+    }
     _openStop = stop;
     final horn = HerdTrain.horn(time);
     if (horn != null && horn != _hornHeard) {
@@ -537,6 +585,7 @@ class HerdRound {
         cat.coax = 0;
         cat.calm = HerdShy.calmSeconds;
         cat.hop = .65;
+        onSound?.call(HerdSound.recovered);
         message('Bé Nhát Gan hết sợ rồi, đi tiếp thôi!');
       }
     }
@@ -677,7 +726,7 @@ class HerdRound {
           cats.any((c) => !c.home && gap.contains(c.position.toOffset())) ||
           chain.any((c) => area.contains(c.position.toOffset()));
       final open = pressed || busy;
-      if (open != gateOpen[i]) onSound?.call(HerdSound.doors);
+      if (open != gateOpen[i]) onSound?.call(HerdSound.gate);
       gateOpen[i] = open;
       if (open) continue;
       final leaderIn = area.contains(leader.toOffset());
@@ -746,6 +795,7 @@ class HerdRound {
         cat.sulking = false;
         cat.coax = 0;
         cat.hop = .65;
+        onSound?.call(HerdSound.recovered);
         message('Bé Hay Dỗi hết giận rồi!');
       }
     }
@@ -764,7 +814,7 @@ class HerdRound {
       }
       _scatter(hit);
       immune = 1.5;
-      onSound?.call(HerdSound.scattered);
+      onSound?.call(geese.contains(p) ? HerdSound.goose : HerdSound.scattered);
       message(geese.contains(p)
           ? 'Quác quác! Ngỗng đuổi cả đàn chạy tán loạn'
           : 'Robot hút bụi húc trúng! Đàn chạy tán loạn');
@@ -804,6 +854,7 @@ class HerdRound {
       cat.wake = near
           ? min(1, cat.wake + dt / HerdTraits.wakeSeconds)
           : max(0, cat.wake - HerdTraits.dozeRate * dt);
+      if (cat.awake) onSound?.call(HerdSound.recovered);
     }
   }
 
@@ -856,6 +907,10 @@ class HerdRound {
           map.chuteAt(cat.position, field) != null ||
           leader.distanceTo(home) < 110) {
         continue;
+      }
+      if (cat.itch > HerdTraits.warnBefore &&
+          cat.itch - dt <= HerdTraits.warnBefore) {
+        onSound?.call(HerdSound.warning);
       }
       cat.itch = max(0, cat.itch - dt);
       if (cat.itch > 0) continue;
@@ -936,6 +991,7 @@ class HerdRound {
     }
     for (var i = 0; i < chain.length; i++) {
       final cat = chain[i];
+      final previousHeat = cat.heat;
       cat.heat = shaded(cat.position)
           ? max(0, cat.heat - HerdHeat.coolRate * dt)
           : cat.heat +
@@ -943,6 +999,9 @@ class HerdRound {
                   (1 + i * HerdHeat.tailBonus) *
                   (cat.trait == HerdTrait.chubby ? HerdTraits.chubbyHeat : 1) *
                   dt;
+      if (previousHeat < .8 && cat.heat >= .8) {
+        onSound?.call(HerdSound.warning);
+      }
     }
     final fainted = chain.where((cat) => cat.heat >= 1).toList();
     for (final cat in fainted) {
@@ -960,6 +1019,7 @@ class HerdRound {
       if (cat.following) continue;
       if (cat.overheat > 0) {
         cat.overheat = max(0, cat.overheat - dt);
+        if (cat.overheat == 0) onSound?.call(HerdSound.recovered);
         cat.heat = cat.overheat / HerdHeat.faintSeconds;
       } else {
         cat.heat = max(0, cat.heat - HerdHeat.coolRate * dt);
@@ -979,7 +1039,10 @@ class HerdRound {
     }
     splashes.removeWhere((s) => s.age > HerdThinIce.splashSeconds);
     for (final cat in cats) {
-      if (!cat.following) cat.chill = max(0, cat.chill - dt);
+      if (!cat.following && cat.chill > 0) {
+        cat.chill = max(0, cat.chill - dt);
+        if (cat.chill == 0) onSound?.call(HerdSound.recovered);
+      }
     }
     for (var z = 0; z < map.thinIce.length; z++) {
       final sheet = map.pixels(map.thinIce[z], field);

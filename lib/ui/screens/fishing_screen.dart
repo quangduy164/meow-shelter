@@ -174,9 +174,6 @@ class _FishingScreenState extends State<FishingScreen>
     final facingRight = fishing
         ? _controller.spot.dx >= _river.boat.dx
         : _river.heading.dx >= 0;
-    final hit = (phase == FishingPhase.lost && _controller.elapsed < 1) ||
-        phase == FishingPhase.bite ||
-        _river.hitTime > .8;
     final oar = FishingOarPose(_river.clock,
         moving: _river.moving && !fishing, facingRight: facingRight);
     final side = facingRight ? 1.0 : -1.0;
@@ -189,16 +186,8 @@ class _FishingScreenState extends State<FishingScreen>
           : side * .025,
       _ => oar.lean,
     };
-    final action = won
-        ? 'celebrate'
-        : hit
-            ? 'panic'
-            : 'idle';
-    final frames = won
-        ? framesCelebrate
-        : hit
-            ? framesPanic
-            : framesIdle;
+    final action = won ? 'celebrate' : 'idle';
+    final frames = won ? framesCelebrate : framesIdle;
     return Stack(fit: StackFit.expand, children: [
       CustomPaint(painter: FishingRiverBoatPainter(_river, fishing: fishing)),
       Positioned(
@@ -253,12 +242,13 @@ class _FishingScreenState extends State<FishingScreen>
           final position =
               Offset.lerp(_river.toScreen(_controller.spot), point, t)! -
                   Offset(0, math.sin(t * math.pi) * 45);
+          final fishSize = _controller.fishScale;
           return Positioned(
-              left: position.dx - 20,
-              top: position.dy - 14,
+              left: position.dx - 20 * fishSize,
+              top: position.dy - 14 * fishSize,
               child: SizedBox(
-                  width: 40,
-                  height: 28,
+                  width: 40 * fishSize,
+                  height: 28 * fishSize,
                   child:
                       CustomPaint(painter: FishingFishArt(_controller.fish))));
         }),
@@ -333,13 +323,15 @@ class _FishingScreenState extends State<FishingScreen>
                                           color: DS.ink,
                                           fontWeight: FontWeight.w900,
                                           fontSize: DS.fontButton)),
-                                  const SizedBox(height: 2),
-                                  Text(_controller.guide,
-                                      maxLines: 2,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: const TextStyle(
-                                          color: DS.ink,
-                                          fontSize: DS.fontCaption)),
+                                  if (_controller.guide.isNotEmpty) ...[
+                                    const SizedBox(height: 2),
+                                    Text(_controller.guide,
+                                        maxLines: 2,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: const TextStyle(
+                                            color: DS.ink,
+                                            fontSize: DS.fontCaption)),
+                                  ],
                                 ],
                               ),
                             )),
@@ -383,6 +375,9 @@ class _FishingScreenState extends State<FishingScreen>
                             Positioned.fill(
                                 child: FishingCatchPopup(
                                     fish: _controller.fish,
+                                    grams: _controller.grams,
+                                    newRecord: _controller.newRecord,
+                                    fishScale: _controller.fishScale,
                                     onNext: _controller.dismissResult)),
                         ]));
               }),

@@ -135,6 +135,24 @@ class BaitSystem {
     }
   }
 
+  /// Knocks the yarn already lying within [radius] of [from] away from it.
+  /// Yarn a cat is heading for is left alone. Returns how many rolled off.
+  int knockYarnNear(Vector2 from, double radius, Vector2 Function() roll) {
+    var knocked = 0;
+    for (final bait in _baits) {
+      if (bait.dish != Dish.yarn || bait.eater != null) continue;
+      if ((bait.point - from).length > radius) continue;
+      final kick = roll();
+      final away = bait.point - from;
+      // Send it away from the cat rather than back through it.
+      if (away.length2 > 0 && kick.dot(away) < 0) kick.scale(-1);
+      bait.velocity.setFrom(kick);
+      bait.age = 0;
+      knocked++;
+    }
+    return knocked;
+  }
+
   /// A batted or knocked-over ball of yarn rolling away from [from].
   void kickYarn(Vector2 from, Vector2 velocity) {
     final bait = _Bait(from.clone(), 1, false, Dish.yarn)

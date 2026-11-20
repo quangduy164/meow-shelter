@@ -4,9 +4,10 @@ import 'package:material_ui/material_ui.dart';
 
 import '../../fishing/fishing_river.dart';
 import '../../fishing/fishing_controller.dart';
-import '../../collection/fish_species.dart';
 import 'fishing_river_art.dart';
 import 'fishing_oar_art.dart';
+import 'fishing_activity_art.dart';
+import 'fishing_fight_art.dart';
 
 /// Like Adventure's cached background: only the visible stretch is replayed.
 class FishingRiverBackdrop extends StatefulWidget {
@@ -50,7 +51,7 @@ class _RiverBackdropPainter extends CustomPainter {
     canvas.save();
     canvas.clipRect(Offset.zero & size);
     canvas.scale(round.scale);
-    canvas.translate(-round.cameraLeft, 0);
+    canvas.translate(-round.cameraLeft, -round.cameraTop);
     for (var i = 0; i < pictures.length; i++) {
       final start = i * FishingRiver.sectionLength;
       if (start > round.cameraLeft + round.visibleWidth ||
@@ -78,7 +79,7 @@ class FishingRiverSurface extends CustomPainter {
     canvas.save();
     canvas.clipRect(Offset.zero & size);
     canvas.scale(round.scale);
-    canvas.translate(-round.cameraLeft, 0);
+    canvas.translate(-round.cameraLeft, -round.cameraTop);
     final left = math.max(0.0, round.cameraLeft - 30);
     final right = math.min(
         FishingRiver.length, round.cameraLeft + round.visibleWidth + 30);
@@ -88,10 +89,14 @@ class FishingRiverSurface extends CustomPainter {
     final firstColumn = (left / 57).floor();
     for (var col = firstColumn; col * 57 < right; col++) {
       final x = col * 57.0 + (round.clock * 8) % 30;
-      final rows = 7 + (FishingRiver.coastBlend(x) * 7).round();
+      final rows = (FishingRiver.halfWidth(x) * 2 / 26).floor();
       for (var row = 0; row < rows; row++) {
         final y = FishingRiver.center(x) + (row - (rows - 1) / 2) * 26;
         if (y < FishingRiver.top(x) + 10 || y > FishingRiver.bottom(x) - 10) {
+          continue;
+        }
+        if (y < round.cameraTop - 20 ||
+            y > round.cameraTop + round.visibleHeight + 20) {
           continue;
         }
         final phase = round.clock * 1.4 + col * 1.7 + row;
@@ -121,7 +126,8 @@ class FishingRiverSurface extends CustomPainter {
     // Faint little fish and floating leaves make the long channel feel alive.
     for (var i = (left / 240).floor(); i * 240 < right; i++) {
       final x = i * 240.0 + 80 + math.sin(round.clock * .6 + i) * 18;
-      final y = FishingRiver.center(x) + math.sin(i * 4.0) * 48;
+      final y = FishingRiver.center(x) +
+          math.sin(i * 4.0) * (FishingRiver.halfWidth(x) - 50);
       canvas.drawOval(
           Rect.fromCenter(center: Offset(x, y), width: 15, height: 5),
           Paint()..color = const Color(0x44355E65));
@@ -140,27 +146,15 @@ class FishingRiverSurface extends CustomPainter {
     }
     final controller = fishing;
     if (controller != null) {
+      if (controller.canSail) {
+        for (final activity
+            in controller.activities.visible(round.clock, left, right)) {
+          paintFishingActivity(canvas, activity, round.clock);
+        }
+      }
       if (controller.phase == FishingPhase.reeling ||
           controller.phase == FishingPhase.bite) {
-        final p = controller.spot;
-        final diving = controller.fish == FishSpecies.catfish &&
-            controller.elapsed % 3.2 < .7;
-        if (!diving) {
-          canvas.drawOval(
-              Rect.fromCenter(
-                  center: p + const Offset(0, 8), width: 36, height: 13),
-              Paint()..color = const Color(0x88335661));
-        } else {
-          for (var i = 0; i < 3; i++) {
-            canvas.drawCircle(
-                p + Offset(i * 7.0, -i * 3.0),
-                3,
-                Paint()
-                  ..color = const Color(0xBBE9FFF0)
-                  ..style = PaintingStyle.stroke
-                  ..strokeWidth = 1.5);
-          }
-        }
+        paintFishingFight(canvas, controller);
       }
     }
     final destination = round.destination;

@@ -112,6 +112,12 @@ class AdventureCrossing extends PositionComponent {
 
   bool _onStone(Offset p) => _stones.any((s) => _inside(s, p));
 
+  int stoneUnder(Rect catBox) {
+    if (catBox.right < left || catBox.left > right) return -1;
+    final paws = _paws(catBox);
+    return _stones.indexWhere((stone) => paws.any((p) => _inside(stone, p)));
+  }
+
   /// Water surface at a point: inside the crossing, on the lane, off stones.
   bool isWater(Offset p) {
     final v = _depthAt(p);

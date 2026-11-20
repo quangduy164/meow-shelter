@@ -1,3 +1,5 @@
+import 'fishing_fight.dart';
+import 'fishing_activity.dart';
 import 'fishing_river.dart';
 import '../camp/camp_state.dart';
 import '../audio/game_audio.dart';
@@ -27,6 +29,8 @@ class FishingController extends ChangeNotifier {
   final FishCollection collection;
   final math.Random _random;
   final river = FishingRiverRound();
+  final activities = FishingActivities();
+  bool _activeWater = false;
   static const boatGuideKey = 'mode:fishing:boat:v1';
   bool get beginner => !CampState.instance.seenGuides.contains(boatGuideKey);
   bool get canSail =>
@@ -35,15 +39,15 @@ class FishingController extends ChangeNotifier {
   String get guide => switch (_phase) {
         FishingPhase.ready => river.moving
             ? 'Đang chèo · Bấm cần câu góc phải để câu tại đây'
-            : 'Bấm mặt nước để chèo · Bấm cần câu góc phải để câu',
-        FishingPhase.casting => 'Mèo đang thả cần…',
+            : activities.nearby(river.clock, river.boat) != null
+                ? 'Có cá động gần đây! Bấm cần câu để thử vận may'
+                : 'Tìm cá quẫy, bọt nước · Mọi chỗ đều câu được',
+        FishingPhase.casting => _activeWater
+            ? 'Thả vào chỗ cá động · Cơ hội cá hiếm tăng!'
+            : 'Mèo đang thả cần…',
         FishingPhase.waiting => 'Chờ phao động rồi bấm giật cần',
         FishingPhase.bite => 'Cá cắn! Bấm nút giật cần!',
-        FishingPhase.reeling => river.hitTime > .8
-            ? 'Vướng bờ rồi! Vuốt lái thuyền ra giữa sông'
-            : _surging
-                ? 'Cá vùng! Thả nút kéo · Vuốt để lái thuyền'
-                : 'Cá mệt! Giữ nút kéo · Vuốt để lái thuyền',
+        FishingPhase.reeling => '',
         FishingPhase.saving => _error ?? 'Đang cất cá vào giỏ…',
         FishingPhase.caught => message,
         FishingPhase.lost =>
@@ -83,6 +87,14 @@ class FishingController extends ChangeNotifier {
 
   FishSpecies _fish = FishSpecies.tilapia;
   FishSpecies get fish => _fish;
+  int _grams = 0;
+  int get grams => _grams;
+  bool _newRecord = false, _catchSaved = false, _coinsSaved = false;
+  bool get newRecord => _newRecord;
+  double get sizeFraction => _fish.weightFraction(_grams);
+  double get fishScale => _fish.isJunk ? 1 : .8 + sizeFraction * .7;
+  double get weightPull =>
+      beginner || _fish.isJunk ? 1 : .95 + sizeFraction * .2;
   FishingPhase _phase = FishingPhase.ready;
   Offset _spot = const Offset(.5, .66);
   Offset _castOffset = const Offset(280, -25);
@@ -129,28 +141,9 @@ class FishingController extends ChangeNotifier {
       ].contains(_phase);
   bool get _surging => _surge > .6;
 
-  /// 0..1 fight strength; each species has its own readable rhythm.
-  double get _surge {
-    final t = _elapsed + _fight;
-    return switch (_fish) {
-      // Short, frequent jerks.
-      FishSpecies.perch => math.sin(t * 7).abs() > .8 ? 1.0 : .25,
-      // Strong but steady.
-      FishSpecies.carp => .55 + math.sin(t * 1.2) * .1,
-      // Quiet, then a hard dive every few seconds.
-      FishSpecies.catfish => (t % 3.2) < .7 ? 1.0 : .2,
-      // Gentle pull; it mostly changes direction.
-      FishSpecies.goldfish => .35,
-      FishSpecies.sardine => .25 + math.sin(t * 3).abs() * .25,
-      FishSpecies.mackerel => t % 2.6 < .5 ? 1.0 : .25,
-      FishSpecies.clownfish => .3 + math.sin(t * 2.8).abs() * .3,
-      FishSpecies.pufferfish => t % 4.2 < 1.1 ? 1.0 : .15,
-      FishSpecies.koi => .4 + math.sin(t * 2) * .2,
-      // Pretends to be tired, then bursts.
-      FishSpecies.catMew => (t % 4.5) > 3.6 ? 1.0 : .1,
-      _ => .45 + math.sin(t * 2.5) * .2,
-    };
-  }
+  FishingFight get fight =>
+      FishingFight.at(_fish, _phase == FishingPhase.reeling ? _elapsed : 0);
+  double get _surge => fight.surge;
 
   void setWorldHour(double hour) => _worldHour = hour;
 
@@ -209,19 +202,35 @@ class FishingController extends ChangeNotifier {
       case FishingPhase.bite:
         if (_elapsed > (beginner ? 3 : 2)) _lose('Cá đã nhả mồi');
       case FishingPhase.reeling:
-        if (river.chase(dt, _fish, _elapsed + _fight, _surge,
-            pulling: _pulling, beginner: beginner)) {
+        final behavior = fight;
+        final steeringError =
+            (river.steering.dy * 140 + behavior.lateral * (beginner ? 25 : 42))
+                .abs();
+        final orbitControlled =
+            behavior.move == FishFightMove.orbit && steeringError < 15;
+        if (river.chase(dt, _fish, _elapsed, _surge,
+            pulling: _pulling, beginner: beginner, weightPull: weightPull)) {
           _progress = math.max(.08, _progress - (beginner ? .05 : .1));
           _combo = 0;
           _vibrate(HapticFeedback.mediumImpact);
         }
         _drift = river.heading.dx;
         _sweetCenter = .45 + math.sin(_elapsed * .8 + _fight) * .17;
-        final pull = _fish.pullStrength * (beginner ? .75 : 1);
+        final pull = _fish.pullStrength * (beginner ? .75 : weightPull);
+        final strain = behavior.blocked
+            ? .62
+            : behavior.dangerous
+                ? .48
+                : (.12 + _surge * .32);
+        final orbitStrain =
+            behavior.move == FishFightMove.orbit && !orbitControlled
+                ? .035
+                : 0.0;
         _tension =
-            (_tension + (_pulling ? (.12 + _surge * .32) * pull : -.32) * dt)
+            (_tension + ((_pulling ? strain * pull : -.32) + orbitStrain) * dt)
                 .clamp(0.0, 1.0);
-        final sweet = _pulling && inSweetZone;
+        final sweet =
+            _pulling && !behavior.blocked && !behavior.dangerous && inSweetZone;
         if (sweet) {
           _comboTime += dt;
           if (_comboTime >= .8) {
@@ -233,13 +242,24 @@ class FishingController extends ChangeNotifier {
           _comboTime = 0;
           if (_tension > _sweetCenter + sweetWidth) _combo = 0;
         }
-        final reelRate = !_pulling
-            ? -.015
-            : _tension > .82
-                ? .035
-                : sweet
-                    ? .2 * (1 + math.min(_combo, 5) * .08)
-                    : .11;
+        final baseReelRate = !_pulling
+            ? (behavior.blocked ? 0.0 : -.015)
+            : behavior.blocked
+                ? 0.0
+                : behavior.dangerous
+                    ? .015
+                    : _tension > .82
+                        ? .035
+                        : sweet
+                            ? .2 * (1 + math.min(_combo, 5) * .08)
+                            : .11;
+        final reelRate = baseReelRate > 0
+            ? baseReelRate *
+                behavior.reelBonus *
+                (behavior.move == FishFightMove.orbit
+                    ? (orbitControlled ? 1.25 : .75)
+                    : 1)
+            : baseReelRate;
         _progress = (_progress + reelRate * dt).clamp(0.0, 1.0);
         // Slack lets the fish gain distance; it does not snap the line.
         if (_tension >= 1) {
@@ -286,6 +306,14 @@ class FishingController extends ChangeNotifier {
     if ((_spot - location).distance < 200) {
       _spot = FishingRiver.constrain(location + Offset(-direction * 280, -25));
     }
+    final activity = activities.nearby(river.clock, location);
+    _activeWater = activity != null;
+    if (activity != null) {
+      if ((activity.position - location).distance >= 110) {
+        _spot = activity.position;
+      }
+      activities.consume(activity);
+    }
     _castOffset = _spot - location;
     // The boat's casting location owns the pool, even if the float lands
     // across a regional boundary or the fish later pulls the boat elsewhere.
@@ -295,8 +323,12 @@ class FishingController extends ChangeNotifier {
             : location.dx < FishingRiver.sectionLength
                 ? FishSpecies.tilapia
                 : FishSpecies.catfish)
-        : FishingRiver.rollFish(
-            _random.nextInt(10000), location.dx, _worldHour);
+        : FishingRiver.rollFish(_random.nextInt(10000), location.dx, _worldHour,
+            activeWater: _activeWater);
+    _grams = _fish.rollGrams(_random);
+    _newRecord = false;
+    _catchSaved = false;
+    _coinsSaved = false;
     _wait = 1.2 + _random.nextDouble() * 2;
     _fight = _random.nextDouble() * math.pi * 2;
     _error = null;
@@ -346,8 +378,15 @@ class FishingController extends ChangeNotifier {
     if (_savingCatch) return;
     _savingCatch = true;
     try {
-      await collection.catchFish(_fish);
-      await CampState.instance.addCoins(2);
+      if (!_catchSaved) {
+        _newRecord = await collection.catchFish(_fish,
+            grams: _fish.isJunk ? null : _grams);
+        _catchSaved = true;
+      }
+      if (!_coinsSaved) {
+        await CampState.instance.addCoins(2);
+        _coinsSaved = true;
+      }
       await CampState.instance.markGuidesSeen([boatGuideKey]);
       if (_disposed) return;
       _setPhase(FishingPhase.caught);

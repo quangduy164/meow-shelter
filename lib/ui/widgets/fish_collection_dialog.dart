@@ -395,7 +395,8 @@ class _FishCollectionDialogState extends State<FishCollectionDialog> {
                 width: detailWidth,
                 child: _DetailPanel(
                     fish: _selected,
-                    count: widget.collection.countOf(_selected)),
+                    count: widget.collection.countOf(_selected),
+                    heaviest: widget.collection.heaviestGrams(_selected)),
               ),
               const SizedBox(width: DS.spaceSm),
             ]),
@@ -559,23 +560,25 @@ class _FishTile extends StatelessWidget {
 }
 
 class _DetailPanel extends StatelessWidget {
-  const _DetailPanel({required this.fish, required this.count});
+  const _DetailPanel({required this.fish, required this.count, this.heaviest});
   final FishSpecies fish;
   final int count;
+  final int? heaviest;
 
   String get _note => switch (fish) {
         FishSpecies.perch => 'Nhanh nhẹn, hay giật dây liên tục.',
         FishSpecies.tilapia => 'Hiền lành, hợp với người mới câu.',
         FishSpecies.carp => 'Khoẻ và lì, kéo chậm nhưng mạnh.',
-        FishSpecies.catfish => 'Ở khúc sông tre, hay lặn sâu rồi giật mạnh.',
-        FishSpecies.koi => 'Vảy óng ánh, ít khi cắn câu.',
+        FishSpecies.catfish =>
+          'Bọt nổi báo sắp lặn. Nới dây, chờ cá nổi mới kéo.',
+        FishSpecies.koi => 'Lượn vòng. Vuốt ngược mũi tên để ghìm thuyền.',
         FishSpecies.goldfish => 'Nhỏ xíu mà lượn rất nhanh.',
         FishSpecies.catMew => 'Bé huyền thoại ẩn trong khúc sông tre.',
         FishSpecies.sardine => 'Cá biển nhỏ, đi theo đàn và khá dễ câu.',
-        FishSpecies.mackerel => 'Ở cửa biển, lao thẳng rồi bất ngờ giật mạnh.',
+        FishSpecies.mackerel => 'Nới dây lúc lao nhanh. Kéo khi cá dừng nghỉ.',
         FishSpecies.clownfish => 'Áo sọc cam trắng, lượn zíc zắc ở biển.',
         FishSpecies.pufferfish =>
-          'Bé tròn ở biển, phồng lên rồi mới chịu kéo về.',
+          'Phồng lên thì ngừng kéo. Xẹp xuống hãy thu dây.',
         FishSpecies.flipFlop => 'Ai đó làm rơi khi lội suối.',
         FishSpecies.oldBoot => 'Đã cũ nhưng vẫn còn nguyên đế.',
         FishSpecies.tinCan => 'Nhớ nhặt rác giúp hồ sạch nhé.',
@@ -682,6 +685,13 @@ class _DetailPanel extends StatelessWidget {
                 label: fish.isJunk ? 'Hay gặp' : 'Hay cắn',
                 value: timeText),
             if (!fish.isJunk) ...[
+              const SizedBox(height: DS.spaceXs),
+              _InfoRow(
+                  icon: Icons.emoji_events_rounded,
+                  label: 'Nặng nhất',
+                  value: heaviest == null
+                      ? 'Chưa cân'
+                      : formatFishWeight(heaviest!)),
               const SizedBox(height: DS.spaceXs),
               _Pips(
                   label: 'Sức kéo',

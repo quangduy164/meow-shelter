@@ -324,9 +324,12 @@ class AdventureDragon extends PositionComponent {
       if (a is DragonFlameLane && wasWarning && !a.warning) {
         onSound(GameSound.homeFire);
       }
+      if (a is DragonTailSweep && wasWarning && !a.warning) {
+        onSound(GameSound.adventureTail);
+      }
       if ((a is DragonMeteor && a.impactNow) ||
           (a is DragonDive && a.impactNow)) {
-        onSound(GameSound.homeImpact);
+        onSound(GameSound.adventureLand);
       }
       if (a.done) {
         attacks.remove(a);
@@ -590,6 +593,7 @@ class AdventureDragon extends PositionComponent {
     tired = _followUp != null
         ? 0
         : (phase == 2 ? 2.0 : (_move == _Move.rain ? .8 : 1.5));
+    if (tired > 0) onSound(GameSound.moonReveal);
     _move = _Move.idle;
     _cooldown = _followUp != null ? .35 : .6;
   }

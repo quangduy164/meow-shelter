@@ -49,7 +49,7 @@ class NightHelperEffects {
       return;
     }
     cooldowns[type] = cooldownTotal(type);
-    GameAudio.instance.playRescue(GameSound.rescueNotice, important: true);
+    GameAudio.instance.playRescue(GameSound.homeSupport, important: true);
     night.game.hud.showBanner([
       CampState.instance.nameOf(type),
       NightHelperSkill.effectOn(type, night.run!.map)

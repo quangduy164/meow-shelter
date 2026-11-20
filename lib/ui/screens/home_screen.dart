@@ -162,6 +162,8 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
   Widget _modeGrid() => SizedBox(
         width: 348,
         child: Wrap(
+          // The odd last tile (Trại mèo) sits centred under the pair above.
+          alignment: WrapAlignment.center,
           spacing: 12,
           runSpacing: 12,
           children: [

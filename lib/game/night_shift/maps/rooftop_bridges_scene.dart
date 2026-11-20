@@ -20,6 +20,7 @@ class RooftopBridgesScene extends NightScene {
   final roof = RooftopBridges();
   final _components = <Component>[];
   final _bridges = <RoofBridgeComponent>[];
+  final _activeBridges = <RoofBridge>{};
 
   @override
   NightMap get map => NightMap.rooftops;
@@ -79,6 +80,7 @@ class RooftopBridgesScene extends NightScene {
       {required bool thickClouds, required double afterglowSeconds}) {
     roof.begin(run,
         thickClouds: thickClouds, afterglowSeconds: afterglowSeconds);
+    _activeBridges.clear();
     game.removeAll(_bridges);
     _bridges
       ..clear()
@@ -101,12 +103,15 @@ class RooftopBridgesScene extends NightScene {
       }
       return;
     }
-    GameAudio.instance.playRescue(GameSound.catGrab);
     _notifyOpened();
   }
 
   void _notifyOpened() {
+    if (roof.opened.isNotEmpty) {
+      GameAudio.instance.playRescue(GameSound.nightBridge);
+    }
     for (final (bridge, auto) in roof.opened) {
+      _activeBridges.add(bridge);
       if (!bridge.firstOpen && !auto) continue;
       bridge.firstOpen = false;
       final rect = roof.bridgeRect(bridge, game.size.toSize());
@@ -117,6 +122,9 @@ class RooftopBridgesScene extends NightScene {
 
   @override
   void update(double dt) {
+    if (roof.bridges.any((b) => b.open > 2 && b.open - dt <= 2)) {
+      GameAudio.instance.playRescue(GameSound.rescueFlood);
+    }
     final field = game.size;
     roof.update(dt,
         occupied: game.children
@@ -128,6 +136,13 @@ class RooftopBridgesScene extends NightScene {
                 cat.size.x / field.x,
                 cat.size.y / field.y)));
     _notifyOpened();
+    for (final bridge in roof.bridges) {
+      if (bridge.active) {
+        _activeBridges.add(bridge);
+      } else if (_activeBridges.remove(bridge)) {
+        GameAudio.instance.playRescue(GameSound.nightBridge);
+      }
+    }
   }
 
   Iterable<(Offset, double)> _lights() sync* {

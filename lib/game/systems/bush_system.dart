@@ -2,6 +2,7 @@ import 'dart:math';
 import 'package:flame/components.dart';
 import 'package:flutter/painting.dart';
 
+import '../../audio/game_audio.dart';
 import '../components/cat_component.dart';
 import '../world/shelter_map.dart';
 
@@ -118,6 +119,7 @@ class BushSystem {
   }
 
   void _hide(_Hider h) {
+    GameAudio.instance.playRescue(GameSound.bushRustle);
     h.hidden = true;
     h.quiet = 0;
     h.rustle = .6;
@@ -125,6 +127,7 @@ class BushSystem {
   }
 
   void _emerge(_Hider h, List<Vector2> centers) {
+    GameAudio.instance.playRescue(GameSound.bushRustle);
     h.hidden = false;
     final bush = centers[h.bush];
     final middle = Vector2(_size.x / 2, _size.y * .45);

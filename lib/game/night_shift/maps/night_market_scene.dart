@@ -82,7 +82,7 @@ class NightMarketScene extends NightScene {
   void _signal() {
     if (game.paused || game.hud.status != RoundStatus.playing) return;
     if (!market.hush()) return;
-    GameAudio.instance.playRescue(GameSound.click);
+    GameAudio.instance.playRescue(GameSound.moonReveal);
     final screen = game.size;
     final at = Offset(
         market.cartProgress == null
@@ -101,7 +101,14 @@ class NightMarketScene extends NightScene {
   @override
   void update(double dt) {
     final trips = market.cartTrips;
+    final wasWarning = market.cartWarning;
+    final wasMoving = market.cartProgress != null;
     final alarm = market.update(dt);
+    if (!wasWarning && market.cartWarning) {
+      GameAudio.instance.playRescue(GameSound.rescueFlood, important: true);
+    } else if (!wasMoving && market.cartProgress != null && !market.hushed) {
+      GameAudio.instance.playRescue(GameSound.nightCart);
+    }
     final screen = game.size;
     final cats = game.children.whereType<CatComponent>();
     if (market.cartTrips > trips) {

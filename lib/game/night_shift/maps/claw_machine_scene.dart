@@ -135,7 +135,7 @@ class ClawMachineScene extends NightScene {
 
   void drop() {
     if (!playing || !machine.drop()) return;
-    GameAudio.instance.playRescue(GameSound.click);
+    GameAudio.instance.playRescue(GameSound.nightMotor);
     if (!_chimed) {
       _chimed = true;
       onFirstLight(
@@ -225,21 +225,26 @@ class ClawMachineScene extends NightScene {
     }
     // Scottish helper widens the claw here instead of slowing the cats.
     machine.reachBoost = night.effectLeft('scottish') > 0 ? 1.5 : 1;
+    final previousPhase = machine.phase;
     final events = machine.update(dt, game.random,
         frozen: night.assist.frozen,
         calm: night.assist.calm,
         firm: night.acceptsAnyBed);
+    if (machine.phase != previousPhase && machine.phase == ClawPhase.carrying) {
+      GameAudio.instance.playRescue(GameSound.nightMotor);
+    }
     for (final (tank, event) in events) {
       final cat = _cats[tank];
       switch (event) {
         case ClawEvent.missed:
+          GameAudio.instance.playRescue(GameSound.nightLatch);
           game.hud.showBanner(['Gắp trượt!'], .9);
         case ClawEvent.grabbed:
-          GameAudio.instance.playRescue(GameSound.catGrab);
+          GameAudio.instance.playRescue(GameSound.nightLatch);
         case ClawEvent.slipped:
           game.hud
               .showBanner(['Mèo tuột khỏi càng! Ngắm vào giữa người mèo'], 1.4);
-          GameAudio.instance.playRescue(GameSound.catWrong);
+          GameAudio.instance.playRescue(GameSound.yarnBounce);
         case ClawEvent.delivered:
           _cats.remove(tank);
           // The cat drops into the chute and sits there before it leaves.

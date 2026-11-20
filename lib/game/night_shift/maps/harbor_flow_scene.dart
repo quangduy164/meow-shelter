@@ -164,7 +164,7 @@ class HarborFlowScene extends NightScene {
   }
 
   void _changedGate(HarborGate gate) {
-    GameAudio.instance.playRescue(GameSound.click);
+    GameAudio.instance.playRescue(GameSound.nightLatch);
     if (!gate.chimed) {
       gate.chimed = true;
       onFirstLight(
@@ -189,7 +189,7 @@ class HarborFlowScene extends NightScene {
     if (!free && !game.bait.spend()) return false;
     raft.anchor = _anchorSeconds;
     if (game.bait.limited) game.hud.fishLeft = game.bait.fishCount;
-    GameAudio.instance.playRescue(GameSound.baitDrop);
+    GameAudio.instance.playRescue(GameSound.rescueSplash);
     final cat = _cats[raft];
     if (cat != null) game.night!.cardEffects.onFed(cat);
     return true;
@@ -270,7 +270,9 @@ class HarborFlowScene extends NightScene {
             _ => 'Bè lạc luồng! Quay lại bến xuất phát',
           }
         ], 1.4);
-        GameAudio.instance.playRescue(GameSound.catWrong);
+        GameAudio.instance.playRescue(event == HarborEvent.collided
+            ? GameSound.rescueSplash
+            : GameSound.catWrong);
       }
     }
     for (final entry in _cats.entries) {

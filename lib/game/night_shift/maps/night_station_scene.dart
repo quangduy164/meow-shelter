@@ -306,7 +306,18 @@ class NightStationScene extends NightScene {
         : night.assist.frozen
             ? 0.0
             : night.assist.pace;
+    final previousPhase = line.phase;
+    final previousTimer = line.timer;
     line.update(dt * pace);
+    if (line.phase != previousPhase && line.phase != TrainPhase.waiting) {
+      GameAudio.instance.playRescue(
+          line.phase == TrainPhase.arriving
+              ? GameSound.nightTrain
+              : GameSound.nightDoor,
+          important: true);
+    } else if (stopped && previousTimer > 1.5 && line.timer <= 1.5) {
+      GameAudio.instance.playRescue(GameSound.rescueFlood, important: true);
+    }
     _plan();
     if (line.phase == TrainPhase.stopped) _boardReady();
     // Calm cats (black helper) trot to their marks twice as fast.

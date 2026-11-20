@@ -153,6 +153,7 @@ class ReedGardenScene extends NightScene {
     final cat = _hidden.remove(from);
     if (cat == null) return;
     garden.move(from, to);
+    GameAudio.instance.playRescue(GameSound.bushRustle);
     _hidden[to] = cat;
     cat.position.setFrom(_coverSpot(to, cat));
     _moveLeft[cat] = garden.moveSeconds;
@@ -276,9 +277,7 @@ class ReedGardenScene extends NightScene {
       GameAudio.instance.playRescue(GameSound.catWrong);
       return;
     }
-    GameAudio.instance.playRescue(
-        saved > 0 ? GameSound.catRescue : GameSound.baitDrop,
-        important: saved > 0);
+    GameAudio.instance.playRescue(GameSound.bushRustle);
     game.hud.showBanner([
       saved > 0
           ? 'Lùa thành công · $saved mèo ra lối'
@@ -322,6 +321,7 @@ class ReedGardenScene extends NightScene {
         _runners.remove(runner);
         runner.cat.positionInTrap(runner.target, walking: false);
         if (game.night!.phase == NightPhase.playing) {
+          GameAudio.instance.playRescue(GameSound.catRescue, important: true);
           runner.cat.rescueFromTrap();
         }
       } else {

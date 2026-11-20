@@ -3,6 +3,7 @@ import 'dart:ui';
 
 import 'package:flame/components.dart';
 
+import '../../audio/game_audio.dart';
 import '../components/cat_component.dart';
 import '../world/shelter_map.dart';
 
@@ -33,14 +34,17 @@ class MoonSystem {
   double _clock = 0;
   final _phantoms = <_Phantom>[];
   final _random = Random();
+  final _visibleCats = <CatComponent>{};
 
   static const drift = .10, driftPeriod = 18.0;
   static const cloudPeriod = 13.0, cloudSeconds = 3.5, fade = .8;
   static const phantomStay = 7.0, jumpSeconds = 1.6;
 
   /// Brightness 0..1 of beam [i]: a passing cloud dims it for a while.
-  double brightness(int i) {
-    final t = (_clock + i * 4.3) % cloudPeriod;
+  double brightness(int i) => _brightnessAt(i, _clock);
+
+  double _brightnessAt(int i, double clock) {
+    final t = (clock + i * 4.3) % cloudPeriod;
     if (t > cloudSeconds) return 1;
     if (t < fade) return 1 - t / fade;
     if (t > cloudSeconds - fade) return (t - (cloudSeconds - fade)) / fade;
@@ -73,7 +77,23 @@ class MoonSystem {
 
   void update(double dt, Vector2 size, Iterable<CatComponent> cats) {
     _size = size;
+    final previousClock = _clock;
     _clock += dt;
+    _visibleCats.removeWhere((cat) => !cat.isMounted || cat.isDelivered);
+    for (var i = 0; i < map.moonbeams.length; i++) {
+      if (_brightnessAt(i, previousClock) > .5 &&
+          brightness(i) <= .5 &&
+          cats.any((cat) =>
+              cat.catType == 'black' &&
+              cat.isLoaded &&
+              !cat.isDelivered &&
+              !cat.isCarried &&
+              !cat.hiddenInCover &&
+              _inside(beam(i), cat.center))) {
+        GameAudio.instance.playRescue(GameSound.moonCloud);
+        break;
+      }
+    }
     _phantoms.removeWhere((p) => !p.cat.isMounted || p.cat.isDelivered);
     for (final cat in cats) {
       if (cat.isBoss &&
@@ -105,6 +125,16 @@ class MoonSystem {
       }
       p.stay -= dt;
       if (p.stay <= 0) _startJump(p, cats);
+    }
+    for (final cat in cats) {
+      if (cat.catType != 'black' || !cat.isLoaded || cat.isDelivered) continue;
+      if (!cat.hiddenInCover && lit(cat.center)) {
+        if (_visibleCats.add(cat) && !cat.isLit && !cat.hasEaten) {
+          GameAudio.instance.playRescue(GameSound.moonReveal);
+        }
+      } else {
+        _visibleCats.remove(cat);
+      }
     }
   }
 

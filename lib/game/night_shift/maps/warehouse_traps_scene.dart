@@ -247,7 +247,7 @@ class WarehouseTrapsScene extends NightScene {
       if (actor == null) continue;
       if (traps.shut(slot, forgiving: night.acceptsAnyBed)) {
         actor.cat.positionInTrap(_inside(slot, actor.cat), walking: false);
-        GameAudio.instance.playRescue(GameSound.catRescue, important: true);
+        GameAudio.instance.playRescue(GameSound.nightLatch, important: true);
       } else {
         _release(slot, startled: !night.assist.calm);
         traps.reset(slot);
@@ -281,11 +281,15 @@ class WarehouseTrapsScene extends NightScene {
         case TrapEvent.escaped:
           _release(slot);
         case TrapEvent.fed:
+          GameAudio.instance.playRescue(GameSound.moonReveal, important: true);
           final cat = _cats[slot]?.cat;
           if (cat != null) night.cardEffects.onFed(cat);
         case TrapEvent.captured:
           final actor = _cats.remove(slot);
-          if (night.phase == NightPhase.playing) actor?.cat.rescueFromTrap();
+          if (night.phase == NightPhase.playing && actor != null) {
+            GameAudio.instance.playRescue(GameSound.catRescue, important: true);
+            actor.cat.rescueFromTrap();
+          }
       }
     }
     for (final slot in traps.slots) {

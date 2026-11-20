@@ -300,7 +300,7 @@ extension CatCatchBehaviour on CatComponent {
   void _napNow() {
     _goingToNap = false;
     hasEaten = true;
-    GameAudio.instance.playRescue(GameSound.catFed, important: true);
+    GameAudio.instance.playRescue(GameSound.catNap, important: true);
     _setState(CatState.idle);
     catchWindow.open(CatCatchRule.orangeNap);
     _dialogue.say('Khò khò… bế em đi');
@@ -309,7 +309,11 @@ extension CatCatchBehaviour on CatComponent {
   /// Seconds per beat the Calico boss taps along to; taps count only on it.
   static const _beat = .9;
   double get beatPhase => (_bubbleClock % _beat) / _beat;
-  bool get _onBeat => beatPhase < .2 || beatPhase > .8;
+
+  /// Share of each beat that counts as on time (centred on the gold flash).
+  static const _beatWindow = .55;
+  bool get _onBeat =>
+      beatPhase < _beatWindow / 2 || beatPhase > 1 - _beatWindow / 2;
   bool get _keepsRhythm => isBoss && level.toys && catType == 'calico';
 
   /// Arrived at a ball of yarn. Calico plays and tires itself out (the boss
@@ -367,11 +371,15 @@ extension CatCatchBehaviour on CatComponent {
 
   void _play() {
     if (_keepsRhythm && !_onBeat) {
-      // Off the beat: the boss throws a tantrum and knocks toys over.
-      _playTaps = 0;
-      _dialogue.say('Sai nhịp rồi! Hứ!');
+      // Off the beat: one tap lost, and the boss swats away the yarn it was
+      // playing with (if any) and any lying nearby.
+      _playTaps = max(0, _playTaps - 1);
+      final wasPlaying = _yarnPlay > 0;
+      _yarnPlay = 0;
+      _dialogue.say(wasPlaying ? 'Sai nhịp rồi! Hứ!' : 'Sai nhịp rồi!');
       GameAudio.instance.playRescue(GameSound.catWrong);
-      onTantrum?.call(this);
+      onTantrum?.call(this, wasPlaying);
+      if (wasPlaying) _pickNextAction();
       return;
     }
     _playTaps += 1;

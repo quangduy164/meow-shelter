@@ -3,6 +3,7 @@ import 'dart:math';
 import 'package:flame/components.dart';
 import 'package:flutter/painting.dart';
 
+import '../../audio/game_audio.dart';
 import 'adventure_hazard_art.dart';
 import 'adventure_road.dart';
 import 'adventure_skills.dart';
@@ -173,6 +174,8 @@ class AdventureObstacle extends PositionComponent {
         final ahead = position.x - cat.dx;
         if (_phase == _BirdPhase.cruise && ahead > 0 && ahead < birdAimRange) {
           _phase = _BirdPhase.aim;
+          GameAudio.instance
+              .playGameplay(GameSound.adventureWings, priority: 1);
           _phaseT = 0;
           _aimTime = birdAimMin + _birdRandom.nextDouble() * birdAimJitter;
           // The shadow starts under the bird and slides toward the cat.
