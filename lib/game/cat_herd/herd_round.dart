@@ -129,6 +129,7 @@ class HerdRound {
   int _stormAnnounced = -1, _cuckooRung = -1, _hornHeard = -1;
   int? _openStop;
   bool _robotNear = false, _trafficNear = false;
+  double _warningAt = -99, _recoveredAt = -99;
 
   /// Farm gate state per pen, and how long each plate rests after pickup.
   final gateOpen = <bool>[];
@@ -187,6 +188,7 @@ class HerdRound {
     _hornHeard = -1;
     _openStop = null;
     _robotNear = _trafficNear = false;
+    _warningAt = _recoveredAt = -99;
     gateOpen
       ..clear()
       ..addAll(List.filled(map.pens.length, false));
@@ -275,6 +277,19 @@ class HerdRound {
     if (notice == map.hint && noticeTime > 0) return;
     notice = text;
     noticeTime = seconds;
+  }
+
+  // Group repeated state cues when several cats change state together.
+  void _cue(HerdSound sound) {
+    final warning = sound == HerdSound.warning;
+    final last = warning ? _warningAt : _recoveredAt;
+    if (time - last < 3) return;
+    if (warning) {
+      _warningAt = time;
+    } else {
+      _recoveredAt = time;
+    }
+    onSound?.call(sound);
   }
 
   void _soundTransitions(double dt) {
@@ -564,7 +579,7 @@ class HerdRound {
     if (HerdTrain.closingIn(time - dt) > 1 &&
         HerdTrain.closingIn(time) <= 1 &&
         stop != null) {
-      onSound?.call(HerdSound.warning);
+      _cue(HerdSound.warning);
     }
     _openStop = stop;
     final horn = HerdTrain.horn(time);
@@ -585,7 +600,7 @@ class HerdRound {
         cat.coax = 0;
         cat.calm = HerdShy.calmSeconds;
         cat.hop = .65;
-        onSound?.call(HerdSound.recovered);
+        _cue(HerdSound.recovered);
         message('Bé Nhát Gan hết sợ rồi, đi tiếp thôi!');
       }
     }
@@ -795,7 +810,7 @@ class HerdRound {
         cat.sulking = false;
         cat.coax = 0;
         cat.hop = .65;
-        onSound?.call(HerdSound.recovered);
+        _cue(HerdSound.recovered);
         message('Bé Hay Dỗi hết giận rồi!');
       }
     }
@@ -854,7 +869,7 @@ class HerdRound {
       cat.wake = near
           ? min(1, cat.wake + dt / HerdTraits.wakeSeconds)
           : max(0, cat.wake - HerdTraits.dozeRate * dt);
-      if (cat.awake) onSound?.call(HerdSound.recovered);
+      if (cat.awake) _cue(HerdSound.recovered);
     }
   }
 
@@ -910,7 +925,7 @@ class HerdRound {
       }
       if (cat.itch > HerdTraits.warnBefore &&
           cat.itch - dt <= HerdTraits.warnBefore) {
-        onSound?.call(HerdSound.warning);
+        _cue(HerdSound.warning);
       }
       cat.itch = max(0, cat.itch - dt);
       if (cat.itch > 0) continue;
@@ -1000,7 +1015,7 @@ class HerdRound {
                   (cat.trait == HerdTrait.chubby ? HerdTraits.chubbyHeat : 1) *
                   dt;
       if (previousHeat < .8 && cat.heat >= .8) {
-        onSound?.call(HerdSound.warning);
+        _cue(HerdSound.warning);
       }
     }
     final fainted = chain.where((cat) => cat.heat >= 1).toList();
@@ -1019,7 +1034,7 @@ class HerdRound {
       if (cat.following) continue;
       if (cat.overheat > 0) {
         cat.overheat = max(0, cat.overheat - dt);
-        if (cat.overheat == 0) onSound?.call(HerdSound.recovered);
+        if (cat.overheat == 0) _cue(HerdSound.recovered);
         cat.heat = cat.overheat / HerdHeat.faintSeconds;
       } else {
         cat.heat = max(0, cat.heat - HerdHeat.coolRate * dt);
@@ -1041,7 +1056,7 @@ class HerdRound {
     for (final cat in cats) {
       if (!cat.following && cat.chill > 0) {
         cat.chill = max(0, cat.chill - dt);
-        if (cat.chill == 0) onSound?.call(HerdSound.recovered);
+        if (cat.chill == 0) _cue(HerdSound.recovered);
       }
     }
     for (var z = 0; z < map.thinIce.length; z++) {

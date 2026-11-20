@@ -55,7 +55,6 @@ enum GameSound {
   rescueLose,
   homeHit,
   homeSplash,
-  homeFish,
   homeHeal,
   homeFire,
   homeIce,

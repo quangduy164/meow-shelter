@@ -347,7 +347,7 @@ class AdventureGame extends FlameGame {
             HomeAttack.timeStop =>
               GameSound.homeShadow,
             HomeAttack.roar => GameSound.bossRoar,
-            HomeAttack.stoneWall => GameSound.adventureStoneBreak,
+            HomeAttack.stoneWall => GameSound.adventureLand,
             HomeAttack.reflect => GameSound.homeShield,
             HomeAttack.magnet ||
             HomeAttack.catEye ||
@@ -952,7 +952,7 @@ class AdventureGame extends FlameGame {
             priority: sound == GameSound.bossPhase
                 ? 2
                 : sound == GameSound.bossWarning ||
-                        sound == GameSound.moonReveal
+                        sound == GameSound.rescueMilestone
                     ? 1
                     : 0))
       ..arenaLeft = _arenaLeft
@@ -1421,7 +1421,7 @@ class AdventureGame extends FlameGame {
       }
     }
     if (contact != null && contact != _standingStone) {
-      GameAudio.instance.playGameplay(GameSound.rackShake);
+      GameAudio.instance.playGameplay(GameSound.homeImpact);
     }
     _standingStone = contact;
   }
@@ -1447,11 +1447,7 @@ class AdventureGame extends FlameGame {
       final x = biome.from * road.worldWidth;
       if (_cat.position.x >= x && checkpointX < x) {
         checkpointX = x;
-        GameAudio.instance.playGameplay(
-            biome.scenery == AdventureScenery.bridge
-                ? GameSound.nightBridge
-                : GameSound.homeCheckpoint,
-            priority: 2);
+        GameAudio.instance.playGameplay(GameSound.homeCheckpoint, priority: 2);
         checkpointMessage = 1.8;
         zoneName = 'Đã lưu checkpoint';
         zoneSubtitle = '';

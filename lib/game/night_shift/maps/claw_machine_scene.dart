@@ -254,7 +254,7 @@ class ClawMachineScene extends NightScene {
     for (final _ in machine.deliveredPrizes) {
       night.run?.earnMoonlight(1);
       game.hud.showBanner(['Gắp được đồ chơi! +1 Nguyệt quang'], 1.1);
-      GameAudio.instance.playRescue(GameSound.click);
+      GameAudio.instance.playRescue(GameSound.campBuy);
     }
     machine.deliveredPrizes.clear();
     for (final entry in _cats.entries) {

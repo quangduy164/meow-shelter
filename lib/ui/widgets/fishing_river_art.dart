@@ -5,6 +5,7 @@ import 'package:flutter/painting.dart';
 import '../../fishing/fishing_river.dart';
 import '../../game/world/nature_art.dart';
 import 'fishing_coast_art.dart';
+import 'fishing_river_details.dart';
 
 /// Recorded once per stretch; seeds and world positions agree across seams.
 ui.Picture recordFishingRiver(int section) {
@@ -257,7 +258,7 @@ void _paintLandscape(Canvas canvas, double left, double right) {
       if (i % 3 == 0) _bamboo(canvas, Offset(x + 120, y + 157), 70, seed: i);
     }
   }
-  for (final x in [230.0, 1130.0, 2110.0, 3340.0]) {
+  for (final x in [FishingRiver.startDockX, 1130.0, 2110.0, 3340.0]) {
     if (x < from || x > to) continue;
     _dock(canvas, Offset(x, FishingRiver.bottom(x) - 15));
   }
@@ -270,6 +271,7 @@ void _paintLandscape(Canvas canvas, double left, double right) {
     _lotus(canvas, Offset(x, FishingRiver.bottom(x) - 10));
   }
   paintFishingCoast(canvas, from, to);
+  paintRiverDetails(canvas, from, to);
 }
 
 void _stone(Canvas c, Offset p, double size) {

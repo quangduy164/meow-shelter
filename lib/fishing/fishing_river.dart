@@ -1,4 +1,6 @@
 import 'fishing_fight.dart';
+import 'river_props.dart';
+import 'river_navigation.dart';
 import 'dart:math' as math;
 import 'package:flutter/painting.dart';
 import '../collection/fish_species.dart';
@@ -17,6 +19,8 @@ class FishingRiver {
   }
 
   static const boatMargin = 30.0;
+  static const startDockX = 230.0;
+  static Offset get startBoat => Offset(startDockX, bottom(startDockX) - 42);
 
   /// Exclusive regional pools cross-fade around the join; weights are relative.
   static FishSpecies rollFish(int roll, double x, double hour,
@@ -70,17 +74,40 @@ class FishingRiver {
     return FishSpecies.tinCan;
   }
 
+  // Smooth bank inlets stay part of the same navigable channel and route rules.
+  static const coves = [
+    (x: 950.0, radius: 300.0, depth: 330.0, north: true),
+    (x: 2650.0, radius: 340.0, depth: 310.0, north: false),
+    (x: 4550.0, radius: 380.0, depth: 60.0, north: true),
+  ];
+
+  static double _inlet(double x, bool north) {
+    var depth = 0.0;
+    for (final cove in coves) {
+      final t = (x - cove.x).abs() / cove.radius;
+      if (cove.north == north && t < 1) {
+        final bell = (1 + math.cos(t * math.pi)) / 2;
+        depth += cove.depth * bell * bell;
+      }
+    }
+    return depth;
+  }
+
   static double center(double x) {
     final river =
         1100 + 150 * math.sin(x / 620 - .4) + 65 * math.sin(x / 290 + .5);
     final sea = 1050 + math.sin(x / 780) * 70;
-    return river + (sea - river) * coastBlend(x);
+    return river +
+        (sea - river) * coastBlend(x) +
+        (_inlet(x, false) - _inlet(x, true)) / 2;
   }
 
   static double halfWidth(double x) {
     final river = 410 + 85 * math.sin(x / 500 + .4) + 45 * math.cos(x / 260);
     final sea = 740 + math.sin(x / 580) * 60;
-    return river + (sea - river) * coastBlend(x);
+    return river +
+        (sea - river) * coastBlend(x) +
+        (_inlet(x, false) + _inlet(x, true)) / 2;
   }
 
   static double top(double x) => center(x) - halfWidth(x);
@@ -102,7 +129,9 @@ class FishingRiver {
 
 /// Click-to-row movement and a smoothly following two-axis camera.
 class FishingRiverRound {
-  Offset boat = Offset(260, FishingRiver.center(260));
+  final props = RiverProps();
+  Offset boat = FishingRiver.startBoat;
+  Offset _lastBoat = FishingRiver.startBoat;
   Offset heading = const Offset(1, 0);
   Offset? destination;
   Size viewport = Size.zero;
@@ -199,9 +228,10 @@ class FishingRiverRound {
             steering.dy * 140);
     heading = velocity / math.max(.001, velocity.distance);
     final intended = boat + velocity * dt;
-    boat = FishingRiver.constrain(intended);
+    boat = props.resolve(boat + velocity * dt * props.dragAt(boat));
     steering *= math.max(0, 1 - dt * 2.8);
-    if ((boat - intended).distance > .1 && hitTime <= 0) {
+    if ((FishingRiver.constrain(intended) - intended).distance > .1 &&
+        hitTime <= 0) {
       hitTime = 1.4;
       return true;
     }
@@ -209,7 +239,7 @@ class FishingRiverRound {
   }
 
   void sailTo(Offset world) {
-    final target = FishingRiver.constrain(world);
+    final target = props.resolve(world);
     destination = target;
     _route.clear();
     if ((target - boat).distance < .5) {
@@ -235,6 +265,22 @@ class FishingRiverRound {
           FishingRiver.center(x) +
               lane * (FishingRiver.halfWidth(x) - FishingRiver.boatMargin))));
     }
+    _avoidRocks();
+  }
+
+  void _avoidRocks() {
+    var from = boat;
+    for (final point in _route) {
+      if (!props.clearLine(from, point)) {
+        final detour = riverDetour(props, boat, destination!);
+        _route
+          ..clear()
+          ..addAll(detour);
+        if (_route.isEmpty) stop();
+        return;
+      }
+      from = point;
+    }
   }
 
   void update(double dt) {
@@ -242,8 +288,14 @@ class FishingRiverRound {
     clock += dt;
     hitTime = math.max(0, hitTime - dt);
     if (_route.isNotEmpty) {
-      final remaining = (destination! - boat).distance;
-      final wantedSpeed = math.min(185.0, math.sqrt(2 * 210 * remaining));
+      var remaining = 0.0;
+      var previous = boat;
+      for (final point in _route) {
+        remaining += (point - previous).distance;
+        previous = point;
+      }
+      final wantedSpeed =
+          math.min(185.0, math.sqrt(2 * 210 * remaining)) * props.dragAt(boat);
       speed += (wantedSpeed - speed) * (1 - math.exp(-7 * dt));
       var travel = speed * dt;
       while (_route.isNotEmpty && travel > 0) {
@@ -252,7 +304,7 @@ class FishingRiverRound {
         if (distance > .001) {
           heading = difference / distance;
           final step = math.min(travel, distance);
-          boat = FishingRiver.constrain(boat + heading * step);
+          boat = props.resolve(boat + heading * step);
           travel -= step;
         }
         if (distance < .001 || (boat - _route.first).distance < .01) {
@@ -267,6 +319,9 @@ class FishingRiverRound {
         speed = 0;
       }
     }
+    props.update(
+        dt, clock, boat, dt > 0 ? (boat - _lastBoat) / dt : Offset.zero);
+    _lastBoat = boat;
     wake += ((rowing ? 1 : 0) - wake) * (1 - math.exp(-4 * dt));
     final targetCamera = (boat.dx - visibleWidth * .42).clamp(0.0, maxCamera);
     cameraLeft += (targetCamera - cameraLeft) * (1 - math.exp(-5 * dt));

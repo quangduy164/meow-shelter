@@ -35,6 +35,7 @@ class MoonSystem {
   final _phantoms = <_Phantom>[];
   final _random = Random();
   final _visibleCats = <CatComponent>{};
+  final _revealedAt = <CatComponent, double>{};
 
   static const drift = .10, driftPeriod = 18.0;
   static const cloudPeriod = 13.0, cloudSeconds = 3.5, fade = .8;
@@ -80,6 +81,7 @@ class MoonSystem {
     final previousClock = _clock;
     _clock += dt;
     _visibleCats.removeWhere((cat) => !cat.isMounted || cat.isDelivered);
+    _revealedAt.removeWhere((cat, _) => !cat.isMounted || cat.isDelivered);
     for (var i = 0; i < map.moonbeams.length; i++) {
       if (_brightnessAt(i, previousClock) > .5 &&
           brightness(i) <= .5 &&
@@ -129,7 +131,11 @@ class MoonSystem {
     for (final cat in cats) {
       if (cat.catType != 'black' || !cat.isLoaded || cat.isDelivered) continue;
       if (!cat.hiddenInCover && lit(cat.center)) {
-        if (_visibleCats.add(cat) && !cat.isLit && !cat.hasEaten) {
+        if (_visibleCats.add(cat) &&
+            !cat.isLit &&
+            !cat.hasEaten &&
+            _clock - (_revealedAt[cat] ?? -99) >= 6) {
+          _revealedAt[cat] = _clock;
           GameAudio.instance.playRescue(GameSound.moonReveal);
         }
       } else {

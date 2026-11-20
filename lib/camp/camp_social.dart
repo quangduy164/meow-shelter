@@ -222,7 +222,7 @@ class CampSocial {
     calico.approach(_besideX(calico, sleeper, .07), sleeper.y, speed: .05,
         onArrive: () {
       calico.react(CampAct.dash, faceX: sleeper.x);
-      _sound(GameSound.yarnBounce);
+      _sound(GameSound.campDrop);
       _later.add((
         CampAct.dash.length * .5,
         () {

@@ -163,10 +163,25 @@
     screen/world transforms share the camera, which follows smoothly and clamps
     to all four world edges. The viewport stays 600 world units high, so the
     taller world scrolls vertically instead of shrinking the boat and artwork.
-    Resizing preserves boat position and its destination.
+    Resizing preserves boat position and its destination. New trips start
+    moored beside the first near-bank dock (`startDockX`), with no auto-rowing.
   - `ui/widgets/fishing_river_art.dart`: detailed village/flower banks blend into
     bamboo/rock and rice-field banks; props use seeded world coordinates.
     `fishing_coast_art.dart` adds the estuary/beach, palms, lighthouse and islands.
+    `fishing_river_details.dart` caches mossy rocks and submerged coral. Visible
+    lotus pads, vegetable rafts and driftwood bob/rotate on the animated surface;
+    duck families and fish schools flee the boat, while gulls fly overhead.
+    `river_props.dart` owns one seeded layout for artwork, solid rock clearance,
+    buoyant spring/damped props, contact ripples and wildlife avoidance. Floating
+    props yield to the hull and slow it gently, without damaging the boat.
+    `river_navigation.dart` runs A* only when a click's lane route crosses rocks;
+    exact segment/circle checks and sampled bank edges keep detours navigable.
+    Clicking a rock resolves to clear water, and fight steering slides off rocks
+    without triggering the bank-hit penalty. These objects live only in the round. Three smooth `FishingRiver.coves` extend the
+    banks into a lotus inlet, bamboo backwater and coastal lagoon. Geometry,
+    rendering, water taps, casts and lane-based routes use those same bounds.
+    Clusters leave the main channel open. Mossy water rocks are solid; coral is
+    submerged scenery. Floating props do not block click-to-row routes.
     `coastBlend` widens the shared channel into open sea from x=3360..4080.
     Chunk clips disable antialiasing so fractional camera offsets do not expose seams.
   - `fishing_river_scene.dart`: owns and disposes three cached background Pictures,

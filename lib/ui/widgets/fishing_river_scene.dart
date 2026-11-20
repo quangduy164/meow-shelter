@@ -8,6 +8,7 @@ import 'fishing_river_art.dart';
 import 'fishing_oar_art.dart';
 import 'fishing_activity_art.dart';
 import 'fishing_fight_art.dart';
+import 'fishing_river_details.dart';
 
 /// Like Adventure's cached background: only the visible stretch is replayed.
 class FishingRiverBackdrop extends StatefulWidget {
@@ -125,9 +126,17 @@ class FishingRiverSurface extends CustomPainter {
     }
     // Faint little fish and floating leaves make the long channel feel alive.
     for (var i = (left / 240).floor(); i * 240 < right; i++) {
-      final x = i * 240.0 + 80 + math.sin(round.clock * .6 + i) * 18;
-      final y = FishingRiver.center(x) +
-          math.sin(i * 4.0) * (FishingRiver.halfWidth(x) - 50);
+      var point = Offset(
+          i * 240.0 + 80 + math.sin(round.clock * .6 + i) * 18,
+          FishingRiver.center(i * 240.0 + 80) +
+              math.sin(i * 4.0) *
+                  (FishingRiver.halfWidth(i * 240.0 + 80) - 50));
+      final away = point - round.boat;
+      if (away.distance < 150 && away.distance > .01) {
+        point = FishingRiver.constrain(
+            point + away / away.distance * (150 - away.distance));
+      }
+      final x = point.dx, y = point.dy;
       canvas.drawOval(
           Rect.fromCenter(center: Offset(x, y), width: 15, height: 5),
           Paint()..color = const Color(0x44355E65));
@@ -144,6 +153,16 @@ class FishingRiverSurface extends CustomPainter {
             Paint()..color = const Color(0xCCB5C68A));
       }
     }
+    paintFloatingRiverProps(
+        canvas,
+        round,
+        Rect.fromLTWH(round.cameraLeft, round.cameraTop, round.visibleWidth,
+            round.visibleHeight));
+    paintRiverWildlife(
+        canvas,
+        round,
+        Rect.fromLTWH(round.cameraLeft, round.cameraTop, round.visibleWidth,
+            round.visibleHeight));
     final controller = fishing;
     if (controller != null) {
       if (controller.canSail) {

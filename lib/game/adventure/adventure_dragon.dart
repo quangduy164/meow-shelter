@@ -593,7 +593,7 @@ class AdventureDragon extends PositionComponent {
     tired = _followUp != null
         ? 0
         : (phase == 2 ? 2.0 : (_move == _Move.rain ? .8 : 1.5));
-    if (tired > 0) onSound(GameSound.moonReveal);
+    if (tired > 0) onSound(GameSound.rescueMilestone);
     _move = _Move.idle;
     _cooldown = _followUp != null ? .35 : .6;
   }
