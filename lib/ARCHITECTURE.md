@@ -169,6 +169,9 @@
     Chunk clips disable antialiasing so fractional camera offsets do not expose seams.
   - `fishing_river_scene.dart`: owns and disposes three cached background Pictures,
     draws only visible stretches, then animated water, boat hull and front rim.
+    `FishingScreen` first shows owned cats; selecting one starts the ticker and
+    mounts the river. Leaving this picker returns home. Only owned cats appear,
+    including custom camp names; there is no cat-change button during play.
     `FishingScreen` draws the selected owned cat through `CatSprite`, handles
     water taps and pauses for dialogs/app backgrounding. Taps only choose a
     rowing destination; background fish are ambient scenery without target rings.
@@ -179,6 +182,10 @@
     the river; swipes steer, banks constrain movement and contact has a cooldown.
     `FishingPainter` receives positions through the same camera transform as
     the boat and draws the attached rod, line, float and tension gauge.
+    `fishing_oar_art.dart` shares the entry/power/recovery pose between the cat,
+    wooden paddle and water splashes. The paddle parks on the rim during fishing;
+    rod artwork uses the river's world scale, extends ahead of the cat and draws
+    forepaws to the grip. The tension gauge stays outside the cat silhouette.
   - `FishingRiver.rollFish` owns regional weights: village (perch, tilapia,
     carp, rare goldfish), bamboo (catfish, koi, very rare catMew), and sea
     (sardine, mackerel, clownfish, pufferfish), plus lost items. Pools blend across
@@ -202,6 +209,9 @@
   drag a fish (upward; sideways scrolls) onto a cat; it leaves the basket (never the journal) and adds
   `FishSpecies.affection` (2 common up to 10 legendary). Lost items are not
   food. Saves from before the basket start with everything caught so far.
+  The journal groups fish by `FishSpecies.habitat` in river/sea travel order,
+  then rarity within each group. Lost items keep their own tab. Habitat and
+  the real nocturnal bonus are shown in details; display order never rewrites saves.
 
 ## Common changes
 

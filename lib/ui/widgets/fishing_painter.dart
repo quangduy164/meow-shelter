@@ -18,6 +18,7 @@ class FishingPainter extends CustomPainter {
       this.boat = const Offset(.5, .75),
       this.pawColor = const Color(0xFFF4A34E),
       this.facingRight = false,
+      this.artScale,
       this.drift = 0,
       this.sweetCenter = .45,
       this.combo = 0});
@@ -27,6 +28,7 @@ class FishingPainter extends CustomPainter {
   final Color pawColor;
   final double clock, elapsed, progress, tension;
   final bool pulling, facingRight;
+  final double? artScale;
   final double drift, sweetCenter;
   final int combo;
 
@@ -38,8 +40,8 @@ class FishingPainter extends CustomPainter {
     if (phase == FishingPhase.casting) {
       // Bobber hangs at the tip during the wind-up, then flies on the whip.
       final t = ((elapsed - .2) / .45).clamp(0.0, 1.0);
-      bobber =
-          Offset.lerp(tip, bobber, t)! - Offset(0, math.sin(t * math.pi) * 80);
+      bobber = Offset.lerp(tip, bobber, t)! -
+          Offset(0, math.sin(t * math.pi) * 90 * (artScale ?? 1));
     } else if (phase == FishingPhase.reeling) {
       bobber += Offset(math.sin(clock * 8) * 7, math.cos(clock * 7) * 3);
     } else {
@@ -52,15 +54,33 @@ class FishingPainter extends CustomPainter {
       ..color = const Color(0xCCF4F5DB)
       ..strokeWidth = 1.4
       ..style = PaintingStyle.stroke;
-    final taut = phase == FishingPhase.reeling && progress > .78;
-    if (taut) {
-      canvas.drawLine(tip, bobber, line);
+    // Reeling in takes up all slack, regardless of the tension gauge value.
+    final scale = artScale ?? 1.0;
+    final end = bobber - const Offset(0, 7);
+    final span = end - tip;
+    final load = phase == FishingPhase.reeling
+        ? tension
+        : phase == FishingPhase.bite
+            ? .45
+            : 0.0;
+    final slack = (1 - load.clamp(0.0, 1.0));
+    final sag = math.min(40 * scale, span.distance * .28) * slack + 2 * scale;
+    final breeze = math.sin(clock * 1.5) *
+        math.min(3 * scale, span.dx.abs() * .04) *
+        slack;
+    if (phase == FishingPhase.reeling && pulling) {
+      canvas.drawLine(tip, end, line);
     } else {
       canvas.drawPath(
           Path()
             ..moveTo(tip.dx, tip.dy)
-            ..quadraticBezierTo((tip.dx + bobber.dx) / 2,
-                bobber.dy - (pulling ? 30 : 0), bobber.dx, bobber.dy),
+            ..cubicTo(
+                tip.dx + span.dx * .25 + breeze,
+                tip.dy + span.dy * .33 + sag,
+                tip.dx + span.dx * .72 + breeze,
+                tip.dy + span.dy * .72 + sag * .6,
+                end.dx,
+                end.dy),
           line);
     }
     final ripple = Paint()
@@ -109,27 +129,33 @@ class FishingPainter extends CustomPainter {
     Offset point(double x, double y) => Offset(x * size.width, y * size.height);
     final load = phase == FishingPhase.reeling ? tension : 0.0;
     final motion = _rodMotion();
-    final scale = math.min(size.width / 800, size.height / 327);
+    final scale = artScale ?? math.min(size.width / 800, size.height / 327);
     final side = facingRight ? 1.0 : -1.0;
-    final base = point(boat.dx, boat.dy) + Offset(side * 9, -5) * scale;
+    final reeled =
+        phase == FishingPhase.reeling ? progress.clamp(0.0, 1.0) : 0.0;
+    final body = point(boat.dx, boat.dy) +
+        Offset(0, math.sin(clock * 2.5) * 1.8) * scale;
+    final base = body + Offset(side * 34, -6) * scale;
     // Rotate the whole rod around the hand, then bend the tip.
     Offset swing(Offset p) {
       final v = p - base;
-      final c = math.cos(motion.angle), s = math.sin(motion.angle);
+      final angle = -side * motion.angle;
+      final c = math.cos(angle), s = math.sin(angle);
       return base + Offset(v.dx * c - v.dy * s, v.dx * s + v.dy * c);
     }
 
     final control =
-        swing(base + Offset(side * 24, pulling ? -49 : -44) * scale) +
-            Offset(0, motion.bend * .35 * size.height);
+        swing(base + Offset(side * 38, pulling ? -78 : -72) * scale) +
+            Offset(0, motion.bend * 70 * scale);
     final tip = swing(base +
             Offset(
-                    side * 60 + drift * load * 8,
-                    -65 +
+                    side * (103 - reeled * 65) + drift * load * 4,
+                    -91 +
+                        reeled * 40 +
                         load * 15 +
                         (pulling ? math.sin(clock * 9) * 1.5 : 0)) *
                 scale) +
-        Offset(0, motion.bend * size.height);
+        Offset(0, motion.bend * 200 * scale);
     Offset shaft(double t) =>
         base * ((1 - t) * (1 - t)) +
         control * (2 * (1 - t) * t) +
@@ -139,18 +165,50 @@ class FishingPainter extends CustomPainter {
     Offset guide(double t) {
       final direction = tangent(t);
       return shaft(t) +
-          Offset(direction.dy, -direction.dx) / direction.distance * 3.5;
+          Offset(-direction.dy, direction.dx) /
+              direction.distance *
+              (side * 5 * scale);
     }
 
     final handleAngle =
         math.atan2(control.dy - base.dy, control.dx - base.dx) + math.pi / 2;
     final reel = base +
-        Offset(-12 * math.cos(handleAngle) + 17 * math.sin(handleAngle),
-            -12 * math.sin(handleAngle) - 17 * math.cos(handleAngle));
-    final characterScale = math.min(size.width / 800, size.height / 327);
-    final grip = base + Offset.fromDirection(handleAngle - math.pi / 2, 14);
+        Offset(
+                side * 12 * math.cos(handleAngle) + 17 * math.sin(handleAngle),
+                side * 12 * math.sin(handleAngle) -
+                    17 * math.cos(handleAngle)) *
+            scale;
+    final grip =
+        base + Offset.fromDirection(handleAngle - math.pi / 2, 14 * scale);
+    final reelHand = base + (reel - base) * .55;
     if (phase == FishingPhase.reeling) {
-      _drawTensionGauge(canvas, reel + const Offset(-34, 0));
+      _drawTensionGauge(
+          canvas,
+          Offset((body.dx - side * 83 * scale).clamp(44.0, size.width - 44),
+              (body.dy - 9 * scale).clamp(82.0, size.height - 64)));
+    }
+    for (final (root, hand) in [
+      (body + Offset(side * 5, -5) * scale, reelHand),
+      (body + Offset(side * 12, -7) * scale, grip),
+    ]) {
+      final arm = Path()
+        ..moveTo(root.dx, root.dy)
+        ..quadraticBezierTo(
+            (root.dx + hand.dx) / 2, root.dy + 3 * scale, hand.dx, hand.dy);
+      canvas.drawPath(
+          arm,
+          Paint()
+            ..color = const Color(0xFF66513A)
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = 7 * scale
+            ..strokeCap = StrokeCap.round);
+      canvas.drawPath(
+          arm,
+          Paint()
+            ..color = pawColor
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = 4.8 * scale
+            ..strokeCap = StrokeCap.round);
     }
     const guides = [.30, .52, .73, .90, 1.0];
     final stroke = Paint()..strokeCap = StrokeCap.round;
@@ -161,13 +219,13 @@ class FishingPainter extends CustomPainter {
           shaft((i + 1) / 24),
           stroke
             ..color = const Color(0xFF254D49)
-            ..strokeWidth = 4.5 - t * 3);
+            ..strokeWidth = (4.5 - t * 3) * scale);
       canvas.drawLine(
           shaft(t) + const Offset(-.6, 0),
           shaft((i + 1) / 24) + const Offset(-.6, 0),
           stroke
             ..color = const Color(0xFF8FB8A2)
-            ..strokeWidth = 1.2 - t * .7);
+            ..strokeWidth = (1.2 - t * .7) * scale);
     }
     final threadedLine = Path()..moveTo(reel.dx, reel.dy);
     for (final t in guides) {
@@ -186,6 +244,7 @@ class FishingPainter extends CustomPainter {
       canvas.save();
       canvas.translate(center.dx, center.dy);
       canvas.rotate(math.atan2(direction.dy, direction.dx));
+      canvas.scale(scale);
       canvas.drawLine(
           const Offset(-2, 0),
           const Offset(2, 0),
@@ -193,7 +252,7 @@ class FishingPainter extends CustomPainter {
             ..color = const Color(0xFFD7B76C)
             ..strokeWidth = 3);
       canvas.drawOval(
-          const Rect.fromLTWH(-2, -6, 4, 5),
+          Rect.fromCenter(center: Offset(0, side * 5), width: 4, height: 5),
           Paint()
             ..color = const Color(0xFFDFE4D4)
             ..style = PaintingStyle.stroke
@@ -203,6 +262,7 @@ class FishingPainter extends CustomPainter {
     canvas.save();
     canvas.translate(base.dx, base.dy);
     canvas.rotate(handleAngle);
+    canvas.scale(scale);
     canvas.drawRRect(
         RRect.fromRectAndRadius(
             const Rect.fromLTWH(-4, -34, 8, 40), const Radius.circular(3)),
@@ -221,7 +281,7 @@ class FishingPainter extends CustomPainter {
     }
     canvas.drawRect(const Rect.fromLTWH(-4, -38, 8, 5),
         Paint()..color = const Color(0xFFDBD5BA));
-    canvas.scale(-1, 1);
+    canvas.scale(side, 1);
     canvas.drawLine(
         const Offset(3, -24),
         const Offset(11, -20),
@@ -250,8 +310,8 @@ class FishingPainter extends CustomPainter {
     canvas.drawCircle(crank, 2.5, Paint()..color = const Color(0xFF725338));
     canvas.restore();
     // The cat's paw overlaps the handle.
-    canvas.drawCircle(
-        grip, 3.2 * characterScale, Paint()..color = const Color(0xFFF2BE91));
+    canvas.drawCircle(grip, 3.5 * scale, Paint()..color = pawColor);
+    canvas.drawCircle(reelHand, 3 * scale, Paint()..color = pawColor);
     return guide(1);
   }
 

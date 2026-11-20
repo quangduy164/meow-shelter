@@ -85,6 +85,8 @@ class FishingController extends ChangeNotifier {
   FishSpecies get fish => _fish;
   FishingPhase _phase = FishingPhase.ready;
   Offset _spot = const Offset(.5, .66);
+  Offset _castOffset = const Offset(280, -25);
+  double _hookProgress = .16;
   double _clock = 0, _elapsed = 0, _wait = 0;
   double _tension = .32, _progress = .12, _fight = 0;
   double _drift = 0;
@@ -96,10 +98,17 @@ class FishingController extends ChangeNotifier {
   String? _error;
 
   FishingPhase get phase => _phase;
-  Offset get spot => _phase == FishingPhase.reeling
-      ? FishingRiver.constrain(
-          river.boat + river.heading * (150 * (1 - _progress) + 45))
-      : _spot;
+  Offset get spot {
+    if (_phase != FishingPhase.reeling) return _spot;
+    final reeled =
+        ((_progress - _hookProgress) / (1 - _hookProgress)).clamp(0.0, 1.0);
+    final startDistance = _castOffset.distance;
+    final distance = startDistance + (95 - startDistance) * reeled;
+    // Steering changes boat motion, never teleports the fish behind the cat.
+    return FishingRiver.constrain(
+        river.boat + _castOffset / startDistance * distance);
+  }
+
   double get drift => _drift;
   double get sweetCenter => _sweetCenter;
   static const sweetWidth = .16;
@@ -260,6 +269,7 @@ class FishingController extends ChangeNotifier {
   }
 
   void _lose(String message, {bool snapped = false}) {
+    _spot = spot;
     _error = message;
     _setPhase(FishingPhase.lost);
     GameAudio.instance
@@ -272,10 +282,11 @@ class FishingController extends ChangeNotifier {
     final location = river.boat;
     final direction = river.heading.dx >= 0 ? 1.0 : -1.0;
     river.stop();
-    _spot = FishingRiver.constrain(location + Offset(direction * 140, -25));
-    if ((_spot - location).distance < 80) {
-      _spot = FishingRiver.constrain(location + Offset(-direction * 140, -25));
+    _spot = FishingRiver.constrain(location + Offset(direction * 280, -25));
+    if ((_spot - location).distance < 200) {
+      _spot = FishingRiver.constrain(location + Offset(-direction * 280, -25));
     }
+    _castOffset = _spot - location;
     // The boat's casting location owns the pool, even if the float lands
     // across a regional boundary or the fish later pulls the boat elsewhere.
     _fish = beginner
@@ -305,6 +316,7 @@ class FishingController extends ChangeNotifier {
     if (_phase == FishingPhase.bite) {
       _tension = .32;
       _progress = beginner ? .25 : .16;
+      _hookProgress = _progress;
       river.beginFight(_spot);
       _setPhase(FishingPhase.reeling);
       _vibrate(HapticFeedback.mediumImpact);

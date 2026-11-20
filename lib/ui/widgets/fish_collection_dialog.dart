@@ -257,20 +257,10 @@ class _RarityTag extends StatelessWidget {
   }
 }
 
-/// When a species bites most, matching the lake's time-of-day weights.
-(IconData, String) _biteTime(FishSpecies fish) => switch (fish) {
-      FishSpecies.perch || FishSpecies.tilapia => (
-          Icons.wb_sunny_rounded,
-          'Ban ngày'
-        ),
-      FishSpecies.carp => (Icons.wb_twilight_rounded, 'Sáng sớm'),
-      FishSpecies.koi => (Icons.wb_twilight_rounded, 'Sáng sớm, ban đêm'),
-      FishSpecies.catfish || FishSpecies.goldfish || FishSpecies.catMew => (
-          Icons.bedtime_rounded,
-          'Ban đêm'
-        ),
-      _ => (Icons.schedule_rounded, 'Lúc nào cũng có'),
-    };
+/// Only catfish and koi receive the river's night-time weight bonus.
+(IconData, String) _biteTime(FishSpecies fish) => fish.nightActive
+    ? (Icons.bedtime_rounded, 'Ban đêm nhiều hơn')
+    : (Icons.schedule_rounded, 'Cả ngày lẫn đêm');
 
 class _FishCollectionDialogState extends State<FishCollectionDialog> {
   bool _junkTab = false;
@@ -278,9 +268,40 @@ class _FishCollectionDialogState extends State<FishCollectionDialog> {
       (fish) => widget.collection.countOf(fish) > 0,
       orElse: () => _entries.first);
 
-  List<FishSpecies> _of(bool junk) => FishSpecies.values
-      .where((fish) => fish.isJunk == junk)
-      .toList(growable: false);
+  List<FishSpecies> _of(bool junk) {
+    final entries =
+        FishSpecies.values.where((fish) => fish.isJunk == junk).toList();
+    if (!junk) {
+      entries.sort((a, b) {
+        final region = FishSpecies.habitats
+            .indexOf(a.habitat)
+            .compareTo(FishSpecies.habitats.indexOf(b.habitat));
+        if (region != 0) return region;
+        final rarity = _rarityLevel(a).compareTo(_rarityLevel(b));
+        return rarity != 0 ? rarity : a.index.compareTo(b.index);
+      });
+    }
+    return entries;
+  }
+
+  Widget _grid(List<FishSpecies> fish) => SliverPadding(
+        padding: const EdgeInsets.only(bottom: DS.spaceSm),
+        sliver: SliverGrid(
+          gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+              maxCrossAxisExtent: 132,
+              mainAxisExtent: 114,
+              crossAxisSpacing: DS.spaceSm,
+              mainAxisSpacing: DS.spaceSm),
+          delegate: SliverChildBuilderDelegate((context, index) {
+            final entry = fish[index];
+            return _FishTile(
+                fish: entry,
+                count: widget.collection.countOf(entry),
+                selected: entry == _selected,
+                onTap: () => setState(() => _selected = entry));
+          }, childCount: fish.length),
+        ),
+      );
 
   List<FishSpecies> get _entries => _of(_junkTab);
 
@@ -340,22 +361,33 @@ class _FishCollectionDialogState extends State<FishCollectionDialog> {
             child:
                 Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
               Expanded(
-                child: GridView.builder(
-                  padding: const EdgeInsets.only(bottom: DS.spaceXs),
-                  gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-                      maxCrossAxisExtent: 132,
-                      mainAxisExtent: 114,
-                      crossAxisSpacing: DS.spaceSm,
-                      mainAxisSpacing: DS.spaceSm),
-                  itemCount: _entries.length,
-                  itemBuilder: (context, index) {
-                    final fish = _entries[index];
-                    return _FishTile(
-                        fish: fish,
-                        count: widget.collection.countOf(fish),
-                        selected: fish == _selected,
-                        onTap: () => setState(() => _selected = fish));
-                  },
+                child: CustomScrollView(
+                  key: ValueKey(_junkTab),
+                  slivers: [
+                    if (_junkTab)
+                      _grid(_entries)
+                    else
+                      for (final region in FishSpecies.habitats) ...[
+                        SliverToBoxAdapter(
+                            child: Padding(
+                          padding: const EdgeInsets.only(
+                              top: DS.spaceXs, bottom: DS.spaceSm),
+                          child: Row(children: [
+                            const Icon(Icons.place_rounded,
+                                size: 15, color: DS.goldEdge),
+                            const SizedBox(width: DS.spaceXs),
+                            Text(region,
+                                style: const TextStyle(
+                                    color: DS.ink,
+                                    fontSize: DS.fontBody,
+                                    fontWeight: FontWeight.w900)),
+                          ]),
+                        )),
+                        _grid(_entries
+                            .where((fish) => fish.habitat == region)
+                            .toList()),
+                      ],
+                  ],
                 ),
               ),
               const SizedBox(width: DS.spaceMd),
@@ -535,10 +567,10 @@ class _DetailPanel extends StatelessWidget {
         FishSpecies.perch => 'Nhanh nhẹn, hay giật dây liên tục.',
         FishSpecies.tilapia => 'Hiền lành, hợp với người mới câu.',
         FishSpecies.carp => 'Khoẻ và lì, kéo chậm nhưng mạnh.',
-        FishSpecies.catfish => 'Nặng nhất hồ, giữ dây thật chắc.',
+        FishSpecies.catfish => 'Ở khúc sông tre, hay lặn sâu rồi giật mạnh.',
         FishSpecies.koi => 'Vảy óng ánh, ít khi cắn câu.',
         FishSpecies.goldfish => 'Nhỏ xíu mà lượn rất nhanh.',
-        FishSpecies.catMew => 'Truyền thuyết của hồ, chưa ai thấy rõ.',
+        FishSpecies.catMew => 'Bé huyền thoại ẩn trong khúc sông tre.',
         FishSpecies.sardine => 'Cá biển nhỏ, đi theo đàn và khá dễ câu.',
         FishSpecies.mackerel => 'Ở cửa biển, lao thẳng rồi bất ngờ giật mạnh.',
         FishSpecies.clownfish => 'Áo sọc cam trắng, lượn zíc zắc ở biển.',
@@ -641,6 +673,11 @@ class _DetailPanel extends StatelessWidget {
             ]),
             const SizedBox(height: DS.spaceSm),
             _InfoRow(
+                icon: Icons.place_rounded,
+                label: 'Khu vực',
+                value: fish.habitat),
+            const SizedBox(height: DS.spaceXs),
+            _InfoRow(
                 icon: timeIcon,
                 label: fish.isJunk ? 'Hay gặp' : 'Hay cắn',
                 value: timeText),
@@ -655,7 +692,7 @@ class _DetailPanel extends StatelessWidget {
                   value: locked ? 0 : fish.movementSpeed / 1.7),
             ],
             const SizedBox(height: DS.spaceSm),
-            Text(locked ? 'Chưa câu được. Thử câu vào lúc trên nhé!' : _note,
+            Text(locked ? 'Chưa câu được. Ghé khu vực này để tìm nhé!' : _note,
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
                 style: const TextStyle(

@@ -73,6 +73,20 @@ enum FishSpecies {
       this == clownfish ||
       this == pufferfish;
 
+  static const habitats = [
+    'Làng ven sông',
+    'Khúc sông tre',
+    'Cửa biển nắng vàng'
+  ];
+
+  String get habitat => switch (this) {
+        perch || tilapia || carp || goldfish => habitats[0],
+        catfish || koi || catMew || oldBoot => habitats[1],
+        sardine || mackerel || clownfish || pufferfish => habitats[2],
+        flipFlop => 'Làng ven sông / Biển',
+        tinCan => 'Cả ba vùng',
+      };
+
   bool get nightActive => this == catfish || this == koi;
 
   /// Affection a camp cat gains from eating one; rarer fish mean more.

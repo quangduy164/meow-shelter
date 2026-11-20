@@ -6,6 +6,7 @@ import '../../fishing/fishing_river.dart';
 import '../../fishing/fishing_controller.dart';
 import '../../collection/fish_species.dart';
 import 'fishing_river_art.dart';
+import 'fishing_oar_art.dart';
 
 /// Like Adventure's cached background: only the visible stretch is replayed.
 class FishingRiverBackdrop extends StatefulWidget {
@@ -184,9 +185,13 @@ class FishingRiverSurface extends CustomPainter {
 }
 
 class FishingRiverBoatPainter extends CustomPainter {
-  FishingRiverBoatPainter(this.round, {this.front = false});
+  FishingRiverBoatPainter(this.round,
+      {this.front = false,
+      this.fishing = false,
+      this.pawColor = const Color(0xFFF4A34E)});
   final FishingRiverRound round;
-  final bool front;
+  final bool front, fishing;
+  final Color pawColor;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -197,7 +202,11 @@ class FishingRiverBoatPainter extends CustomPainter {
     canvas.scale(round.scale);
     final p = Paint();
     const rim = Rect.fromLTWH(-52, -21, 104, 48);
+    final rowing = round.moving && !fishing;
+    final oar = FishingOarPose(round.clock,
+        moving: rowing, facingRight: round.heading.dx >= 0);
     if (!front) {
+      if (rowing) paintFishingOarWater(canvas, oar, round.clock);
       if (round.wake > .02) {
         for (var i = 0; i < 3; i++) {
           final t = (round.clock * 1.5 + i / 3) % 1;
@@ -254,6 +263,7 @@ class FishingRiverBoatPainter extends CustomPainter {
             ..color = const Color(0xFFF0D49B)
             ..style = PaintingStyle.stroke
             ..strokeWidth = 2);
+      if (!rowing) paintFishingOar(canvas, oar);
     } else {
       canvas.drawArc(
           rim,
@@ -274,23 +284,28 @@ class FishingRiverBoatPainter extends CustomPainter {
               ..color = const Color(0xFF997344)
               ..strokeWidth = 1.3);
       }
-      final swing = round.rowing ? math.sin(round.clock * 7) : .2;
-      final tip = Offset(70 + swing * 8, 23 + swing * 12);
-      canvas.drawLine(
-          const Offset(7, -7),
-          tip,
-          Paint()
-            ..color = const Color(0xFF805C3D)
-            ..strokeWidth = 4
-            ..strokeCap = StrokeCap.round);
-      canvas.drawOval(Rect.fromCenter(center: tip, width: 25, height: 12),
-          p..color = const Color(0xFFD2AA6C));
-      canvas.drawLine(
-          tip - const Offset(9, 0),
-          tip + const Offset(9, 0),
-          Paint()
-            ..color = const Color(0xFFAE824F)
-            ..strokeWidth = 1.5);
+      if (rowing) {
+        paintFishingOar(canvas, oar);
+        final side = round.heading.dx >= 0 ? 1.0 : -1.0;
+        final arm = Path()
+          ..moveTo(side * 6, 7)
+          ..quadraticBezierTo(side * 15, 10, oar.hand.dx, oar.hand.dy);
+        canvas.drawPath(
+            arm,
+            Paint()
+              ..color = const Color(0xFF66513A)
+              ..style = PaintingStyle.stroke
+              ..strokeWidth = 7
+              ..strokeCap = StrokeCap.round);
+        canvas.drawPath(
+            arm,
+            Paint()
+              ..color = pawColor
+              ..style = PaintingStyle.stroke
+              ..strokeWidth = 5
+              ..strokeCap = StrokeCap.round);
+        canvas.drawCircle(oar.hand, 4, Paint()..color = pawColor);
+      }
       canvas.drawRRect(
           RRect.fromRectAndRadius(
               const Rect.fromLTWH(-42, 1, 23, 20), const Radius.circular(4)),
