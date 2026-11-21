@@ -27,6 +27,54 @@ class FishingFishArt extends CustomPainter {
   static const _ink = Color(0xFF34504A);
 
   _Look get _look => switch (fish) {
+        FishSpecies.goby => const _Look(
+            top: Color(0xFF9B8256),
+            belly: Color(0xFFE2D4A4),
+            fin: Color(0xFFB59C71),
+            height: 11,
+            nose: -40,
+            tailBase: 30,
+            tailSize: 12),
+        FishSpecies.mudskipper => const _Look(
+            top: Color(0xFF7D8C67),
+            belly: Color(0xFFDED9A9),
+            fin: Color(0xFF8FAE9D),
+            height: 10,
+            nose: -40,
+            tailBase: 30,
+            tailSize: 13),
+        FishSpecies.grouper => const _Look(
+            top: Color(0xFF92766B),
+            belly: Color(0xFFE0C7A0),
+            fin: Color(0xFF886451),
+            height: 24,
+            nose: -40,
+            tailBase: 22,
+            tailSize: 15),
+        FishSpecies.butterflyfish => const _Look(
+            top: Color(0xFFECC451),
+            belly: Color(0xFFFFEEA1),
+            fin: Color(0xFFD59F3C),
+            height: 25,
+            nose: -31,
+            tailBase: 16,
+            tailSize: 13),
+        FishSpecies.cavefish => const _Look(
+            top: Color(0xFFD6B7BE),
+            belly: Color(0xFFFFE8DD),
+            fin: Color(0xFFD4C7D1),
+            height: 10,
+            nose: -39,
+            tailBase: 29,
+            tailSize: 14),
+        FishSpecies.lanternfish => const _Look(
+            top: Color(0xFF426381),
+            belly: Color(0xFF7DAEB8),
+            fin: Color(0xFF587E96),
+            height: 13,
+            nose: -39,
+            tailBase: 28,
+            tailSize: 15),
         FishSpecies.perch => const _Look(
             top: Color(0xFF5E8A3A),
             belly: Color(0xFFE7E9A8),
@@ -216,7 +264,19 @@ class FishingFishArt extends CustomPainter {
       ..close();
     canvas.drawPath(pectoral, finPaint);
     canvas.drawPath(pectoral, outline..strokeWidth = 1.5);
-    _face(canvas, n, h, outline);
+    if (fish == FishSpecies.mudskipper) {
+      for (final x in [n + 10, n + 21]) {
+        canvas.drawCircle(Offset(x, -h - 3), 5.5, Paint()..color = look.top);
+        canvas.drawCircle(
+            Offset(x, -h - 4), 4, Paint()..color = const Color(0xFFEDE8C6));
+        canvas.drawCircle(Offset(x - 1, -h - 4), 2.2, Paint()..color = _ink);
+      }
+    } else if (fish != FishSpecies.cavefish) {
+      _face(canvas, n, h, outline);
+    } else {
+      canvas.drawArc(Rect.fromLTWH(n + 2, 1, 9, 6), 0, math.pi, false,
+          outline..strokeWidth = 1);
+    }
     if (fish == FishSpecies.goldfish) _crown(canvas, n, h, outline);
     canvas.restore();
   }
@@ -280,6 +340,58 @@ class FishingFishArt extends CustomPainter {
 
   void _pattern(Canvas canvas, double n, double h, double tb) {
     switch (fish) {
+      case FishSpecies.goby:
+      case FishSpecies.grouper:
+        for (var row = -1; row <= 1; row++) {
+          for (var col = 0; col < 6; col++) {
+            canvas.drawOval(
+                Rect.fromCenter(
+                    center: Offset(n + 18 + col * 8.0 + row * 3, row * h * .5),
+                    width: fish == FishSpecies.grouper ? 5 : 3,
+                    height: fish == FishSpecies.grouper ? 4 : 2.5),
+                Paint()..color = const Color(0x995B5945));
+          }
+        }
+      case FishSpecies.mudskipper:
+        for (var i = 0; i < 7; i++) {
+          canvas.drawCircle(Offset(n + 24 + i * 7.0, -2 + (i % 2) * 5), 2,
+              Paint()..color = const Color(0xFF95B9AC));
+        }
+      case FishSpecies.butterflyfish:
+        for (var i = 0; i < 5; i++) {
+          canvas.drawLine(
+              Offset(n + 10 + i * 9.0, -h),
+              Offset(n + 21 + i * 9.0, h),
+              Paint()
+                ..color = const Color(0x99FAF2C8)
+                ..strokeWidth = 4);
+        }
+        canvas.drawLine(
+            Offset(n + 9, -h),
+            Offset(n + 14, h),
+            Paint()
+              ..color = const Color(0xFF5B6052)
+              ..strokeWidth = 5);
+        canvas.drawCircle(
+            Offset(tb - 10, -4), 6, Paint()..color = const Color(0xFFFFEFBB));
+        canvas.drawCircle(
+            Offset(tb - 10, -4), 4, Paint()..color = const Color(0xFF586354));
+      case FishSpecies.cavefish:
+        canvas.drawLine(
+            Offset(n + 12, 0),
+            Offset(tb - 6, 0),
+            Paint()
+              ..color = const Color(0x66F6EBEB)
+              ..strokeWidth = 3);
+        canvas.drawOval(Rect.fromLTWH(n + 24, -2, 8, 5),
+            Paint()..color = const Color(0x55C892A2));
+      case FishSpecies.lanternfish:
+        for (var i = 0; i < 7; i++) {
+          final p = Offset(n + 15 + i * 7.0, h * .5);
+          canvas.drawCircle(p, 3.8, Paint()..color = const Color(0x448EE8D6));
+          canvas.drawCircle(p, 1.9, Paint()..color = const Color(0xFFB5F6D7));
+        }
+
       case FishSpecies.sardine:
         canvas.drawLine(
             Offset(n + 15, 1),

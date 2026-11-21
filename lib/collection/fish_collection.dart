@@ -71,6 +71,19 @@ class FishCollection {
     return true;
   }
 
+  /// Gifts (not catches): fish go into the basket without touching the
+  /// journal. False if the save failed; nothing changes then.
+  Future<bool> addToBasket(List<FishSpecies> fish) async {
+    final next = {..._basket};
+    for (final f in fish) {
+      if (!f.isJunk) next[f.name] = (next[f.name] ?? 0) + 1;
+    }
+    if (!await preferences.setString(_basketKey, jsonEncode(next))) {
+      return false;
+    }
+    _basket = next;
+    return true;
+  }
   static late FishCollection instance;
   int get count => FishSpecies.values
       .where((fish) => !fish.isJunk && fish != FishSpecies.catMew)

@@ -16,6 +16,15 @@ class FishingFight {
   double get reelBonus => move == FishFightMove.rest ? 1.4 : 1;
 
   static FishingFight at(FishSpecies fish, double elapsed) {
+    fish = switch (fish) {
+      FishSpecies.goby => FishSpecies.perch,
+      FishSpecies.mudskipper => FishSpecies.goldfish,
+      FishSpecies.grouper => FishSpecies.carp,
+      FishSpecies.butterflyfish => FishSpecies.clownfish,
+      FishSpecies.cavefish => FishSpecies.catfish,
+      FishSpecies.lanternfish => FishSpecies.koi,
+      _ => fish,
+    };
     switch (fish) {
       case FishSpecies.catfish:
         final t = elapsed % 4.8;

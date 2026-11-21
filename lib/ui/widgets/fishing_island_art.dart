@@ -33,6 +33,34 @@ class FishingIslandPainter extends CustomPainter {
     final island = round.island;
     final visible = Rect.fromLTWH(round.cameraLeft, round.cameraTop,
         round.visibleWidth, round.visibleHeight);
+    if (island.onBank && (island.ashore || island.dockRequested)) {
+      c.save();
+      c.clipRect(Offset.zero & size);
+      c.scale(round.scale);
+      c.translate(-round.cameraLeft, -round.cameraTop);
+      final point = island.visitLanding;
+      c.drawOval(
+          Rect.fromCenter(center: point, width: 38, height: 20),
+          Paint()
+            ..color = const Color(0x99FFF1B8)
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = 2);
+      final post = point + const Offset(24, -6);
+      c.drawLine(
+          post,
+          post - const Offset(0, 30),
+          Paint()
+            ..color = const Color(0xFF8D704A)
+            ..strokeWidth = 4);
+      c.drawPath(
+          Path()
+            ..moveTo(post.dx, post.dy - 30)
+            ..lineTo(post.dx + 19, post.dy - 23)
+            ..lineTo(post.dx, post.dy - 17)
+            ..close(),
+          Paint()..color = const Color(0xFFE4AE61));
+      c.restore();
+    }
     if (!visible
         .inflate(fishingSeaIsland.radius + 80)
         .contains(fishingSeaIsland.center)) {

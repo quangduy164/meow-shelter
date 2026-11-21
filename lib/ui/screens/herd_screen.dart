@@ -26,7 +26,9 @@ class _HerdScreenState extends State<HerdScreen> with WidgetsBindingObserver {
         needsTutorial: !CampState.instance.herdTutorialDone,
         onTutorialCompleted: CampState.instance.completeHerdTutorial,
         introSeen: CampState.instance.herdIntroSeen,
-        onIntroSeen: CampState.instance.markHerdIntroSeen);
+        onIntroSeen: CampState.instance.markHerdIntroSeen,
+        onMapWon: (map) =>
+            CampState.instance.markHerdMapCleared(map.kind.name));
     WidgetsBinding.instance.addObserver(this);
   }
 
@@ -49,6 +51,13 @@ class _HerdScreenState extends State<HerdScreen> with WidgetsBindingObserver {
     return _scaffold();
   }
 
+  /// First region is open; each next one needs the previous region cleared.
+  bool _unlocked(HerdMap map) {
+    final i = HerdMap.all.indexOf(map);
+    return i <= 0 ||
+        CampState.instance.herdMapCleared(HerdMap.all[i - 1].kind.name);
+  }
+
   Widget _scaffold() => Scaffold(
       body: GameLoadingCurtain(
           game: _game,
@@ -68,6 +77,7 @@ class _HerdScreenState extends State<HerdScreen> with WidgetsBindingObserver {
                   ),
               'maps': (context, game) => HerdMapSelect(
                   onPlay: game.chooseMap,
+                  isUnlocked: _unlocked,
                   onHome: () => Navigator.pop(context),
                   onTutorial: () => game.chooseMap(HerdMap.tutorial)),
               'traits': (context, game) =>

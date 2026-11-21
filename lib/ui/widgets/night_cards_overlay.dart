@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:material_ui/material_ui.dart';
 import '../../audio/game_audio.dart';
 import '../../game/night_shift/night_game.dart';
@@ -8,9 +9,35 @@ import 'night_card_icons.dart';
 import 'silver_token_icon.dart';
 
 /// Compact three-choice draft; long-press reveals the complete combo text.
-class NightCardsOverlay extends StatelessWidget {
+class NightCardsOverlay extends StatefulWidget {
   const NightCardsOverlay({super.key, required this.game});
   final NightGame game;
+
+  @override
+  State<NightCardsOverlay> createState() => _NightCardsOverlayState();
+}
+
+class _NightCardsOverlayState extends State<NightCardsOverlay> {
+  Timer? _unlockTimer;
+  bool _canChoose = false;
+  NightGame get game => widget.game;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _unlockTimer = Timer(const Duration(seconds: 2), () {
+        if (mounted) setState(() => _canChoose = true);
+      });
+    });
+  }
+
+  @override
+  void dispose() {
+    _unlockTimer?.cancel();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -66,7 +93,8 @@ class NightCardsOverlay extends StatelessWidget {
                             child: Text('Đã nâng tối đa mọi thẻ.',
                                 style: TextStyle(color: DS.cream))),
                         ElevatedButton.icon(
-                            onPressed: game.continueWithoutCard,
+                            onPressed:
+                                _canChoose ? game.continueWithoutCard : null,
                             icon: const Icon(Icons.arrow_forward_rounded),
                             label: const Text('TIẾP TỤC')),
                       ] else
@@ -77,9 +105,12 @@ class NightCardsOverlay extends StatelessWidget {
                             ]),
                       const SizedBox(height: 9),
                       Row(children: [
-                        const Expanded(
-                            child: Text('Chọn 1 thẻ · Giữ thẻ để xem chi tiết',
-                                style: TextStyle(
+                        Expanded(
+                            child: Text(
+                                _canChoose
+                                    ? 'Chọn 1 thẻ · Giữ thẻ để xem chi tiết'
+                                    : 'Xem thẻ trước · Mở chọn sau 2 giây',
+                                style: const TextStyle(
                                     color: DS.cream,
                                     fontSize: DS.fontCaption))),
                         if (taken.isNotEmpty)
@@ -126,10 +157,12 @@ class NightCardsOverlay extends StatelessWidget {
         message: details,
         child: InkWell(
           borderRadius: BorderRadius.circular(DS.radiusMd),
-          onTap: () {
-            GameAudio.instance.play(GameSound.click);
-            game.chooseCard(card);
-          },
+          onTap: _canChoose
+              ? () {
+                  GameAudio.instance.play(GameSound.click);
+                  game.chooseCard(card);
+                }
+              : null,
           child: Container(
             width: 180,
             height: 230,

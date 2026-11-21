@@ -18,7 +18,14 @@ enum FishSpecies {
   pufferfish('Cá nóc', 0, 'Cực hiếm'),
   flipFlop('Dép tông', 8, 'Đồ thất lạc', isJunk: true),
   oldBoot('Ủng cũ', 5, 'Đồ thất lạc', isJunk: true),
-  tinCan('Lon rỗng', 3, 'Đồ thất lạc', isJunk: true);
+  tinCan('Lon rỗng', 3, 'Đồ thất lạc', isJunk: true),
+  // Append species to preserve existing save names and enum indices.
+  goby('Cá bống', 0, 'Phổ biến'),
+  mudskipper('Cá thòi lòi', 0, 'Hiếm'),
+  grouper('Cá mú', 0, 'Hiếm'),
+  butterflyfish('Cá bướm', 0, 'Quý'),
+  cavefish('Cá hang mù', 0, 'Hiếm'),
+  lanternfish('Cá đèn lồng', 0, 'Cực hiếm');
 
   const FishSpecies(this.label, this.weight, this.rarity,
       {this.isJunk = false});
@@ -27,6 +34,12 @@ enum FishSpecies {
   final bool isJunk;
 
   (int, int) get weightRange => switch (this) {
+        goby => (30, 700),
+        mudskipper => (40, 450),
+        grouper => (600, 18000),
+        butterflyfish => (20, 350),
+        cavefish => (15, 300),
+        lanternfish => (80, 1500),
         perch => (80, 1200),
         tilapia => (150, 3500),
         carp => (400, 10000),
@@ -59,6 +72,12 @@ enum FishSpecies {
   /// Line strain per pull, ordered by rarity: common fish are gentle, rare
   /// ones fight harder. Each species keeps its own rhythm in the controller.
   double get pullStrength => switch (this) {
+        goby => .65,
+        mudskipper => .95,
+        grouper => 1.04,
+        butterflyfish => 1.22,
+        cavefish => 1.0,
+        lanternfish => 1.45,
         perch => .64,
         sardine => .66,
         mackerel => 1.02,
@@ -74,6 +93,12 @@ enum FishSpecies {
       };
 
   double get movementSpeed => switch (this) {
+        goby => .8,
+        mudskipper => 1.5,
+        grouper => .55,
+        butterflyfish => 1.3,
+        cavefish => .7,
+        lanternfish => 1.15,
         perch => 1.35,
         sardine => 1.25,
         mackerel => 1.4,
@@ -89,6 +114,12 @@ enum FishSpecies {
       };
 
   double get movementAmplitude => switch (this) {
+        goby => .65,
+        mudskipper => 1.2,
+        grouper => .55,
+        butterflyfish => 1.1,
+        cavefish => .6,
+        lanternfish => .85,
         perch => 1.25,
         sardine => .85,
         mackerel => 1.1,
@@ -107,31 +138,40 @@ enum FishSpecies {
       this == sardine ||
       this == mackerel ||
       this == clownfish ||
-      this == pufferfish;
+      this == pufferfish ||
+      this == grouper ||
+      this == butterflyfish ||
+      this == lanternfish;
 
   static const habitats = [
     'Làng ven sông',
     'Khúc sông tre',
-    'Cửa biển nắng vàng'
+    'Rừng ngập mặn',
+    'Cửa biển nắng vàng',
+    'Vịnh đá bạc',
+    'Hang biển ánh ngọc'
   ];
 
   String get habitat => switch (this) {
         perch || tilapia || carp || goldfish => habitats[0],
         catfish || koi || catMew || oldBoot => habitats[1],
-        sardine || mackerel || clownfish || pufferfish => habitats[2],
+        sardine || mackerel || clownfish || pufferfish => habitats[3],
+        goby || mudskipper => habitats[2],
+        grouper || butterflyfish => habitats[4],
+        cavefish || lanternfish => habitats[5],
         flipFlop => 'Làng ven sông / Biển',
-        tinCan => 'Cả ba vùng',
+        tinCan => 'Mọi vùng nước',
       };
 
-  bool get nightActive => this == catfish || this == koi;
+  bool get nightActive => this == catfish || this == koi || this == lanternfish;
 
   /// Affection a camp cat gains from eating one; rarer fish mean more.
   /// Lost items are not food.
   int get affection => switch (this) {
-        perch || tilapia || carp || sardine => 2,
-        catfish || mackerel => 3,
-        koi || clownfish => 4,
-        goldfish || pufferfish => 6,
+        perch || tilapia || carp || sardine || goby => 2,
+        catfish || mackerel || mudskipper || grouper || cavefish => 3,
+        koi || clownfish || butterflyfish => 4,
+        goldfish || pufferfish || lanternfish => 6,
         catMew => 10,
         flipFlop || oldBoot || tinCan => 0,
       };

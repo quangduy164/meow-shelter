@@ -5,6 +5,7 @@ import 'package:flutter/scheduler.dart';
 import '../../camp/camp_state.dart';
 import '../../fishing/fishing_river.dart';
 import '../../fishing/fishing_controller.dart';
+import '../../fishing/fishing_island.dart';
 import '../widgets/fishing_controls.dart';
 import '../widgets/fishing_painter.dart';
 import '../widgets/fishing_distance.dart';
@@ -18,6 +19,11 @@ import '../widgets/fish_collection_dialog.dart';
 import '../widgets/fishing_action_button.dart';
 import '../widgets/fishing_river_scene.dart';
 import '../widgets/fishing_island_art.dart';
+import '../widgets/fishing_scenery.dart';
+import '../widgets/fishing_cabin_art.dart';
+import '../widgets/fishing_minimap.dart';
+import '../../fishing/fishing_trip.dart';
+import '../widgets/fishing_rocky_bay_art.dart';
 import '../widgets/fishing_oar_art.dart';
 import '../widgets/game_glyphs.dart';
 import '../widgets/game_surfaces.dart';
@@ -40,6 +46,9 @@ class _FishingScreenState extends State<FishingScreen>
   Duration? _lastTick;
   bool _collectionOpen = false, _paused = false, _choosingCat = true;
   String _cat = 'orange';
+  String? _lastCat;
+  double _sinceSave = 0;
+  Offset _savedBoat = Offset.zero;
 
   @override
   void initState() {
@@ -48,6 +57,10 @@ class _FishingScreenState extends State<FishingScreen>
     _controller = FishingController(FishCollection.instance);
     final now = DateTime.now();
     _controller.setWorldHour(now.hour + now.minute / 60);
+    final preferences = FishCollection.instance.preferences;
+    FishingTrip.restore(preferences, _river);
+    _savedBoat = _river.boat;
+    _lastCat = FishingTrip.lastCat(preferences);
     _ticker = createTicker(_tick);
   }
 
@@ -58,11 +71,24 @@ class _FishingScreenState extends State<FishingScreen>
     _controller
         .update(math.min((timestamp - previous).inMicroseconds / 1000000, .05));
     _frames.value++;
+    _sinceSave += (timestamp - previous).inMicroseconds / 1000000;
+    if (_sinceSave > 4 &&
+        (_river.mapChanged || (_river.boat - _savedBoat).distance > 40)) {
+      _saveTrip();
+    }
+  }
+
+  void _saveTrip() {
+    if (_choosingCat) return;
+    _sinceSave = 0;
+    _savedBoat = _river.boat;
+    FishingTrip.save(FishCollection.instance.preferences, _river, _cat);
   }
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     _paused = state != AppLifecycleState.resumed;
+    if (_paused) _saveTrip();
     _controller.setPulling(false);
     _controller.stopSteering();
     _lastTick = null;
@@ -85,6 +111,7 @@ class _FishingScreenState extends State<FishingScreen>
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    _saveTrip();
     _ticker.dispose();
     _controller.dispose();
     _frames.dispose();
@@ -110,6 +137,12 @@ class _FishingScreenState extends State<FishingScreen>
                         const SizedBox(height: DS.spaceSm),
                         Text(CampState.instance.nameOf(breed.id),
                             maxLines: 1, overflow: TextOverflow.ellipsis),
+                        if (breed.id == _lastCat)
+                          const Text('Chuyến trước',
+                              style: TextStyle(
+                                  color: DS.wood,
+                                  fontSize: DS.fontCaption,
+                                  fontWeight: FontWeight.w900)),
                       ]),
                     ),
                   )),
@@ -165,15 +198,13 @@ class _FishingScreenState extends State<FishingScreen>
       );
 
   Widget _boat() {
-    final point = _river.toScreen(_river.boat);
-    final catSize = 114 * _river.scale;
+    final point = _river.toScreen(_controller.angler);
+    final catSize = (_river.island.ashore ? 84 : 114) * _river.scale;
     final phase = _controller.phase;
     final won = phase == FishingPhase.caught;
-    final fishing = _controller.active ||
-        won ||
-        (phase == FishingPhase.lost && _controller.elapsed < .6);
+    final fishing = _controller.showFishingArt;
     final facingRight = fishing
-        ? _controller.spot.dx >= _river.boat.dx
+        ? _controller.spot.dx >= _controller.angler.dx
         : _river.heading.dx >= 0;
     final oar = FishingOarPose(_river.clock,
         moving: _river.moving && !fishing, facingRight: facingRight);
@@ -190,7 +221,9 @@ class _FishingScreenState extends State<FishingScreen>
     final action = won ? 'celebrate' : 'idle';
     final frames = won ? framesCelebrate : framesIdle;
     return Stack(fit: StackFit.expand, children: [
-      CustomPaint(painter: FishingRiverBoatPainter(_river, fishing: fishing)),
+      CustomPaint(
+          painter: FishingRiverBoatPainter(_river,
+              fishing: fishing && !_river.island.ashore)),
       if (!_river.island.ashore)
         Positioned(
             left: point.dx - catSize / 2,
@@ -211,7 +244,7 @@ class _FishingScreenState extends State<FishingScreen>
       CustomPaint(
           painter: FishingRiverBoatPainter(_river,
               front: true,
-              fishing: fishing,
+              fishing: fishing && !_river.island.ashore,
               pawColor: CatBreed.of(_cat).color)),
       if (fishing)
         Builder(builder: (context) {
@@ -225,8 +258,7 @@ class _FishingScreenState extends State<FishingScreen>
             spot: Offset(spot.dx / _river.viewport.width,
                 spot.dy / _river.viewport.height),
             facingRight: facingRight,
-            artScale: _river.scale,
-            pawColor: CatBreed.of(_cat).color,
+            artScale: _river.scale * (_river.island.ashore ? .74 : 1),
             clock: _controller.clock,
             elapsed: _controller.elapsed,
             progress: _controller.progress,
@@ -261,6 +293,7 @@ class _FishingScreenState extends State<FishingScreen>
     final island = _river.island;
     if (!island.ashore) return const SizedBox.shrink();
     final point = _river.toScreen(island.cat);
+    final fishing = _controller.showFishingArt;
     final size = 84 * _river.scale;
     final action = island.walking ? 'walk' : 'idle';
     final frames = island.walking ? framesWalk : framesIdle;
@@ -283,7 +316,9 @@ class _FishingScreenState extends State<FishingScreen>
               frames: frames,
               frame:
                   (_river.clock * (island.walking ? 10 : 7)).floor() % frames,
-              flip: !island.facingRight)),
+              flip: fishing
+                  ? _controller.spot.dx < island.cat.dx
+                  : !island.facingRight)),
     ]);
   }
 
@@ -297,141 +332,177 @@ class _FishingScreenState extends State<FishingScreen>
                 final padding = MediaQuery.paddingOf(context);
                 return AnimatedBuilder(
                     animation: _frames,
-                    builder: (context, _) =>
-                        Stack(fit: StackFit.expand, children: [
-                          const ColoredBox(color: Color(0xFFA7BF78)),
-                          FishingRiverBackdrop(round: _river, frames: _frames),
-                          RepaintBoundary(
-                              child: CustomPaint(
-                                  painter: FishingRiverSurface(_river, _frames,
-                                      fishing: _controller))),
-                          RepaintBoundary(
-                              child: CustomPaint(
-                                  painter:
-                                      FishingIslandPainter(_river, _frames))),
-                          GestureDetector(
-                            behavior: HitTestBehavior.opaque,
-                            onTapUp: (event) {
-                              if (!_collectionOpen) {
-                                final now = DateTime.now();
-                                _controller
-                                    .setWorldHour(now.hour + now.minute / 60);
-                                _controller.tapRiver(event.localPosition);
-                              }
-                            },
-                            onPanUpdate: (event) => _controller.steerBoat(
-                                Offset(
-                                    event.delta.dx / 90, event.delta.dy / 70)),
-                            onPanEnd: (_) => _controller.stopSteering(),
-                            onPanCancel: _controller.stopSteering,
-                            child: IgnorePointer(
-                                child: Stack(
-                                    fit: StackFit.expand,
-                                    children: [_boat(), _islandCat()])),
-                          ),
-                          Positioned(
-                              left: padding.left + 8,
-                              top: padding.top + 8,
-                              child: RoundButton(
-                                  glyph: GameGlyph.home,
-                                  tooltip: 'Về Trang chủ',
-                                  onPressed: () => Navigator.pop(context))),
-                          Positioned(
-                            left: padding.left + 66,
-                            top: padding.top + 9,
-                            width: 230,
-                            child: IgnorePointer(
-                                child: Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 9, vertical: 6),
-                              decoration: BoxDecoration(
-                                color: const Color(0xEAFFF4DA),
-                                borderRadius:
-                                    BorderRadius.circular(DS.radiusSm),
-                                border: Border.all(color: DS.wood, width: 1.5),
-                              ),
-                              child: Column(
-                                mainAxisSize: MainAxisSize.min,
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                      _river.island.ashore
-                                          ? 'ĐẢO DỪA'
-                                          : 'KHÚC ${_river.section} · ${FishingRiver.sectionName(_river.boat.dx).toUpperCase()}',
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: const TextStyle(
-                                          color: DS.ink,
-                                          fontWeight: FontWeight.w900,
-                                          fontSize: DS.fontButton)),
-                                  if (_controller.guide.isNotEmpty) ...[
-                                    const SizedBox(height: 2),
-                                    Text(_controller.guide,
-                                        maxLines: 2,
+                    builder: (context, _) => _river.cabin.inside
+                        ? FishingCabinRoom(
+                            round: _river.cabin,
+                            cat: _cat,
+                            onExit: _river.cabin.requestExit)
+                        : Stack(fit: StackFit.expand, children: [
+                            const ColoredBox(color: Color(0xFFA7BF78)),
+                            FishingRiverBackdrop(
+                                round: _river, frames: _frames),
+                            RepaintBoundary(
+                                child: CustomPaint(
+                                    painter: FishingRiverSurface(
+                                        _river, _frames,
+                                        fishing: _controller))),
+                            RepaintBoundary(
+                                child: CustomPaint(
+                                    painter:
+                                        FishingIslandPainter(_river, _frames))),
+                            FishingCabinShip(round: _river, frames: _frames),
+                            FishingScenery(
+                                round: _river,
+                                frames: _frames,
+                                child: GestureDetector(
+                                  behavior: HitTestBehavior.opaque,
+                                  onTapUp: (event) {
+                                    if (!_collectionOpen) {
+                                      final now = DateTime.now();
+                                      _controller.setWorldHour(
+                                          now.hour + now.minute / 60);
+                                      _controller.tapRiver(event.localPosition);
+                                    }
+                                  },
+                                  onPanUpdate: (event) => _controller.steerBoat(
+                                      Offset(event.delta.dx / 90,
+                                          event.delta.dy / 70)),
+                                  onPanEnd: (_) => _controller.stopSteering(),
+                                  onPanCancel: _controller.stopSteering,
+                                  child: IgnorePointer(
+                                      child: Stack(
+                                          fit: StackFit.expand,
+                                          children: [_boat(), _islandCat()])),
+                                )),
+                            IgnorePointer(
+                                child: RepaintBoundary(
+                                    child: CustomPaint(
+                                        painter: FishingCaveLight(
+                                            _river, _frames)))),
+                            Positioned(
+                                left: padding.left + 8,
+                                top: padding.top + 8,
+                                child: RoundButton(
+                                    glyph: GameGlyph.home,
+                                    tooltip: 'Về Trang chủ',
+                                    onPressed: () => Navigator.pop(context))),
+                            Positioned(
+                              left: padding.left + 66,
+                              top: padding.top + 9,
+                              width: 230,
+                              child: IgnorePointer(
+                                  child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 9, vertical: 6),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xEAFFF4DA),
+                                  borderRadius:
+                                      BorderRadius.circular(DS.radiusSm),
+                                  border:
+                                      Border.all(color: DS.wood, width: 1.5),
+                                ),
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                        _river.island.ashore
+                                            ? (_river.island.onBank
+                                                ? 'DẠO BỜ SÔNG'
+                                                : 'ĐẢO DỪA')
+                                            : FishingRiver.sectionName(
+                                                    _controller.angler.dx,
+                                                    y: _controller.angler.dy)
+                                                .toUpperCase(),
+                                        maxLines: 1,
                                         overflow: TextOverflow.ellipsis,
                                         style: const TextStyle(
                                             color: DS.ink,
-                                            fontSize: DS.fontCaption)),
+                                            fontWeight: FontWeight.w900,
+                                            fontSize: DS.fontButton)),
+                                    if (_controller.guide.isNotEmpty) ...[
+                                      const SizedBox(height: 2),
+                                      Text(_controller.guide,
+                                          maxLines: 2,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: const TextStyle(
+                                              color: DS.ink,
+                                              fontSize: DS.fontCaption)),
+                                    ],
                                   ],
-                                ],
-                              ),
-                            )),
-                          ),
-                          Positioned(
-                              left: padding.left + 12,
-                              bottom: padding.bottom + 12,
-                              child: FishingActionButton(
-                                  tooltip: 'Bộ sưu tập cá',
-                                  onPressed: _controller.active
-                                      ? null
-                                      : _openCollection,
-                                  tool: FishingTool.basket)),
-                          if (_controller.phase == FishingPhase.reeling)
+                                ),
+                              )),
+                            ),
+                            if (_controller.phase != FishingPhase.reeling)
+                              Positioned(
+                                  left: padding.left + 8,
+                                  top: padding.top + 62,
+                                  child: IgnorePointer(
+                                      child: FishingMinimap(
+                                          round: _river, frames: _frames))),
                             Positioned(
-                                left: padding.left + 10,
-                                top: padding.top + 80,
-                                bottom: padding.bottom + 85,
-                                width: 54,
-                                child: IgnorePointer(
-                                    child: FishingDistance(
-                                        progress: _controller.progress))),
-                          if (_river.island.ashore)
-                            Positioned(
-                                right: padding.right + 12,
-                                bottom: padding.bottom + 16,
-                                child: OutlinedButton.icon(
-                                    onPressed: _river.island.returnToBoat,
-                                    icon: const GameGlyphView(GameGlyph.back,
-                                        size: 22),
-                                    label: const Text('Về thuyền'))),
-                          if (!_river.island.ashore)
-                            Positioned(
-                                right: padding.right + 8,
-                                bottom: padding.bottom + 8,
-                                width: 80,
-                                height: 80,
-                                child:
-                                    FishingControls(controller: _controller)),
-                          if (_controller.active &&
-                              _controller.phase != FishingPhase.saving)
-                            Positioned(
-                                right: padding.right + 98,
-                                bottom: padding.bottom + 26,
-                                child: RoundButton(
-                                    glyph: GameGlyph.close,
-                                    size: 36,
-                                    tooltip: 'Cất cần để chèo tiếp',
-                                    onPressed: _controller.cancelCast)),
-                          if (_controller.phase == FishingPhase.caught &&
-                              _controller.elapsed >= 1)
-                            Positioned.fill(
-                                child: FishingCatchPopup(
-                                    fish: _controller.fish,
-                                    grams: _controller.grams,
-                                    newRecord: _controller.newRecord,
-                                    fishScale: _controller.fishScale,
-                                    onNext: _controller.dismissResult)),
-                        ]));
+                                left: padding.left + 12,
+                                bottom: padding.bottom + 12,
+                                child: FishingActionButton(
+                                    tooltip: 'Bộ sưu tập cá',
+                                    onPressed: _controller.active
+                                        ? null
+                                        : _openCollection,
+                                    tool: FishingTool.basket)),
+                            if (_controller.phase == FishingPhase.reeling)
+                              Positioned(
+                                  left: padding.left + 10,
+                                  top: padding.top + 80,
+                                  bottom: padding.bottom + 85,
+                                  width: 54,
+                                  child: IgnorePointer(
+                                      child: FishingDistance(
+                                          progress: _controller.progress))),
+                            if (_river.island.ashore &&
+                                !_controller.showFishingArt)
+                              Positioned(
+                                  right: padding.right + 100,
+                                  bottom: padding.bottom + 16,
+                                  child: OutlinedButton.icon(
+                                      onPressed: _controller.phase ==
+                                                  FishingPhase.saving ||
+                                              _controller.phase ==
+                                                  FishingPhase.caught
+                                          ? null
+                                          : _controller.returnToBoat,
+                                      icon: const GameGlyphView(GameGlyph.back,
+                                          size: 22),
+                                      label: const Text('Về thuyền'))),
+                            if (!_river.island.ashore ||
+                                _river.island.phase ==
+                                    IslandVisitPhase.exploring)
+                              Positioned(
+                                  right: padding.right + 8,
+                                  bottom: padding.bottom + 8,
+                                  width: 80,
+                                  height: 80,
+                                  child:
+                                      FishingControls(controller: _controller)),
+                            if (_controller.active &&
+                                _controller.phase != FishingPhase.saving)
+                              Positioned(
+                                  right: padding.right + 98,
+                                  bottom: padding.bottom + 26,
+                                  child: RoundButton(
+                                      glyph: GameGlyph.close,
+                                      size: 36,
+                                      tooltip: 'Cất cần để chèo tiếp',
+                                      onPressed: _controller.cancelCast)),
+                            if (_controller.phase == FishingPhase.caught &&
+                                _controller.elapsed >= 1)
+                              Positioned.fill(
+                                  child: FishingCatchPopup(
+                                      fish: _controller.fish,
+                                      grams: _controller.grams,
+                                      newRecord: _controller.newRecord,
+                                      fishScale: _controller.fishScale,
+                                      onNext: _controller.dismissResult)),
+                          ]));
               }),
       );
 }

@@ -6,6 +6,8 @@ import '../../fishing/fishing_river.dart';
 import '../../game/world/nature_art.dart';
 import 'fishing_coast_art.dart';
 import 'fishing_river_details.dart';
+import 'fishing_mangrove_art.dart';
+import 'fishing_rocky_bay_art.dart';
 
 /// Recorded once per stretch; seeds and world positions agree across seams.
 ui.Picture recordFishingRiver(int section) {
@@ -103,16 +105,16 @@ void _paintLandscape(Canvas canvas, double left, double right) {
           (x) => FishingRiver.top(x) - 23),
       Paint()
         ..shader = ui.Gradient.linear(
-            const Offset(3360, 0),
-            const Offset(3960, 0),
+            const Offset(FishingRiver.seaStart - 240, 0),
+            const Offset(FishingRiver.seaStart + 360, 0),
             const [Color(0xFFC7BE8D), Color(0x00C7BE8D)]));
   canvas.drawPath(
       _strip(from, to, (x) => FishingRiver.bottom(x) + 52,
           (x) => FishingRiver.bottom(x) + 73),
       Paint()
         ..shader = ui.Gradient.linear(
-            const Offset(3360, 0),
-            const Offset(3960, 0),
+            const Offset(FishingRiver.seaStart - 240, 0),
+            const Offset(FishingRiver.seaStart + 360, 0),
             const [Color(0xFFD8C898), Color(0x00D8C898)]));
   // Exposed sandy shelf, dark damp rim, deep channel, then shallow margins.
   canvas.drawPath(
@@ -143,8 +145,8 @@ void _paintLandscape(Canvas canvas, double left, double right) {
       water,
       Paint()
         ..shader = ui.Gradient.linear(
-            const Offset(3360, 0),
-            const Offset(4200, 0),
+            const Offset(FishingRiver.seaStart - 240, 0),
+            const Offset(FishingRiver.seaStart + 600, 0),
             const [Color(0x003C9FB9), Color(0xFF3C9FB9)]));
   for (final side in [-1, 1]) {
     double edge(double x) =>
@@ -165,7 +167,9 @@ void _paintLandscape(Canvas canvas, double left, double right) {
         rim,
         Paint()
           ..shader = side < 0
-              ? ui.Gradient.linear(const Offset(3360, 0), const Offset(3960, 0),
+              ? ui.Gradient.linear(
+                  const Offset(FishingRiver.seaStart - 240, 0),
+                  const Offset(FishingRiver.seaStart + 360, 0),
                   const [Color(0x99F0E7BF), Color(0x00F0E7BF)])
               : null
           ..color = const Color(0x99F0E7BF)
@@ -272,6 +276,8 @@ void _paintLandscape(Canvas canvas, double left, double right) {
   }
   paintFishingCoast(canvas, from, to);
   paintRiverDetails(canvas, from, to);
+  paintMangrove(canvas, left, right);
+  paintRockyBay(canvas, left, right);
 }
 
 void _stone(Canvas c, Offset p, double size) {
@@ -601,30 +607,6 @@ void _watermill(Canvas c, Offset p) {
         ..lineTo(p.dx + 2, p.dy - 24)
         ..close(),
       paint..color = const Color(0xFF76896E));
-  for (var i = 0; i < 8; i++) {
-    final v = Offset.fromDirection(i * math.pi / 4, 36);
-    c.drawLine(
-        p,
-        p + v,
-        Paint()
-          ..color = const Color(0xFF8B6745)
-          ..strokeWidth = 4);
-  }
-  c.drawCircle(
-      p,
-      34,
-      Paint()
-        ..color = const Color(0xFF9C774E)
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 7);
-  c.drawCircle(
-      p,
-      25,
-      Paint()
-        ..color = const Color(0xFFD1AF79)
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 2);
-  c.drawCircle(p, 6, paint..color = const Color(0xFF715A40));
 }
 
 void _lotus(Canvas c, Offset p) {

@@ -120,7 +120,8 @@ class FishingRiverSurface extends CustomPainter {
     }
     for (var col = (left / 90).floor(); col * 90 < right; col++) {
       final x = col * 90.0;
-      final sea = FishingRiver.coastBlend(x);
+      final sea =
+          FishingRiver.coastBlend(x) * (1 - FishingRiver.mangroveBlend(x));
       if (sea <= 0) continue;
       final wave = math.sin(round.clock * 1.8 + col) * 3;
       final y = FishingRiver.bottom(x) - 9 - wave;

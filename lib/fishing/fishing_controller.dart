@@ -2,6 +2,7 @@ import 'fishing_fight.dart';
 import 'fishing_activity.dart';
 import 'fishing_river.dart';
 import 'fishing_island.dart';
+import 'fishing_cabin.dart';
 import '../camp/camp_state.dart';
 import '../audio/game_audio.dart';
 import 'dart:math' as math;
@@ -31,61 +32,107 @@ class FishingController extends ChangeNotifier {
   final math.Random _random;
   final river = FishingRiverRound();
   final activities = FishingActivities();
-  bool _activeWater = false;
+  bool _activeWater = false, _shoreCastPending = false;
+  Offset get angler => river.island.ashore ? river.island.cat : river.boat;
+  bool get shoreFishing => river.island.ashore;
+  bool get showFishingArt =>
+      active ||
+      _phase == FishingPhase.caught ||
+      (_phase == FishingPhase.lost && _elapsed < .6);
   static const boatGuideKey = 'mode:fishing:boat:v1';
   bool get beginner => !CampState.instance.seenGuides.contains(boatGuideKey);
   bool get canSail =>
       _phase == FishingPhase.ready || _phase == FishingPhase.lost;
   bool get surging => _surging;
-  String get guide => river.island.ashore
-      ? river.island.boardRequested
-          ? 'Mèo đang quay lại thuyền…'
-          : 'Sò ${river.island.collectedShells.length}/6 · Bấm Về thuyền để quay lại bến'
-      : river.island.dockRequested
-          ? 'Đang tới bến đảo…'
-          : (river.boat - FishingIslandVisit.mooring).distance < 600 && canSail
-              ? 'Bấm cầu gỗ trên đảo để cập bến khám phá'
-              : switch (_phase) {
-                  FishingPhase.ready => river.moving
-                      ? 'Đang chèo · Bấm cần câu góc phải để câu tại đây'
-                      : activities.nearby(river.clock, river.boat) != null
-                          ? 'Có cá động gần đây! Bấm cần câu để thử vận may'
-                          : 'Tìm cá quẫy, bọt nước · Mọi chỗ đều câu được',
-                  FishingPhase.casting => _activeWater
-                      ? 'Thả vào chỗ cá động · Cơ hội cá hiếm tăng!'
-                      : 'Mèo đang thả cần…',
-                  FishingPhase.waiting => 'Chờ phao động rồi bấm giật cần',
-                  FishingPhase.bite => 'Cá cắn! Bấm nút giật cần!',
-                  FishingPhase.reeling => '',
-                  FishingPhase.saving => _error ?? 'Đang cất cá vào giỏ…',
-                  FishingPhase.caught => message,
-                  FishingPhase.lost =>
-                    '${_error ?? "Cá thoát rồi"} · Bấm cần câu để thử lại',
-                };
+  String get guide => river.cabin.pending
+      ? 'Đang chèo tới thuyền gỗ…'
+      : !river.island.ashore &&
+              !active &&
+              (river.boat - FishingCabin.ship).distance < 650
+          ? 'Bấm thuyền lớn để vào khoang nghỉ'
+          : _shoreCastPending
+              ? 'Mèo đang ra mép nước để câu…'
+              : river.island.ashore && !showFishingArt
+                  ? river.island.boardRequested
+                      ? 'Mèo đang quay lại thuyền…'
+                      : river.island.onBank
+                          ? 'Bấm trên bờ để đi · Về thuyền để chèo tiếp'
+                          : 'Sò ${river.island.collectedShells.length}/6 · Bấm Về thuyền để quay lại bến'
+                  : river.island.dockRequested
+                      ? 'Đang cập bến…'
+                      : (river.boat - FishingIslandVisit.mooring).distance <
+                                  600 &&
+                              canSail
+                          ? 'Bấm cầu gỗ trên đảo để cập bến khám phá'
+                          : switch (_phase) {
+                              FishingPhase.ready => river.moving
+                                  ? 'Đang chèo · Bấm cần câu góc phải để câu tại đây'
+                                  : activities.nearby(
+                                              river.clock, river.boat) !=
+                                          null
+                                      ? 'Có cá động gần đây! Bấm cần câu để thử vận may'
+                                      : 'Bấm nước để chèo · Bấm bờ để xuống đi bộ',
+                              FishingPhase.casting => _activeWater
+                                  ? 'Thả vào chỗ cá động · Cơ hội cá hiếm tăng!'
+                                  : 'Mèo đang thả cần…',
+                              FishingPhase.waiting =>
+                                'Chờ phao động rồi bấm giật cần',
+                              FishingPhase.bite => 'Cá cắn! Bấm nút giật cần!',
+                              FishingPhase.reeling => '',
+                              FishingPhase.saving =>
+                                _error ?? 'Đang cất cá vào giỏ…',
+                              FishingPhase.caught => message,
+                              FishingPhase.lost =>
+                                '${_error ?? "Cá thoát rồi"} · Bấm cần câu để thử lại',
+                            };
 
   void tapRiver(Offset screen) {
     if (_phase == FishingPhase.saving || _phase == FishingPhase.caught) return;
+    if (river.cabin.inside) return;
     final point = river.toWorld(screen);
+    river.cabin.pending = false;
     final island = river.island;
+    _shoreCastPending = false;
     if (island.ashore) {
+      if (active) cancelCast();
       if ((point - river.boat).distance < 70) {
-        island.returnToBoat();
-      } else if (FishingIslandVisit.contains(point)) {
+        returnToBoat();
+      } else if (island.landContains(point)) {
         island.walkTo(point);
       }
       notifyListeners();
       return;
     }
+    if (FishingCabin.hit(point)) {
+      if (active) cancelCast();
+      if (_phase == FishingPhase.lost) _setPhase(FishingPhase.ready);
+      river.sailTo(FishingCabin.mooring);
+      river.cabin.pending = true;
+      notifyListeners();
+      return;
+    }
     final docking = FishingIslandVisit.contains(point) ||
         (point - FishingIslandVisit.dockTap).distance < 45;
-    if (!docking && !FishingRiver.contains(point)) return;
+    final bank = point.dx >= 80 &&
+        point.dx <= FishingRiver.length - 80 &&
+        point.dy >= 150 &&
+        point.dy <= FishingRiver.height - 30 &&
+        (point.dy < FishingRiver.top(point.dx) - 10 ||
+            point.dy > FishingRiver.bottom(point.dx) + 10);
+    if (!docking && !bank && !FishingRiver.contains(point)) return;
     if (active) cancelCast();
     if (_phase == FishingPhase.lost) {
       _error = null;
       _setPhase(FishingPhase.ready);
     }
-    island.dockRequested = docking;
-    river.sailTo(docking ? FishingIslandVisit.mooring : point);
+    if (bank && !docking) {
+      island.chooseBank(point);
+      island.bankMooring = river.props.resolve(island.visitMooring);
+    } else if (docking) {
+      island.chooseIsland();
+    }
+    island.dockRequested = docking || bank;
+    river.sailTo(island.dockRequested ? island.visitMooring : point);
     notifyListeners();
   }
 
@@ -100,6 +147,7 @@ class FishingController extends ChangeNotifier {
   }
 
   void cancelCast() {
+    _shoreCastPending = false;
     if (!active || _phase == FishingPhase.saving) return;
     cancelNavigation();
     _error = null;
@@ -140,7 +188,7 @@ class FishingController extends ChangeNotifier {
     final distance = startDistance + (95 - startDistance) * reeled;
     // Steering changes boat motion, never teleports the fish behind the cat.
     return FishingRiver.constrain(
-        river.boat + _castOffset / startDistance * distance);
+        angler + _castOffset / startDistance * distance);
   }
 
   double get drift => _drift;
@@ -210,6 +258,11 @@ class FishingController extends ChangeNotifier {
   }
 
   void update(double dt) {
+    if (river.cabin.inside) {
+      river.cabin.update(dt);
+      notifyListeners();
+      return;
+    }
     assert(dt >= 0 && dt <= .05);
     _clock += dt;
     _elapsed += dt;
@@ -230,8 +283,11 @@ class FishingController extends ChangeNotifier {
                 .abs();
         final orbitControlled =
             behavior.move == FishFightMove.orbit && steeringError < 15;
-        if (river.chase(dt, _fish, _elapsed, _surge,
-            pulling: _pulling, beginner: beginner, weightPull: weightPull)) {
+        if (!shoreFishing &&
+            river.chase(dt, _fish, _elapsed, _surge,
+                pulling: _pulling,
+                beginner: beginner,
+                weightPull: weightPull)) {
           _progress = math.max(.08, _progress - (beginner ? .05 : .1));
           _combo = 0;
           _vibrate(HapticFeedback.mediumImpact);
@@ -307,6 +363,18 @@ class FishingController extends ChangeNotifier {
         break;
     }
     river.update(dt);
+    if (river.cabin.pending &&
+        !river.moving &&
+        (river.boat - FishingCabin.mooring).distance < 2) {
+      river.cabin.enter();
+      stopSteering();
+    }
+    if (_shoreCastPending &&
+        river.island.phase == IslandVisitPhase.exploring &&
+        !river.island.walking) {
+      _shoreCastPending = false;
+      _startCast();
+    }
     notifyListeners();
   }
 
@@ -319,16 +387,46 @@ class FishingController extends ChangeNotifier {
     _vibrate(HapticFeedback.heavyImpact);
   }
 
+  void returnToBoat() {
+    if (_phase == FishingPhase.saving || _phase == FishingPhase.caught) return;
+    _shoreCastPending = false;
+    if (active) cancelCast();
+    river.island.returnToBoat();
+    notifyListeners();
+  }
+
   void castHere() {
-    if (!canSail || river.island.ashore) return;
-    final location = river.boat;
+    if (!canSail || river.cabin.inside) return;
+    if (shoreFishing) {
+      if (river.island.phase != IslandVisitPhase.exploring) return;
+      final edge = river.island.fishingEdge;
+      if ((edge - angler).distance > 5) {
+        river.island.walkTo(edge);
+        _shoreCastPending = true;
+        notifyListeners();
+        return;
+      }
+      river.island.stopWalking();
+    }
+    _startCast();
+  }
+
+  void _startCast() {
+    if (!canSail) return;
+    if (shoreFishing) river.island.stopWalking();
+    final location = angler;
     final direction = river.heading.dx >= 0 ? 1.0 : -1.0;
     river.stop();
     _spot = FishingRiver.constrain(location + Offset(direction * 280, -25));
     if ((_spot - location).distance < 200) {
       _spot = FishingRiver.constrain(location + Offset(-direction * 280, -25));
     }
-    final activity = activities.nearby(river.clock, location);
+    if (shoreFishing) {
+      _spot = river.island.fishingWater(location);
+      river.island.facingRight = _spot.dx >= location.dx;
+    }
+    final activity =
+        shoreFishing ? null : activities.nearby(river.clock, location);
     _activeWater = activity != null;
     if (activity != null) {
       if ((activity.position - location).distance >= 110) {
@@ -340,13 +438,17 @@ class FishingController extends ChangeNotifier {
     // The boat's casting location owns the pool, even if the float lands
     // across a regional boundary or the fish later pulls the boat elsewhere.
     _fish = beginner
-        ? (location.dx >= FishingRiver.seaStart
-            ? FishSpecies.sardine
-            : location.dx < FishingRiver.sectionLength
-                ? FishSpecies.tilapia
-                : FishSpecies.catfish)
+        ? (FishingRiver.caveBlend(location.dx, y: location.dy) > .1
+            ? FishSpecies.catfish
+            : location.dx >= FishingRiver.seaStart
+                ? FishSpecies.sardine
+                : location.dx >= FishingRiver.mangroveStart
+                    ? FishSpecies.tilapia
+                    : location.dx < FishingRiver.sectionLength
+                        ? FishSpecies.tilapia
+                        : FishSpecies.catfish)
         : FishingRiver.rollFish(_random.nextInt(10000), location.dx, _worldHour,
-            activeWater: _activeWater);
+            activeWater: _activeWater, y: location.dy);
     _grams = _fish.rollGrams(_random);
     _newRecord = false;
     _catchSaved = false;
@@ -371,7 +473,7 @@ class FishingController extends ChangeNotifier {
       _tension = .32;
       _progress = beginner ? .25 : .16;
       _hookProgress = _progress;
-      river.beginFight(_spot);
+      if (!shoreFishing) river.beginFight(_spot);
       _setPhase(FishingPhase.reeling);
       _vibrate(HapticFeedback.mediumImpact);
     } else if (_phase == FishingPhase.waiting) {

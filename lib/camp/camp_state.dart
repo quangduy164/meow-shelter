@@ -202,6 +202,16 @@ class CampState {
   bool herdIntroSeen(String key) => seenGuides.contains(key);
   Future<void> markHerdIntroSeen(String key) => markGuidesSeen([key]);
 
+  /// Herd regions won at least once (key = HerdMapKind name). Each region
+  /// unlocks only after the previous one is cleared.
+  static String _herdClearedKey(String kind) => 'mode:herd:cleared:$kind';
+  bool herdMapCleared(String kind) =>
+      seenGuides.contains(_herdClearedKey(kind));
+  Future<void> markHerdMapCleared(String kind) async {
+    if (herdMapCleared(kind)) return;
+    await markGuidesSeen([_herdClearedKey(kind)]);
+  }
+
   /// Cat breeds and mode guides already completed/read.
   final seenGuides = <String>{};
 

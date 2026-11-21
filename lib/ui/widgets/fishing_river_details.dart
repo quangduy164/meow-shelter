@@ -14,7 +14,9 @@ void paintRiverDetails(Canvas c, double left, double right) {
     final bank = north ? FishingRiver.top(x) : FishingRiver.bottom(x);
     final p = Offset(x, bank + (north ? 95 : -100));
     final rng = math.Random(927 + i);
-    if (x >= 3500) {
+    if (x >= FishingRiver.seaStart &&
+        (x < FishingRiver.rockyBayStart - 300 ||
+            x > FishingRiver.openSeaStart + 300)) {
       for (var j = 0; j < 8; j++) {
         final q = p +
             Offset(rng.nextDouble() * 210 - 105, rng.nextDouble() * 100 - 50);
@@ -54,8 +56,9 @@ void paintRiverDetails(Canvas c, double left, double right) {
     }
     if (rock.kind == RiverPropKind.island) {
       paintFishingIsland(c, rock.anchor, rock.radius);
-    } else {
-      _rock(c, rock.anchor, rock.radius);
+    } else if (rock.kind != RiverPropKind.mangroveRoot &&
+        rock.kind != RiverPropKind.cabinShip) {
+      paintRiverRock(c, rock.anchor, rock.radius);
     }
   }
 }
@@ -88,6 +91,8 @@ void paintFloatingRiverProps(Canvas c, FishingRiverRound round, Rect visible) {
         _log(c, p);
       case RiverPropKind.paperBoat:
         paintPaperBoat(c, p);
+      case RiverPropKind.cabinShip:
+      case RiverPropKind.mangroveRoot:
       case RiverPropKind.island:
       case RiverPropKind.rock:
         break;
@@ -171,7 +176,7 @@ void _raft(Canvas c, Offset p) {
   c.restore();
 }
 
-void _rock(Canvas c, Offset p, double r) {
+void paintRiverRock(Canvas c, Offset p, double r) {
   p = Offset(p.dx,
       p.dy.clamp(FishingRiver.top(p.dx) + 55, FishingRiver.bottom(p.dx) - 55));
   c.drawOval(Rect.fromCenter(center: p, width: r * 2.5, height: r * 1.3),
@@ -272,7 +277,8 @@ void paintRiverWildlife(Canvas c, FishingRiverRound round, Rect visible) {
             Paint()..color = const Color(0x44516E79));
       }
     }
-    if (sea) {
+    if (sea &&
+        (x < FishingRiver.rockyBayStart || x >= FishingRiver.openSeaStart)) {
       for (var i = 0; i < 2; i++) {
         final p = base +
             Offset(math.sin(time * .15 + group) * 120 + i * 65, -110 + i * 26);

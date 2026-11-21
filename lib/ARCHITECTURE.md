@@ -157,8 +157,8 @@
     anchors reachable and off traffic when adding a route. Viewport resize scales positions in place through `HerdRound.resize`; repeated
     layout notifications preserve the run, score and result overlay.
 - `fishing/`: fishing rules and the river exploration scene.
-  - `fishing_river.dart`: a continuous 9000 x 3600 world with five cached 1800-unit
-    stretches (two river stretches and three open-sea stretches). One shared centerline and width define both painted banks and
+  - `fishing_river.dart`: a continuous 10800 x 3600 world with six cached 1800-unit
+    stretches (two river stretches and four coastal stretches). One shared centerline and width define both painted banks and
     movement limits. Click-to-row paths follow bends without cutting over land;
     screen/world transforms share the camera, which follows smoothly and clamps
     to all four world edges. The viewport stays 600 world units high, so the
@@ -168,7 +168,14 @@
   - `ui/widgets/fishing_river_art.dart`: detailed village/flower banks blend into
     bamboo/rock and rice-field banks; props use seeded world coordinates.
     `fishing_coast_art.dart` adds the estuary/beach, palms, lighthouse and islands.
-    `river_sea_land.dart` defines a solid 430-unit sand island at (5700,1750)
+    `fishing_scenery.dart` owns cached scenic clusters: village trellises/jars,
+    bicycle/clothesline, bamboo shelters/plank crossings, coastal fishing huts,
+    nets/crates/overturned boats and an abandoned island shelter. Static Pictures
+    record once, cull by viewport and dispose on exit. Two layers sort new scenery
+    around the walking cat; overlapping foreground clusters fade to 40% opacity.
+    Only clothes, bamboo tips, flags, chimney smoke and the existing mill wheel
+    animate per frame. Paths stay open; these additions are decorative scenery.
+    `river_sea_land.dart` defines a solid 430-unit sand island at (9750,1750)
     and fourteen sea rocks in six clusters. The cached island artwork, solid-prop
     clearance and A* routing share these footprints. Water queries and cast
     positions exclude dry island land; surface waves and fish are clipped out.
@@ -179,16 +186,29 @@
     walks back to the landing then hops aboard. The on-island `Về thuyền`
     button does the same when the parked boat is off camera. `FishingRiverRound` keeps the
     boat parked and follows the cat while ashore; `FishingController` dispatches
-    island/water taps and blocks casting during a visit. Water taps cancel a
+    island/water taps and allows casting from the shoreline. Water taps cancel a
     pending docking approach; saving and catch results retain their input guard.
     `fishing_island_art.dart` draws the cached pier and live shells/crabs. The
-    selected `CatSprite` switches to walk/idle on land, and the rod is hidden.
+    selected `CatSprite` switches to walk/idle on land; the rod is attached to
+    that cat when casting from land.
     The larger island has a coconut grove to the north, winding sandy paths,
     a central clearing, open southern beach and a marked western landing. Mooring,
     pier and walk limits derive from island radius. Six shells and the three
     crabs are spread across the enlarged island. The view scale stays unchanged;
     the camera follows the cat while crossing the island. Terrain details are
     recorded once in the chunk cache, including across the island's chunk seam.
+    The same visit also supports both riverbanks and the mainland beach: click
+    dry ground to moor opposite that point, hop ashore and walk along that bank.
+    A bank visit stores its mooring and landing; depth-from-bank waypoints follow
+    bends without crossing water. Walking is clamped inside world land bounds;
+    the return button follows the same land route back to the parked boat.
+    A small flag marks the temporary landing. Island shells/crabs remain island-only.
+    The rod also works ashore: `castHere` walks to the nearest water edge before
+    casting. The angler position owns rod art, fish pool and line retrieval;
+    shore fights leave cat and moored boat fixed. Movement or return cancels a
+    pending cast/current fight; save/results stay guarded. Boarding transitions
+    cannot start a cast. Shore casting shares catches, weights and rewards with
+    boat fishing and does not create a second save path.
     Shells remain collected across visits in this round, without persistent
     currency, inventory writes or changes to fishing rewards.
     `fishing_river_details.dart` caches mossy rocks and submerged coral. Visible
@@ -219,9 +239,65 @@
     rendering, water taps, casts and lane-based routes use those same bounds.
     Clusters leave the main channel open. Mossy water rocks are solid; coral is
     submerged scenery. Floating props do not block click-to-row routes.
-    `coastBlend` widens the shared channel into open sea from x=3360..4080.
+    Travel order is village x=0..1800, bamboo x=1800..3600, mangrove
+    x=3600..5400, estuary x=5400..7200, rocky bay x=7200..9000 and open sea
+    x=9000..10800. The large island is offshore in the final sea region.
+    `mangroveBlend` fades in/out around its two boundaries; `coastBlend` opens
+    the estuary, and `rockyBlend` narrows then releases the bay into open sea.
+    `fishing_mangrove_art.dart` records mud, stilt roots and its wooden landing;
+    solid roots share their tree anchors with sailing clearance.
+    The sea cave is an optional northward inlet centered at x=8100, not a
+    mandatory eastward tunnel. `caveDepth` extends the top bank into a chamber;
+    the main bay remains open to sail east. `caveBlend(x,y)` classifies cave
+    names, fish pools and darkness by position, so the main bay does not become
+    dark just because it shares the cave's x coordinate. Shore walks, casting
+    and A* continue using the same bank geometry and solid rock footprints.
+    `fishing_rocky_bay_art.dart` caches shingle, cliffs, cave slate and crystals,
+    then draws solid rocks above the new ground. World-fixed masks blend biome
+    borders. `FishingCaveLight` keeps reflections, droplets and light above the
+    world but below HUD controls. Mangrove/bay art stops before the final sea.
+    Regional pools add goby/mudskipper in mangroves, grouper/butterflyfish in
+    the bay and cavefish/lanternfish in the cave; each new pair is exclusive to
+    its region, with smooth boundary blending. Cave catches use the angler's
+    vertical position as well as x, never the float's projected landing point.
+    The six species append to the enum, preserving earlier indices and saved
+    names. They have species art, rarity-ordered pull, gram ranges, journal
+    habitat, affection and existing fight profiles. Lanternfish are nocturnal.
+    New records and feeding reuse the same journal/basket keys; no weight totals
+    or catch history are added. The journal has six habitat groups.
+    `fishing_cabin.dart` defines a moored cabin ship at (10300,1050), its solid
+    hull clearance, mooring and a separate 800x480 walkable room. A water tap on
+    the ship stows fishing and routes to the mooring before entering. Another
+    destination or casting cancels that approach; saving/results keep their guard.
+    Inside, the controller updates only cabin movement, pausing the river round.
+    `fishing_cabin_art.dart` caches and disposes exterior/interior Pictures, draws
+    the selected cat via CatSprite and scales input with the room viewport.
+    Furnishings sit outside the walkable floor rectangle. A right-wall door
+    (`switchRoom`) leads to a bedroom with its own floor and Picture; the bed sits
+    right of `bedroomFloor`. Exiting from the bedroom walks back through the door.
+    Tapping the bedroom treasure chest walks the cat to `chestSpot`; on arrival
+    `fishing_cabin_chest.dart` gives three weighted sea fish once per calendar day
+    via `FishCollection.addToBasket` (basket only, journal untouched).
+    Door, exit button and
+    system Back walk the cat to the hatch then return to the parked small boat.
+    Leaving restores normal fishing controls; no catch or camp save is written.
+    `fishing_minimap.dart` draws a top-left square minimap under Home: a cached,
+    disposed world Picture in a 3600-unit window following `cameraFocus`, plus
+    fog from `FishingRiverRound.explored` (200-unit cells revealed each update).
+    It hides while reeling and inside the cabin. `fishing_trip.dart` saves the
+    last cat, boat spot, heading and fog (key `fishing_trip_v1`) every few
+    seconds after changes, on app pause and on exit; ashore/cabin trips resume
+    in the parked boat. Restored spots are clamped to water; bad saves are ignored.
+    ishing_minimap.dart draws a top-left square minimap under Home: a cached,
+    disposed world Picture in a 3600-unit window following `cameraFocus`, plus
+    session-only fog from `FishingRiverRound.explored` (200-unit cells revealed
+    each update). It hides while reeling and inside the cabin; nothing is saved.
     Chunk clips disable antialiasing so fractional camera offsets do not expose seams.
-  - `fishing_river_scene.dart`: owns and disposes five cached background Pictures,
+    Mangrove, rocky bay and cave art use deterministic `_h(i, salt)` noise for
+    species, size, offset and mirroring (cached chunks stay identical each run).
+    Bay sea stacks are `fishingSeaRocks` with radius >= 45, so art, collision and
+    minimap share one list. The cave dimming uses an elliptical radial mask.
+  - `fishing_river_scene.dart`: owns and disposes six cached background Pictures,
     draws only visible stretches, then animated water, boat hull and front rim.
     `FishingScreen` first shows owned cats; selecting one starts the ticker and
     mounts the river. Leaving this picker returns home. Only owned cats appear,
@@ -245,8 +321,8 @@
     the boat and draws the attached rod, line, float and tension gauge.
     `fishing_oar_art.dart` shares the entry/power/recovery pose between the cat,
     wooden paddle and water splashes. The paddle parks on the rim during fishing;
-    rod artwork uses the river's world scale, extends ahead of the cat and draws
-    forepaws to the grip. The tension bar follows the float, flips below it near the top HUD, and
+    rod artwork uses the river's world scale and floats ahead of the cat,
+    without drawn arms or paws connecting to it. The tension bar follows the float, flips below it near the top HUD, and
     pulses at tension >= .82 together with a red line. It shows only colors,
     a sweet-zone bracket and a needle, without labels or move instructions.
     `fishing_fight.dart` is the shared per-species fight timeline for rules and art:
@@ -258,9 +334,11 @@
     and koi steering arrows. Fish behavior is conveyed visually, without advance
     text instructions in the HUD or the float's tension bar.
   - `FishingRiver.rollFish` owns regional weights: village (perch, tilapia,
-    carp, rare goldfish), bamboo (catfish, koi, very rare catMew), and sea
-    (sardine, mackerel, clownfish, pufferfish), plus lost items. Pools blend across
-    x=1560..2040 and x=3360..3840; night boosts nocturnal fish. A fish is rolled
+    carp, rare goldfish), bamboo (catfish, koi, very rare catMew), mangrove
+    (goby, mudskipper and brackish species), sea (sardine, mackerel, clownfish,
+    pufferfish), rocky bay (grouper, butterflyfish) and cave (cavefish, lanternfish),
+    plus lost items. Pools blend across
+    x=1560..2040, the mangrove boundaries and x=5160..5640; night boosts nocturnal fish. A fish is rolled
     at the boat position when casting starts, so crossing regions while reeling never
     changes the catch. Catches use the existing journal/basket and camp coin
     save. First-catch help uses `mode:fishing:boat:v1` in saved seen guides.

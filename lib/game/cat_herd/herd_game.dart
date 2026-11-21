@@ -25,13 +25,17 @@ class HerdGame extends FlameGame {
       {this.needsTutorial = false,
       this.onTutorialCompleted,
       this.introSeen,
-      this.onIntroSeen});
+      this.onIntroSeen,
+      this.onMapWon});
   final bool needsTutorial;
 
   /// First map with special cats shows who they are before play starts.
   final bool Function(String key)? introSeen;
   final Future<void> Function(String key)? onIntroSeen;
   final Future<void> Function()? onTutorialCompleted;
+
+  /// Called once per won round on a real (non-tutorial) region.
+  final Future<void> Function(HerdMap map)? onMapWon;
   late final round = HerdRound(onSound: _playSound);
 
   void _playSound(HerdSound event) {
@@ -209,6 +213,9 @@ class HerdGame extends FlameGame {
           priority: 4);
       if (round.isTutorial && round.won && onTutorialCompleted != null) {
         unawaited(onTutorialCompleted!());
+      }
+      if (!round.isTutorial && round.won && onMapWon != null) {
+        unawaited(onMapWon!(round.map));
       }
       overlays.add('result');
     }

@@ -9,7 +9,7 @@ void paintFishingCoast(Canvas canvas, double left, double right) {
   for (var i = 0;
       i < ((FishingRiver.length - FishingRiver.seaStart) / 360).ceil();
       i++) {
-    final x = 3630 + i * 360.0;
+    final x = FishingRiver.seaStart + 30 + i * 360.0;
     if (x < left - 100 || x > right + 100) continue;
     _palm(canvas, Offset(x, FishingRiver.bottom(x) + 86), i);
   }
@@ -39,7 +39,9 @@ void paintFishingCoast(Canvas canvas, double left, double right) {
   }
   final rng = math.Random(928);
   for (var i = 0; i < 190; i++) {
-    final x = 3500 + rng.nextDouble() * (FishingRiver.length - 3500);
+    final x = FishingRiver.seaStart -
+        100 +
+        rng.nextDouble() * (FishingRiver.length - FishingRiver.seaStart + 100);
     final y = FishingRiver.bottom(x) + 17 + rng.nextDouble() * 100;
     if (x < left || x > right || y > FishingRiver.height) continue;
     canvas.drawOval(
@@ -49,18 +51,18 @@ void paintFishingCoast(Canvas canvas, double left, double right) {
               i.isEven ? const Color(0x66BBA478) : const Color(0x88FFF0CA));
     if (i % 13 == 0) _shell(canvas, Offset(x, y));
   }
-  for (final x in [3940.0, 4790.0, 6500.0, 7850.0]) {
+  for (final x in [5740.0, 6590.0, 9450.0, 10250.0]) {
     if (x < left - 100 || x > right + 100) continue;
     final p = Offset(x, FishingRiver.bottom(x) + 53);
     _umbrella(canvas, p);
     _chair(canvas, p + const Offset(30, 18));
     _chair(canvas, p + const Offset(-28, 17));
   }
-  if (left < 4520 && right > 4280) {
-    _lighthouse(canvas, Offset(4390, FishingRiver.bottom(4390) + 77));
+  if (left < 6320 && right > 6080) {
+    _lighthouse(canvas, Offset(6190, FishingRiver.bottom(6190) + 77));
   }
-  if (left < 5300 && right > 5100) {
-    final p = Offset(5190, FishingRiver.bottom(5190) + 25);
+  if (left < 7100 && right > 6900) {
+    final p = Offset(6990, FishingRiver.bottom(6990) + 25);
     canvas.drawOval(
         Rect.fromCenter(center: p + const Offset(2, 7), width: 100, height: 17),
         paint..color = const Color(0x337E7859));

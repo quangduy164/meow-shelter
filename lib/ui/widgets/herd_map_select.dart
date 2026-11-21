@@ -11,8 +11,15 @@ import 'round_button.dart';
 /// Region cards with previews drawn by the same renderer as the playable map.
 class HerdMapSelect extends StatelessWidget {
   const HerdMapSelect(
-      {super.key, required this.onPlay, required this.onHome, this.onTutorial});
+      {super.key,
+      required this.onPlay,
+      required this.onHome,
+      this.onTutorial,
+      this.isUnlocked});
   final ValueChanged<HerdMap> onPlay;
+
+  /// Null means every region is open.
+  final bool Function(HerdMap map)? isUnlocked;
   final VoidCallback onHome;
   final VoidCallback? onTutorial;
 
@@ -74,6 +81,8 @@ class HerdMapSelect extends StatelessWidget {
                           child: _RegionCard(
                               map: HerdMap.all[i],
                               number: i + 1,
+                              locked:
+                                  !(isUnlocked?.call(HerdMap.all[i]) ?? true),
                               onPressed: () => onPlay(HerdMap.all[i])),
                         ),
                       ),
@@ -89,9 +98,13 @@ class HerdMapSelect extends StatelessWidget {
 
 class _RegionCard extends StatelessWidget {
   const _RegionCard(
-      {required this.map, required this.number, required this.onPressed});
+      {required this.map,
+      required this.number,
+      required this.onPressed,
+      this.locked = false});
   final HerdMap map;
   final int number;
+  final bool locked;
   final VoidCallback onPressed;
 
   @override
@@ -104,10 +117,12 @@ class _RegionCard extends StatelessWidget {
             borderRadius: BorderRadius.circular(DS.radiusLg),
             clipBehavior: Clip.antiAlias,
             child: InkWell(
-              onTap: onPressed,
+              onTap: locked ? null : onPressed,
               child: Semantics(
-                button: true,
-                label: 'Chơi ${map.name}',
+                button: !locked,
+                label: locked
+                    ? '${map.name}, đang khóa. Hãy qua vùng ${number - 1} trước'
+                    : 'Chơi ${map.name}',
                 child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
@@ -115,6 +130,13 @@ class _RegionCard extends StatelessWidget {
                         child: Stack(fit: StackFit.expand, children: [
                           RepaintBoundary(
                               child: CustomPaint(painter: _MapPreview(map))),
+                          if (locked)
+                            const ColoredBox(
+                              color: Color(0x99000000),
+                              child: Center(
+                                  child: Icon(Icons.lock_rounded,
+                                      color: DS.cream, size: 40)),
+                            ),
                           Positioned(
                               left: 10,
                               top: 10,
@@ -154,19 +176,26 @@ class _RegionCard extends StatelessWidget {
                                 padding: const EdgeInsets.symmetric(
                                     vertical: DS.spaceXs),
                                 decoration: BoxDecoration(
-                                    color: DS.gold,
+                                    color: locked ? DS.cream : DS.gold,
                                     borderRadius:
                                         BorderRadius.circular(DS.radiusMd),
                                     border: Border.all(
                                         color: DS.goldEdge, width: 1.5)),
-                                child: const Row(
+                                child: Row(
                                     mainAxisAlignment: MainAxisAlignment.center,
                                     children: [
-                                      Icon(Icons.play_arrow_rounded,
-                                          color: DS.ink, size: DS.iconSm),
-                                      SizedBox(width: DS.spaceXs),
-                                      Text('CHƠI',
-                                          style: TextStyle(
+                                      Icon(
+                                          locked
+                                              ? Icons.lock_rounded
+                                              : Icons.play_arrow_rounded,
+                                          color: DS.ink,
+                                          size: DS.iconSm),
+                                      const SizedBox(width: DS.spaceXs),
+                                      Text(
+                                          locked
+                                              ? 'QUA VÙNG ${number - 1}'
+                                              : 'CHƠI',
+                                          style: const TextStyle(
                                               color: DS.ink,
                                               fontSize: DS.fontCardButton,
                                               fontWeight: FontWeight.w900)),

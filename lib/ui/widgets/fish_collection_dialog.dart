@@ -257,7 +257,7 @@ class _RarityTag extends StatelessWidget {
   }
 }
 
-/// Only catfish and koi receive the river's night-time weight bonus.
+/// Nocturnal species receive the regional night-time weight bonus.
 (IconData, String) _biteTime(FishSpecies fish) => fish.nightActive
     ? (Icons.bedtime_rounded, 'Ban đêm nhiều hơn')
     : (Icons.schedule_rounded, 'Cả ngày lẫn đêm');
@@ -566,6 +566,13 @@ class _DetailPanel extends StatelessWidget {
   final int? heaviest;
 
   String get _note => switch (fish) {
+        FishSpecies.goby => 'Nhỏ nhắn, giật dây từng nhịp ngắn trong rễ đước.',
+        FishSpecies.mudskipper => 'Mắt lồi ngộ nghĩnh, quẫy nhanh ở bãi bùn.',
+        FishSpecies.grouper => 'Thân đốm, kéo chậm nhưng rất lì trong vịnh đá.',
+        FishSpecies.butterflyfish => 'Vây vàng như cánh bướm, bơi lượn sát đá.',
+        FishSpecies.cavefish =>
+          'Màu nhạt, mắt tiêu giảm. Thỉnh thoảng lặn sâu.',
+        FishSpecies.lanternfish => 'Chấm sáng xanh trong hang, bơi theo vòng.',
         FishSpecies.perch => 'Nhanh nhẹn, hay giật dây liên tục.',
         FishSpecies.tilapia => 'Hiền lành, hợp với người mới câu.',
         FishSpecies.carp => 'Khoẻ và lì, kéo chậm nhưng mạnh.',

@@ -16,7 +16,6 @@ class FishingPainter extends CustomPainter {
       required this.tension,
       required this.pulling,
       this.boat = const Offset(.5, .75),
-      this.pawColor = const Color(0xFFF4A34E),
       this.facingRight = false,
       this.artScale,
       this.drift = 0,
@@ -25,7 +24,6 @@ class FishingPainter extends CustomPainter {
   final FishingPhase phase;
   final FishSpecies fish;
   final Offset spot, boat;
-  final Color pawColor;
   final double clock, elapsed, progress, tension;
   final bool pulling, facingRight;
   final double? artScale;
@@ -141,7 +139,7 @@ class FishingPainter extends CustomPainter {
     final body = point(boat.dx, boat.dy) +
         Offset(0, math.sin(clock * 2.5) * 1.8) * scale;
     final base = body + Offset(side * 34, -6) * scale;
-    // Rotate the whole rod around the hand, then bend the tip.
+    // Rotate the rod around its handle, then bend the tip.
     Offset swing(Offset p) {
       final v = p - base;
       final angle = -side * motion.angle;
@@ -183,32 +181,6 @@ class FishingPainter extends CustomPainter {
                 side * 12 * math.sin(handleAngle) -
                     17 * math.cos(handleAngle)) *
             scale;
-    final grip =
-        base + Offset.fromDirection(handleAngle - math.pi / 2, 14 * scale);
-    final reelHand = base + (reel - base) * .55;
-    for (final (root, hand) in [
-      (body + Offset(side * 5, -5) * scale, reelHand),
-      (body + Offset(side * 12, -7) * scale, grip),
-    ]) {
-      final arm = Path()
-        ..moveTo(root.dx, root.dy)
-        ..quadraticBezierTo(
-            (root.dx + hand.dx) / 2, root.dy + 3 * scale, hand.dx, hand.dy);
-      canvas.drawPath(
-          arm,
-          Paint()
-            ..color = const Color(0xFF66513A)
-            ..style = PaintingStyle.stroke
-            ..strokeWidth = 7 * scale
-            ..strokeCap = StrokeCap.round);
-      canvas.drawPath(
-          arm,
-          Paint()
-            ..color = pawColor
-            ..style = PaintingStyle.stroke
-            ..strokeWidth = 4.8 * scale
-            ..strokeCap = StrokeCap.round);
-    }
     const guides = [.30, .52, .73, .90, 1.0];
     final stroke = Paint()..strokeCap = StrokeCap.round;
     for (var i = 0; i < 24; i++) {
@@ -308,9 +280,6 @@ class FishingPainter extends CustomPainter {
           ..strokeWidth = 2);
     canvas.drawCircle(crank, 2.5, Paint()..color = const Color(0xFF725338));
     canvas.restore();
-    // The cat's paw overlaps the handle.
-    canvas.drawCircle(grip, 3.5 * scale, Paint()..color = pawColor);
-    canvas.drawCircle(reelHand, 3 * scale, Paint()..color = pawColor);
     return guide(1);
   }
 

@@ -3,9 +3,19 @@ import 'package:flutter/painting.dart';
 import 'fishing_river.dart';
 import 'river_frog.dart';
 import 'river_sea_land.dart';
+import 'fishing_cabin.dart';
 import 'river_encounters.dart';
 
-enum RiverPropKind { lily, raft, log, rock, paperBoat, island }
+enum RiverPropKind {
+  lily,
+  raft,
+  log,
+  rock,
+  paperBoat,
+  island,
+  mangroveRoot,
+  cabinShip
+}
 
 class RiverProp {
   RiverProp(this.kind, Offset point, {this.radius = 16, this.flower = false})
@@ -17,7 +27,11 @@ class RiverProp {
   final bool flower;
   Offset position, velocity = Offset.zero;
   double angle = 0, spin = 0, ripple = 0;
-  bool get solid => kind == RiverPropKind.rock || kind == RiverPropKind.island;
+  bool get solid =>
+      kind == RiverPropKind.rock ||
+      kind == RiverPropKind.island ||
+      kind == RiverPropKind.mangroveRoot ||
+      kind == RiverPropKind.cabinShip;
   static Offset waterPoint(Offset p) {
     final x = p.dx.clamp(55.0, FishingRiver.length - 55);
     return Offset(
@@ -88,6 +102,31 @@ List<RiverProp> createRiverProps() {
   for (final rock in fishingSeaRocks) {
     props.add(RiverProp(RiverPropKind.rock, rock.center, radius: rock.radius));
   }
+  for (var i = 0; i < 10; i++) {
+    final x = 3900 + i * 145.0;
+    for (final north in [true, false]) {
+      final rx = x + (north ? 0 : 65);
+      if (rx > FishingRiver.length - 100) continue;
+      props.add(RiverProp(
+          RiverPropKind.mangroveRoot,
+          Offset(rx,
+              north ? FishingRiver.top(rx) + 58 : FishingRiver.bottom(rx) - 58),
+          radius: 26));
+    }
+  }
+  for (final point in [
+    const Offset(7540, 1480),
+    const Offset(7660, 1530),
+    const Offset(7920, 2020),
+    const Offset(7970, 2070),
+    const Offset(8000, 1300),
+    const Offset(8235, 1300)
+  ]) {
+    props.add(RiverProp(RiverPropKind.rock, point,
+        radius: point.dy < 1400 ? 24 : 38));
+  }
+  props.add(RiverProp(RiverPropKind.cabinShip, FishingCabin.ship,
+      radius: FishingCabin.radius));
   return props;
 }
 

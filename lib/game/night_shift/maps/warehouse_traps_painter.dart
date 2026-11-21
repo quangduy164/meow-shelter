@@ -225,7 +225,7 @@ class WarehouseDoor extends PositionComponent
     if (slot.phase == TrapPhase.cooling) {
       c.drawRect(body, Paint()..color = const Color(0x77506468));
       for (var y = body.top + 9; y < body.bottom; y += 14) {
-        c.drawLine(Offset(body.left, y), Offset(body.right, y), metal);
+        c.drawLine(Offset(innerStart, y), Offset(innerEnd, y), metal);
       }
     }
     if (ready) {

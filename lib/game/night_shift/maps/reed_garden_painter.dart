@@ -166,17 +166,6 @@ class ReedPatchComponent extends PositionComponent
       drawFish(canvas, Offset.zero);
       canvas.restore();
     }
-    if (patch.cool > 0) {
-      canvas.drawArc(
-          Rect.fromCircle(center: Offset(w / 2, h * .48), radius: 17),
-          -math.pi / 2,
-          math.pi * 2 * patch.cool / 1.5,
-          false,
-          Paint()
-            ..color = const Color(0xCCFFF4DA)
-            ..style = PaintingStyle.stroke
-            ..strokeWidth = 3);
-    }
   }
 }
 
