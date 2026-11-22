@@ -32,6 +32,10 @@ class RiverProp {
       kind == RiverPropKind.island ||
       kind == RiverPropKind.mangroveRoot ||
       kind == RiverPropKind.cabinShip;
+
+  /// Solid reach toward [p]; the island follows its coastline.
+  double reachTowards(Offset p) =>
+      kind == RiverPropKind.island ? fishingSeaIsland.radiusTowards(p) : radius;
   static Offset waterPoint(Offset p) {
     final x = p.dx.clamp(55.0, FishingRiver.length - 55);
     return Offset(
@@ -214,24 +218,36 @@ class RiverProps {
 
   bool clear(Offset p) =>
       (FishingRiver.constrain(p) - p).distance < .01 &&
-      !rocks.any(
-          (r) => (p - r.anchor).distance < r.radius + boatRadius + 4 - 1e-5);
+      !rocks.any((r) =>
+          (p - r.anchor).distance < r.reachTowards(p) + boatRadius + 4 - 1e-5);
 
   bool clearLine(Offset a, Offset b) {
     final delta = b - a;
     final length2 = delta.distanceSquared;
+    final count = math.max(1, (delta.distance / 8).ceil());
     for (final rock in rocks) {
+      if (rock.kind == RiverPropKind.island) {
+        // The coastline bulges and dips, so sample the whole segment.
+        for (var i = 0; i <= count; i++) {
+          final p = Offset.lerp(a, b, i / count)!;
+          if ((p - rock.anchor).distance <
+              rock.reachTowards(p) + boatRadius + 4 - 1e-5) {
+            return false;
+          }
+        }
+        continue;
+      }
       final relative = rock.anchor - a;
       final t = length2 > 0
           ? ((relative.dx * delta.dx + relative.dy * delta.dy) / length2)
               .clamp(0.0, 1.0)
           : 0.0;
-      if ((a + delta * t - rock.anchor).distance <
-          rock.radius + boatRadius + 4 - 1e-5) {
+      final closest = a + delta * t;
+      if ((closest - rock.anchor).distance <
+          rock.reachTowards(closest) + boatRadius + 4 - 1e-5) {
         return false;
       }
     }
-    final count = math.max(1, (delta.distance / 8).ceil());
     for (var i = 0; i <= count; i++) {
       final p = Offset.lerp(a, b, i / count)!;
       if ((FishingRiver.constrain(p) - p).distance > .001) return false;
@@ -245,7 +261,7 @@ class RiverProps {
       var changed = false;
       for (final rock in rocks) {
         final delta = p - rock.anchor;
-        final radius = rock.radius + boatRadius + 4;
+        final radius = rock.reachTowards(p) + boatRadius + 4;
         if (delta.distance >= radius) continue;
         var direction = delta.distance > .001
             ? delta / delta.distance
@@ -354,7 +370,7 @@ class RiverProps {
       if (p.kind == RiverPropKind.paperBoat) {
         for (final rock in rocks) {
           final away = p.position - rock.anchor;
-          final clearance = rock.radius + p.radius;
+          final clearance = rock.reachTowards(p.position) + p.radius;
           if (away.distance < clearance) {
             final normal =
                 away.distance > .01 ? away / away.distance : const Offset(0, 1);

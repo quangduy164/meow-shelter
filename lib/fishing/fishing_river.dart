@@ -4,6 +4,9 @@ import 'river_navigation.dart';
 import 'river_sea_land.dart';
 import 'fishing_island.dart';
 import 'fishing_cabin.dart';
+import 'fishing_exploration.dart';
+import 'fishing_region.dart';
+export 'fishing_region.dart';
 import 'dart:math' as math;
 import 'package:flutter/painting.dart';
 import '../collection/fish_species.dart';
@@ -13,7 +16,7 @@ class FishingRiver {
   static const height = 3600.0;
   static const viewHeight = 600.0;
   static const sectionLength = 1800.0;
-  static const sectionCount = 6;
+  static const sectionCount = 7;
   static const seaStart = 5400.0;
   static const length = sectionLength * sectionCount;
   static const mangroveStart = 3600.0, rockyBayStart = 7200.0;
@@ -49,82 +52,51 @@ class FishingRiver {
   static const startDockX = 230.0;
   static Offset get startBoat => Offset(startDockX, bottom(startDockX) - 42);
 
-  /// Exclusive regional pools cross-fade around the join; weights are relative.
+  /// Area the point belongs to, including the cave inlet.
+  static FishingRegion regionAt(double x, {double? y}) =>
+      caveBlend(x, y: y) > .1 ? FishingRegion.cave : FishingRegion.alongX(x);
+
+  /// Fish pools layered from upstream to the cave; each later pool blends
+  /// over everything before it by its own border weight.
+  static List<(Map<FishSpecies, double>, double)> fishLayers(double x,
+          {double? y}) =>
+      [
+        (FishingRegion.village.fish, 1),
+        (FishingRegion.bamboo.fish, ((x - 1560) / 480).clamp(0.0, 1.0)),
+        (
+          FishingRegion.coast.fish,
+          ((x - (seaStart - 240)) / 480).clamp(0.0, 1.0)
+        ),
+        (FishingRegion.mangrove.fish, mangroveBlend(x)),
+        (FishingRegion.rockyBay.fish, rockyBlend(x)),
+        (FishingRegion.cave.fish, caveBlend(x, y: y)),
+      ];
+
+  static double _poolWeight(
+      FishSpecies fish, List<(Map<FishSpecies, double>, double)> layers) {
+    var weight = 0.0;
+    for (final (pool, blend) in layers) {
+      weight = weight * (1 - blend) + (pool[fish] ?? 0) * blend;
+    }
+    return weight;
+  }
+
+  /// Regional pools cross-fade around each join; weights are relative.
   static FishSpecies rollFish(int roll, double x, double hour,
       {bool activeWater = false, double? y}) {
-    const village = {
-      FishSpecies.perch: 32.0,
-      FishSpecies.tilapia: 32.0,
-      FishSpecies.carp: 28.0,
-      FishSpecies.goldfish: 3.0,
-      FishSpecies.flipFlop: 3.0,
-      FishSpecies.tinCan: 2.0
-    };
-    const bamboo = {
-      FishSpecies.catfish: 49.0,
-      FishSpecies.koi: 43.0,
-      FishSpecies.catMew: 1.0,
-      FishSpecies.oldBoot: 4.0,
-      FishSpecies.tinCan: 3.0
-    };
-    const sea = {
-      FishSpecies.sardine: 54.0,
-      FishSpecies.mackerel: 29.0,
-      FishSpecies.clownfish: 12.0,
-      FishSpecies.pufferfish: 3.0,
-      FishSpecies.flipFlop: 1.0,
-      FishSpecies.tinCan: 1.0,
-    };
-    final mix = ((x - 1560) / 480).clamp(0.0, 1.0);
-    final marineMix = ((x - (seaStart - 240)) / 480).clamp(0.0, 1.0);
-    const mangrove = {
-      FishSpecies.goby: 45.0,
-      FishSpecies.mudskipper: 22.0,
-      FishSpecies.tilapia: 15.0,
-      FishSpecies.catfish: 12.0,
-      FishSpecies.pufferfish: 3.0,
-      FishSpecies.tinCan: 3.0,
-    };
-    const bay = {
-      FishSpecies.grouper: 40.0,
-      FishSpecies.butterflyfish: 15.0,
-      FishSpecies.sardine: 28.0,
-      FishSpecies.mackerel: 12.0,
-      FishSpecies.pufferfish: 3.0,
-      FishSpecies.tinCan: 2.0,
-    };
-    const cave = {
-      FishSpecies.cavefish: 52.0,
-      FishSpecies.lanternfish: 4.0,
-      FishSpecies.catfish: 24.0,
-      FishSpecies.pufferfish: 8.0,
-      FishSpecies.mackerel: 9.0,
-      FishSpecies.tinCan: 3.0,
-    };
-    final estuaryMix = mangroveBlend(x),
-        bayMix = rockyBlend(x),
-        caveMix = caveBlend(x, y: y);
     final night = hour < 6 || hour >= 18;
+    final layers = fishLayers(x, y: y);
     final weights = <FishSpecies, double>{
       for (final fish in FishSpecies.values)
-        fish:
-            ((((((village[fish] ?? 0) * (1 - mix) + (bamboo[fish] ?? 0) * mix) *
-                                                (1 - marineMix) +
-                                            (sea[fish] ?? 0) * marineMix) *
-                                        (1 - estuaryMix) +
-                                    (mangrove[fish] ?? 0) * estuaryMix) *
-                                (1 - bayMix) +
-                            (bay[fish] ?? 0) * bayMix) *
-                        (1 - caveMix) +
-                    (cave[fish] ?? 0) * caveMix) *
-                (night && fish.nightActive ? 1.35 : 1) *
-                (activeWater
-                    ? (fish.isJunk
-                        ? .3
-                        : fish.rarity == 'Phổ biến'
-                            ? 1
-                            : 3)
-                    : 1),
+        fish: _poolWeight(fish, layers) *
+            (night && fish.nightActive ? 1.35 : 1) *
+            (activeWater
+                ? (fish.isJunk
+                    ? .3
+                    : fish.rarity == 'Phổ biến'
+                        ? 1
+                        : 3)
+                : 1),
     };
     final total = weights.values.fold(0.0, (sum, weight) => sum + weight);
     var ticket = (roll % 10000) / 10000 * total;
@@ -188,13 +160,13 @@ class FishingRiver {
       p.dx <= length &&
       p.dy >= top(p.dx) &&
       p.dy <= bottom(p.dx) &&
-      (p - fishingSeaIsland.center).distance > fishingSeaIsland.radius &&
+      !fishingSeaIsland.contains(p) &&
       (p - FishingCabin.ship).distance > FishingCabin.radius;
 
   static Offset constrain(Offset p) {
     var safe = constrainBanks(p);
     final delta = safe - fishingSeaIsland.center;
-    final clearance = fishingSeaIsland.radius + boatMargin;
+    final clearance = fishingSeaIsland.radiusTowards(safe) + boatMargin;
     if (delta.distance < clearance) {
       final direction =
           delta.distance > .001 ? delta / delta.distance : const Offset(0, 1);
@@ -216,19 +188,7 @@ class FishingRiver {
     return Offset(x, p.dy.clamp(top(x) + boatMargin, bottom(x) - boatMargin));
   }
 
-  static String sectionName(double x, {double? y}) => caveBlend(x, y: y) > .1
-      ? 'Hang biển ánh ngọc'
-      : x < sectionLength
-          ? 'Làng ven sông'
-          : x < mangroveStart
-              ? 'Khúc sông tre'
-              : x < seaStart
-                  ? 'Rừng ngập mặn'
-                  : x < rockyBayStart
-                      ? 'Cửa biển nắng vàng'
-                      : x < openSeaStart
-                          ? 'Vịnh đá bạc'
-                          : 'Biển rộng';
+  static String sectionName(double x, {double? y}) => regionAt(x, y: y).label;
 }
 
 /// Click-to-row movement and a smoothly following two-axis camera.
@@ -249,12 +209,8 @@ class FishingRiverRound {
   double _chaseDirection = 1;
   final _route = <Offset>[];
 
-  /// Session-only fog of war for the minimap, revealed around [cameraFocus].
-  static const mapCell = 200.0;
-  static final mapColumns = (FishingRiver.length / mapCell).ceil();
-  static final mapRows = (FishingRiver.height / mapCell).ceil();
-  final explored = List.filled(mapColumns * mapRows, false);
-  bool mapChanged = false;
+  /// Minimap fog, revealed around [cameraFocus] every update.
+  final exploration = FishingExploration();
 
   /// Applies a saved trip; invalid parts keep their defaults.
   void restore({Offset? boat, double? heading, List<bool>? explored}) {
@@ -264,11 +220,10 @@ class FishingRiverRound {
     if (heading != null && heading.isFinite) {
       this.heading = Offset.fromDirection(heading);
     }
-    if (explored != null && explored.length == this.explored.length) {
-      this.explored.setAll(0, explored);
-    }
-    _explore(cameraFocus);
-    mapChanged = false;
+    if (explored != null) exploration.load(explored);
+    exploration
+      ..reveal(cameraFocus)
+      ..changed = false;
     if (viewport != Size.zero) {
       cameraLeft = (cameraFocus.dx - visibleWidth * .42).clamp(0.0, maxCamera);
       cameraTop =
@@ -276,34 +231,19 @@ class FishingRiverRound {
     }
   }
 
-  bool isExplored(int column, int row) => explored[row * mapColumns + column];
-  void _explore(Offset p) {
-    const reach = 3;
-    final c0 = (p.dx / mapCell).floor(), r0 = (p.dy / mapCell).floor();
-    for (var r = r0 - reach; r <= r0 + reach; r++) {
-      for (var c = c0 - reach; c <= c0 + reach; c++) {
-        if (c < 0 || r < 0 || c >= mapColumns || r >= mapRows) continue;
-        if ((c - c0) * (c - c0) + (r - r0) * (r - r0) <= reach * reach + 1) {
-          final i = r * mapColumns + c;
-          if (!explored[i]) {
-            explored[i] = true;
-            mapChanged = true;
-          }
-        }
-      }
-    }
-  }
-
   bool get moving => destination != null;
   bool get rowing => moving || chasing;
+
+  /// Camera zoom: 1 normally, eases out to [lookoutZoom] on the lighthouse.
+  double zoom = 1;
+  static const lookoutZoom = .25;
   double get scale =>
-      viewport.height > 0 ? viewport.height / FishingRiver.viewHeight : 1;
+      (viewport.height > 0 ? viewport.height / FishingRiver.viewHeight : 1) *
+      zoom;
   double get visibleWidth => viewport.width / scale;
   double get visibleHeight => viewport.height / scale;
   double get maxCameraTop => math.max(0, FishingRiver.height - visibleHeight);
   double get maxCamera => math.max(0, FishingRiver.length - visibleWidth);
-  int get section =>
-      (boat.dx / FishingRiver.sectionLength).floor().clamp(0, 2) + 1;
 
   void resize(Size size) {
     if (viewport == size) return;
@@ -488,13 +428,17 @@ class FishingRiverRound {
       island.beginLanding();
     }
     island.update(dt);
-    _explore(cameraFocus);
+    final wantedZoom = island.lookout ? lookoutZoom : 1.0;
+    zoom += (wantedZoom - zoom) * (1 - math.exp(-2.6 * dt));
+    if ((zoom - wantedZoom).abs() < .001) zoom = wantedZoom;
+    exploration.reveal(cameraFocus, reach: island.lookout ? 11 : 3);
     props.update(
         dt, clock, boat, dt > 0 ? (boat - _lastBoat) / dt : Offset.zero);
     _lastBoat = boat;
     wake += ((rowing ? 1 : 0) - wake) * (1 - math.exp(-4 * dt));
+    final ahead = island.lookout ? .5 : .42;
     final targetCamera =
-        (cameraFocus.dx - visibleWidth * .42).clamp(0.0, maxCamera);
+        (cameraFocus.dx - visibleWidth * ahead).clamp(0.0, maxCamera);
     cameraLeft += (targetCamera - cameraLeft) * (1 - math.exp(-5 * dt));
     cameraLeft = cameraLeft.clamp(0.0, maxCamera);
     final targetTop =

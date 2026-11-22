@@ -44,47 +44,47 @@ class FishingController extends ChangeNotifier {
   bool get canSail =>
       _phase == FishingPhase.ready || _phase == FishingPhase.lost;
   bool get surging => _surging;
-  String get guide => river.cabin.pending
-      ? 'Đang chèo tới thuyền gỗ…'
-      : !river.island.ashore &&
-              !active &&
-              (river.boat - FishingCabin.ship).distance < 650
-          ? 'Bấm thuyền lớn để vào khoang nghỉ'
-          : _shoreCastPending
-              ? 'Mèo đang ra mép nước để câu…'
-              : river.island.ashore && !showFishingArt
-                  ? river.island.boardRequested
-                      ? 'Mèo đang quay lại thuyền…'
-                      : river.island.onBank
-                          ? 'Bấm trên bờ để đi · Về thuyền để chèo tiếp'
-                          : 'Sò ${river.island.collectedShells.length}/6 · Bấm Về thuyền để quay lại bến'
-                  : river.island.dockRequested
-                      ? 'Đang cập bến…'
-                      : (river.boat - FishingIslandVisit.mooring).distance <
-                                  600 &&
-                              canSail
-                          ? 'Bấm cầu gỗ trên đảo để cập bến khám phá'
-                          : switch (_phase) {
-                              FishingPhase.ready => river.moving
-                                  ? 'Đang chèo · Bấm cần câu góc phải để câu tại đây'
-                                  : activities.nearby(
-                                              river.clock, river.boat) !=
-                                          null
-                                      ? 'Có cá động gần đây! Bấm cần câu để thử vận may'
-                                      : 'Bấm nước để chèo · Bấm bờ để xuống đi bộ',
-                              FishingPhase.casting => _activeWater
-                                  ? 'Thả vào chỗ cá động · Cơ hội cá hiếm tăng!'
-                                  : 'Mèo đang thả cần…',
-                              FishingPhase.waiting =>
-                                'Chờ phao động rồi bấm giật cần',
-                              FishingPhase.bite => 'Cá cắn! Bấm nút giật cần!',
-                              FishingPhase.reeling => '',
-                              FishingPhase.saving =>
-                                _error ?? 'Đang cất cá vào giỏ…',
-                              FishingPhase.caught => message,
-                              FishingPhase.lost =>
-                                '${_error ?? "Cá thoát rồi"} · Bấm cần câu để thử lại',
-                            };
+
+  /// One-line hint for the HUD. Checked top to bottom; the first match wins,
+  /// so travel/visit hints outrank the fishing phase.
+  String get guide {
+    final island = river.island;
+    if (river.cabin.pending) return 'Đang chèo tới thuyền gỗ…';
+    if (!island.ashore &&
+        !active &&
+        (river.boat - FishingCabin.ship).distance < 650) {
+      return 'Bấm thuyền lớn để vào khoang nghỉ';
+    }
+    if (island.lookout) return 'Ngắm toàn vùng biển · Bấm để leo xuống';
+    if (island.lookoutRequested) return 'Mèo đang tới hải đăng…';
+    if (_shoreCastPending) return 'Mèo đang ra mép nước để câu…';
+    if (island.ashore && !showFishingArt) {
+      if (island.boardRequested) return 'Mèo đang quay lại thuyền…';
+      if (island.onBank) return 'Bấm trên bờ để đi · Về thuyền để chèo tiếp';
+      return 'Sò ${island.collectedShells.length}/6 · Bấm Về thuyền để quay lại bến';
+    }
+    if (island.dockRequested) return 'Đang cập bến…';
+    if (canSail && (river.boat - FishingIslandVisit.mooring).distance < 600) {
+      return 'Bấm cầu gỗ trên đảo để cập bến khám phá';
+    }
+    return switch (_phase) {
+      FishingPhase.ready => river.moving
+          ? 'Đang chèo · Bấm cần câu góc phải để câu tại đây'
+          : activities.nearby(river.clock, river.boat) != null
+              ? 'Có cá động gần đây! Bấm cần câu để thử vận may'
+              : 'Bấm nước để chèo · Bấm bờ để xuống đi bộ',
+      FishingPhase.casting => _activeWater
+          ? 'Thả vào chỗ cá động · Cơ hội cá hiếm tăng!'
+          : 'Mèo đang thả cần…',
+      FishingPhase.waiting => 'Chờ phao động rồi bấm giật cần',
+      FishingPhase.bite => 'Cá cắn! Bấm nút giật cần!',
+      FishingPhase.reeling => '',
+      FishingPhase.saving => _error ?? 'Đang cất cá vào giỏ…',
+      FishingPhase.caught => message,
+      FishingPhase.lost =>
+        '${_error ?? "Cá thoát rồi"} · Bấm cần câu để thử lại',
+    };
+  }
 
   void tapRiver(Offset screen) {
     if (_phase == FishingPhase.saving || _phase == FishingPhase.caught) return;
@@ -93,9 +93,16 @@ class FishingController extends ChangeNotifier {
     river.cabin.pending = false;
     final island = river.island;
     _shoreCastPending = false;
+    if (island.lookout) {
+      island.climbDown();
+      notifyListeners();
+      return;
+    }
     if (island.ashore) {
       if (active) cancelCast();
-      if ((point - river.boat).distance < 70) {
+      if (!island.onBank && FishingIslandVisit.hitsLighthouse(point)) {
+        island.climbLighthouse();
+      } else if ((point - river.boat).distance < 70) {
         returnToBoat();
       } else if (island.landContains(point)) {
         island.walkTo(point);

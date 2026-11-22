@@ -62,7 +62,7 @@ class FishingIslandPainter extends CustomPainter {
       c.restore();
     }
     if (!visible
-        .inflate(fishingSeaIsland.radius + 80)
+        .inflate(fishingSeaIsland.maxRadius + 80)
         .contains(fishingSeaIsland.center)) {
       return;
     }
@@ -70,6 +70,69 @@ class FishingIslandPainter extends CustomPainter {
     c.clipRect(Offset.zero & size);
     c.scale(round.scale);
     c.translate(-round.cameraLeft, -round.cameraTop);
+    // Campfire flame on the south beach.
+    final fire = fishingSeaIsland.center + const Offset(60, 246);
+    final flick =
+        math.sin(round.clock * 13) * .5 + math.sin(round.clock * 7.3) * .5;
+    c.drawCircle(fire, 34 + flick * 3,
+        Paint()..color = Color.fromRGBO(255, 190, 90, .16 + flick * .03));
+    for (final (dx, h, color) in const [
+      (-6.0, 22.0, Color(0xFFE8642E)),
+      (6.0, 18.0, Color(0xFFF08A3A)),
+      (0.0, 26.0, Color(0xFFF6B547)),
+      (0.0, 14.0, Color(0xFFFFE08A)),
+    ]) {
+      final top = h + flick * 4 * (dx == 0 ? 1 : -1);
+      c.drawPath(
+          Path()
+            ..moveTo(fire.dx + dx - 7, fire.dy)
+            ..quadraticBezierTo(fire.dx + dx - 8, fire.dy - top * .5,
+                fire.dx + dx + flick * 2, fire.dy - top)
+            ..quadraticBezierTo(
+                fire.dx + dx + 8, fire.dy - top * .5, fire.dx + dx + 7, fire.dy)
+            ..close(),
+          Paint()..color = color);
+    }
+    // Rotating lighthouse beam; brighter while the cat is up on the gallery.
+    final lamp = FishingIslandVisit.lighthouse +
+        const Offset(0, -124 * FishingIslandVisit.lighthouseScale);
+    final sweep = round.clock * .9;
+    final strength = island.lookout ? .32 : .14;
+    for (final a in [sweep, sweep + math.pi]) {
+      final reach = 520 * (.55 + .45 * math.cos(a).abs());
+      final dir = Offset(math.cos(a), math.sin(a) * .45);
+      final side = Offset(-dir.dy, dir.dx);
+      c.drawPath(
+          Path()
+            ..moveTo(lamp.dx, lamp.dy)
+            ..lineTo((lamp + dir * reach + side * 60).dx,
+                (lamp + dir * reach + side * 60).dy)
+            ..lineTo((lamp + dir * reach - side * 60).dx,
+                (lamp + dir * reach - side * 60).dy)
+            ..close(),
+          Paint()
+            ..shader = RadialGradient(colors: [
+              Color.fromRGBO(255, 236, 160, strength),
+              const Color(0x00FFECA0),
+            ]).createShader(Rect.fromCircle(center: lamp, radius: reach)));
+    }
+    c.drawCircle(lamp, 16,
+        Paint()..color = Color.fromRGBO(255, 230, 140, strength + .2));
+    if (island.ashore &&
+        !island.onBank &&
+        !island.lookout &&
+        !island.lookoutRequested) {
+      final pulse = math.sin(round.clock * 3) * 2;
+      c.drawOval(
+          Rect.fromCenter(
+              center: FishingIslandVisit.lighthouseDoor + const Offset(0, 6),
+              width: 44 + pulse,
+              height: 18 + pulse),
+          Paint()
+            ..color = const Color(0xAAFFF3B7)
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = 2);
+    }
     if (!island.ashore) {
       final pulse = math.sin(round.clock * 3) * 2;
       c.drawOval(

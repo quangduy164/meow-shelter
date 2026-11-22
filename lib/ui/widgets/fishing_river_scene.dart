@@ -10,6 +10,8 @@ import 'fishing_oar_art.dart';
 import 'fishing_activity_art.dart';
 import 'fishing_fight_art.dart';
 import 'fishing_river_details.dart';
+import 'fishing_rock_art.dart';
+import '../../fishing/river_props.dart';
 import 'river_encounter_art.dart';
 
 /// Like Adventure's cached background: only the visible stretch is replayed.
@@ -88,8 +90,7 @@ class FishingRiverSurface extends CustomPainter {
       ..fillType = PathFillType.evenOdd
       ..addRect(
           const Rect.fromLTWH(0, 0, FishingRiver.length, FishingRiver.height))
-      ..addOval(Rect.fromCircle(
-          center: fishingSeaIsland.center, radius: fishingSeaIsland.radius)));
+      ..addPath(fishingSeaIsland.outline(), Offset.zero));
     final left = math.max(0.0, round.cameraLeft - 30);
     final right = math.min(
         FishingRiver.length, round.cameraLeft + round.visibleWidth + 30);
@@ -163,13 +164,19 @@ class FishingRiverSurface extends CustomPainter {
             Paint()..color = const Color(0xCCB5C68A));
       }
     }
-    if (right > fishingSeaIsland.center.dx - fishingSeaIsland.radius - 30 &&
-        left < fishingSeaIsland.center.dx + fishingSeaIsland.radius + 30) {
-      final radius =
-          fishingSeaIsland.radius + 7 + math.sin(round.clock * 1.8) * 3;
-      canvas.drawCircle(
-          fishingSeaIsland.center,
-          radius,
+    for (final rock in round.props.rocks) {
+      if (rock.kind != RiverPropKind.rock ||
+          rock.anchor.dx < left - 120 ||
+          rock.anchor.dx > right + 120) {
+        continue;
+      }
+      paintRockFoam(canvas, rock.anchor, rock.radius, round.clock,
+          rock.anchor.dx.toInt());
+    }
+    if (right > fishingSeaIsland.center.dx - fishingSeaIsland.maxRadius - 30 &&
+        left < fishingSeaIsland.center.dx + fishingSeaIsland.maxRadius + 30) {
+      canvas.drawPath(
+          fishingSeaIsland.outline(grow: 7 + math.sin(round.clock * 1.8) * 3),
           Paint()
             ..color = const Color(0x99F2F5D5)
             ..style = PaintingStyle.stroke

@@ -3,8 +3,8 @@ import 'package:flutter/painting.dart';
 /// A moored vessel with a separate, session-only walkable cabin.
 class FishingCabin {
   static const radius = 130.0;
-  static const ship = Offset(10300, 1050);
-  static const mooring = Offset(10300, 1245);
+  static const ship = Offset(11500, 1000);
+  static const mooring = Offset(11500, 1195);
   static const roomSize = Size(800, 480);
   static const exit = Offset(400, 410);
   static const floor = Rect.fromLTRB(155, 205, 650, 414);
@@ -16,7 +16,14 @@ class FishingCabin {
   static const bedroomFloor = Rect.fromLTRB(155, 205, 520, 414);
   static const doorTap = Rect.fromLTRB(650, 200, 760, 315);
   static const bedroomDoorTap = Rect.fromLTRB(40, 200, 155, 315);
-  static const chestTap = Rect.fromLTRB(56, 330, 158, 428);
+
+  /// Half height of the wall opening drawn around [door] / [bedroomDoor].
+  static const doorHalfHeight = 45.0;
+
+  /// Treasure chest footprint in the bedroom (lid top to base); art and tap
+  /// area both derive from it.
+  static const chest = Rect.fromLTRB(66, 338, 148, 418);
+  static final chestTap = chest.inflate(10);
   static const chestSpot = Offset(172, 384);
   int room = 0;
   bool chestRequested = false;
@@ -33,7 +40,7 @@ class FishingCabin {
   int? _nextRoom;
   Rect get currentFloor => room == 0 ? floor : bedroomFloor;
   static bool hit(Offset point) =>
-      const Rect.fromLTWH(10150, 900, 300, 230).contains(point);
+      Rect.fromLTWH(ship.dx - 150, ship.dy - 150, 300, 230).contains(point);
   bool pending = false, inside = false, leaving = false, facingRight = true;
   Offset cat = exit;
   Offset? destination;

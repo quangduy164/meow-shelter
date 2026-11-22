@@ -2,22 +2,7 @@ import 'dart:math' as math;
 import 'package:flutter/painting.dart';
 import '../../fishing/fishing_river.dart';
 import '../../fishing/river_props.dart';
-
-Path _band(double from, double to, double Function(double) top,
-    double Function(double) bottom) {
-  final p = Path()..moveTo(from, top(from));
-  for (var x = from + 8; x < to; x += 8) {
-    p.lineTo(x, top(x));
-  }
-  p.lineTo(to, top(to));
-  p.lineTo(to, bottom(to));
-  for (var x = to - 8; x > from; x -= 8) {
-    p.lineTo(x, bottom(x));
-  }
-  return p
-    ..lineTo(from, bottom(from))
-    ..close();
-}
+import 'fishing_art_kit.dart';
 
 /// Recorded into the existing chunk cache; shared channel bounds define mud/water.
 void paintMangrove(Canvas c, double left, double right) {
@@ -29,17 +14,17 @@ void paintMangrove(Canvas c, double left, double right) {
   c.saveLayer(Rect.fromLTRB(from, 0, to, FishingRiver.height), Paint());
   c.drawRect(Rect.fromLTRB(from, 0, to, FishingRiver.height),
       Paint()..color = const Color(0xFF82977A));
-  final wet = _band(from, to, (x) => FishingRiver.top(x) - 60,
+  final wet = bankBand(from, to, (x) => FishingRiver.top(x) - 60,
       (x) => FishingRiver.bottom(x) + 70);
   c.drawPath(wet, Paint()..color = const Color(0xFF8C8A65));
   c.drawPath(
-      _band(from, to, (x) => FishingRiver.top(x) - 25,
+      bankBand(from, to, (x) => FishingRiver.top(x) - 25,
           (x) => FishingRiver.bottom(x) + 25),
       Paint()..color = const Color(0xFF737C60));
-  c.drawPath(_band(from, to, FishingRiver.top, FishingRiver.bottom),
+  c.drawPath(bankBand(from, to, FishingRiver.top, FishingRiver.bottom),
       Paint()..color = const Color(0xFF568D80));
   c.drawPath(
-      _band(from, to, (x) => FishingRiver.top(x) + 18,
+      bankBand(from, to, (x) => FishingRiver.top(x) + 18,
           (x) => FishingRiver.bottom(x) - 18),
       Paint()..color = const Color(0xFF4F827B));
   final rng = math.Random(851);
@@ -68,11 +53,11 @@ void paintMangrove(Canvas c, double left, double right) {
   for (var i = (from / 100).floor(); i * 100 < to + 100; i++) {
     for (final north in [true, false]) {
       final k = i * 2 + (north ? 0 : 1);
-      final x = i * 100.0 + 35 + (_h(k, 1) - .5) * 70;
+      final x = i * 100.0 + 35 + (artNoise(k, 1) - .5) * 70;
       final y =
           (north ? FishingRiver.top(x) - 150 : FishingRiver.bottom(x) + 215) +
-              (_h(k, 2) - .5) * 80;
-      final r = _h(k, 3);
+              (artNoise(k, 2) - .5) * 80;
+      final r = artNoise(k, 3);
       final kind = r < .38
           ? _Mangrove.tall
           : r < .62
@@ -82,7 +67,7 @@ void paintMangrove(Canvas c, double left, double right) {
                   : r < .88
                       ? _Mangrove.snag
                       : _Mangrove.sapling;
-      _place(c, Offset(x, y), kind, k, .72 + _h(k, 4) * .4);
+      _place(c, Offset(x, y), kind, k, .72 + artNoise(k, 4) * .4);
     }
   }
   _mudLife(c, from, to);
@@ -91,8 +76,12 @@ void paintMangrove(Canvas c, double left, double right) {
       .where((p) => p.kind == RiverPropKind.mangroveRoot)) {
     if (root.anchor.dx < from - 100 || root.anchor.dx > to + 100) continue;
     final k = root.anchor.dx.toInt() + root.anchor.dy.toInt();
-    _place(c, root.anchor, _h(k, 5) < .7 ? _Mangrove.tall : _Mangrove.bush, k,
-        .9 + _h(k, 6) * .28);
+    _place(
+        c,
+        root.anchor,
+        artNoise(k, 5) < .7 ? _Mangrove.tall : _Mangrove.bush,
+        k,
+        .9 + artNoise(k, 6) * .28);
   } // Tiny mud pools and crab holes add detail along the walkable shore.
   for (var i = (from / 190).floor(); i * 190 < to; i++) {
     final x = i * 190.0 + 45;
@@ -147,25 +136,12 @@ void paintMangrove(Canvas c, double left, double right) {
   c.restore();
 }
 
-/// Deterministic 0..1 noise so the cached art is identical every run.
-double _h(int i, int salt) {
-  final v = math.sin(i * 12.9898 + salt * 78.233) * 43758.5453;
-  return v - v.floorToDouble();
-}
-
 enum _Mangrove { tall, bush, nipa, snag, sapling }
-
-Paint _p(int color) => Paint()..color = Color(color);
-Paint _s(int color, double width) => Paint()
-  ..color = Color(color)
-  ..style = PaintingStyle.stroke
-  ..strokeWidth = width
-  ..strokeCap = StrokeCap.round;
 
 void _place(Canvas c, Offset p, _Mangrove kind, int seed, double scale) {
   c.save();
   c.translate(p.dx, p.dy);
-  c.scale(_h(seed, 7) < .5 ? -scale : scale, scale);
+  c.scale(artNoise(seed, 7) < .5 ? -scale : scale, scale);
   switch (kind) {
     case _Mangrove.tall:
       _tall(c, seed);
@@ -190,8 +166,9 @@ void _stiltRoots(Canvas c, int count, double spread, double top) {
         ..moveTo(side * 5, top)
         ..quadraticBezierTo(side * (spread * .7 + i * 6), top * .3,
             side * (spread + i * 10), 8 + i * 5.0);
-      c.drawPath(path, _s(0xFF6C6246, 6 - i * 1.0));
-      c.drawPath(path.shift(const Offset(-1, -1)), _s(0xFFAA9670, 1.3));
+      c.drawPath(path, strokePaint(0xFF6C6246, 6 - i * 1.0));
+      c.drawPath(
+          path.shift(const Offset(-1, -1)), strokePaint(0xFFAA9670, 1.3));
     }
   }
 }
@@ -199,30 +176,31 @@ void _stiltRoots(Canvas c, int count, double spread, double top) {
 void _canopy(Canvas c, int seed, Offset center, double rx, double ry, int blobs,
     double blob) {
   for (var i = 0; i < blobs; i++) {
-    final a = i * 2.4 + _h(seed, 10) * 6;
+    final a = i * 2.4 + artNoise(seed, 10) * 6;
     final q = center +
-        Offset(math.cos(a) * rx * (.45 + _h(seed + i, 11) * .55),
-            math.sin(a) * ry * (.45 + _h(seed + i, 12) * .55));
-    final w = blob * (.8 + _h(seed + i, 13) * .45);
+        Offset(math.cos(a) * rx * (.45 + artNoise(seed + i, 11) * .55),
+            math.sin(a) * ry * (.45 + artNoise(seed + i, 12) * .55));
+    final w = blob * (.8 + artNoise(seed + i, 13) * .45);
     c.drawOval(
         Rect.fromCenter(
             center: q + const Offset(1, 7), width: w * 1.07, height: w * .65),
-        _p(0xFF426C51));
+        fillPaint(0xFF426C51));
     c.drawOval(Rect.fromCenter(center: q, width: w, height: w * .6),
-        _p(_leafTones[(i + seed) % _leafTones.length]));
+        fillPaint(_leafTones[(i + seed) % _leafTones.length]));
   }
 }
 
 void _tall(Canvas c, int seed) {
-  c.drawOval(const Rect.fromLTWH(-49, -10, 98, 27), _p(0x3351644A));
+  c.drawOval(const Rect.fromLTWH(-49, -10, 98, 27), fillPaint(0x3351644A));
   _stiltRoots(c, 3, 25, -44);
-  final lean = (_h(seed, 8) - .5) * 18;
+  final lean = (artNoise(seed, 8) - .5) * 18;
   c.drawPath(
       Path()
         ..moveTo(-7, -35)
         ..quadraticBezierTo(6 + lean, -70, -5 + lean, -103),
-      _s(0xFF81734F, 14));
-  c.drawLine(const Offset(-2, -67), Offset(28 + lean, -105), _s(0xFF81734F, 7));
+      strokePaint(0xFF81734F, 14));
+  c.drawLine(const Offset(-2, -67), Offset(28 + lean, -105),
+      strokePaint(0xFF81734F, 7));
   _canopy(c, seed, Offset(lean, -108), 40, 24, 6 + seed % 3, 60);
   // Hanging propagules.
   for (var i = 0; i < 4 + seed % 3; i++) {
@@ -231,33 +209,34 @@ void _tall(Canvas c, int seed) {
             center: Offset(-33 + i * 15.0 + lean, -92 + i % 2 * 9),
             width: 5,
             height: 16),
-        _p(0xFF94A568));
+        fillPaint(0xFF94A568));
   }
 }
 
 void _bush(Canvas c, int seed) {
-  c.drawOval(const Rect.fromLTWH(-58, -8, 116, 24), _p(0x3351644A));
+  c.drawOval(const Rect.fromLTWH(-58, -8, 116, 24), fillPaint(0x3351644A));
   _stiltRoots(c, 2, 30, -26);
-  c.drawLine(const Offset(0, -24), const Offset(0, -48), _s(0xFF81734F, 10));
+  c.drawLine(
+      const Offset(0, -24), const Offset(0, -48), strokePaint(0xFF81734F, 10));
   _canopy(c, seed, const Offset(0, -58), 52, 16, 7 + seed % 3, 52);
   // Small white flowers.
   for (var i = 0; i < 5; i++) {
     c.drawCircle(Offset(-40 + i * 20.0, -60 + math.sin(i * 1.7 + seed) * 10),
-        2.4, _p(0xFFF3EFD2));
+        2.4, fillPaint(0xFFF3EFD2));
   }
 }
 
 void _nipa(Canvas c, int seed) {
-  c.drawOval(const Rect.fromLTWH(-40, -6, 80, 18), _p(0x334C6A55));
+  c.drawOval(const Rect.fromLTWH(-40, -6, 80, 18), fillPaint(0x334C6A55));
   for (var i = 0; i < 7; i++) {
-    final a = -math.pi / 2 + (i - 3) * .42 + (_h(seed + i, 14) - .5) * .2;
-    final len = 62 + _h(seed + i, 15) * 28;
+    final a = -math.pi / 2 + (i - 3) * .42 + (artNoise(seed + i, 14) - .5) * .2;
+    final len = 62 + artNoise(seed + i, 15) * 28;
     final tip = Offset(math.cos(a) * len, math.sin(a) * len * .9);
     final mid = tip * .55 + Offset(math.cos(a + .6) * 6, -8);
     final frond = Path()
       ..moveTo(0, 0)
       ..quadraticBezierTo(mid.dx, mid.dy, tip.dx, tip.dy);
-    c.drawPath(frond, _s(0xFF5E7F45, 3));
+    c.drawPath(frond, strokePaint(0xFF5E7F45, 3));
     for (var j = 1; j < 7; j++) {
       final t = j / 7;
       final q = Offset.lerp(Offset.zero, tip, t)! +
@@ -268,15 +247,15 @@ void _nipa(Canvas c, int seed) {
             q +
                 Offset(math.cos(a + side * 1.2) * 13 * (1 - t * .5),
                     math.sin(a + side * 1.2) * 11 * (1 - t * .5)),
-            _s(j.isEven ? 0xFF7FA35B : 0xFF6A9150, 3));
+            strokePaint(j.isEven ? 0xFF7FA35B : 0xFF6A9150, 3));
       }
     }
   }
-  c.drawOval(const Rect.fromLTWH(-8, -10, 16, 12), _p(0xFF7A5634));
+  c.drawOval(const Rect.fromLTWH(-8, -10, 16, 12), fillPaint(0xFF7A5634));
 }
 
 void _snag(Canvas c, int seed) {
-  c.drawOval(const Rect.fromLTWH(-40, -8, 80, 22), _p(0x3351644A));
+  c.drawOval(const Rect.fromLTWH(-40, -8, 80, 22), fillPaint(0x3351644A));
   for (final side in [-1.0, 1.0]) {
     for (var i = 0; i < 2; i++) {
       c.drawPath(
@@ -284,10 +263,10 @@ void _snag(Canvas c, int seed) {
             ..moveTo(side * 4, -30)
             ..quadraticBezierTo(
                 side * (16 + i * 6), -8, side * (22 + i * 9), 6 + i * 4.0),
-          _s(0xFF8B8270, 5 - i * 1.0));
+          strokePaint(0xFF8B8270, 5 - i * 1.0));
     }
   }
-  final bark = _s(0xFFA59B86, 9);
+  final bark = strokePaint(0xFFA59B86, 9);
   c.drawLine(const Offset(0, -26), const Offset(4, -92), bark);
   c.drawLine(
       const Offset(2, -60), const Offset(-24, -84), bark..strokeWidth = 5);
@@ -295,13 +274,14 @@ void _snag(Canvas c, int seed) {
       const Offset(4, -78), const Offset(26, -98), bark..strokeWidth = 4);
   c.drawLine(
       const Offset(-24, -84), const Offset(-30, -96), bark..strokeWidth = 3);
-  if (_h(seed, 16) < .6) _egret(c, const Offset(24, -98), .7);
+  if (artNoise(seed, 16) < .6) _egret(c, const Offset(24, -98), .7);
 }
 
 void _sapling(Canvas c, int seed) {
-  c.drawOval(const Rect.fromLTWH(-20, -4, 40, 12), _p(0x3351644A));
+  c.drawOval(const Rect.fromLTWH(-20, -4, 40, 12), fillPaint(0x3351644A));
   _stiltRoots(c, 1, 12, -16);
-  c.drawLine(const Offset(0, -14), const Offset(1, -32), _s(0xFF81734F, 4));
+  c.drawLine(
+      const Offset(0, -14), const Offset(1, -32), strokePaint(0xFF81734F, 4));
   _canopy(c, seed, const Offset(1, -36), 12, 7, 3, 22);
 }
 
@@ -310,37 +290,41 @@ void _egret(Canvas c, Offset p, double s) {
   c.save();
   c.translate(p.dx, p.dy);
   c.scale(s);
-  c.drawLine(const Offset(-2, 0), const Offset(-1, -14), _s(0xFF3E3A33, 1.6));
-  c.drawLine(const Offset(3, 0), const Offset(2, -14), _s(0xFF3E3A33, 1.6));
-  c.drawOval(const Rect.fromLTWH(-12, -28, 24, 15), _p(0xFFF7F5EC));
+  c.drawLine(
+      const Offset(-2, 0), const Offset(-1, -14), strokePaint(0xFF3E3A33, 1.6));
+  c.drawLine(
+      const Offset(3, 0), const Offset(2, -14), strokePaint(0xFF3E3A33, 1.6));
+  c.drawOval(const Rect.fromLTWH(-12, -28, 24, 15), fillPaint(0xFFF7F5EC));
   c.drawPath(
       Path()
         ..moveTo(6, -24)
         ..quadraticBezierTo(14, -34, 9, -42)
         ..quadraticBezierTo(6, -48, 12, -50),
-      _s(0xFFF7F5EC, 4));
-  c.drawCircle(const Offset(12, -50), 4, _p(0xFFF7F5EC));
-  c.drawLine(const Offset(15, -50), const Offset(25, -48), _s(0xFFE9B949, 2));
-  c.drawCircle(const Offset(13, -51), 1, _p(0xFF1F1A17));
+      strokePaint(0xFFF7F5EC, 4));
+  c.drawCircle(const Offset(12, -50), 4, fillPaint(0xFFF7F5EC));
+  c.drawLine(
+      const Offset(15, -50), const Offset(25, -48), strokePaint(0xFFE9B949, 2));
+  c.drawCircle(const Offset(13, -51), 1, fillPaint(0xFF1F1A17));
   c.restore();
 }
 
 /// Breathing roots, crabs, mudskippers, egrets and fallen logs on the mud.
 void _mudLife(Canvas c, double from, double to) {
   for (var i = (from / 70).floor(); i * 70 < to; i++) {
-    final x = i * 70.0 + _h(i, 20) * 40;
+    final x = i * 70.0 + artNoise(i, 20) * 40;
     final north = i.isEven;
     final edge = north ? FishingRiver.top(x) : FishingRiver.bottom(x);
     final out = north ? -1.0 : 1.0;
-    final p = Offset(x, edge + out * (14 + _h(i, 21) * 40));
-    final r = _h(i, 22);
+    final p = Offset(x, edge + out * (14 + artNoise(i, 21) * 40));
+    final r = artNoise(i, 22);
     if (r < .45) {
       // Pneumatophores: a cluster of pencil roots poking from the mud.
       for (var j = 0; j < 5 + i % 4; j++) {
-        final q =
-            p + Offset((_h(i + j, 23) - .5) * 34, (_h(i + j, 24) - .5) * 14);
-        c.drawLine(
-            q, q - Offset(0, 6 + _h(i + j, 25) * 8), _s(0xFF7E6E4E, 2.4));
+        final q = p +
+            Offset((artNoise(i + j, 23) - .5) * 34,
+                (artNoise(i + j, 24) - .5) * 14);
+        c.drawLine(q, q - Offset(0, 6 + artNoise(i + j, 25) * 8),
+            strokePaint(0xFF7E6E4E, 2.4));
       }
     } else if (r < .6) {
       _crab(c, p, i);
@@ -351,12 +335,14 @@ void _mudLife(Canvas c, double from, double to) {
     } else if (r < .84) {
       c.save();
       c.translate(p.dx, p.dy + out * 20);
-      c.rotate((_h(i, 26) - .5) * .8);
-      c.drawLine(const Offset(-30, 0), const Offset(30, 0), _s(0xFF6E5C40, 11));
-      c.drawLine(
-          const Offset(-26, -2), const Offset(26, -2), _s(0xFF9C8661, 2));
-      c.drawLine(const Offset(10, 0), const Offset(22, -14), _s(0xFF6E5C40, 5));
-      c.drawOval(const Rect.fromLTWH(26, -5, 9, 10), _p(0xFFB9A57A));
+      c.rotate((artNoise(i, 26) - .5) * .8);
+      c.drawLine(const Offset(-30, 0), const Offset(30, 0),
+          strokePaint(0xFF6E5C40, 11));
+      c.drawLine(const Offset(-26, -2), const Offset(26, -2),
+          strokePaint(0xFF9C8661, 2));
+      c.drawLine(const Offset(10, 0), const Offset(22, -14),
+          strokePaint(0xFF6E5C40, 5));
+      c.drawOval(const Rect.fromLTWH(26, -5, 9, 10), fillPaint(0xFFB9A57A));
       c.restore();
     }
   }
@@ -367,26 +353,28 @@ void _crab(Canvas c, Offset p, int seed) {
   for (final side in [-1.0, 1.0]) {
     for (var j = 0; j < 3; j++) {
       c.drawLine(p + Offset(side * 4, j * 2.0 - 1),
-          p + Offset(side * 10, j * 3.0 + 2), _s(red, 1.4));
+          p + Offset(side * 10, j * 3.0 + 2), strokePaint(red, 1.4));
     }
-    c.drawCircle(p + Offset(side * 9, -5), 3, _p(red));
+    c.drawCircle(p + Offset(side * 9, -5), 3, fillPaint(red));
   }
-  c.drawOval(Rect.fromCenter(center: p, width: 13, height: 9), _p(red));
-  c.drawCircle(p + const Offset(-2.5, -4), 1.3, _p(0xFF1F1A17));
-  c.drawCircle(p + const Offset(2.5, -4), 1.3, _p(0xFF1F1A17));
+  c.drawOval(Rect.fromCenter(center: p, width: 13, height: 9), fillPaint(red));
+  c.drawCircle(p + const Offset(-2.5, -4), 1.3, fillPaint(0xFF1F1A17));
+  c.drawCircle(p + const Offset(2.5, -4), 1.3, fillPaint(0xFF1F1A17));
 }
 
 void _mudskipper(Canvas c, Offset p, bool facingRight) {
   final d = facingRight ? 1.0 : -1.0;
-  c.drawOval(Rect.fromCenter(center: p, width: 22, height: 8), _p(0xFF7D7458));
+  c.drawOval(
+      Rect.fromCenter(center: p, width: 22, height: 8), fillPaint(0xFF7D7458));
   c.drawPath(
       Path()
         ..moveTo(p.dx - d * 10, p.dy)
         ..lineTo(p.dx - d * 17, p.dy - 5)
         ..lineTo(p.dx - d * 17, p.dy + 5)
         ..close(),
-      _p(0xFF6A6249));
-  c.drawCircle(p + Offset(d * 7, -4), 2.6, _p(0xFFE8E0C4));
-  c.drawCircle(p + Offset(d * 7.5, -4), 1.2, _p(0xFF1F1A17));
-  c.drawLine(p + Offset(d * 2, 3), p + Offset(d * 6, 7), _s(0xFF6A6249, 2));
+      fillPaint(0xFF6A6249));
+  c.drawCircle(p + Offset(d * 7, -4), 2.6, fillPaint(0xFFE8E0C4));
+  c.drawCircle(p + Offset(d * 7.5, -4), 1.2, fillPaint(0xFF1F1A17));
+  c.drawLine(
+      p + Offset(d * 2, 3), p + Offset(d * 6, 7), strokePaint(0xFF6A6249, 2));
 }

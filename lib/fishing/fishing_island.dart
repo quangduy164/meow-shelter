@@ -20,6 +20,39 @@ class FishingIslandVisit {
       fishingSeaIsland.center + Offset(-fishingSeaIsland.radius + 33, 30);
   static Offset get dockTap =>
       fishingSeaIsland.center + Offset(-fishingSeaIsland.radius - 11, 35);
+
+  /// Lighthouse on the east headland: [lighthouse] is the tower base,
+  /// [lighthouseDoor] where the cat starts climbing, [lighthouseTop] the
+  /// gallery it stands on while looking out.
+  static const lighthouseScale = 1.3;
+  static Offset get lighthouse =>
+      fishingSeaIsland.center + const Offset(395, -15);
+  static Offset get lighthouseDoor => lighthouse + const Offset(0, 16);
+  static Offset get lighthouseTop =>
+      lighthouse + const Offset(0, -111 * lighthouseScale);
+  static bool hitsLighthouse(Offset p) => Rect.fromLTRB(lighthouse.dx - 45,
+          lighthouse.dy - 215, lighthouse.dx + 45, lighthouse.dy + 30)
+      .contains(p);
+
+  /// True while the cat stands on the lighthouse gallery (camera zooms out).
+  bool lookout = false;
+  bool lookoutRequested = false;
+
+  /// Walks to the lighthouse door; the climb starts on arrival.
+  void climbLighthouse() {
+    if (phase != IslandVisitPhase.exploring || onBank || lookout) return;
+    boardRequested = false;
+    _routeTo(lighthouseDoor);
+    lookoutRequested = true;
+  }
+
+  void climbDown() {
+    if (!lookout) return;
+    lookout = false;
+    cat = lighthouseDoor;
+    facingRight = false;
+  }
+
   static const shellOffsets = [
     Offset(-330, -130),
     Offset(280, -240),
@@ -112,11 +145,10 @@ class FishingIslandVisit {
       phase == IslandVisitPhase.landing || phase == IslandVisitPhase.boarding
           ? math.sin((elapsed / .65).clamp(0.0, 1.0) * math.pi) * 28
           : 0;
-  static bool contains(Offset p) =>
-      (p - fishingSeaIsland.center).distance <= fishingSeaIsland.radius;
+  static bool contains(Offset p) => fishingSeaIsland.contains(p);
   static Offset constrain(Offset p) {
     final delta = p - fishingSeaIsland.center;
-    final radius = fishingSeaIsland.radius - 22;
+    final radius = fishingSeaIsland.radiusTowards(p) - 22;
     return delta.distance > radius
         ? fishingSeaIsland.center + delta / delta.distance * radius
         : p;
@@ -134,8 +166,9 @@ class FishingIslandVisit {
   }
 
   void walkTo(Offset point) {
-    if (phase != IslandVisitPhase.exploring) return;
+    if (phase != IslandVisitPhase.exploring || lookout) return;
     boardRequested = false;
+    lookoutRequested = false;
     _routeTo(point);
   }
 
@@ -156,7 +189,7 @@ class FishingIslandVisit {
     final delta = cat - fishingSeaIsland.center;
     return fishingSeaIsland.center +
         (delta.distance > .01 ? delta / delta.distance : const Offset(-1, 0)) *
-            (fishingSeaIsland.radius - 24);
+            (fishingSeaIsland.radiusTowards(cat) - 24);
   }
 
   Offset fishingWater(Offset edge) {
@@ -170,6 +203,8 @@ class FishingIslandVisit {
 
   void returnToBoat() {
     if (phase != IslandVisitPhase.exploring) return;
+    climbDown();
+    lookoutRequested = false;
     boardRequested = true;
     _routeTo(visitLanding);
   }
@@ -202,7 +237,14 @@ class FishingIslandVisit {
           cat += delta / delta.distance * 100 * dt;
         }
       }
-      if (boardRequested && destination == null) {
+      if (lookoutRequested &&
+          destination == null &&
+          (cat - lighthouseDoor).distance < 1) {
+        lookoutRequested = false;
+        lookout = true;
+        cat = lighthouseTop;
+        facingRight = true;
+      } else if (boardRequested && destination == null) {
         phase = IslandVisitPhase.boarding;
         elapsed = 0;
         facingRight = false;

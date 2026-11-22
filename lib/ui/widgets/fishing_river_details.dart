@@ -4,6 +4,7 @@ import '../../fishing/fishing_river.dart';
 import '../../fishing/river_props.dart';
 import 'river_toy_art.dart';
 import 'fishing_coast_art.dart';
+import 'fishing_rock_art.dart';
 
 /// Solid rocks and submerged coral are recorded with the landscape.
 void paintRiverDetails(Canvas c, double left, double right) {
@@ -179,21 +180,7 @@ void _raft(Canvas c, Offset p) {
 void paintRiverRock(Canvas c, Offset p, double r) {
   p = Offset(p.dx,
       p.dy.clamp(FishingRiver.top(p.dx) + 55, FishingRiver.bottom(p.dx) - 55));
-  c.drawOval(Rect.fromCenter(center: p, width: r * 2.5, height: r * 1.3),
-      Paint()..color = const Color(0x33446864));
-  c.drawPath(
-      Path()
-        ..moveTo(p.dx - r, p.dy)
-        ..lineTo(p.dx - r * .6, p.dy - r * .8)
-        ..lineTo(p.dx + r * .4, p.dy - r)
-        ..lineTo(p.dx + r, p.dy - r * .2)
-        ..lineTo(p.dx + r * .6, p.dy + r * .3)
-        ..close(),
-      Paint()..color = const Color(0xFF8EAAA0));
-  c.drawOval(
-      Rect.fromCenter(
-          center: p - Offset(r * .15, r * .55), width: r * 1.4, height: r * .5),
-      Paint()..color = const Color(0xFF83A57A));
+  paintBoulder(c, p, r, (p.dx * 3 + p.dy * 7).toInt());
 }
 
 void _log(Canvas c, Offset p) {

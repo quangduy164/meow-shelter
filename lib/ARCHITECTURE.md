@@ -157,7 +157,7 @@
     anchors reachable and off traffic when adding a route. Viewport resize scales positions in place through `HerdRound.resize`; repeated
     layout notifications preserve the run, score and result overlay.
 - `fishing/`: fishing rules and the river exploration scene.
-  - `fishing_river.dart`: a continuous 10800 x 3600 world with six cached 1800-unit
+  - `fishing_river.dart`: a continuous 12600 x 3600 world with seven cached 1800-unit
     stretches (two river stretches and four coastal stretches). One shared centerline and width define both painted banks and
     movement limits. Click-to-row paths follow bends without cutting over land;
     screen/world transforms share the camera, which follows smoothly and clamps
@@ -241,7 +241,7 @@
     submerged scenery. Floating props do not block click-to-row routes.
     Travel order is village x=0..1800, bamboo x=1800..3600, mangrove
     x=3600..5400, estuary x=5400..7200, rocky bay x=7200..9000 and open sea
-    x=9000..10800. The large island is offshore in the final sea region.
+    x=9000..12600. The large island is offshore in the final sea region.
     `mangroveBlend` fades in/out around its two boundaries; `coastBlend` opens
     the estuary, and `rockyBlend` narrows then releases the bay into open sea.
     `fishing_mangrove_art.dart` records mud, stilt roots and its wooden landing;
@@ -265,12 +265,15 @@
     habitat, affection and existing fight profiles. Lanternfish are nocturnal.
     New records and feeding reuse the same journal/basket keys; no weight totals
     or catch history are added. The journal has six habitat groups.
-    `fishing_cabin.dart` defines a moored cabin ship at (10300,1050), its solid
+    `fishing_cabin.dart` defines a moored cabin ship at (11500,1000), its solid
     hull clearance, mooring and a separate 800x480 walkable room. A water tap on
     the ship stows fishing and routes to the mooring before entering. Another
     destination or casting cancels that approach; saving/results keep their guard.
     Inside, the controller updates only cabin movement, pausing the river round.
-    `fishing_cabin_art.dart` caches and disposes exterior/interior Pictures, draws
+    `fishing_cabin_art.dart` (library) with parts `fishing_cabin_ship_art.dart`,
+    `fishing_cabin_room.dart` (widget, chest popup) and `fishing_cabin_room_art.dart`
+    caches and disposes exterior/interior Pictures; chest and door art read the
+    `FishingCabin.chest` / `door` constants used for tapping. It draws
     the selected cat via CatSprite and scales input with the room viewport.
     Furnishings sit outside the walkable floor rectangle. A right-wall door
     (`switchRoom`) leads to a bedroom with its own floor and Picture; the bed sits
@@ -281,23 +284,32 @@
     Door, exit button and
     system Back walk the cat to the hatch then return to the parked small boat.
     Leaving restores normal fishing controls; no catch or camp save is written.
-    `fishing_minimap.dart` draws a top-left square minimap under Home: a cached,
+    Fishing HUD: small Home top-left; minimap (80px) top-right with the area name
+    under it, tap opens a full-world map dialog (pauses the round, shows explored %).
+    Area changes flash a centered banner (~2.6 s). `guide` shows as a dark pill at
+    top center for 4 s per new hint; basic control hints only while `beginner`.
+    While reeling the minimap/banner hide and the basket dims.
+    `fishing_minimap.dart` (also `full: true` for the dialog) draws: a cached,
     disposed world Picture in a 3600-unit window following `cameraFocus`, plus
-    fog from `FishingRiverRound.explored` (200-unit cells revealed each update).
+    fog from `FishingExploration` (`fishing_exploration.dart`, 200-unit cells
+    revealed each update, `round.exploration`).
     It hides while reeling and inside the cabin. `fishing_trip.dart` saves the
     last cat, boat spot, heading and fog (key `fishing_trip_v1`) every few
     seconds after changes, on app pause and on exit; ashore/cabin trips resume
     in the parked boat. Restored spots are clamped to water; bad saves are ignored.
-    ishing_minimap.dart draws a top-left square minimap under Home: a cached,
-    disposed world Picture in a 3600-unit window following `cameraFocus`, plus
-    session-only fog from `FishingRiverRound.explored` (200-unit cells revealed
-    each update). It hides while reeling and inside the cabin; nothing is saved.
     Chunk clips disable antialiasing so fractional camera offsets do not expose seams.
-    Mangrove, rocky bay and cave art use deterministic `_h(i, salt)` noise for
+    Shared scenery helpers live in `fishing_art_kit.dart` (`artNoise`,
+    `fillPaint`, `strokePaint`, `bankBand`). Mangrove, rocky bay and cave art use
+    deterministic `artNoise(i, salt)` for
     species, size, offset and mirroring (cached chunks stay identical each run).
-    Bay sea stacks are `fishingSeaRocks` with radius >= 45, so art, collision and
+    The world is 7 x 1800 = 12600 units; the last chunk is open sea east of the island so the lookout view stays centered. Fog saves from shorter worlds load row by row. Tapping the island lighthouse (`FishingIslandVisit.lighthouse`, east headland) walks the cat to its door and up to the gallery (`lookout`); `FishingRiverRound.zoom` eases to `lookoutZoom` (.25), fog opens 11 cells around, controls hide, any tap climbs down. Island art (`paintFishingIsland`): wet sand and foam line, outlined lawn, pond, flower bushes, pebble-edged paths from the dock to the hut, lighthouse and a south-beach campfire (flame drawn live in `FishingIslandPainter`). The sea island is `FishingSeaIsland` (`river_sea_land.dart`): `radiusAt(angle)` gives an irregular coastline (west dock side kept round); boat collision (`RiverProp.reachTowards`), walking, wave clip, art and minimap all use it.
+    `fishing_rock_art.dart` holds the warm outlined rock style: `paintBoulder` (all water rocks via `paintRiverRock`, and land outcrops with `inWater: false`), `paintCliffBand` (continuous north cliff, open at the cave inlet, plus a stepped south shelf in the rocky bay) and live `paintRockFoam` rings drawn by `FishingRiverSurface`. Bay sea stacks are `fishingSeaRocks` with radius >= 45, so art, collision and
     minimap share one list. The cave dimming uses an elliptical radial mask.
-  - `fishing_river_scene.dart`: owns and disposes six cached background Pictures,
+    `fishing_land_art.dart` fills far land per region (weighted, deterministic
+    features on a jittered 175-unit grid, kept back from the water by a
+    per-region margin) plus a footpath or paw-print trail along each bank.
+    Decorations are visual only; shore walking has no collisions.
+  - `fishing_river_scene.dart`: owns and disposes seven cached background Pictures,
     draws only visible stretches, then animated water, boat hull and front rim.
     `FishingScreen` first shows owned cats; selecting one starts the ticker and
     mounts the river. Leaving this picker returns home. Only owned cats appear,
@@ -333,7 +345,11 @@
     `fishing_fight_art.dart` draws the matching bubbles, body inflation, dash wakes
     and koi steering arrows. Fish behavior is conveyed visually, without advance
     text instructions in the HUD or the float's tension bar.
-  - `FishingRiver.rollFish` owns regional weights: village (perch, tilapia,
+  - `fishing_region.dart` is the single region table: `FishingRegion` rows hold
+    label, x range, `FishingLand` scenery style and the fish pool. To add an area,
+    add a row (and its blend layer in `FishingRiver.fishLayers`); names, minimap
+    and land art read from it. `FishingRiver.regionAt` adds the cave inlet.
+  - `FishingRiver.rollFish` layers those pools in order (`fishLayers`): village (perch, tilapia,
     carp, rare goldfish), bamboo (catfish, koi, very rare catMew), mangrove
     (goby, mudskipper and brackish species), sea (sardine, mackerel, clownfish,
     pufferfish), rocky bay (grouper, butterflyfish) and cave (cavefish, lanternfish),

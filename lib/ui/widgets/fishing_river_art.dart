@@ -4,6 +4,7 @@ import 'package:flutter/painting.dart';
 
 import '../../fishing/fishing_river.dart';
 import '../../game/world/nature_art.dart';
+import 'fishing_land_art.dart';
 import 'fishing_coast_art.dart';
 import 'fishing_river_details.dart';
 import 'fishing_mangrove_art.dart';
@@ -278,6 +279,7 @@ void _paintLandscape(Canvas canvas, double left, double right) {
   paintRiverDetails(canvas, from, to);
   paintMangrove(canvas, left, right);
   paintRockyBay(canvas, left, right);
+  paintLandScenery(canvas, left, right);
 }
 
 void _stone(Canvas c, Offset p, double size) {

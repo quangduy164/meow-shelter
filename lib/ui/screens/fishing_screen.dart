@@ -45,6 +45,46 @@ class _FishingScreenState extends State<FishingScreen>
   late final Ticker _ticker;
   Duration? _lastTick;
   bool _collectionOpen = false, _paused = false, _choosingCat = true;
+
+  /// Area banner: shown for a moment whenever the area name changes.
+  String _area = '';
+  double _areaAge = 99;
+
+  /// Hint pill: each new hint shows for [_hintSeconds], then hides.
+  String _hint = '';
+  double _hintAge = 99;
+  static const _hintSeconds = 4.0;
+
+  /// Everyday control hints, only shown until the first catch.
+  static const _basicHints = {
+    'Bấm nước để chèo · Bấm bờ để xuống đi bộ',
+    'Đang chèo · Bấm cần câu góc phải để câu tại đây',
+    'Bấm trên bờ để đi · Về thuyền để chèo tiếp',
+  };
+
+  String get _areaName => _river.island.lookout
+      ? 'Đỉnh hải đăng'
+      : _river.island.ashore
+          ? (_river.island.onBank ? 'Dạo bờ sông' : 'Đảo dừa')
+          : FishingRiver.sectionName(_controller.angler.dx,
+              y: _controller.angler.dy);
+
+  void _updateHud(double dt) {
+    _areaAge += dt;
+    _hintAge += dt;
+    final area = _areaName;
+    if (area != _area) {
+      _area = area;
+      _areaAge = 0;
+    }
+    var hint = _controller.guide;
+    if (!_controller.beginner && _basicHints.contains(hint)) hint = '';
+    if (hint != _hint) {
+      _hint = hint;
+      _hintAge = 0;
+    }
+  }
+
   String _cat = 'orange';
   String? _lastCat;
   double _sinceSave = 0;
@@ -68,12 +108,14 @@ class _FishingScreenState extends State<FishingScreen>
     final previous = _lastTick;
     _lastTick = timestamp;
     if (previous == null || _paused || _collectionOpen) return;
-    _controller
-        .update(math.min((timestamp - previous).inMicroseconds / 1000000, .05));
+    final dt = math.min((timestamp - previous).inMicroseconds / 1000000, .05);
+    _controller.update(dt);
+    _updateHud(dt);
     _frames.value++;
     _sinceSave += (timestamp - previous).inMicroseconds / 1000000;
     if (_sinceSave > 4 &&
-        (_river.mapChanged || (_river.boat - _savedBoat).distance > 40)) {
+        (_river.exploration.changed ||
+            (_river.boat - _savedBoat).distance > 40)) {
       _saveTrip();
     }
   }
@@ -106,6 +148,63 @@ class _FishingScreenState extends State<FishingScreen>
       if (mounted) setState(() => _collectionOpen = false);
       _lastTick = null;
     }
+  }
+
+  Future<void> _openMap() async {
+    if (_collectionOpen) return;
+    setState(() => _collectionOpen = true);
+    final cells = _river.exploration.cells;
+    final percent = cells.where((seen) => seen).length * 100 ~/ cells.length;
+    try {
+      await showGameDialog<void>(
+          context: context,
+          builder: (context) => LayoutBuilder(builder: (context, box) {
+                final width = math.min(
+                    box.maxWidth * .9,
+                    (box.maxHeight * .7) *
+                        FishingRiver.length /
+                        FishingRiver.height);
+                return Center(
+                    child: Material(
+                        color: Colors.transparent,
+                        child:
+                            Column(mainAxisSize: MainAxisSize.min, children: [
+                          SizedBox(
+                              width: width + 6,
+                              child: Row(children: [
+                                Expanded(
+                                    child: Text(
+                                        'BẢN ĐỒ · ĐÃ KHÁM PHÁ $percent%',
+                                        style: const TextStyle(
+                                            color: DS.cream,
+                                            fontWeight: FontWeight.w900,
+                                            fontSize: DS.fontButton))),
+                                RoundButton(
+                                    glyph: GameGlyph.close,
+                                    size: 40,
+                                    tooltip: 'Đóng bản đồ',
+                                    onPressed: () => Navigator.pop(context)),
+                              ])),
+                          const SizedBox(height: DS.spaceSm),
+                          FishingMinimap(
+                              round: _river,
+                              frames: _frames,
+                              size: width,
+                              full: true),
+                        ])));
+              }));
+    } finally {
+      if (mounted) setState(() => _collectionOpen = false);
+      _lastTick = null;
+    }
+  }
+
+  /// Fades in, holds and fades out over about 2.6 s.
+  double get _bannerOpacity {
+    final t = _areaAge;
+    if (t < .4) return t / .4;
+    if (t < 2) return 1;
+    return (1 - (t - 2) / .6).clamp(0.0, 1.0);
   }
 
   @override
@@ -298,14 +397,15 @@ class _FishingScreenState extends State<FishingScreen>
     final action = island.walking ? 'walk' : 'idle';
     final frames = island.walking ? framesWalk : framesIdle;
     return Stack(children: [
-      Positioned(
-          left: point.dx - 14 * _river.scale,
-          top: point.dy - 3 * _river.scale,
-          child: Container(
-              width: 28 * _river.scale,
-              height: 10 * _river.scale,
-              decoration: const BoxDecoration(
-                  color: Color(0x3359553B), shape: BoxShape.circle))),
+      if (!island.lookout)
+        Positioned(
+            left: point.dx - 14 * _river.scale,
+            top: point.dy - 3 * _river.scale,
+            child: Container(
+                width: 28 * _river.scale,
+                height: 10 * _river.scale,
+                decoration: const BoxDecoration(
+                    color: Color(0x3359553B), shape: BoxShape.circle))),
       Positioned(
           left: point.dx - size / 2,
           top: point.dy - size * .78 - island.jump * _river.scale,
@@ -384,71 +484,118 @@ class _FishingScreenState extends State<FishingScreen>
                                 top: padding.top + 8,
                                 child: RoundButton(
                                     glyph: GameGlyph.home,
+                                    size: 44,
                                     tooltip: 'Về Trang chủ',
                                     onPressed: () => Navigator.pop(context))),
-                            Positioned(
-                              left: padding.left + 66,
-                              top: padding.top + 9,
-                              width: 230,
-                              child: IgnorePointer(
-                                  child: Container(
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 9, vertical: 6),
-                                decoration: BoxDecoration(
-                                  color: const Color(0xEAFFF4DA),
-                                  borderRadius:
-                                      BorderRadius.circular(DS.radiusSm),
-                                  border:
-                                      Border.all(color: DS.wood, width: 1.5),
-                                ),
-                                child: Column(
-                                  mainAxisSize: MainAxisSize.min,
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                        _river.island.ashore
-                                            ? (_river.island.onBank
-                                                ? 'DẠO BỜ SÔNG'
-                                                : 'ĐẢO DỪA')
-                                            : FishingRiver.sectionName(
-                                                    _controller.angler.dx,
-                                                    y: _controller.angler.dy)
-                                                .toUpperCase(),
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                        style: const TextStyle(
-                                            color: DS.ink,
-                                            fontWeight: FontWeight.w900,
-                                            fontSize: DS.fontButton)),
-                                    if (_controller.guide.isNotEmpty) ...[
-                                      const SizedBox(height: 2),
-                                      Text(_controller.guide,
-                                          maxLines: 2,
-                                          overflow: TextOverflow.ellipsis,
-                                          style: const TextStyle(
-                                              color: DS.ink,
-                                              fontSize: DS.fontCaption)),
-                                    ],
-                                  ],
-                                ),
-                              )),
-                            ),
-                            if (_controller.phase != FishingPhase.reeling)
+                            if (_hint.isNotEmpty)
                               Positioned(
-                                  left: padding.left + 8,
-                                  top: padding.top + 62,
+                                  left: padding.left + 64,
+                                  right: padding.right + 104,
+                                  top: padding.top + 12,
                                   child: IgnorePointer(
-                                      child: FishingMinimap(
-                                          round: _river, frames: _frames))),
+                                      child: Center(
+                                          child: AnimatedOpacity(
+                                              duration: const Duration(
+                                                  milliseconds: 300),
+                                              opacity: _hintAge < _hintSeconds
+                                                  ? 1
+                                                  : 0,
+                                              child: Container(
+                                                  constraints:
+                                                      const BoxConstraints(
+                                                          maxWidth: 380),
+                                                  padding:
+                                                      const EdgeInsets.symmetric(
+                                                          horizontal: 14,
+                                                          vertical: 7),
+                                                  decoration: BoxDecoration(
+                                                      color: const Color(
+                                                          0xB31E2A30),
+                                                      borderRadius:
+                                                          BorderRadius.circular(
+                                                              20)),
+                                                  child: Text(_hint,
+                                                      textAlign: TextAlign.center,
+                                                      maxLines: 2,
+                                                      overflow: TextOverflow.ellipsis,
+                                                      style: const TextStyle(color: Colors.white, fontSize: DS.fontCaption, fontWeight: FontWeight.w700))))))),
+                            if (_bannerOpacity > 0 &&
+                                !(_controller.phase == FishingPhase.reeling))
+                              Positioned(
+                                  left: 0,
+                                  right: 0,
+                                  top: constraints.maxHeight * .2,
+                                  child: IgnorePointer(
+                                      child: Opacity(
+                                          opacity: _bannerOpacity,
+                                          child: Text(_area.toUpperCase(),
+                                              textAlign: TextAlign.center,
+                                              style: const TextStyle(
+                                                  color: Colors.white,
+                                                  fontSize: 26,
+                                                  letterSpacing: 2,
+                                                  fontWeight: FontWeight.w900,
+                                                  shadows: [
+                                                    Shadow(
+                                                        color:
+                                                            Color(0x99000000),
+                                                        blurRadius: 8,
+                                                        offset: Offset(0, 2))
+                                                  ]))))),
+                            if (!(_controller.phase == FishingPhase.reeling))
+                              Positioned(
+                                  right: padding.right + 8,
+                                  top: padding.top + 8,
+                                  child: GestureDetector(
+                                      onTap: _openMap,
+                                      child: Tooltip(
+                                          message: 'Mở bản đồ',
+                                          child: Opacity(
+                                              opacity: .9,
+                                              child: Column(children: [
+                                                FishingMinimap(
+                                                    round: _river,
+                                                    frames: _frames),
+                                                Container(
+                                                    width: 86,
+                                                    margin: const EdgeInsets
+                                                        .only(top: 3),
+                                                    padding: const EdgeInsets
+                                                        .symmetric(vertical: 2),
+                                                    decoration: BoxDecoration(
+                                                        color: const Color(
+                                                            0xB31E2A30),
+                                                        borderRadius:
+                                                            BorderRadius
+                                                                .circular(8)),
+                                                    child: Text(
+                                                        _area,
+                                                        textAlign:
+                                                            TextAlign.center,
+                                                        maxLines: 1,
+                                                        overflow: TextOverflow
+                                                            .ellipsis,
+                                                        style: const TextStyle(
+                                                            color: Colors.white,
+                                                            fontSize: 11,
+                                                            fontWeight:
+                                                                FontWeight
+                                                                    .w700))),
+                                              ]))))),
                             Positioned(
                                 left: padding.left + 12,
                                 bottom: padding.bottom + 12,
-                                child: FishingActionButton(
-                                    tooltip: 'Bộ sưu tập cá',
-                                    onPressed: _controller.active
-                                        ? null
-                                        : _openCollection,
-                                    tool: FishingTool.basket)),
+                                child: Opacity(
+                                    opacity: _controller.phase ==
+                                            FishingPhase.reeling
+                                        ? .35
+                                        : 1,
+                                    child: FishingActionButton(
+                                        tooltip: 'Bộ sưu tập cá',
+                                        onPressed: _controller.active
+                                            ? null
+                                            : _openCollection,
+                                        tool: FishingTool.basket))),
                             if (_controller.phase == FishingPhase.reeling)
                               Positioned(
                                   left: padding.left + 10,
@@ -459,6 +606,7 @@ class _FishingScreenState extends State<FishingScreen>
                                       child: FishingDistance(
                                           progress: _controller.progress))),
                             if (_river.island.ashore &&
+                                !_river.island.lookout &&
                                 !_controller.showFishingArt)
                               Positioned(
                                   right: padding.right + 100,
@@ -473,9 +621,10 @@ class _FishingScreenState extends State<FishingScreen>
                                       icon: const GameGlyphView(GameGlyph.back,
                                           size: 22),
                                       label: const Text('Về thuyền'))),
-                            if (!_river.island.ashore ||
-                                _river.island.phase ==
-                                    IslandVisitPhase.exploring)
+                            if (!_river.island.lookout &&
+                                (!_river.island.ashore ||
+                                    _river.island.phase ==
+                                        IslandVisitPhase.exploring))
                               Positioned(
                                   right: padding.right + 8,
                                   bottom: padding.bottom + 8,

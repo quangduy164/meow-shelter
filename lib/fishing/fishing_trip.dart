@@ -37,7 +37,7 @@ class FishingTrip {
 
   static Future<void> save(SharedPreferences preferences,
       FishingRiverRound round, String cat) async {
-    round.mapChanged = false;
+    round.exploration.changed = false;
     final ok = await preferences.setString(
         key,
         jsonEncode({
@@ -46,8 +46,8 @@ class FishingTrip {
           'y': round.boat.dy.roundToDouble(),
           'h': round.heading.direction,
           'map': String.fromCharCodes(
-              [for (final seen in round.explored) seen ? 49 : 48]),
+              [for (final seen in round.exploration.cells) seen ? 49 : 48]),
         }));
-    if (!ok) round.mapChanged = true;
+    if (!ok) round.exploration.changed = true;
   }
 }
