@@ -3,6 +3,9 @@ import 'package:material_ui/material_ui.dart';
 import '../../fishing/fishing_island.dart';
 import '../../fishing/fishing_river.dart';
 import '../../fishing/river_sea_land.dart';
+import 'fishing_water_art.dart';
+import 'fishing_volcano_art.dart';
+import '../../fishing/fishing_lighting.dart';
 
 void paintIslandDock(Canvas c) {
   final p = FishingIslandVisit.dockTap - const Offset(18, 19);
@@ -24,6 +27,12 @@ void paintIslandDock(Canvas c) {
     }
   }
 }
+
+/// World minus the mountain, so shore foam never runs across the peaks.
+final _noMountain = Path.combine(
+    PathOperation.difference,
+    Path()..addRect(const Rect.fromLTWH(0, 0, 20000, 4000)),
+    mountainSilhouette());
 
 class FishingIslandPainter extends CustomPainter {
   FishingIslandPainter(this.round, Listenable frames) : super(repaint: frames);
@@ -70,8 +79,13 @@ class FishingIslandPainter extends CustomPainter {
     c.clipRect(Offset.zero & size);
     c.scale(round.scale);
     c.translate(-round.cameraLeft, -round.cameraTop);
+    c.save();
+    c.clipPath(_noMountain);
+    paintIslandWash(c, round.clock);
+    c.restore();
+    paintVolcanoLive(c, round.clock, FishingLighting.at(round.hour).daylight);
     // Campfire flame on the south beach.
-    final fire = fishingSeaIsland.center + const Offset(60, 246);
+    final fire = fishingSeaIsland.center + const Offset(-210, 236);
     final flick =
         math.sin(round.clock * 13) * .5 + math.sin(round.clock * 7.3) * .5;
     c.drawCircle(fire, 34 + flick * 3,

@@ -5,8 +5,12 @@ class FishingCabinRoom extends StatefulWidget {
       {super.key,
       required this.round,
       required this.cat,
-      required this.onExit});
+      required this.onExit,
+      this.hour = 12});
   final FishingCabin round;
+
+  /// Real local hour; the cabin follows the same day/night as outside.
+  final double hour;
   final String cat;
   final VoidCallback onExit;
   @override
@@ -138,7 +142,8 @@ class _FishingCabinRoomState extends State<FishingCabinRoom> {
                               offset,
                               widget.round.clock,
                               widget.round.room,
-                              chestFull: _chestFull)))),
+                              chestFull: _chestFull,
+                              night: FishingLighting.at(widget.hour).night)))),
               Positioned(
                   left: point.dx - 17 * scale,
                   top: point.dy - 2 * scale,
@@ -164,6 +169,15 @@ class _FishingCabinRoomState extends State<FishingCabinRoom> {
                                   .floor() %
                               (widget.round.walking ? framesWalk : framesIdle),
                           flip: !widget.round.facingRight))),
+              Positioned.fill(
+                  child: IgnorePointer(
+                      child: CustomPaint(
+                          painter: _CabinNightPainter(
+                              FishingLighting.at(widget.hour),
+                              scale,
+                              offset,
+                              widget.round.clock,
+                              widget.round.room)))),
               Positioned(
                   left: MediaQuery.paddingOf(context).left + 8,
                   top: MediaQuery.paddingOf(context).top + 8,
@@ -200,7 +214,8 @@ class _FishingCabinRoomState extends State<FishingCabinRoom> {
 
 class _RoomPainter extends CustomPainter {
   _RoomPainter(this.picture, this.scale, this.offset, this.clock, this.room,
-      {this.chestFull = false});
+      {this.chestFull = false, this.night = 0});
+  final double night;
   final bool chestFull;
   final int room;
   final ui.Picture picture;
@@ -215,9 +230,34 @@ class _RoomPainter extends CustomPainter {
     c.drawPicture(picture);
     if (room == 1) {
       for (var i = 0; i < _windows.length; i++) {
-        _seaView(c, _windows[i], clock, sun: i == 0);
+        _seaView(c, _windows[i], clock, sun: i == 0, night: night);
       }
     }
+    if (room == 0 && night > .05) {
+      // Stern windows turn to a starry night sea.
+      for (var i = 0; i < 4; i++) {
+        final r = Rect.fromLTWH(304 + i * 50.0, 86, 42, 60);
+        c.save();
+        c.clipRRect(RRect.fromRectAndCorners(r,
+            topLeft: const Radius.circular(20),
+            topRight: const Radius.circular(20)));
+        // Stop above the desk items that overlap the window bottoms.
+        c.clipRect(Rect.fromLTRB(r.left, r.top, r.right, 123));
+        c.drawRect(r, Paint()..color = Color.fromRGBO(20, 35, 63, night * .92));
+        c.drawRect(Rect.fromLTRB(r.left, 110, r.right, r.bottom),
+            Paint()..color = Color.fromRGBO(13, 33, 56, night * .92));
+        _nightSky(
+            c, Rect.fromLTRB(r.left, r.top, r.right, 128), 128, clock, night,
+            moon: i == 2);
+        c.restore();
+        final bar = Paint()
+          ..color = const Color(0xFF4A2E1D)
+          ..strokeWidth = 2.5;
+        c.drawLine(Offset(r.center.dx, 87), Offset(r.center.dx, 146), bar);
+        c.drawLine(Offset(r.left, 112), Offset(r.right, 112), bar);
+      }
+    }
+    if (room == 1) _chandelierFlames(c, clock, night);
     if (room == 1 && chestFull) {
       // Fish tails poke out of the coins and a sparkle pulses: tap me.
       final chest = FishingCabin.chest.topLeft;
@@ -259,5 +299,79 @@ class _RoomPainter extends CustomPainter {
       old.scale != scale ||
       old.offset != offset ||
       old.picture != picture ||
-      old.chestFull != chestFull;
+      old.chestFull != chestFull ||
+      old.night != night;
+}
+
+/// Dims the cabin (cat included) for the hour and adds warm lamp light,
+/// or cool moonlight under the bedroom windows.
+class _CabinNightPainter extends CustomPainter {
+  _CabinNightPainter(
+      this.light, this.scale, this.offset, this.clock, this.room);
+  final FishingLighting light;
+  final double scale, clock;
+  final Offset offset;
+  final int room;
+
+  @override
+  void paint(Canvas c, Size size) {
+    final night = light.night;
+    if (night < .02 && light.warmth < .02) return;
+    final tint = Color.lerp(
+        Color.lerp(Colors.white, const Color(0xFFD9D0E2), night * .8)!,
+        const Color(0xFFFFC890),
+        light.warmth * .35)!;
+    c.drawRect(
+        Offset.zero & size,
+        Paint()
+          ..color = tint
+          ..blendMode = BlendMode.multiply);
+    if (night < .05) return;
+    c.save();
+    c.translate(offset.dx, offset.dy);
+    c.scale(scale);
+    void glow(Offset p, double r, Color color, double strength) => c.drawCircle(
+        p,
+        r,
+        Paint()
+          ..blendMode = BlendMode.plus
+          ..shader = RadialGradient(colors: [
+            color.withValues(alpha: strength * night),
+            color.withValues(alpha: 0),
+          ]).createShader(Rect.fromCircle(center: p, radius: r)));
+    final flick = math.sin(clock * 9) * .5 + math.sin(clock * 5.3) * .5;
+    if (room == 0) {
+      for (final x in [220.0, 580.0]) {
+        glow(Offset(x, 110), 170 + flick * 6, const Color(0xFFFFC870), .45);
+      }
+      glow(const Offset(487, 118), 80, const Color(0xFFFFD27A), .5);
+    } else {
+      glow(_chandelier + const Offset(0, -10), 260 + flick * 8,
+          const Color(0xFFFFC870), .5);
+      for (final w in _windows) {
+        c.drawOval(
+            Rect.fromCenter(
+                center: Offset(w.center.dx, 300),
+                width: w.width * 1.1,
+                height: 150),
+            Paint()
+              ..blendMode = BlendMode.plus
+              ..shader = RadialGradient(colors: [
+                Color.fromRGBO(150, 180, 230, .22 * night),
+                const Color(0x0096B4E6),
+              ]).createShader(Rect.fromCenter(
+                  center: Offset(w.center.dx, 300),
+                  width: w.width * 1.1,
+                  height: 150)));
+      }
+    }
+    c.restore();
+  }
+
+  @override
+  bool shouldRepaint(_CabinNightPainter old) =>
+      old.clock != clock ||
+      old.light.hour != light.hour ||
+      old.scale != scale ||
+      old.room != room;
 }

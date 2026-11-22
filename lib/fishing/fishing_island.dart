@@ -34,22 +34,72 @@ class FishingIslandVisit {
           lighthouse.dy - 215, lighthouse.dx + 45, lighthouse.dy + 30)
       .contains(p);
 
-  /// True while the cat stands on the lighthouse gallery (camera zooms out).
+  /// Dormant volcano in the middle of the island. Its jungle-covered
+  /// footprint is an ellipse the cat walks around, never through.
+  static Offset get mountain => fishingSeaIsland.center + const Offset(0, -40);
+  static const mountainRadii = Size(290, 200);
+
+  /// Cave mouth at the mountain's south-west foot; the cat walks here and
+  /// enters the parkour cave.
+  static Offset get caveMouth =>
+      fishingSeaIsland.center + const Offset(-215, 150);
+
+  static bool inMountain(Offset p, {double grow = 0}) {
+    final d = p - mountain;
+    final x = d.dx / (mountainRadii.width + grow),
+        y = d.dy / (mountainRadii.height + grow);
+    return x * x + y * y < 1;
+  }
+
+  /// Point on the mountain edge (grown by [grow]) in direction [angle].
+  static Offset mountainEdge(double angle, double grow) =>
+      mountain +
+      Offset(math.cos(angle) * (mountainRadii.width + grow),
+          math.sin(angle) * (mountainRadii.height + grow));
+
+  static double _mountainAngle(Offset p) {
+    final d = p - mountain;
+    return math.atan2(d.dy / mountainRadii.height, d.dx / mountainRadii.width);
+  }
+
+  /// Keeps a ground point on the island and off the mountain.
+  static Offset constrainGround(Offset p) {
+    var q = constrain(p);
+    if (inMountain(q, grow: 12)) q = mountainEdge(_mountainAngle(q), 14);
+    return constrain(q);
+  }
+
+  /// True while the cat stands on a lookout (camera zooms out).
   bool lookout = false;
   bool lookoutRequested = false;
+
+  Offset get lookoutDoor => lighthouseDoor;
+  Offset get lookoutTop => lighthouseTop;
 
   /// Walks to the lighthouse door; the climb starts on arrival.
   void climbLighthouse() {
     if (phase != IslandVisitPhase.exploring || onBank || lookout) return;
     boardRequested = false;
-    _routeTo(lighthouseDoor);
+    caveRequested = false;
+    _routeTo(lookoutDoor);
     lookoutRequested = true;
+  }
+
+  /// Walking to the cave mouth; [caveArrived] fires once on arrival.
+  bool caveRequested = false, caveArrived = false;
+
+  void goToCave() {
+    if (phase != IslandVisitPhase.exploring || onBank || lookout) return;
+    boardRequested = false;
+    lookoutRequested = false;
+    _routeTo(caveMouth);
+    caveRequested = true;
   }
 
   void climbDown() {
     if (!lookout) return;
     lookout = false;
-    cat = lighthouseDoor;
+    cat = lookoutDoor;
     facingRight = false;
   }
 
@@ -106,7 +156,8 @@ class FishingIslandVisit {
     destination = landConstrain(target);
     _walkRoute.clear();
     if (!onBank) {
-      _walkRoute.add(destination!);
+      destination = constrainGround(destination!);
+      _walkRoute.addAll(_aroundMountain(cat, destination!));
       return;
     }
     double edge(double x) =>
@@ -169,6 +220,7 @@ class FishingIslandVisit {
     if (phase != IslandVisitPhase.exploring || lookout) return;
     boardRequested = false;
     lookoutRequested = false;
+    caveRequested = false;
     _routeTo(point);
   }
 
@@ -199,6 +251,32 @@ class FishingIslandVisit {
     }
     final delta = edge - fishingSeaIsland.center;
     return FishingRiver.constrain(edge + delta / delta.distance * 220);
+  }
+
+  /// Straight line if clear, otherwise along the mountain foot the short way.
+  static List<Offset> _aroundMountain(Offset from, Offset to) {
+    var blocked = false;
+    for (var i = 1; i < 24; i++) {
+      if (inMountain(Offset.lerp(from, to, i / 24)!, grow: 8)) {
+        blocked = true;
+        break;
+      }
+    }
+    if (!blocked) return [to];
+    final a0 = _mountainAngle(from), a1 = _mountainAngle(to);
+    var delta = a1 - a0;
+    while (delta > math.pi) {
+      delta -= math.pi * 2;
+    }
+    while (delta < -math.pi) {
+      delta += math.pi * 2;
+    }
+    final steps = math.max(2, (delta.abs() / .22).ceil());
+    return [
+      for (var i = 0; i <= steps; i++)
+        constrain(mountainEdge(a0 + delta * i / steps, 30)),
+      to,
+    ];
   }
 
   void returnToBoat() {
@@ -237,12 +315,17 @@ class FishingIslandVisit {
           cat += delta / delta.distance * 100 * dt;
         }
       }
-      if (lookoutRequested &&
+      if (caveRequested &&
           destination == null &&
-          (cat - lighthouseDoor).distance < 1) {
+          (cat - caveMouth).distance < 1) {
+        caveRequested = false;
+        caveArrived = true;
+      } else if (lookoutRequested &&
+          destination == null &&
+          (cat - lookoutDoor).distance < 1) {
         lookoutRequested = false;
         lookout = true;
-        cat = lighthouseTop;
+        cat = lookoutTop;
         facingRight = true;
       } else if (boardRequested && destination == null) {
         phase = IslandVisitPhase.boarding;
@@ -271,7 +354,7 @@ class FishingIslandVisit {
                 2.2;
       }
       if (velocity.distance > 85) velocity = velocity / velocity.distance * 85;
-      crab.position = constrain(crab.position + velocity * dt);
+      crab.position = constrainGround(crab.position + velocity * dt);
     }
   }
 }

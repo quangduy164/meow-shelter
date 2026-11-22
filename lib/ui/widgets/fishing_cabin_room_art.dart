@@ -64,16 +64,20 @@ const _windows = [
 /// Animated sea seen through a bedroom window: sky, sun or island, drifting
 /// clouds, a gently rocking horizon, rolling waves, a passing gull and the
 /// glazing bars on top.
-void _seaView(Canvas c, Rect glass, double t, {required bool sun}) {
+void _seaView(Canvas c, Rect glass, double t,
+    {required bool sun, double night = 0}) {
   c.save();
   c.clipRect(glass);
   final horizon = glass.top + glass.height * .55 + math.sin(t * 1.1) * 3;
   c.drawRect(
       glass,
       Paint()
-        ..shader = ui.Gradient.linear(glass.topCenter, Offset(0, horizon),
-            const [Color(0xFF7CC8EC), Color(0xFFE6F6FB)]));
-  if (sun) {
+        ..shader = ui.Gradient.linear(glass.topCenter, Offset(0, horizon), [
+          Color.lerp(const Color(0xFF7CC8EC), const Color(0xFF14233F), night)!,
+          Color.lerp(const Color(0xFFE6F6FB), const Color(0xFF3A5682), night)!,
+        ]));
+  if (night > .05) _nightSky(c, glass, horizon, t, night, moon: sun);
+  if (sun && night < .5) {
     final p = Offset(glass.right - 42, glass.top + 22);
     c.drawCircle(p, 18, Paint()..color = const Color(0x55FFF1A8));
     c.drawCircle(p, 11, Paint()..color = const Color(0xFFFFE08A));
@@ -93,7 +97,8 @@ void _seaView(Canvas c, Rect glass, double t, {required bool sun}) {
       _line(c, top, top + d, const Color(0xFF4F8F43), 3);
     }
   }
-  final cloud = Paint()..color = const Color(0xEEFFFFFF);
+  final cloud = Paint()
+    ..color = Color.fromRGBO(255, 255, 255, .93 * (1 - night * .8));
   final span = glass.width + 60;
   for (final (seed, y) in const [(0.0, 18.0), (90.0, 34.0), (150.0, 12.0)]) {
     final x = glass.left - 30 + (t * 6 + seed + (sun ? 0 : 40)) % span;
@@ -109,8 +114,10 @@ void _seaView(Canvas c, Rect glass, double t, {required bool sun}) {
   c.drawRect(
       sea,
       Paint()
-        ..shader = ui.Gradient.linear(sea.topCenter, sea.bottomCenter,
-            const [Color(0xFF3FA3C8), Color(0xFF1C6A97)]));
+        ..shader = ui.Gradient.linear(sea.topCenter, sea.bottomCenter, [
+          Color.lerp(const Color(0xFF3FA3C8), const Color(0xFF1D4468), night)!,
+          Color.lerp(const Color(0xFF1C6A97), const Color(0xFF0D2138), night)!,
+        ]));
   c.drawLine(
       Offset(glass.left, horizon),
       Offset(glass.right, horizon),
@@ -253,6 +260,7 @@ void _bedroom(Canvas c) {
   // Round rug.
   c.drawOval(const Rect.fromLTWH(230, 270, 210, 100), _fill(0xFF3F6E78));
   c.drawOval(const Rect.fromLTWH(244, 280, 182, 80), _stroke(0xFFD9A441, 3));
+  _chandelierFrame(c);
 }
 
 /// Captain's cabin. Furniture stays outside [FishingCabin.floor] except the
@@ -372,4 +380,109 @@ void _room(Canvas c) {
         ..lineTo(400, 426)
         ..lineTo(409, 419),
       _stroke(0xFFEED79F, 3));
+}
+
+/// Stars, an optional moon and a moonlit streak on the sea for night windows.
+void _nightSky(Canvas c, Rect glass, double horizon, double t, double night,
+    {required bool moon}) {
+  for (var i = 0; i < 18; i++) {
+    final p = Offset(glass.left + artNoise(i, 70) * glass.width,
+        glass.top + artNoise(i, 71) * (horizon - glass.top - 4));
+    final twinkle = .55 + .45 * math.sin(t * 2 + i * 1.7);
+    c.drawCircle(p, .9 + artNoise(i, 72) * 1.1,
+        Paint()..color = Color.fromRGBO(255, 250, 225, night * twinkle));
+  }
+  if (!moon) return;
+  final m = Offset(glass.right - 40, glass.top + 22);
+  c.drawCircle(
+      m, 18, Paint()..color = Color.fromRGBO(235, 240, 210, .18 * night));
+  c.drawCircle(m, 10, Paint()..color = Color.fromRGBO(245, 243, 220, night));
+  c.drawCircle(m + const Offset(4, -2), 9,
+      Paint()..color = Color.fromRGBO(20, 35, 63, night * .85));
+  for (var i = 0; i < 5; i++) {
+    final y = horizon + 6 + i * 8.0;
+    final w = 18 - i * 2.0 + math.sin(t * 2 + i) * 3;
+    c.drawLine(
+        Offset(m.dx - w / 2, y),
+        Offset(m.dx + w / 2, y),
+        Paint()
+          ..color = Color.fromRGBO(240, 238, 200, .5 * night)
+          ..strokeWidth = 2);
+  }
+}
+
+/// Bedroom chandelier between the windows; flames are drawn live.
+const _chandelier = Offset(282, 112);
+const _chandelierCandles = [-34.0, -17.0, 0.0, 17.0, 34.0];
+
+void _chandelierFrame(Canvas c) {
+  const p = _chandelier;
+  c.save();
+  c.translate(p.dx, p.dy);
+  c.scale(1.35);
+  c.translate(-p.dx, -p.dy);
+  // Chain from the ceiling beam.
+  for (var y = 66.0; y < p.dy - 14; y += 7) {
+    c.drawOval(Rect.fromCenter(center: Offset(p.dx, y), width: 4, height: 7),
+        _stroke(0xFF8A6A2E, 1.6));
+  }
+  // Brass ring seen slightly from above, centre boss and drop.
+  c.drawOval(Rect.fromCenter(center: p, width: 84, height: 18),
+      _stroke(0xFF7A5A22, 5));
+  c.drawOval(Rect.fromCenter(center: p, width: 84, height: 18),
+      _stroke(0xFFD9A441, 2.5));
+  for (final dx in [-30.0, 30.0]) {
+    c.drawLine(Offset(p.dx, p.dy - 16), Offset(p.dx + dx, p.dy - 2),
+        _stroke(0xFFB8862E, 2));
+  }
+  c.drawCircle(Offset(p.dx, p.dy - 16), 5, _fill(0xFFD9A441));
+  c.drawCircle(Offset(p.dx, p.dy + 6), 6, _fill(0xFFB8862E));
+  c.drawPath(
+      Path()
+        ..moveTo(p.dx - 4, p.dy + 10)
+        ..lineTo(p.dx, p.dy + 22)
+        ..lineTo(p.dx + 4, p.dy + 10)
+        ..close(),
+      _fill(0xFFE8C56A));
+  for (final dx in _chandelierCandles) {
+    final y = p.dy - 4 + (dx.abs() < 1 ? -3 : 0);
+    c.drawOval(
+        Rect.fromCenter(center: Offset(p.dx + dx, y + 2), width: 11, height: 4),
+        _fill(0xFFD9A441));
+    _rect(c, Rect.fromLTWH(p.dx + dx - 3, y - 12, 6, 13),
+        const Color(0xFFF3E9D2));
+  }
+  c.restore();
+}
+
+void _chandelierFlames(Canvas c, double clock, double night) {
+  const p = _chandelier;
+  c.save();
+  c.translate(p.dx, p.dy);
+  c.scale(1.35);
+  c.translate(-p.dx, -p.dy);
+  c.drawCircle(Offset(p.dx, p.dy - 20), 46 + night * 20,
+      Paint()..color = Color.fromRGBO(255, 211, 107, .12 + night * .1));
+  for (var i = 0; i < _chandelierCandles.length; i++) {
+    final dx = _chandelierCandles[i];
+    final y = p.dy - 4 + (dx.abs() < 1 ? -3 : 0) - 13;
+    final f =
+        math.sin(clock * 11 + i * 1.9) * .5 + math.sin(clock * 6.7 + i) * .5;
+    final h = 9 + f * 1.8;
+    final base = Offset(p.dx + dx, y);
+    c.drawPath(
+        Path()
+          ..moveTo(base.dx - 3.2, base.dy)
+          ..quadraticBezierTo(
+              base.dx - 3.5, base.dy - h * .55, base.dx + f, base.dy - h)
+          ..quadraticBezierTo(
+              base.dx + 3.5, base.dy - h * .55, base.dx + 3.2, base.dy)
+          ..close(),
+        _fill(0xFFF6A93B));
+    c.drawOval(
+        Rect.fromCenter(
+            center: base + const Offset(0, -3), width: 3, height: 5),
+        _fill(0xFFFFF1B8));
+  }
+  c.restore();
 }

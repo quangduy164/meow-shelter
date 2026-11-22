@@ -84,6 +84,7 @@ class FishCollection {
     _basket = next;
     return true;
   }
+
   static late FishCollection instance;
   int get count => FishSpecies.values
       .where((fish) => !fish.isJunk && fish != FishSpecies.catMew)

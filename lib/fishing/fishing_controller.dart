@@ -57,6 +57,7 @@ class FishingController extends ChangeNotifier {
     }
     if (island.lookout) return 'Ngắm toàn vùng biển · Bấm để leo xuống';
     if (island.lookoutRequested) return 'Mèo đang tới hải đăng…';
+    if (island.caveRequested) return 'Mèo đang tới cửa hang trong núi…';
     if (_shoreCastPending) return 'Mèo đang ra mép nước để câu…';
     if (island.ashore && !showFishingArt) {
       if (island.boardRequested) return 'Mèo đang quay lại thuyền…';
@@ -88,7 +89,7 @@ class FishingController extends ChangeNotifier {
 
   void tapRiver(Offset screen) {
     if (_phase == FishingPhase.saving || _phase == FishingPhase.caught) return;
-    if (river.cabin.inside) return;
+    if (river.cabin.inside || river.cave.inside) return;
     final point = river.toWorld(screen);
     river.cabin.pending = false;
     final island = river.island;
@@ -102,6 +103,8 @@ class FishingController extends ChangeNotifier {
       if (active) cancelCast();
       if (!island.onBank && FishingIslandVisit.hitsLighthouse(point)) {
         island.climbLighthouse();
+      } else if (!island.onBank && FishingIslandVisit.inMountain(point)) {
+        island.goToCave();
       } else if ((point - river.boat).distance < 70) {
         returnToBoat();
       } else if (island.landContains(point)) {
@@ -267,6 +270,11 @@ class FishingController extends ChangeNotifier {
   void update(double dt) {
     if (river.cabin.inside) {
       river.cabin.update(dt);
+      notifyListeners();
+      return;
+    }
+    if (river.cave.inside) {
+      river.cave.update(dt);
       notifyListeners();
       return;
     }
@@ -455,7 +463,9 @@ class FishingController extends ChangeNotifier {
                         ? FishSpecies.tilapia
                         : FishSpecies.catfish)
         : FishingRiver.rollFish(_random.nextInt(10000), location.dx, _worldHour,
-            activeWater: _activeWater, y: location.dy);
+            activeWater: _activeWater,
+            y: location.dy,
+            weatherBoost: river.weather.boost);
     _grams = _fish.rollGrams(_random);
     _newRecord = false;
     _catchSaved = false;

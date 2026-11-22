@@ -3,6 +3,7 @@ import 'dart:ui' as ui;
 import 'package:material_ui/material_ui.dart';
 import '../../fishing/fishing_cabin.dart';
 import '../../fishing/fishing_exploration.dart';
+import '../../fishing/fishing_island.dart';
 import '../../fishing/fishing_river.dart';
 import '../../fishing/river_sea_land.dart';
 import '../design.dart';
@@ -70,11 +71,14 @@ class _FishingMinimapState extends State<FishingMinimap> {
     }
     c.drawPath(
         fishingSeaIsland.outline(), Paint()..color = const Color(0xFFEBD49A));
-    c.drawPath(
-        fishingSeaIsland
-            .outline(scale: .62)
-            .shift(fishingSeaIsland.center * (1 - .62)),
+    c.drawPath(fishingSeaIsland.outline(grow: -90),
         Paint()..color = const Color(0xFF6FA552));
+    c.drawOval(
+        Rect.fromCenter(
+            center: FishingIslandVisit.mountain,
+            width: FishingIslandVisit.mountainRadii.width * 1.5,
+            height: FishingIslandVisit.mountainRadii.height * 1.5),
+        Paint()..color = const Color(0xFF8C7A5E));
     c.drawCircle(FishingCabin.ship, FishingCabin.radius + 40,
         Paint()..color = const Color(0xFF8A5A33));
     return recorder.endRecording();

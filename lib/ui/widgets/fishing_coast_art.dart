@@ -4,7 +4,7 @@ import '../../fishing/fishing_island.dart';
 import '../../fishing/fishing_river.dart';
 import '../../fishing/river_sea_land.dart';
 import 'fishing_island_art.dart';
-import 'fishing_rock_art.dart';
+import 'fishing_volcano_art.dart';
 
 /// Coastal landmarks share river-world coordinates and the cached backdrop.
 void paintFishingCoast(Canvas canvas, double left, double right) {
@@ -121,103 +121,7 @@ void paintFishingIsland(Canvas c, Offset center, double radius) {
         ..color = const Color(0xFF6E8A4E)
         ..style = PaintingStyle.stroke
         ..strokeWidth = 3);
-  final terrace = inland(-60, .78, const Offset(-10, -60));
-  c.drawPath(terrace, p..color = const Color(0xFF97B56A));
-  c.drawPath(
-      terrace,
-      Paint()
-        ..color = const Color(0x557A9A52)
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 2);
-  c.drawPath(
-      inland(0, .34, const Offset(15, 15)), p..color = const Color(0xFFC4D38E));
-  _pond(c, const Offset(-175, -95));
-  // Paths: dock -> clearing, then branches to the hut, lighthouse and the
-  // campfire on the south beach. Pebbles line both edges.
-  final door = FishingIslandVisit.lighthouseDoor - center;
-  final paths = Path()
-    ..moveTo(-410, 30)
-    ..cubicTo(-300, 25, -220, 85, -110, 70)
-    ..cubicTo(-50, 62, -20, 30, 15, 20)
-    ..moveTo(15, 20)
-    ..cubicTo(55, 5, 95, -10, 120, -40)
-    ..moveTo(15, 20)
-    ..cubicTo(120, 55, 250, 40, door.dx, door.dy + 6)
-    ..moveTo(15, 20)
-    ..cubicTo(10, 110, 70, 170, 60, 236);
-  c.drawPath(
-      paths,
-      Paint()
-        ..color = const Color(0x66A29B64)
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 36
-        ..strokeCap = StrokeCap.round);
-  c.drawPath(
-      paths,
-      Paint()
-        ..color = const Color(0xFFE8DAA6)
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 27
-        ..strokeCap = StrokeCap.round);
-  for (final metric in paths.computeMetrics()) {
-    for (var d = 14.0; d < metric.length - 10; d += 30) {
-      final tangent = metric.getTangentForOffset(d)!;
-      final normal = Offset(-tangent.vector.dy, tangent.vector.dx);
-      for (final side in [-1.0, 1.0]) {
-        c.drawOval(
-            Rect.fromCenter(
-                center: tangent.position + normal * side * (16 + (d % 7)),
-                width: 7,
-                height: 5),
-            p..color = const Color(0xFFCFC2A2));
-      }
-    }
-  }
-  _campfire(c, const Offset(60, 250));
-  for (final (q, k) in const [
-    (Offset(-300, -90), 1),
-    (Offset(-60, -140), 2),
-    (Offset(55, -175), 3),
-    (Offset(300, -60), 4),
-    (Offset(-200, 140), 5),
-    (Offset(185, 120), 6),
-    (Offset(-120, 175), 7),
-  ]) {
-    _flowerBush(c, q, k);
-  }
-  final rng = math.Random(6307);
-  for (var i = 0; i < 650; i++) {
-    final point =
-        Offset(rng.nextDouble() * 860 - 430, rng.nextDouble() * 860 - 430);
-    if (point.distance > island.radiusAt(point.direction) - 22) continue;
-    c.drawOval(
-        Rect.fromCenter(
-            center: point, width: 2 + rng.nextDouble() * 3, height: 1.5),
-        p
-          ..color = point.dy > 160
-              ? const Color(0x44BDA77E)
-              : const Color(0x44829D60));
-  }
-  // Grass tufts and little flowers outline the clearing, keeping its middle free.
-  for (var i = 0; i < 35; i++) {
-    final a = i * 2.4;
-    final point = Offset(math.cos(a) * (170 + i % 3 * 35),
-        math.sin(a) * (120 + i % 4 * 25) - 35);
-    c.drawLine(
-        point,
-        point + const Offset(-3, -6),
-        Paint()
-          ..color = const Color(0xFF7E9C5D)
-          ..strokeWidth = 1.5);
-    if (i % 3 == 0) {
-      c.drawCircle(
-          point - const Offset(2, 7),
-          2.5,
-          p
-            ..color =
-                i.isEven ? const Color(0xFFF3E8AE) : const Color(0xFFE6B1A0));
-    }
-  }
+  paintIslandStreamBed(c);
   // Small beach landmarks: driftwood, smooth stones and shell fragments.
   for (final base in [const Offset(-150, 290), const Offset(285, 110)]) {
     c.save();
@@ -251,40 +155,30 @@ void paintFishingIsland(Canvas c, Offset center, double radius) {
     }
   }
   c.restore();
-  // Coconut grove stays in the northern zone; beach and central lawn remain open.
-  for (final base in [
-    const Offset(-190, -210),
-    const Offset(-105, -250),
-    const Offset(-15, -225),
-    const Offset(85, -235),
-    const Offset(180, -175),
-    const Offset(225, -85),
-    const Offset(-280, -40),
-    const Offset(265, 55),
-    const Offset(330, 175),
-    const Offset(-60, 310),
+  // A few palms frame the beach; the volcano owns the middle.
+  for (final base in const [
+    Offset(-250, -250),
+    Offset(-60, -330),
+    Offset(-340, -60),
   ]) {
-    if (base.dy > -15) continue;
     _palm(c, center + base, base.dx.toInt());
   }
-  // The climbable lighthouse sits between the back and front palms.
+  paintVolcano(c, FishingIslandVisit.mountain);
+  // The climbable lighthouse on the east headland.
   c.save();
   c.translate(
       FishingIslandVisit.lighthouse.dx, FishingIslandVisit.lighthouse.dy);
   c.scale(FishingIslandVisit.lighthouseScale);
   _lighthouse(c, Offset.zero);
   c.restore();
-  for (final base in [
-    const Offset(265, 55),
-    const Offset(330, 175),
-    const Offset(-60, 310),
+  for (final base in const [
+    Offset(350, 150),
+    Offset(-300, 170),
+    Offset(200, 300),
   ]) {
     _palm(c, center + base, base.dx.toInt());
   }
-  paintBoulder(c, center + const Offset(270, -185), 30, 501, inWater: false);
-  paintBoulder(c, center + const Offset(305, -165), 18, 502, inWater: false);
-  paintBoulder(c, center + const Offset(-265, 195), 26, 503, inWater: false);
-  paintBoulder(c, center + const Offset(-232, 210), 15, 504, inWater: false);
+  _campfire(c, center + const Offset(-210, 240));
   paintIslandDock(c);
   // Cargo and mooring rope make the landing easy to recognise from the water.
   final dock = center + Offset(-radius + 45, 68);
@@ -306,56 +200,6 @@ void paintFishingIsland(Canvas c, Offset center, double radius) {
         ..color = const Color(0xFFB9A175)
         ..style = PaintingStyle.stroke
         ..strokeWidth = 3);
-}
-
-/// Freshwater pond with a grassy rim, lily pads and reeds.
-void _pond(Canvas c, Offset p) {
-  final rim = Rect.fromCenter(center: p, width: 128, height: 70);
-  c.drawOval(rim.inflate(6), Paint()..color = const Color(0xFF7E9A5C));
-  c.drawOval(
-      rim,
-      Paint()
-        ..shader =
-            const RadialGradient(colors: [Color(0xFF7FCFD8), Color(0xFF3E93A8)])
-                .createShader(rim));
-  c.drawOval(
-      rim,
-      Paint()
-        ..color = const Color(0xFF4F6E3E)
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 2);
-  for (final (q, flower) in const [
-    (Offset(-30, -6), true),
-    (Offset(14, 12), false),
-    (Offset(32, -10), false),
-  ]) {
-    final pad = p + q;
-    c.drawOval(Rect.fromCenter(center: pad, width: 20, height: 11),
-        Paint()..color = const Color(0xFF6FA552));
-    if (flower) c.drawCircle(pad, 4, Paint()..color = const Color(0xFFF2A7C3));
-  }
-  c.drawLine(
-      p + const Offset(-24, 18),
-      p + const Offset(18, 16),
-      Paint()
-        ..color = const Color(0x66FFFFFF)
-        ..strokeWidth = 2
-        ..strokeCap = StrokeCap.round);
-  for (var i = 0; i < 7; i++) {
-    final b = p + Offset(48 + (i % 3) * 5.0, -20 + i * 5.0);
-    c.drawLine(
-        b,
-        b + Offset(2, -20 - (i % 2) * 8.0),
-        Paint()
-          ..color = const Color(0xFF6F8A45)
-          ..strokeWidth = 2);
-    if (i.isEven) {
-      c.drawOval(
-          Rect.fromCenter(
-              center: b + Offset(2, -22 - (i % 2) * 8.0), width: 4, height: 10),
-          Paint()..color = const Color(0xFF8A6A45));
-    }
-  }
 }
 
 /// Stone ring with crossed logs and two log seats; the flame is live.
@@ -398,30 +242,6 @@ void _campfire(Canvas c, Offset p) {
     c.drawOval(const Rect.fromLTWH(18, -7, 10, 14),
         Paint()..color = const Color(0xFFD8B987));
     c.restore();
-  }
-}
-
-/// Round bush with a few flowers.
-void _flowerBush(Canvas c, Offset p, int seed) {
-  c.drawOval(
-      Rect.fromCenter(center: p + const Offset(4, 10), width: 56, height: 18),
-      Paint()..color = const Color(0x33405A2E));
-  for (var i = 0; i < 5; i++) {
-    final a = i * 1.3 + seed;
-    final q = p + Offset(math.cos(a) * 13, math.sin(a) * 7 - 6);
-    c.drawCircle(q, 14, Paint()..color = const Color(0xFF5E8A48));
-    c.drawCircle(
-        q - const Offset(2, 3),
-        11,
-        Paint()
-          ..color =
-              i.isEven ? const Color(0xFF79A65A) : const Color(0xFF6E9A52));
-  }
-  final tone = const [0xFFF2A7C3, 0xFFFFF4D6, 0xFFF6CF5C, 0xFFE58A6A][seed % 4];
-  for (var i = 0; i < 5; i++) {
-    final a = i * 2.2 + seed;
-    c.drawCircle(p + Offset(math.cos(a) * 16, math.sin(a) * 9 - 10), 3,
-        Paint()..color = Color(tone));
   }
 }
 

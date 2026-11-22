@@ -2,6 +2,7 @@ import 'dart:math' as math;
 import 'package:flutter/painting.dart';
 import '../../fishing/fishing_river.dart';
 import 'fishing_art_kit.dart';
+import 'fishing_river_art.dart';
 
 /// Far-land scenery for every region, recorded into the cached chunks.
 /// Things sit back from the water so existing bank art keeps its space; a
@@ -9,9 +10,6 @@ import 'fishing_art_kit.dart';
 void paintLandScenery(Canvas c, double left, double right) {
   final from = math.max(0.0, left - 160),
       to = math.min(FishingRiver.length, right + 160);
-  for (final north in [true, false]) {
-    _footpath(c, from, to, north);
-  }
   const step = 175.0;
   for (var i = (from / step).floor(); i * step < to; i++) {
     for (var j = 0; j * step < FishingRiver.height; j++) {
@@ -40,6 +38,17 @@ typedef _Land = FishingLand;
 
 _Land _region(double x) => FishingRegion.alongX(x).land;
 
+/// Footpaths along both banks; drawn early so buildings sit on top.
+void paintLandPaths(Canvas c, double left, double right) {
+  final from = math.max(0.0, left - 160),
+      to = math.min(FishingRiver.length, right + 160);
+  for (final north in [true, false]) {
+    _footpath(c, from, to, north);
+  }
+}
+
+final _cottages = fishingCottages();
+
 (double, double) _margin(_Land r) => switch (r) {
       _Land.mangrove => (330.0, 350.0),
       _Land.rocky => (390.0, 330.0),
@@ -57,9 +66,20 @@ double _pathY(double x, bool north) {
     sum += north ? FishingRiver.top(q) : FishingRiver.bottom(q);
   }
   final bank = sum / 9;
-  return north
-      ? math.min(bank - m.$1 - 175 + wave, FishingRiver.top(x) - m.$1 - 40)
-      : math.max(bank + m.$2 + 175 + wave, FishingRiver.bottom(x) + m.$2 + 40);
+  if (!north) {
+    return math.max(
+        bank + m.$2 + 175 + wave, FishingRiver.bottom(x) + m.$2 + 40);
+  }
+  var y = math.min(bank - m.$1 - 175 + wave, FishingRiver.top(x) - m.$1 - 40);
+  // Swing behind each cottage: stay above its roof and chimney.
+  for (final (base, s) in _cottages) {
+    final d = (x - base.dx).abs();
+    final t = (1 - (d - 100 * s) / 140).clamp(0.0, 1.0);
+    if (t <= 0) continue;
+    final clear = base.dy - 150 * s;
+    if (y > clear) y += (clear - y) * t * t * (3 - 2 * t);
+  }
+  return y;
 }
 
 void _footpath(Canvas c, double from, double to, bool north) {

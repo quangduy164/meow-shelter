@@ -19,9 +19,8 @@ class _FishingCabinShipState extends State<FishingCabinShip> {
 
   @override
   Widget build(BuildContext context) => IgnorePointer(
-      child: RepaintBoundary(
-          child: CustomPaint(
-              painter: _ShipPainter(widget.round, widget.frames, picture))));
+      child: CustomPaint(
+          painter: _ShipPainter(widget.round, widget.frames, picture)));
 }
 
 class _ShipPainter extends CustomPainter {

@@ -5,6 +5,7 @@ import 'package:flutter/painting.dart';
 import '../../fishing/fishing_river.dart';
 import '../../game/world/nature_art.dart';
 import 'fishing_land_art.dart';
+import 'fishing_water_art.dart';
 import 'fishing_coast_art.dart';
 import 'fishing_river_details.dart';
 import 'fishing_mangrove_art.dart';
@@ -132,23 +133,7 @@ void _paintLandscape(Canvas canvas, double left, double right) {
           (x) => FishingRiver.top(x) - 8 * (1 - FishingRiver.coastBlend(x)),
           (x) => FishingRiver.bottom(x) + 8),
       p..color = const Color(0xFFE0CFA2));
-  final water = _strip(from, to, FishingRiver.top, FishingRiver.bottom);
-  canvas.drawPath(
-      water,
-      p
-        ..shader = ui.Gradient.linear(
-            const Offset(0, 200),
-            const Offset(0, 1900),
-            const [Color(0xFF478F98), Color(0xFF66B4B2), Color(0xFF91CDC0)],
-            const [0, .5, 1]));
-  p.shader = null;
-  canvas.drawPath(
-      water,
-      Paint()
-        ..shader = ui.Gradient.linear(
-            const Offset(FishingRiver.seaStart - 240, 0),
-            const Offset(FishingRiver.seaStart + 600, 0),
-            const [Color(0x003C9FB9), Color(0xFF3C9FB9)]));
+  paintWaterBody(canvas, from, to);
   for (final side in [-1, 1]) {
     double edge(double x) =>
         side < 0 ? FishingRiver.top(x) : FishingRiver.bottom(x);
@@ -219,6 +204,8 @@ void _paintLandscape(Canvas canvas, double left, double right) {
     _stone(canvas, Offset(x, y), 9 + (i % 3) * 3.0);
     if (i % 3 == 0) _reeds(canvas, Offset(x + 17, y + side * 7), seed: i);
   }
+  // Footpaths go down before the cottages so a house always sits on top.
+  paintLandPaths(canvas, left, right);
   // Far bank: cottage gardens become bamboo and a rocky green ridge.
   for (var i = (from / 175).floor(); i <= (to / 175).ceil(); i++) {
     final x = i * 175.0 + 80;
@@ -390,6 +377,20 @@ void _boulder(Canvas c, Offset p, double size) {
           center: p - Offset(size * .45, size * .1), width: size, height: 9),
       Paint()..color = const Color(0xFF738E60));
 }
+
+/// Base point and scale of every cottage on the north bank; art, night
+/// windows and the footpath all read this list.
+List<(Offset, double)> fishingCottages() => [
+      for (final x in [330.0, 900.0, 1430.0])
+        (Offset(x, FishingRiver.top(x) - 43), 1.0),
+      (Offset(2490, FishingRiver.top(2490) - 38), .8),
+    ];
+
+/// Window centres and scale of the village cottages, for night lights.
+List<(Offset, double)> fishingCottageWindows() => [
+      for (final (base, s) in fishingCottages())
+        for (final dx in [-30.0, 39.0]) (base + Offset(dx * s, -33 * s), s),
+    ];
 
 void _cottage(Canvas c, Offset base, Color roof, {bool small = false}) {
   c.save();

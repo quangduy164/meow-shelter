@@ -1,6 +1,6 @@
 import 'package:material_ui/material_ui.dart';
 
-enum FishingTool { back, basket, float, rod, hook, reel, save }
+enum FishingTool { back, basket, float, rod, hook, reel, save, boat }
 
 class FishingToolArt extends CustomPainter {
   const FishingToolArt(
@@ -54,6 +54,63 @@ class FishingToolArt extends CustomPainter {
             Paint()..color = const Color(0xFFFFF7DF));
         canvas.drawOval(const Rect.fromLTWH(74, 61, 10, 9),
             Paint()..color = const Color(0xFFDC7861));
+      case FishingTool.boat:
+        // Little wooden boat on a wave, oar resting across it.
+        _line(
+            canvas,
+            Path()
+              ..moveTo(30, 30)
+              ..lineTo(74, 70),
+            ink,
+            7);
+        _line(
+            canvas,
+            Path()
+              ..moveTo(30, 30)
+              ..lineTo(74, 70),
+            const Color(0xFFD8B174),
+            3.5);
+        final hull = Path()
+          ..moveTo(10, 52)
+          ..lineTo(90, 52)
+          ..quadraticBezierTo(84, 76, 64, 78)
+          ..lineTo(36, 78)
+          ..quadraticBezierTo(16, 76, 10, 52)
+          ..close();
+        _shape(canvas, hull.shift(const Offset(0, 4)), const Color(0xFF6E4A2E));
+        _shape(canvas, hull, const Color(0xFFC08A4E));
+        canvas.save();
+        canvas.clipPath(hull);
+        for (final y in [60.0, 68.0]) {
+          _line(
+              canvas,
+              Path()
+                ..moveTo(10, y)
+                ..lineTo(90, y),
+              const Color(0x66704626),
+              1.5);
+        }
+        canvas.restore();
+        canvas.drawRRect(
+            RRect.fromRectAndRadius(
+                const Rect.fromLTWH(8, 47, 84, 8), const Radius.circular(4)),
+            Paint()..color = const Color(0xFF8A5A33));
+        canvas.drawRRect(
+            RRect.fromRectAndRadius(
+                const Rect.fromLTWH(8, 47, 84, 8), const Radius.circular(4)),
+            Paint()
+              ..color = ink
+              ..style = PaintingStyle.stroke
+              ..strokeWidth = 2.5);
+        _line(
+            canvas,
+            Path()
+              ..moveTo(8, 86)
+              ..quadraticBezierTo(22, 79, 36, 86)
+              ..quadraticBezierTo(50, 93, 64, 86)
+              ..quadraticBezierTo(78, 79, 92, 86),
+            const Color(0xFF4FA6C8),
+            4);
       case FishingTool.back:
         final arrow = Path()
           ..moveTo(9, 48)

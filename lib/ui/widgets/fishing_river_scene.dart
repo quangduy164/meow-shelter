@@ -11,6 +11,8 @@ import 'fishing_activity_art.dart';
 import 'fishing_fight_art.dart';
 import 'fishing_river_details.dart';
 import 'fishing_rock_art.dart';
+import 'fishing_water_art.dart';
+import 'fishing_volcano_art.dart';
 import '../../fishing/river_props.dart';
 import 'river_encounter_art.dart';
 
@@ -39,10 +41,8 @@ class _FishingRiverBackdropState extends State<FishingRiverBackdrop> {
   }
 
   @override
-  Widget build(BuildContext context) => RepaintBoundary(
-      child: CustomPaint(
-          painter:
-              _RiverBackdropPainter(widget.round, _pictures, widget.frames)));
+  Widget build(BuildContext context) => CustomPaint(
+      painter: _RiverBackdropPainter(widget.round, _pictures, widget.frames));
 }
 
 class _RiverBackdropPainter extends CustomPainter {
@@ -73,6 +73,20 @@ class _RiverBackdropPainter extends CustomPainter {
       oldDelegate.round != round;
 }
 
+final _dryLand = Path.combine(
+    PathOperation.union, fishingSeaIsland.outline(), mountainSilhouette());
+
+/// Island + mountain bounds: the costly wet-area clip is only needed here.
+final _dryBounds = _dryLand.getBounds();
+
+/// Everything except the island and the mountain rising above it.
+final _wetArea = Path.combine(
+    PathOperation.difference,
+    Path()
+      ..addRect(
+          const Rect.fromLTWH(0, 0, FishingRiver.length, FishingRiver.height)),
+    _dryLand);
+
 class FishingRiverSurface extends CustomPainter {
   FishingRiverSurface(this.round, Listenable frames, {this.fishing})
       : super(repaint: frames);
@@ -86,55 +100,22 @@ class FishingRiverSurface extends CustomPainter {
     canvas.scale(round.scale);
     canvas.translate(-round.cameraLeft, -round.cameraTop);
     // Surface ripples and swimming animals stay off the cached dry island.
-    canvas.clipPath(Path()
-      ..fillType = PathFillType.evenOdd
-      ..addRect(
-          const Rect.fromLTWH(0, 0, FishingRiver.length, FishingRiver.height))
-      ..addPath(fishingSeaIsland.outline(), Offset.zero));
+    // Clip only while the island or mountain is on screen (+ ripple margin).
+    if (Rect.fromLTWH(round.cameraLeft, round.cameraTop, round.visibleWidth,
+            round.visibleHeight)
+        .inflate(60)
+        .overlaps(_dryBounds)) {
+      canvas.clipPath(_wetArea);
+    }
     final left = math.max(0.0, round.cameraLeft - 30);
     final right = math.min(
         FishingRiver.length, round.cameraLeft + round.visibleWidth + 30);
-    final paint = Paint()
-      ..strokeCap = StrokeCap.round
-      ..strokeWidth = 1.5;
-    final firstColumn = (left / 57).floor();
-    for (var col = firstColumn; col * 57 < right; col++) {
-      final x = col * 57.0 + (round.clock * 8) % 30;
-      final rows = (FishingRiver.halfWidth(x) * 2 / 26).floor();
-      for (var row = 0; row < rows; row++) {
-        final y = FishingRiver.center(x) + (row - (rows - 1) / 2) * 26;
-        if (y < FishingRiver.top(x) + 10 || y > FishingRiver.bottom(x) - 10) {
-          continue;
-        }
-        if (y < round.cameraTop - 20 ||
-            y > round.cameraTop + round.visibleHeight + 20) {
-          continue;
-        }
-        final phase = round.clock * 1.4 + col * 1.7 + row;
-        canvas.drawLine(
-            Offset(x, y),
-            Offset(x + 15 + math.sin(phase) * 6, y - 1),
-            paint
-              ..color = Color.fromRGBO(
-                  218, 255, 237, .12 + math.sin(phase).abs() * .13));
-      }
-    }
-    for (var col = (left / 90).floor(); col * 90 < right; col++) {
-      final x = col * 90.0;
-      final sea =
-          FishingRiver.coastBlend(x) * (1 - FishingRiver.mangroveBlend(x));
-      if (sea <= 0) continue;
-      final wave = math.sin(round.clock * 1.8 + col) * 3;
-      final y = FishingRiver.bottom(x) - 9 - wave;
-      canvas.drawPath(
-          Path()
-            ..moveTo(x, y)
-            ..quadraticBezierTo(x + 18, y + 3, x + 38, y - 1),
-          Paint()
-            ..color = Color.fromRGBO(237, 255, 239, .65 * sea)
-            ..style = PaintingStyle.stroke
-            ..strokeWidth = 2.3);
-    }
+    final top = round.cameraTop - 30,
+        bottom = round.cameraTop + round.visibleHeight + 30;
+    paintWaterSparkles(
+        canvas, left, right, top, bottom, round.clock, round.zoom);
+    paintSeaSwells(canvas, left, right, top, bottom, round.clock);
+    paintShoreWash(canvas, left, right, round.clock);
     // Faint little fish and floating leaves make the long channel feel alive.
     for (var i = (left / 240).floor(); i * 240 < right; i++) {
       var point = Offset(
@@ -172,15 +153,6 @@ class FishingRiverSurface extends CustomPainter {
       }
       paintRockFoam(canvas, rock.anchor, rock.radius, round.clock,
           rock.anchor.dx.toInt());
-    }
-    if (right > fishingSeaIsland.center.dx - fishingSeaIsland.maxRadius - 30 &&
-        left < fishingSeaIsland.center.dx + fishingSeaIsland.maxRadius + 30) {
-      canvas.drawPath(
-          fishingSeaIsland.outline(grow: 7 + math.sin(round.clock * 1.8) * 3),
-          Paint()
-            ..color = const Color(0x99F2F5D5)
-            ..style = PaintingStyle.stroke
-            ..strokeWidth = 2);
     }
     paintFloatingRiverProps(
         canvas,
@@ -255,6 +227,20 @@ class FishingRiverBoatPainter extends CustomPainter {
     if (!front) {
       if (rowing) paintFishingOarWater(canvas, oar, round.clock);
       if (round.wake > .02) {
+        // Foam trails spreading behind the boat.
+        final back = -round.heading.dx >= 0 ? 1.0 : -1.0;
+        for (final side in [-1.0, 1.0]) {
+          for (var i = 0; i < 7; i++) {
+            final t = ((round.clock * 1.8 + i / 7) % 1);
+            final q = Offset(back * (40 + t * 70), 14 + side * (8 + t * 22));
+            canvas.drawCircle(
+                q,
+                2 + t * 3,
+                Paint()
+                  ..color =
+                      Color.fromRGBO(245, 252, 250, (1 - t) * .7 * round.wake));
+          }
+        }
         for (var i = 0; i < 3; i++) {
           final t = (round.clock * 1.5 + i / 3) % 1;
           canvas.drawOval(

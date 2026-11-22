@@ -1,0 +1,428 @@
+import 'dart:math' as math;
+import 'dart:ui' as ui;
+import 'package:material_ui/material_ui.dart';
+import '../../collection/fish_collection.dart';
+import '../../fishing/fishing_cave.dart';
+import '../../game/constants.dart';
+import '../design.dart';
+import 'cat_sprite.dart';
+import 'fishing_art_kit.dart';
+import 'fishing_fish_art.dart';
+import 'fishing_rock_art.dart';
+import 'game_glyphs.dart';
+import 'round_button.dart';
+
+/// The mountain cave parkour run. Level art is recorded once; the camera
+/// follows the cat and the far wall scrolls slower for depth.
+class FishingCaveRun extends StatefulWidget {
+  const FishingCaveRun(
+      {super.key, required this.cave, required this.cat, required this.onExit});
+  final FishingCave cave;
+  final String cat;
+  final VoidCallback onExit;
+  @override
+  State<FishingCaveRun> createState() => _FishingCaveRunState();
+}
+
+class _FishingCaveRunState extends State<FishingCaveRun> {
+  late final _back = _record(_paintBackWall, _backWidth);
+  late final _level = _record(_paintLevel, FishingCave.length);
+  bool _claiming = false;
+
+  static ui.Picture _record(void Function(Canvas) draw, double width) {
+    final r = ui.PictureRecorder();
+    draw(Canvas(r, Rect.fromLTWH(0, 0, width, FishingCave.height)));
+    return r.endRecording();
+  }
+
+  @override
+  void dispose() {
+    _back.dispose();
+    _level.dispose();
+    super.dispose();
+  }
+
+  Future<void> _claim() async {
+    await widget.cave.claimReward(FishCollection.instance);
+    if (mounted) setState(() => _claiming = false);
+  }
+
+  Widget _finishPanel() {
+    final cave = widget.cave;
+    final fish = cave.reward;
+    return Positioned.fill(
+        child: ColoredBox(
+            color: const Color(0x88000000),
+            child: Center(
+                child: Container(
+                    width: 360,
+                    padding: const EdgeInsets.all(DS.spaceMd),
+                    decoration: BoxDecoration(
+                        color: DS.cream,
+                        borderRadius: BorderRadius.circular(DS.radiusSm),
+                        border: Border.all(color: DS.wood, width: 3)),
+                    child: Column(mainAxisSize: MainAxisSize.min, children: [
+                      const Text('VƯỢT QUA HANG!',
+                          style: TextStyle(
+                              color: DS.ink,
+                              fontWeight: FontWeight.w900,
+                              fontSize: DS.fontTitle)),
+                      const SizedBox(height: DS.spaceSm),
+                      Text(
+                          'Cá vàng ${cave.collected.length}/${FishingCave.tokens.length} · '
+                          '${cave.runTime.toStringAsFixed(1)} giây · ngã ${cave.falls} lần',
+                          style: const TextStyle(color: DS.ink)),
+                      const SizedBox(height: DS.spaceSm),
+                      if (fish != null) ...[
+                        Wrap(alignment: WrapAlignment.center, children: [
+                          for (final f in fish)
+                            SizedBox(
+                                width: 70,
+                                height: 46,
+                                child: CustomPaint(painter: FishingFishArt(f))),
+                        ]),
+                        const Text('Rương cuối hang tặng cá vào giỏ!',
+                            style: TextStyle(color: DS.ink)),
+                      ] else if (!_claiming)
+                        const Text(
+                            'Hôm nay đã nhận quà rương rồi, mai quay lại nhé!',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(color: DS.ink)),
+                      const SizedBox(height: DS.spaceMd),
+                      Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            OutlinedButton(
+                                onPressed: () => setState(cave.restart),
+                                child: const Text('CHƠI LẠI')),
+                            const SizedBox(width: DS.spaceSm),
+                            ElevatedButton(
+                                onPressed: widget.onExit,
+                                style: DS.primary,
+                                child: const Text('RA NGOÀI')),
+                          ]),
+                    ])))));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final cave = widget.cave;
+    if (cave.state == CaveRunState.finished &&
+        !cave.rewardChecked &&
+        !_claiming) {
+      _claiming = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) => _claim());
+    }
+    return ColoredBox(
+        color: const Color(0xFF1C1A22),
+        child: LayoutBuilder(builder: (context, box) {
+          final scale = box.maxHeight / FishingCave.height;
+          final viewWidth = box.maxWidth / scale;
+          final camera = (cave.cat.dx - viewWidth * .3)
+              .clamp(0.0, math.max(0.0, FishingCave.length - viewWidth))
+              .toDouble();
+          final catSize = 84 * scale;
+          final screenCat =
+              Offset((cave.cat.dx - camera) * scale, cave.cat.dy * scale);
+          final running = cave.state == CaveRunState.running ||
+              cave.state == CaveRunState.falling;
+          final airborne = !cave.grounded;
+          final pad = MediaQuery.paddingOf(context);
+          return PopScope(
+              canPop: false,
+              onPopInvokedWithResult: (didPop, _) {
+                if (!didPop) widget.onExit();
+              },
+              child: Stack(children: [
+                Positioned.fill(
+                    child: GestureDetector(
+                        behavior: HitTestBehavior.opaque,
+                        onTapDown: (_) => cave.tap(),
+                        child: CustomPaint(
+                            painter: _CavePainter(
+                                cave, _back, _level, scale, camera)))),
+                Positioned(
+                    left: screenCat.dx - catSize / 2,
+                    top: screenCat.dy - catSize * .8,
+                    child: IgnorePointer(
+                        child: Opacity(
+                            opacity: cave.hurt > 0 &&
+                                    (cave.clock * 16).floor().isEven
+                                ? .35
+                                : 1,
+                            child: Transform.rotate(
+                                angle:
+                                    airborne ? (cave.vy < 0 ? -.15 : .12) : 0,
+                                child: CatSprite(
+                                    type: widget.cat,
+                                    size: catSize,
+                                    action: running ? 'run' : 'idle',
+                                    frames: running ? framesRun : framesIdle,
+                                    frame: airborne
+                                        ? 2
+                                        : (cave.clock * (running ? 14 : 7))
+                                                .floor() %
+                                            (running
+                                                ? framesRun
+                                                : framesIdle)))))),
+                Positioned(
+                    left: pad.left + 8,
+                    top: pad.top + 8,
+                    child: RoundButton(
+                        glyph: GameGlyph.back,
+                        size: 44,
+                        tooltip: 'Ra khỏi hang',
+                        onPressed: widget.onExit)),
+                Positioned(
+                    top: pad.top + 12,
+                    right: pad.right + 12,
+                    child: IgnorePointer(
+                        child: Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 12, vertical: 6),
+                            decoration: BoxDecoration(
+                                color: const Color(0xB31E2A30),
+                                borderRadius: BorderRadius.circular(16)),
+                            child: Text(
+                                'Cá vàng ${cave.collected.length}/${FishingCave.tokens.length}',
+                                style: const TextStyle(
+                                    color: Color(0xFFFFE08A),
+                                    fontWeight: FontWeight.w900))))),
+                if (cave.state == CaveRunState.ready)
+                  const Positioned.fill(
+                      child: IgnorePointer(
+                          child: Center(
+                              child: Text(
+                                  'CHẠM ĐỂ CHẠY\nChạm để nhảy · chạm lần nữa trên không để nhảy đôi',
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: DS.fontButton,
+                                      fontWeight: FontWeight.w900,
+                                      shadows: [
+                                        Shadow(
+                                            color: Colors.black, blurRadius: 6)
+                                      ]))))),
+                if (cave.state == CaveRunState.finished) _finishPanel(),
+              ]));
+        }));
+  }
+}
+
+class _CavePainter extends CustomPainter {
+  _CavePainter(this.cave, this.back, this.level, this.scale, this.camera);
+  final FishingCave cave;
+  final ui.Picture back, level;
+  final double scale, camera;
+
+  @override
+  void paint(Canvas c, Size size) {
+    c.save();
+    c.clipRect(Offset.zero & size);
+    c.scale(scale);
+    c.save();
+    c.translate(-camera * .5, 0);
+    c.drawPicture(back);
+    c.restore();
+    c.translate(-camera, 0);
+    c.drawPicture(level);
+    final t = cave.clock;
+    // Torches at checkpoints flicker; reached ones burn bright.
+    for (var i = 1; i < FishingCave.checkpoints.length; i++) {
+      final p = Offset(FishingCave.checkpoints[i] + 10, FishingCave.floor - 62);
+      final lit = cave.checkpoint >= i;
+      final f = math.sin(t * 12 + i) * .5 + math.sin(t * 7 + i * 2) * .5;
+      c.drawCircle(p, 40 + f * 4, fillPaint(lit ? 0x40FFB347 : 0x1AFFB347));
+      c.drawPath(
+          Path()
+            ..moveTo(p.dx - 6, p.dy + 4)
+            ..quadraticBezierTo(
+                p.dx - 7, p.dy - 8, p.dx + f * 2, p.dy - 16 - f * 3)
+            ..quadraticBezierTo(p.dx + 7, p.dy - 8, p.dx + 6, p.dy + 4)
+            ..close(),
+          fillPaint(lit ? 0xFFF6A93B : 0xFF8A6A4A));
+    }
+    // Golden fish tokens bob and spin.
+    for (var i = 0; i < FishingCave.tokens.length; i++) {
+      if (cave.collected.contains(i)) continue;
+      final p = FishingCave.tokens[i] + Offset(0, math.sin(t * 3 + i) * 4);
+      final squash = math.cos(t * 2.5 + i).abs() * .7 + .3;
+      c.drawCircle(p, 16, fillPaint(0x33FFD54F));
+      c.save();
+      c.translate(p.dx, p.dy);
+      c.scale(squash, 1);
+      c.drawOval(const Rect.fromLTWH(-11, -6, 20, 12), fillPaint(0xFFFFC83D));
+      c.drawPath(
+          Path()
+            ..moveTo(8, 0)
+            ..lineTo(15, -6)
+            ..lineTo(15, 6)
+            ..close(),
+          fillPaint(0xFFFFC83D));
+      c.drawOval(
+          const Rect.fromLTWH(-11, -6, 20, 12), strokePaint(0xFFB7791F, 1.6));
+      c.drawCircle(const Offset(-5, -1), 1.6, fillPaint(0xFF5A3A1A));
+      c.restore();
+    }
+    // Chest sparkle at the finish.
+    final glow = (math.sin(t * 3) + 1) / 2;
+    c.drawCircle(const Offset(FishingCave.finishX + 60, FishingCave.floor - 30),
+        50 + glow * 10, fillPaint(0x33FFE08A));
+    c.restore();
+  }
+
+  @override
+  bool shouldRepaint(_CavePainter old) => true;
+}
+
+/// Far wall scrolls at half speed; wide enough for any screen width.
+const _backWidth = FishingCave.length * .5 + 1600;
+
+void _paintBackWall(Canvas c) {
+  const w = _backWidth, h = FishingCave.height;
+  c.drawRect(
+      const Rect.fromLTWH(0, 0, w, h),
+      Paint()
+        ..shader = const LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              Color(0xFF241F2C),
+              Color(0xFF3A3242),
+              Color(0xFF2A2430)
+            ]).createShader(const Rect.fromLTWH(0, 0, w, h)));
+  for (var i = 0; i < 70; i++) {
+    final x = artNoise(i, 1) * w;
+    final r = 40 + artNoise(i, 2) * 90;
+    c.drawOval(
+        Rect.fromCenter(
+            center: Offset(x, 120 + artNoise(i, 3) * 260),
+            width: r * 2,
+            height: r),
+        fillPaint(0x1A8A7FA0));
+  }
+  // Distant glowing crystals.
+  for (var i = 0; i < 46; i++) {
+    final p = Offset(artNoise(i, 4) * w, 80 + artNoise(i, 5) * 260);
+    final tone = [0x5582E0D0, 0x55B49AE0, 0x559FD3F0][i % 3];
+    c.drawCircle(p, 18, fillPaint((tone & 0x00FFFFFF) | 0x18000000));
+    c.drawPath(
+        Path()
+          ..moveTo(p.dx - 5, p.dy + 8)
+          ..lineTo(p.dx, p.dy - 12)
+          ..lineTo(p.dx + 5, p.dy + 8)
+          ..close(),
+        fillPaint(tone));
+  }
+}
+
+void _paintLevel(Canvas c) {
+  const h = FishingCave.height;
+  // Ceiling with stalactites.
+  final ceiling = Path()..moveTo(0, 0);
+  for (var x = 0.0; x <= FishingCave.length; x += 30) {
+    final k = x.toInt();
+    final drop = 30 + artNoise(k, 6) * 26 + (artNoise(k, 7) < .2 ? 50 : 0);
+    ceiling.lineTo(x, drop);
+    ceiling.lineTo(x + 15, 22 + artNoise(k, 8) * 14);
+  }
+  ceiling
+    ..lineTo(FishingCave.length, 0)
+    ..close();
+  c.drawPath(ceiling, fillPaint(0xFF2C2530));
+  c.drawPath(ceiling, strokePaint(0xFF15111A, 2.5));
+  // Ledges: chunky outlined rock with mossy tops and a lit edge.
+  for (final l in FishingCave.ledges) {
+    final bottom = l.ground ? h : l.top + 46;
+    final body = RRect.fromRectAndCorners(
+        Rect.fromLTRB(l.left, l.top, l.right, bottom),
+        topLeft: const Radius.circular(10),
+        topRight: const Radius.circular(10),
+        bottomLeft: Radius.circular(l.ground ? 0 : 18),
+        bottomRight: Radius.circular(l.ground ? 0 : 18));
+    c.drawRRect(body, fillPaint(0xFF5E5466));
+    c.save();
+    c.clipRRect(body);
+    for (var y = l.top + 18; y < bottom; y += 22) {
+      c.drawLine(Offset(l.left, y), Offset(l.right, y + 4),
+          strokePaint(0x332A2430, 2));
+    }
+    c.drawRect(Rect.fromLTRB(l.left, l.top, l.right, l.top + 8),
+        fillPaint(0xFF8C7FA0));
+    c.restore();
+    c.drawRRect(body, strokePaint(0xFF1E1A24, 3));
+    for (var x = l.left + 10; x < l.right - 10; x += 26) {
+      c.drawOval(
+          Rect.fromCenter(center: Offset(x, l.top + 1), width: 20, height: 7),
+          fillPaint(artNoise(x.toInt(), 9) < .5 ? 0xFF6F9A5A : 0xFF5E8A4E));
+    }
+  }
+  // Pits glow faintly from below.
+  for (var i = 0; i + 1 < FishingCave.ledges.length; i++) {
+    final a = FishingCave.ledges[i];
+    if (!a.ground) continue;
+    final next = FishingCave.ledges
+        .skip(i + 1)
+        .firstWhere((l) => l.ground, orElse: () => a);
+    if (identical(next, a)) continue;
+    c.drawRect(
+        Rect.fromLTRB(a.right, h - 40, next.left, h),
+        Paint()
+          ..shader = const LinearGradient(
+                  begin: Alignment.bottomCenter,
+                  end: Alignment.topCenter,
+                  colors: [Color(0x553A8FA8), Color(0x003A8FA8)])
+              .createShader(Rect.fromLTRB(a.right, h - 40, next.left, h)));
+  }
+  // Crystal spikes.
+  for (final (x, half) in FishingCave.spikes) {
+    for (var i = 0; i < 4; i++) {
+      final bx = x - half + i * half * 2 / 3;
+      final tall = 22 + (i.isEven ? 8 : 0);
+      final spike = Path()
+        ..moveTo(bx - 7, FishingCave.floor)
+        ..lineTo(bx, FishingCave.floor - tall)
+        ..lineTo(bx + 7, FishingCave.floor)
+        ..close();
+      c.drawPath(spike, fillPaint(0xFFB49AE0));
+      c.drawPath(spike, strokePaint(0xFF4A3A6A, 1.6));
+      c.drawLine(
+          Offset(bx - 2, FishingCave.floor - 4),
+          Offset(bx, FishingCave.floor - tall + 6),
+          strokePaint(0xAAFFFFFF, 1.4));
+    }
+  }
+  // Torch posts.
+  for (final x in FishingCave.checkpoints.skip(1)) {
+    c.drawLine(Offset(x + 10, FishingCave.floor),
+        Offset(x + 10, FishingCave.floor - 56), strokePaint(0xFF6B4A2C, 5));
+  }
+  // Boulders and a big treasure chest at the end.
+  for (final (x, r) in const [(150.0, 20.0), (1300.0, 16.0), (2700.0, 22.0)]) {
+    paintBoulder(c, Offset(x, FishingCave.floor + 2), r, x.toInt(),
+        inWater: false);
+  }
+  const chest = Offset(FishingCave.finishX + 60, FishingCave.floor);
+  c.drawRRect(
+      RRect.fromRectAndRadius(
+          Rect.fromCenter(
+              center: chest + const Offset(0, -22), width: 74, height: 44),
+          const Radius.circular(6)),
+      fillPaint(0xFF8A5A33));
+  c.drawPath(
+      Path()
+        ..moveTo(chest.dx - 37, chest.dy - 40)
+        ..quadraticBezierTo(
+            chest.dx, chest.dy - 70, chest.dx + 37, chest.dy - 40)
+        ..close(),
+      fillPaint(0xFFA8703F));
+  c.drawLine(chest + const Offset(-37, -30), chest + const Offset(37, -30),
+      strokePaint(0xFFD9A441, 4));
+  c.drawCircle(chest + const Offset(0, -26), 5, fillPaint(0xFFF2C75C));
+  c.drawRRect(
+      RRect.fromRectAndRadius(
+          Rect.fromCenter(
+              center: chest + const Offset(0, -22), width: 74, height: 44),
+          const Radius.circular(6)),
+      strokePaint(0xFF3E2618, 2.5));
+}

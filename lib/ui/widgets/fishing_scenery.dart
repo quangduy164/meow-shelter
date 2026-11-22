@@ -2,7 +2,6 @@ import 'dart:math' as math;
 import 'dart:ui' as ui;
 import 'package:material_ui/material_ui.dart';
 import '../../fishing/fishing_river.dart';
-import '../../fishing/river_sea_land.dart';
 
 /// Cached scenic clusters, sorted around the walking cat by their ground anchor.
 class FishingScenery extends StatefulWidget {
@@ -36,14 +35,13 @@ class _FishingSceneryState extends State<FishingScenery> {
   late final items = [
     for (final x in [420.0, 1260.0])
       _Scenery(0, Offset(x, FishingRiver.bottom(x) + 235)),
-    for (final x in [650.0, 1470.0])
+    for (final x in [650.0, 1640.0])
       _Scenery(0, Offset(x, FishingRiver.top(x) - 80)),
     for (final x in [2150.0, 2990.0])
       _Scenery(1, Offset(x, FishingRiver.top(x) - 75)),
     _Scenery(1, Offset(2700, FishingRiver.bottom(2700) + 255)),
     for (final x in [6000.0, 10300.0])
       _Scenery(2, Offset(x, FishingRiver.bottom(x) + 175)),
-    _Scenery(3, fishingSeaIsland.center + const Offset(125, -80)),
     _Scenery(4, Offset(2680, FishingRiver.bottom(2680) + 43)),
     for (final x in [330.0, 900.0, 1430.0])
       _Scenery(5, Offset(x + 34, FishingRiver.top(x) - 170)),

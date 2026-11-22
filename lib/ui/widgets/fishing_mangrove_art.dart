@@ -3,6 +3,7 @@ import 'package:flutter/painting.dart';
 import '../../fishing/fishing_river.dart';
 import '../../fishing/river_props.dart';
 import 'fishing_art_kit.dart';
+import 'fishing_water_art.dart';
 
 /// Recorded into the existing chunk cache; shared channel bounds define mud/water.
 void paintMangrove(Canvas c, double left, double right) {
@@ -11,8 +12,8 @@ void paintMangrove(Canvas c, double left, double right) {
   if (from >= to) return;
   c.save();
   // Fade the new ground into the estuary, without a hard vertical biome seam.
-  c.saveLayer(Rect.fromLTRB(from, 0, to, FishingRiver.height), Paint());
-  c.drawRect(Rect.fromLTRB(from, 0, to, FishingRiver.height),
+  c.saveLayer(Rect.fromLTRB(from - 4, 0, to + 4, FishingRiver.height), Paint());
+  c.drawRect(Rect.fromLTRB(from - 4, 0, to + 4, FishingRiver.height),
       Paint()..color = const Color(0xFF82977A));
   final wet = bankBand(from, to, (x) => FishingRiver.top(x) - 60,
       (x) => FishingRiver.bottom(x) + 70);
@@ -21,12 +22,7 @@ void paintMangrove(Canvas c, double left, double right) {
       bankBand(from, to, (x) => FishingRiver.top(x) - 25,
           (x) => FishingRiver.bottom(x) + 25),
       Paint()..color = const Color(0xFF737C60));
-  c.drawPath(bankBand(from, to, FishingRiver.top, FishingRiver.bottom),
-      Paint()..color = const Color(0xFF568D80));
-  c.drawPath(
-      bankBand(from, to, (x) => FishingRiver.top(x) + 18,
-          (x) => FishingRiver.bottom(x) - 18),
-      Paint()..color = const Color(0xFF4F827B));
+  paintWaterBody(c, from, to, tint: 0x553F6E55);
   final rng = math.Random(851);
   for (var i = 0; i < 1800; i++) {
     final x = 3300 + rng.nextDouble() * 2100;
@@ -114,7 +110,7 @@ void paintMangrove(Canvas c, double left, double right) {
     }
   }
   c.drawRect(
-      Rect.fromLTRB(from, 0, to, FishingRiver.height),
+      Rect.fromLTRB(from - 4, 0, to + 4, FishingRiver.height),
       Paint()
         ..blendMode = BlendMode.dstIn
         ..shader =
@@ -125,7 +121,7 @@ void paintMangrove(Canvas c, double left, double right) {
                     FishingRiver.mangroveStart + 300,
                     FishingRiver.height)));
   c.drawRect(
-      Rect.fromLTRB(from, 0, to, FishingRiver.height),
+      Rect.fromLTRB(from - 4, 0, to + 4, FishingRiver.height),
       Paint()
         ..blendMode = BlendMode.dstIn
         ..shader =

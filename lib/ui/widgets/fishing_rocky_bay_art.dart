@@ -7,6 +7,7 @@ import '../../fishing/river_props.dart';
 import 'fishing_river_details.dart';
 import 'fishing_art_kit.dart';
 import 'fishing_rock_art.dart';
+import 'fishing_water_art.dart';
 
 /// North shore life starts this far inland, clear of the cliff face.
 const _cliffClear = 120.0;
@@ -16,8 +17,8 @@ void paintRockyBay(Canvas c, double left, double right) {
   final from = math.max(left, FishingRiver.rockyBayStart - 300),
       to = math.min(right, FishingRiver.openSeaStart + 300);
   if (from >= to) return;
-  c.saveLayer(Rect.fromLTRB(from, 0, to, FishingRiver.height), Paint());
-  c.drawRect(Rect.fromLTRB(from, 0, to, FishingRiver.height),
+  c.saveLayer(Rect.fromLTRB(from - 4, 0, to + 4, FishingRiver.height), Paint());
+  c.drawRect(Rect.fromLTRB(from - 4, 0, to + 4, FishingRiver.height),
       Paint()..color = const Color(0xFF9C9282));
   c.drawPath(
       bankBand(from, to, (x) => FishingRiver.top(x) - 110,
@@ -27,12 +28,7 @@ void paintRockyBay(Canvas c, double left, double right) {
       bankBand(from, to, (x) => FishingRiver.top(x) - 42,
           (x) => FishingRiver.bottom(x) + 48),
       Paint()..color = const Color(0xFFDCCCA8));
-  c.drawPath(bankBand(from, to, FishingRiver.top, FishingRiver.bottom),
-      Paint()..color = const Color(0xFF548D9B));
-  c.drawPath(
-      bankBand(from, to, (x) => FishingRiver.top(x) + 24,
-          (x) => FishingRiver.bottom(x) - 24),
-      Paint()..color = const Color(0xFF3F7C90));
+  paintWaterBody(c, from, to, tint: 0x22355E70);
   // The cavern is a north-side inlet; the main bay remains an open route east.
   c.save();
   c.clipRect(const Rect.fromLTRB(FishingRiver.caveStart - 360, 0,
@@ -42,8 +38,8 @@ void paintRockyBay(Canvas c, double left, double right) {
       math.min(to, FishingRiver.caveStart + 360),
       (_) => 0,
       (x) => FishingRiver.bayTop(x) + 12));
-  c.saveLayer(Rect.fromLTRB(from, 0, to, FishingRiver.height), Paint());
-  c.drawRect(Rect.fromLTRB(from, 0, to, FishingRiver.height),
+  c.saveLayer(Rect.fromLTRB(from - 4, 0, to + 4, FishingRiver.height), Paint());
+  c.drawRect(Rect.fromLTRB(from - 4, 0, to + 4, FishingRiver.height),
       Paint()..color = const Color(0xFF343F49));
   c.drawPath(
       bankBand(from, to, (x) => FishingRiver.top(x) - 80,
@@ -64,7 +60,7 @@ void paintRockyBay(Canvas c, double left, double right) {
       FishingRiver.bayTop(FishingRiver.caveStart) - 250);
   const stretch = 1.9;
   c.drawRect(
-      Rect.fromLTRB(from, 0, to, FishingRiver.height),
+      Rect.fromLTRB(from - 4, 0, to + 4, FishingRiver.height),
       Paint()
         ..blendMode = BlendMode.dstIn
         ..shader = ui.Gradient.radial(
@@ -226,7 +222,7 @@ void paintRockyBay(Canvas c, double left, double right) {
   _mask(c, from, to, FishingRiver.rockyBayStart - 300,
       FishingRiver.rockyBayStart + 300);
   c.drawRect(
-      Rect.fromLTRB(from, 0, to, FishingRiver.height),
+      Rect.fromLTRB(from - 4, 0, to + 4, FishingRiver.height),
       Paint()
         ..blendMode = BlendMode.dstIn
         ..shader =
@@ -255,7 +251,7 @@ void paintRockyBay(Canvas c, double left, double right) {
 
 void _mask(Canvas c, double from, double to, double start, double end) {
   c.drawRect(
-      Rect.fromLTRB(from, 0, to, FishingRiver.height),
+      Rect.fromLTRB(from - 4, 0, to + 4, FishingRiver.height),
       Paint()
         ..blendMode = BlendMode.dstIn
         ..shader = const LinearGradient(

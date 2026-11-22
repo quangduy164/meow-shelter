@@ -4,6 +4,7 @@ import 'package:flutter/painting.dart';
 class FishingLighting {
   FishingLighting(DateTime time)
       : hour = time.hour + time.minute / 60 + time.second / 3600;
+  const FishingLighting.at(this.hour);
 
   final double hour;
 

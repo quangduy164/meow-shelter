@@ -22,6 +22,10 @@ import '../widgets/fishing_island_art.dart';
 import '../widgets/fishing_scenery.dart';
 import '../widgets/fishing_cabin_art.dart';
 import '../widgets/fishing_minimap.dart';
+import '../widgets/fishing_cave_run.dart';
+import '../widgets/fishing_night_overlay.dart';
+import '../widgets/fishing_weather_overlay.dart';
+import '../../fishing/fishing_weather.dart';
 import '../../fishing/fishing_trip.dart';
 import '../widgets/fishing_rocky_bay_art.dart';
 import '../widgets/fishing_oar_art.dart';
@@ -46,21 +50,11 @@ class _FishingScreenState extends State<FishingScreen>
   Duration? _lastTick;
   bool _collectionOpen = false, _paused = false, _choosingCat = true;
 
-  /// Area banner: shown for a moment whenever the area name changes.
+  /// Scene shown by the last build; a change triggers one rebuild.
+  bool _shownCabin = false, _shownCave = false;
+
+  /// Area name shown under the minimap.
   String _area = '';
-  double _areaAge = 99;
-
-  /// Hint pill: each new hint shows for [_hintSeconds], then hides.
-  String _hint = '';
-  double _hintAge = 99;
-  static const _hintSeconds = 4.0;
-
-  /// Everyday control hints, only shown until the first catch.
-  static const _basicHints = {
-    'Bấm nước để chèo · Bấm bờ để xuống đi bộ',
-    'Đang chèo · Bấm cần câu góc phải để câu tại đây',
-    'Bấm trên bờ để đi · Về thuyền để chèo tiếp',
-  };
 
   String get _areaName => _river.island.lookout
       ? 'Đỉnh hải đăng'
@@ -69,20 +63,28 @@ class _FishingScreenState extends State<FishingScreen>
           : FishingRiver.sectionName(_controller.angler.dx,
               y: _controller.angler.dy);
 
+  double _sinceClock = 0, _sinceWeather = 0;
+
+  /// Day/night follows the device clock; refreshed every few seconds.
+  void _setHour(DateTime now) {
+    final hour = now.hour + now.minute / 60 + now.second / 3600;
+    _river.hour = hour;
+    _river.weather = FishingWeather.at(now);
+    _controller.setWorldHour(hour);
+  }
+
   void _updateHud(double dt) {
-    _areaAge += dt;
-    _hintAge += dt;
-    final area = _areaName;
-    if (area != _area) {
-      _area = area;
-      _areaAge = 0;
+    _sinceWeather += dt;
+    if (_sinceWeather > .5) {
+      _sinceWeather = 0;
+      _river.weather = FishingWeather.at(DateTime.now());
     }
-    var hint = _controller.guide;
-    if (!_controller.beginner && _basicHints.contains(hint)) hint = '';
-    if (hint != _hint) {
-      _hint = hint;
-      _hintAge = 0;
+    _sinceClock += dt;
+    if (_sinceClock > 10) {
+      _sinceClock = 0;
+      _setHour(DateTime.now());
     }
+    _area = _areaName;
   }
 
   String _cat = 'orange';
@@ -96,7 +98,7 @@ class _FishingScreenState extends State<FishingScreen>
     WidgetsBinding.instance.addObserver(this);
     _controller = FishingController(FishCollection.instance);
     final now = DateTime.now();
-    _controller.setWorldHour(now.hour + now.minute / 60);
+    _setHour(now);
     final preferences = FishCollection.instance.preferences;
     FishingTrip.restore(preferences, _river);
     _savedBoat = _river.boat;
@@ -112,6 +114,10 @@ class _FishingScreenState extends State<FishingScreen>
     _controller.update(dt);
     _updateHud(dt);
     _frames.value++;
+    if (_river.cabin.inside != _shownCabin ||
+        _river.cave.inside != _shownCave) {
+      setState(() {});
+    }
     _sinceSave += (timestamp - previous).inMicroseconds / 1000000;
     if (_sinceSave > 4 &&
         (_river.exploration.changed ||
@@ -197,14 +203,6 @@ class _FishingScreenState extends State<FishingScreen>
       if (mounted) setState(() => _collectionOpen = false);
       _lastTick = null;
     }
-  }
-
-  /// Fades in, holds and fades out over about 2.6 s.
-  double get _bannerOpacity {
-    final t = _areaAge;
-    if (t < .4) return t / .4;
-    if (t < 2) return 1;
-    return (1 - (t - 2) / .6).clamp(0.0, 1.0);
   }
 
   @override
@@ -430,55 +428,78 @@ class _FishingScreenState extends State<FishingScreen>
                 _river
                     .resize(Size(constraints.maxWidth, constraints.maxHeight));
                 final padding = MediaQuery.paddingOf(context);
-                return AnimatedBuilder(
-                    animation: _frames,
-                    builder: (context, _) => _river.cabin.inside
-                        ? FishingCabinRoom(
-                            round: _river.cabin,
-                            cat: _cat,
-                            onExit: _river.cabin.requestExit)
-                        : Stack(fit: StackFit.expand, children: [
-                            const ColoredBox(color: Color(0xFFA7BF78)),
-                            FishingRiverBackdrop(
-                                round: _river, frames: _frames),
-                            RepaintBoundary(
-                                child: CustomPaint(
-                                    painter: FishingRiverSurface(
-                                        _river, _frames,
-                                        fishing: _controller))),
-                            RepaintBoundary(
-                                child: CustomPaint(
-                                    painter:
-                                        FishingIslandPainter(_river, _frames))),
-                            FishingCabinShip(round: _river, frames: _frames),
-                            FishingScenery(
-                                round: _river,
-                                frames: _frames,
-                                child: GestureDetector(
-                                  behavior: HitTestBehavior.opaque,
-                                  onTapUp: (event) {
-                                    if (!_collectionOpen) {
-                                      final now = DateTime.now();
-                                      _controller.setWorldHour(
-                                          now.hour + now.minute / 60);
-                                      _controller.tapRiver(event.localPosition);
-                                    }
-                                  },
-                                  onPanUpdate: (event) => _controller.steerBoat(
-                                      Offset(event.delta.dx / 90,
-                                          event.delta.dy / 70)),
-                                  onPanEnd: (_) => _controller.stopSteering(),
-                                  onPanCancel: _controller.stopSteering,
-                                  child: IgnorePointer(
-                                      child: Stack(
-                                          fit: StackFit.expand,
-                                          children: [_boat(), _islandCat()])),
-                                )),
-                            IgnorePointer(
-                                child: RepaintBoundary(
-                                    child: CustomPaint(
-                                        painter: FishingCaveLight(
-                                            _river, _frames)))),
+                _shownCabin = _river.cabin.inside;
+                _shownCave = _river.cave.inside;
+                // Cabin and cave scenes still rebuild every frame (they read
+                // the round directly); the river scene below does not.
+                if (_shownCabin) {
+                  return AnimatedBuilder(
+                      animation: _frames,
+                      builder: (context, _) => FishingCabinRoom(
+                          round: _river.cabin,
+                          cat: _cat,
+                          onExit: _river.cabin.requestExit,
+                          hour: _river.hour));
+                }
+                if (_shownCave) {
+                  return AnimatedBuilder(
+                      animation: _frames,
+                      builder: (context, _) => FishingCaveRun(
+                          cave: _river.cave,
+                          cat: _cat,
+                          onExit: () => setState(_river.cave.exit)));
+                }
+                // Painters repaint themselves through [_frames]; only the
+                // cat/boat widgets and the HUD rebuild per frame.
+                return Stack(fit: StackFit.expand, children: [
+                  // Everything under the cat shares one layer.
+                  RepaintBoundary(
+                      child: Stack(fit: StackFit.expand, children: [
+                    const ColoredBox(color: Color(0xFFA7BF78)),
+                    FishingRiverBackdrop(round: _river, frames: _frames),
+                    CustomPaint(
+                        painter: FishingRiverSurface(_river, _frames,
+                            fishing: _controller)),
+                    CustomPaint(painter: FishingIslandPainter(_river, _frames)),
+                    FishingCabinShip(round: _river, frames: _frames),
+                  ])),
+                  FishingScenery(
+                      round: _river,
+                      frames: _frames,
+                      child: GestureDetector(
+                        behavior: HitTestBehavior.opaque,
+                        onTapUp: (event) {
+                          if (!_collectionOpen) {
+                            final now = DateTime.now();
+                            _controller
+                                .setWorldHour(now.hour + now.minute / 60);
+                            _controller.tapRiver(event.localPosition);
+                          }
+                        },
+                        onPanUpdate: (event) => _controller.steerBoat(
+                            Offset(event.delta.dx / 90, event.delta.dy / 70)),
+                        onPanEnd: (_) => _controller.stopSteering(),
+                        onPanCancel: _controller.stopSteering,
+                        child: IgnorePointer(
+                            child: AnimatedBuilder(
+                                animation: _frames,
+                                builder: (context, _) => Stack(
+                                    fit: StackFit.expand,
+                                    children: [_boat(), _islandCat()]))),
+                      )),
+                  // Light and weather overlays share one layer.
+                  IgnorePointer(
+                      child: RepaintBoundary(
+                          child: Stack(fit: StackFit.expand, children: [
+                    CustomPaint(painter: FishingCaveLight(_river, _frames)),
+                    CustomPaint(painter: FishingNightOverlay(_river, _frames)),
+                    CustomPaint(
+                        painter: FishingWeatherOverlay(_river, _frames)),
+                  ]))),
+                  AnimatedBuilder(
+                      animation: _frames,
+                      builder: (context, _) =>
+                          Stack(fit: StackFit.expand, children: [
                             Positioned(
                                 left: padding.left + 8,
                                 top: padding.top + 8,
@@ -487,61 +508,6 @@ class _FishingScreenState extends State<FishingScreen>
                                     size: 44,
                                     tooltip: 'Về Trang chủ',
                                     onPressed: () => Navigator.pop(context))),
-                            if (_hint.isNotEmpty)
-                              Positioned(
-                                  left: padding.left + 64,
-                                  right: padding.right + 104,
-                                  top: padding.top + 12,
-                                  child: IgnorePointer(
-                                      child: Center(
-                                          child: AnimatedOpacity(
-                                              duration: const Duration(
-                                                  milliseconds: 300),
-                                              opacity: _hintAge < _hintSeconds
-                                                  ? 1
-                                                  : 0,
-                                              child: Container(
-                                                  constraints:
-                                                      const BoxConstraints(
-                                                          maxWidth: 380),
-                                                  padding:
-                                                      const EdgeInsets.symmetric(
-                                                          horizontal: 14,
-                                                          vertical: 7),
-                                                  decoration: BoxDecoration(
-                                                      color: const Color(
-                                                          0xB31E2A30),
-                                                      borderRadius:
-                                                          BorderRadius.circular(
-                                                              20)),
-                                                  child: Text(_hint,
-                                                      textAlign: TextAlign.center,
-                                                      maxLines: 2,
-                                                      overflow: TextOverflow.ellipsis,
-                                                      style: const TextStyle(color: Colors.white, fontSize: DS.fontCaption, fontWeight: FontWeight.w700))))))),
-                            if (_bannerOpacity > 0 &&
-                                !(_controller.phase == FishingPhase.reeling))
-                              Positioned(
-                                  left: 0,
-                                  right: 0,
-                                  top: constraints.maxHeight * .2,
-                                  child: IgnorePointer(
-                                      child: Opacity(
-                                          opacity: _bannerOpacity,
-                                          child: Text(_area.toUpperCase(),
-                                              textAlign: TextAlign.center,
-                                              style: const TextStyle(
-                                                  color: Colors.white,
-                                                  fontSize: 26,
-                                                  letterSpacing: 2,
-                                                  fontWeight: FontWeight.w900,
-                                                  shadows: [
-                                                    Shadow(
-                                                        color:
-                                                            Color(0x99000000),
-                                                        blurRadius: 8,
-                                                        offset: Offset(0, 2))
-                                                  ]))))),
                             if (!(_controller.phase == FishingPhase.reeling))
                               Positioned(
                                   right: padding.right + 8,
@@ -557,7 +523,7 @@ class _FishingScreenState extends State<FishingScreen>
                                                     round: _river,
                                                     frames: _frames),
                                                 Container(
-                                                    width: 86,
+                                                    width: 110,
                                                     margin: const EdgeInsets
                                                         .only(top: 3),
                                                     padding: const EdgeInsets
@@ -609,18 +575,17 @@ class _FishingScreenState extends State<FishingScreen>
                                 !_river.island.lookout &&
                                 !_controller.showFishingArt)
                               Positioned(
-                                  right: padding.right + 100,
-                                  bottom: padding.bottom + 16,
-                                  child: OutlinedButton.icon(
+                                  right: padding.right + 98,
+                                  bottom: padding.bottom + 22,
+                                  child: FishingActionButton(
+                                      tool: FishingTool.boat,
+                                      tooltip: 'Về thuyền',
                                       onPressed: _controller.phase ==
                                                   FishingPhase.saving ||
                                               _controller.phase ==
                                                   FishingPhase.caught
                                           ? null
-                                          : _controller.returnToBoat,
-                                      icon: const GameGlyphView(GameGlyph.back,
-                                          size: 22),
-                                      label: const Text('Về thuyền'))),
+                                          : _controller.returnToBoat)),
                             if (!_river.island.lookout &&
                                 (!_river.island.ashore ||
                                     _river.island.phase ==
@@ -651,7 +616,8 @@ class _FishingScreenState extends State<FishingScreen>
                                       newRecord: _controller.newRecord,
                                       fishScale: _controller.fishScale,
                                       onNext: _controller.dismissResult)),
-                          ]));
+                          ])),
+                ]);
               }),
       );
 }

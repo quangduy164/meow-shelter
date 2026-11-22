@@ -4,8 +4,10 @@ import 'river_navigation.dart';
 import 'river_sea_land.dart';
 import 'fishing_island.dart';
 import 'fishing_cabin.dart';
+import 'fishing_cave.dart';
 import 'fishing_exploration.dart';
 import 'fishing_region.dart';
+import 'fishing_weather.dart';
 export 'fishing_region.dart';
 import 'dart:math' as math;
 import 'package:flutter/painting.dart';
@@ -83,12 +85,15 @@ class FishingRiver {
 
   /// Regional pools cross-fade around each join; weights are relative.
   static FishSpecies rollFish(int roll, double x, double hour,
-      {bool activeWater = false, double? y}) {
+      {bool activeWater = false,
+      double? y,
+      double Function(FishSpecies)? weatherBoost}) {
     final night = hour < 6 || hour >= 18;
     final layers = fishLayers(x, y: y);
     final weights = <FishSpecies, double>{
       for (final fish in FishSpecies.values)
         fish: _poolWeight(fish, layers) *
+            (weatherBoost?.call(fish) ?? 1) *
             (night && fish.nightActive ? 1.35 : 1) *
             (activeWater
                 ? (fish.isJunk
@@ -196,6 +201,7 @@ class FishingRiverRound {
   final props = RiverProps();
   final island = FishingIslandVisit();
   final cabin = FishingCabin();
+  final cave = FishingCave();
   Offset get cameraFocus => island.ashore ? island.cat : boat;
   Offset boat = FishingRiver.startBoat;
   Offset _lastBoat = FishingRiver.startBoat;
@@ -236,6 +242,12 @@ class FishingRiverRound {
 
   /// Camera zoom: 1 normally, eases out to [lookoutZoom] on the lighthouse.
   double zoom = 1;
+
+  /// Real local hour (0..24) driving day/night; set by the screen.
+  double hour = 12;
+
+  /// Current weather from the real clock; set by the screen.
+  FishingWeather weather = FishingWeather.clear;
   static const lookoutZoom = .25;
   double get scale =>
       (viewport.height > 0 ? viewport.height / FishingRiver.viewHeight : 1) *
@@ -428,6 +440,10 @@ class FishingRiverRound {
       island.beginLanding();
     }
     island.update(dt);
+    if (island.caveArrived) {
+      island.caveArrived = false;
+      cave.enter();
+    }
     final wantedZoom = island.lookout ? lookoutZoom : 1.0;
     zoom += (wantedZoom - zoom) * (1 - math.exp(-2.6 * dt));
     if ((zoom - wantedZoom).abs() < .001) zoom = wantedZoom;

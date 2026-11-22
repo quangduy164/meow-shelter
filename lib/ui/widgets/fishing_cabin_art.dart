@@ -9,6 +9,8 @@ import '../../collection/fish_collection.dart';
 import '../../collection/fish_species.dart';
 import '../../fishing/fishing_cabin.dart';
 import '../../fishing/fishing_cabin_chest.dart';
+import '../../fishing/fishing_lighting.dart';
+import 'fishing_art_kit.dart';
 import 'fishing_fish_art.dart';
 import '../../fishing/fishing_river.dart';
 import '../../game/constants.dart';
