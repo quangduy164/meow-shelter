@@ -160,6 +160,19 @@ class FishingIslandVisit {
       _walkRoute.addAll(_aroundMountain(cat, destination!));
       return;
     }
+    bool clear(Offset a, Offset b) {
+      final n = math.max(1, ((b - a).distance / 8).ceil());
+      for (var i = 0; i <= n; i++) {
+        if (!landContains(Offset.lerp(a, b, i / n)!)) return false;
+      }
+      return true;
+    }
+
+    // Shortest first: walk straight when the bank allows it.
+    if (clear(cat, destination!)) {
+      _walkRoute.add(destination!);
+      return;
+    }
     double edge(double x) =>
         northBank! ? FishingRiver.top(x) : FishingRiver.bottom(x);
     final startDepth = (cat.dy - edge(cat.dx)).abs();
@@ -174,6 +187,10 @@ class FishingIslandVisit {
               (northBank! ? -1 : 1) *
                   (startDepth + (endDepth - startDepth) * t))));
     }
+    final tight = FishingRiverRound.pullTight(cat, _walkRoute, clear);
+    _walkRoute
+      ..clear()
+      ..addAll(tight);
   }
 
   IslandVisitPhase phase = IslandVisitPhase.aboard;

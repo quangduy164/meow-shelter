@@ -33,9 +33,11 @@ class _FishingRiverBackdropState extends State<FishingRiverBackdrop> {
   late final _pictures = [
     for (var i = 0; i < FishingRiver.sectionCount; i++) recordFishingRiver(i)
   ];
+  late final _tiles = _BackdropTiles(_pictures);
 
   @override
   void dispose() {
+    _tiles.dispose();
     for (final picture in _pictures) {
       picture.dispose();
     }
@@ -44,14 +46,117 @@ class _FishingRiverBackdropState extends State<FishingRiverBackdrop> {
 
   @override
   Widget build(BuildContext context) => CustomPaint(
-      painter: _RiverBackdropPainter(widget.round, _pictures, widget.frames));
+      painter: _RiverBackdropPainter(widget.round, _tiles, widget.frames,
+          MediaQuery.devicePixelRatioOf(context)));
+}
+
+/// Rasterised backdrop tiles. Replaying the recorded chunks costs tens of
+/// milliseconds per frame (thousands of small shapes); a tile is rendered
+/// once with [ui.Picture.toImageSync] and then drawn as a single image.
+/// Zoomed-out views use coarser levels; least recently used tiles are freed.
+class _BackdropTiles {
+  _BackdropTiles(this.pictures);
+  final List<ui.Picture> pictures;
+
+  /// World size of a level-0 tile and its pixel density.
+  static const tileWorld = 256.0, baseRes = 2.0, pad = 2;
+  static const maxTiles = 40, newPerFrame = 6;
+  final _cache = <int, ui.Image>{};
+  final _imagePaint = Paint()..filterQuality = FilterQuality.low;
+
+  static int levelFor(double pixelsPerUnit) {
+    var level = 0;
+    while (level < 4 && baseRes / math.pow(2, level + 1) >= pixelsPerUnit) {
+      level++;
+    }
+    return level;
+  }
+
+  ui.Image _render(int level, int tx, int ty) {
+    final size = tileWorld * (1 << level);
+    final res = baseRes / (1 << level);
+    final px = (tileWorld * baseRes).round();
+    final rect = Rect.fromLTWH(tx * size, ty * size, size, size);
+    final recorder = ui.PictureRecorder();
+    final c = Canvas(recorder);
+    c.translate(pad.toDouble(), pad.toDouble());
+    c.scale(res);
+    c.translate(-rect.left, -rect.top);
+    c.clipRect(rect.inflate(pad / res));
+    for (var i = 0; i < pictures.length; i++) {
+      final start = i * FishingRiver.sectionLength;
+      if (start > rect.right + 4 ||
+          start + FishingRiver.sectionLength < rect.left - 4) {
+        continue;
+      }
+      c.drawPicture(pictures[i]);
+    }
+    final picture = recorder.endRecording();
+    final image = picture.toImageSync(px + pad * 2, px + pad * 2);
+    picture.dispose();
+    return image;
+  }
+
+  void paint(Canvas canvas, Rect view, double pixelsPerUnit) {
+    final level = levelFor(pixelsPerUnit);
+    final size = tileWorld * (1 << level);
+    const px = tileWorld * baseRes;
+    var budget = newPerFrame;
+    for (var ty = (view.top / size).floor(); ty * size < view.bottom; ty++) {
+      if (ty < 0 || ty * size >= FishingRiver.height) continue;
+      for (var tx = (view.left / size).floor(); tx * size < view.right; tx++) {
+        if (tx < 0 || tx * size >= FishingRiver.length) continue;
+        final key = (level << 24) | (ty << 12) | tx;
+        var image = _cache.remove(key);
+        final dst = Rect.fromLTWH(tx * size, ty * size, size, size);
+        if (image == null && budget > 0) {
+          budget--;
+          image = _render(level, tx, ty);
+        }
+        if (image == null) {
+          // Not rasterised yet this frame: replay the chunk just here.
+          canvas.save();
+          canvas.clipRect(dst);
+          for (var i = 0; i < pictures.length; i++) {
+            final start = i * FishingRiver.sectionLength;
+            if (start > dst.right ||
+                start + FishingRiver.sectionLength < dst.left) {
+              continue;
+            }
+            canvas.drawPicture(pictures[i]);
+          }
+          canvas.restore();
+          continue;
+        }
+        _cache[key] = image;
+        canvas.drawImageRect(
+            image,
+            Rect.fromLTWH(pad.toDouble(), pad.toDouble(), px, px),
+            dst,
+            _imagePaint);
+      }
+    }
+    while (_cache.length > maxTiles) {
+      final oldest = _cache.keys.first;
+      _cache.remove(oldest)!.dispose();
+    }
+  }
+
+  void dispose() {
+    for (final image in _cache.values) {
+      image.dispose();
+    }
+    _cache.clear();
+  }
 }
 
 class _RiverBackdropPainter extends CustomPainter {
-  _RiverBackdropPainter(this.round, this.pictures, Listenable frames)
+  _RiverBackdropPainter(
+      this.round, this.tiles, Listenable frames, this.devicePixelRatio)
       : super(repaint: frames);
   final FishingRiverRound round;
-  final List<ui.Picture> pictures;
+  final _BackdropTiles tiles;
+  final double devicePixelRatio;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -59,20 +164,18 @@ class _RiverBackdropPainter extends CustomPainter {
     canvas.clipRect(Offset.zero & size);
     canvas.scale(round.scale);
     canvas.translate(-round.cameraLeft, -round.cameraTop);
-    for (var i = 0; i < pictures.length; i++) {
-      final start = i * FishingRiver.sectionLength;
-      if (start > round.cameraLeft + round.visibleWidth ||
-          start + FishingRiver.sectionLength < round.cameraLeft) {
-        continue;
-      }
-      canvas.drawPicture(pictures[i]);
-    }
+    tiles.paint(
+        canvas,
+        Rect.fromLTWH(round.cameraLeft, round.cameraTop, round.visibleWidth,
+            round.visibleHeight),
+        round.scale * devicePixelRatio);
     canvas.restore();
   }
 
   @override
   bool shouldRepaint(_RiverBackdropPainter oldDelegate) =>
-      oldDelegate.round != round;
+      oldDelegate.round != round ||
+      oldDelegate.devicePixelRatio != devicePixelRatio;
 }
 
 final _dryLand = Path.combine(

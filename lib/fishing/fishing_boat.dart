@@ -35,4 +35,3 @@ class FishingBoatHouse {
 
   static bool hit(Offset world) => bounds.inflate(10).contains(world);
 }
-

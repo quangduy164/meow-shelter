@@ -368,8 +368,13 @@ class FishingRiverRound {
       return;
     }
     final start = boat;
-    // Interpolate across the channel while following its bends. A straight
-    // line between two distant clicks would cut through the riverbanks.
+    // Shortest first: open water goes straight to the target.
+    if (props.clearLine(start, target)) {
+      _route.add(target);
+      return;
+    }
+    // Otherwise follow the channel's bends (a straight line would cut a
+    // bank), then pull the path tight so it only bends where it must.
     final startLane = (start.dy - FishingRiver.center(start.dx)) /
         (FishingRiver.halfWidth(start.dx) - FishingRiver.boatMargin);
     final endLane = (target.dy - FishingRiver.center(target.dx)) /
@@ -385,6 +390,34 @@ class FishingRiverRound {
               lane * (FishingRiver.halfWidth(x) - FishingRiver.boatMargin))));
     }
     _avoidRocks();
+    if (_route.isNotEmpty) {
+      final tight = pullTight(start, _route, props.clearLine);
+      _route
+        ..clear()
+        ..addAll(tight);
+    }
+  }
+
+  /// Shortcuts a polyline: from each point jump to the farthest later point
+  /// that [clear] still connects in a straight line.
+  static List<Offset> pullTight(Offset start, List<Offset> route,
+      bool Function(Offset a, Offset b) clear) {
+    final result = <Offset>[];
+    var anchor = start;
+    var i = 0;
+    while (i < route.length) {
+      var best = i;
+      for (var j = route.length - 1; j > i; j--) {
+        if (clear(anchor, route[j])) {
+          best = j;
+          break;
+        }
+      }
+      anchor = route[best];
+      result.add(anchor);
+      i = best + 1;
+    }
+    return result;
   }
 
   void _avoidRocks() {

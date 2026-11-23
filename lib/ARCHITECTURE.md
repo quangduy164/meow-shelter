@@ -309,8 +309,11 @@
     features on a jittered 175-unit grid, kept back from the water by a
     per-region margin) plus a footpath or paw-print trail along each bank.
     Decorations are visual only; shore walking has no collisions.
-  - `fishing_river_scene.dart`: owns and disposes seven cached background Pictures,
-    draws only visible stretches, then animated water, boat hull and front rim.
+  - `fishing_river_scene.dart`: owns and disposes the cached chunk Pictures
+    (one per `sectionCount` stretch). `_BackdropTiles` rasterises them into
+    256-unit image tiles (`toImageSync`, coarser levels when zoomed out, at most
+    6 new tiles per frame, 40 kept, LRU disposed); untiled spots replay the
+    chunk meanwhile. Then animated water, boat hull and front rim.
     `FishingScreen` first shows owned cats; selecting one starts the ticker and
     mounts the river. Leaving this picker returns home. Only owned cats appear,
     including custom camp names; there is no cat-change button during play.
@@ -474,6 +477,21 @@
     notifiers, `WidgetsBinding` observers).
   - Game sounds go through `GameAudio`; do not create `AudioPlayer`s per
     event or start loops a screen does not stop.
+- Fishing movement takes the shortest clear path: `sailTo` goes straight when `props.clearLine` allows, else follows the channel lanes (A* `riverDetour` around obstacles) and `pullTight` removes every unneeded bend; bank walks do the same with `landContains`.
+- Fishing world drawing (keeps FPS independent of map detail):
+  - Static art (land, trees, rocks, buildings, cliffs, island and mountain
+    shapes) goes into the chunk recording via `_paintLandscape` and its
+    region painters. It is tiled automatically, including new regions added
+    by raising `sectionCount` and adding a `FishingRegion` row.
+  - Anything that moves, animates, or changes during play (water effects,
+    waterfall, fire, animals, collectibles, night lights, weather) goes in a
+    live painter (`FishingRiverSurface`, `FishingIslandPainter`, overlays),
+    never in the chunks.
+  - Live painters draw only what intersects the camera view, and do not
+    rebuild large `Path`s or shader `Paint`s each frame: build them once in
+    a `final`/static field.
+  - Chunk tiles are built when the fishing screen mounts: after editing
+    static art, hot restart or re-enter the mode to see it.
 
 Validation: `flutter analyze` and Android builds. Do not add project-local
 tools or test files.
