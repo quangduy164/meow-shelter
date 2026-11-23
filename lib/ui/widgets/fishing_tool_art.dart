@@ -1,6 +1,6 @@
 import 'package:material_ui/material_ui.dart';
 
-enum FishingTool { back, basket, float, rod, hook, reel, save, boat }
+enum FishingTool { back, basket, float, rod, hook, reel, save, boat, bait }
 
 class FishingToolArt extends CustomPainter {
   const FishingToolArt(
@@ -20,6 +20,8 @@ class FishingToolArt extends CustomPainter {
     canvas.drawOval(const Rect.fromLTWH(19, 87, 65, 7),
         Paint()..color = const Color(0x28443626));
     switch (tool) {
+      case FishingTool.bait:
+        paintLegendaryBaitJar(canvas, active: active);
       case FishingTool.rod:
         final shaft = Path()
           ..moveTo(23, 81)
@@ -442,4 +444,51 @@ class FishingToolArt extends CustomPainter {
       rotation != oldDelegate.rotation ||
       active != oldDelegate.active ||
       alert != oldDelegate.alert;
+}
+
+/// Jar of glowing gold bait, shared by the workshop sign and fishing control.
+void paintLegendaryBaitJar(Canvas c, {bool active = true}) {
+  final rim = Paint()
+    ..color = const Color(0xFF493F30)
+    ..style = PaintingStyle.stroke
+    ..strokeWidth = 3;
+  final jar = RRect.fromRectAndRadius(
+      const Rect.fromLTRB(25, 29, 77, 87), const Radius.circular(12));
+  c.drawRRect(
+      jar,
+      Paint()
+        ..color = active ? const Color(0xFFD5F3DB) : const Color(0xFFC2CEC8));
+  c.drawRRect(jar, rim);
+  c.drawRRect(
+      RRect.fromRectAndRadius(
+          const Rect.fromLTRB(30, 20, 72, 34), const Radius.circular(4)),
+      Paint()..color = const Color(0xFFAF7A42));
+  c.drawLine(const Offset(32, 25), const Offset(70, 25), rim..strokeWidth = 2);
+  c.drawRRect(
+      RRect.fromRectAndRadius(
+          const Rect.fromLTRB(32, 46, 70, 73), const Radius.circular(7)),
+      Paint()..color = const Color(0xFFFFF4DA));
+  c.drawPath(
+      Path()
+        ..moveTo(39, 62)
+        ..quadraticBezierTo(47, 44, 54, 59)
+        ..quadraticBezierTo(60, 72, 64, 53),
+      Paint()
+        ..color = const Color(0xFFE7AA3B)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 5
+        ..strokeCap = StrokeCap.round);
+  for (final p in [
+    const Offset(35, 40),
+    const Offset(65, 39),
+    const Offset(61, 79)
+  ]) {
+    c.drawCircle(p, 2.5, Paint()..color = const Color(0xFFFFE270));
+  }
+  c.drawLine(
+      const Offset(31, 40),
+      const Offset(31, 64),
+      Paint()
+        ..color = const Color(0xAAFFFFFF)
+        ..strokeWidth = 3);
 }

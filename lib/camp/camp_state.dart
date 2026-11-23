@@ -77,6 +77,7 @@ class CampState {
 
   void _reset() {
     coins = startingCoins;
+    purchasedLegendaryBait = 0;
     for (final c in [rescued, affection, placement, levelStars]) {
       c.clear();
     }
@@ -89,6 +90,8 @@ class CampState {
 
   void _load(Map<String, dynamic> data) {
     coins = data['coins'] as int? ?? 0;
+    purchasedLegendaryBait =
+        (data['legendaryBait'] as int? ?? 0).clamp(0, 1 << 30);
     rescued.addAll(Map<String, int>.from(data['rescued'] as Map? ?? {}));
     affection.addAll(Map<String, int>.from(data['affection'] as Map? ?? {}));
     owned.addAll(List<String>.from(data['owned'] as List? ?? []));
@@ -129,6 +132,39 @@ class CampState {
   /// Coins a brand-new save starts with: enough for a first cat or toys.
   static const startingCoins = 150;
   int coins = startingCoins;
+  static const legendaryBaitPrice = 30;
+  int purchasedLegendaryBait = 0;
+  bool _savingBait = false;
+
+  /// Coins and purchased bait are saved together, including rollback on failure.
+  Future<bool> buyLegendaryBait() async {
+    if (_savingBait || coins < legendaryBaitPrice) return false;
+    _savingBait = true;
+    try {
+      coins -= legendaryBaitPrice;
+      purchasedLegendaryBait++;
+      if (await _save()) return true;
+      coins += legendaryBaitPrice;
+      purchasedLegendaryBait--;
+      return false;
+    } finally {
+      _savingBait = false;
+    }
+  }
+
+  Future<bool> consumePurchasedBait() async {
+    if (_savingBait || purchasedLegendaryBait <= 0) return false;
+    _savingBait = true;
+    try {
+      purchasedLegendaryBait--;
+      if (await _save()) return true;
+      purchasedLegendaryBait++;
+      return false;
+    } finally {
+      _savingBait = false;
+    }
+  }
+
   final rescued = <String, int>{};
   final affection = <String, int>{};
   final owned = <String>{};
@@ -305,6 +341,7 @@ class CampState {
 
   String _encode() => jsonEncode({
         'coins': coins,
+        'legendaryBait': purchasedLegendaryBait,
         'rescued': rescued,
         'affection': affection,
         'owned': owned.toList(),

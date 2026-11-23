@@ -57,6 +57,10 @@ void paintRiverDetails(Canvas c, double left, double right) {
     }
     if (rock.kind == RiverPropKind.island) {
       paintFishingIsland(c, rock.anchor, rock.radius);
+    } else if (rock.kind == RiverPropKind.market ||
+        rock.kind == RiverPropKind.shrine ||
+        rock.kind == RiverPropKind.baitHouse) {
+      // Structures have cached painters above the water surface.
     } else if (rock.kind != RiverPropKind.mangroveRoot &&
         rock.kind != RiverPropKind.cabinShip) {
       paintRiverRock(c, rock.anchor, rock.radius);
@@ -93,6 +97,9 @@ void paintFloatingRiverProps(Canvas c, FishingRiverRound round, Rect visible) {
       case RiverPropKind.paperBoat:
         paintPaperBoat(c, p);
       case RiverPropKind.cabinShip:
+      case RiverPropKind.market:
+      case RiverPropKind.shrine:
+      case RiverPropKind.baitHouse:
       case RiverPropKind.mangroveRoot:
       case RiverPropKind.island:
       case RiverPropKind.rock:

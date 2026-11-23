@@ -47,9 +47,10 @@ enum FishingRegion {
     FishSpecies.tinCan: 2.0,
   }),
   openSea('Biển rộng', FishingRiver.openSeaStart, FishingRiver.length,
-      FishingLand.beach, _seaFish),
+      FishingLand.beach, {..._seaFish, FishSpecies.seaDragon: 1.0}),
   cave('Hang biển', FishingRiver.rockyBayStart, FishingRiver.openSeaStart,
       FishingLand.rocky, {
+    FishSpecies.moonfish: 1.0,
     FishSpecies.cavefish: 52.0,
     FishSpecies.lanternfish: 4.0,
     FishSpecies.catfish: 24.0,

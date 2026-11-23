@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 
 import 'package:shared_preferences/shared_preferences.dart';
 import 'fish_species.dart';
+import '../camp/camp_state.dart';
 
 /// Permanent catch counts for the journal, plus the basket of fish that can
 /// still be fed to camp cats. Feeding empties the basket, never the journal.
@@ -23,6 +24,94 @@ class FishCollection {
   late Map<String, int> _basket;
   static const _key = 'fish_collection_species_v1';
   static const _basketKey = 'fish_basket_v1';
+  static const _shrineKey = '_rocky_shrine_offerings_v1';
+  // Old saves recorded repeated cat-fish offerings; credit that species once.
+  bool hasShrineOffering(FishSpecies fish) =>
+      (_basket['_shrine_v2_${fish.name}'] ?? 0) > 0 ||
+      (fish == FishSpecies.catMew && (_basket[_shrineKey] ?? 0) > 0);
+  int get shrineOfferings =>
+      FishSpecies.legendary.where(hasShrineOffering).length;
+  bool _offering = false;
+  static const _baitKey = '_legendary_bait_v1';
+  static const baitCost = 5;
+  int get _exchangedBait => _basket[_baitKey] ?? 0;
+  int get legendaryBait =>
+      _exchangedBait + CampState.instance.purchasedLegendaryBait;
+  int get commonFishStock => basket
+      .where((f) => f.rarity == 'Phổ biến')
+      .fold(0, (sum, f) => sum + stockOf(f));
+  bool _baitSaving = false;
+
+  /// Exchange fish and award bait in one write; mixed common species count.
+  Future<bool> exchangeLegendaryBait() async {
+    if (_baitSaving || commonFishStock < baitCost) return false;
+    _baitSaving = true;
+    try {
+      final next = {..._basket};
+      var left = baitCost;
+      for (final fish in basket.where((f) => f.rarity == 'Phổ biến')) {
+        final take = stockOf(fish).clamp(0, left);
+        next[fish.name] = stockOf(fish) - take;
+        left -= take;
+        if (left == 0) break;
+      }
+      next[_baitKey] = _exchangedBait + 1;
+      next.removeWhere((_, n) => n <= 0);
+      if (!await preferences.setString(_basketKey, jsonEncode(next))) {
+        return false;
+      }
+      _basket = next;
+      return true;
+    } finally {
+      _baitSaving = false;
+    }
+  }
+
+  Future<bool> consumeLegendaryBait() async {
+    if (_baitSaving || legendaryBait <= 0) return false;
+    _baitSaving = true;
+    try {
+      if (_exchangedBait == 0) {
+        return await CampState.instance.consumePurchasedBait();
+      }
+      final next = {..._basket, _baitKey: _exchangedBait - 1};
+      if (!await preferences.setString(_basketKey, jsonEncode(next))) {
+        return false;
+      }
+      _basket = next;
+      return true;
+    } finally {
+      _baitSaving = false;
+    }
+  }
+
+  /// Fish removal and shrine progress share one save, so neither can be lost
+  /// alone if writing fails. Journal counts and weight records stay intact.
+  Future<bool> offerToShrine(FishSpecies fish) async {
+    if (_offering ||
+        shrineOfferings >= 3 ||
+        !FishSpecies.legendary.contains(fish) ||
+        hasShrineOffering(fish) ||
+        fish.isJunk ||
+        stockOf(fish) < 1) {
+      return false;
+    }
+    _offering = true;
+    try {
+      final next = {
+        ..._basket,
+        fish.name: stockOf(fish) - 1,
+        '_shrine_v2_${fish.name}': 1
+      }..removeWhere((_, n) => n <= 0);
+      if (!await preferences.setString(_basketKey, jsonEncode(next))) {
+        return false;
+      }
+      _basket = next;
+      return true;
+    } finally {
+      _offering = false;
+    }
+  }
 
   /// Fish waiting in the basket (lost items never go in).
   int stockOf(FishSpecies fish) => _basket[fish.name] ?? 0;
@@ -59,10 +148,14 @@ class FishCollection {
 
   /// Takes one fish out of the basket for a cat; false if none is left or
   /// the save failed (the fish stays in the basket then).
-  Future<bool> takeOne(FishSpecies fish) async {
+  Future<bool> takeOne(FishSpecies fish) => takeMany(fish, 1);
+
+  /// Takes [count] fish out at once (sold at the market); false if there are
+  /// not enough or the save failed, and then nothing changes.
+  Future<bool> takeMany(FishSpecies fish, int count) async {
     final left = stockOf(fish);
-    if (fish.isJunk || left <= 0) return false;
-    final next = {..._basket, fish.name: left - 1}
+    if (fish.isJunk || count <= 0 || left < count) return false;
+    final next = {..._basket, fish.name: left - count}
       ..removeWhere((_, n) => n <= 0);
     if (!await preferences.setString(_basketKey, jsonEncode(next))) {
       return false;

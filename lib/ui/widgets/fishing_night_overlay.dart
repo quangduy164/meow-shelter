@@ -1,6 +1,10 @@
 import 'dart:math' as math;
 import 'package:material_ui/material_ui.dart';
 import '../../fishing/fishing_boat.dart';
+import '../../fishing/fishing_bait_house.dart';
+import '../../fishing/fishing_shrine.dart';
+import '../../collection/fish_collection.dart';
+import '../../collection/fish_species.dart';
 import '../../fishing/fishing_cabin.dart';
 import '../../fishing/fishing_island.dart';
 import '../../fishing/fishing_lighting.dart';
@@ -8,6 +12,7 @@ import '../../fishing/fishing_river.dart';
 import '../../fishing/river_sea_land.dart';
 import 'fishing_art_kit.dart';
 import 'fishing_river_art.dart';
+import 'fishing_market_art.dart';
 
 /// Day/night over the whole fishing world: one multiply tint for the hour,
 /// then additive glows for lights that matter at night. Drawn above the
@@ -118,6 +123,21 @@ class FishingNightOverlay extends CustomPainter {
           round.boat + Offset(59, -52 + math.sin(round.clock * 2.5) * 1.8);
       lamp(p, 26, const Color(0xFFFFB45C), .9);
       lamp(p + const Offset(0, 40), 70, const Color(0xFFFFC46B), .35);
+    }
+    // Each legendary offering lights one shrine brazier permanently.
+    for (var i = 0; i < FishSpecies.legendary.length; i++) {
+      if (!FishCollection.instance
+          .hasShrineOffering(FishSpecies.legendary[i])) {
+        continue;
+      }
+      lamp(FishingShrine.center + Offset((i - 1) * 68.0, i == 1 ? -92 : -42),
+          55, const Color(0xFF80FFF2), .6);
+    }
+    lamp(FishingBaitHouse.center + const Offset(77, -62), 65,
+        const Color(0xFFFFD27A), .7);
+    // Floating market lantern strings.
+    for (final p in fishMarketLanterns()) {
+      lamp(p + const Offset(0, 8), 34, const Color(0xFFFFB45C), .8);
     }
     // Harbour: boathouse lantern, beacon tower and pier lamp.
     final house = FishingBoatHouse.base;

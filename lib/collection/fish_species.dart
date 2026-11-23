@@ -25,13 +25,17 @@ enum FishSpecies {
   grouper('Cá mú', 0, 'Hiếm'),
   butterflyfish('Cá bướm', 0, 'Quý'),
   cavefish('Cá hang mù', 0, 'Hiếm'),
-  lanternfish('Cá đèn lồng', 0, 'Cực hiếm');
+  lanternfish('Cá đèn lồng', 0, 'Cực hiếm'),
+  seaDragon('Cá rồng biển', 0, 'Huyền thoại'),
+  moonfish('Cá nguyệt quang', 0, 'Huyền thoại');
 
   const FishSpecies(this.label, this.weight, this.rarity,
       {this.isJunk = false});
   final String label, rarity;
   final int weight;
   final bool isJunk;
+
+  static const legendary = [catMew, seaDragon, moonfish];
 
   (int, int) get weightRange => switch (this) {
         goby => (30, 700),
@@ -47,6 +51,8 @@ enum FishSpecies {
         koi => (300, 7000),
         goldfish => (20, 500),
         catMew => (800, 25000),
+        seaDragon => (1500, 30000),
+        moonfish => (400, 12000),
         sardine => (40, 450),
         mackerel => (500, 12000),
         clownfish => (20, 250),
@@ -89,6 +95,8 @@ enum FishSpecies {
         koi => 1.4,
         goldfish => 1.55,
         catMew => 1.3,
+        seaDragon => 1.5,
+        moonfish => 1.4,
         flipFlop || oldBoot || tinCan => .6,
       };
 
@@ -110,6 +118,8 @@ enum FishSpecies {
         koi => .78,
         goldfish => 1.7,
         catMew => 1.1,
+        seaDragon => .9,
+        moonfish => .7,
         flipFlop || oldBoot || tinCan => .35,
       };
 
@@ -131,6 +141,8 @@ enum FishSpecies {
         koi => .45,
         goldfish => 1.45,
         catMew => 1.2,
+        seaDragon => 1.1,
+        moonfish => .85,
         flipFlop || oldBoot || tinCan => .3,
       };
 
@@ -141,7 +153,9 @@ enum FishSpecies {
       this == pufferfish ||
       this == grouper ||
       this == butterflyfish ||
-      this == lanternfish;
+      this == lanternfish ||
+      this == seaDragon ||
+      this == moonfish;
 
   static const habitats = [
     'Làng',
@@ -149,7 +163,8 @@ enum FishSpecies {
     'Rừng ngập mặn',
     'Cửa biển',
     'Vịnh đá',
-    'Hang biển'
+    'Hang biển',
+    'Biển rộng'
   ];
 
   String get habitat => switch (this) {
@@ -158,12 +173,14 @@ enum FishSpecies {
         sardine || mackerel || clownfish || pufferfish => habitats[3],
         goby || mudskipper => habitats[2],
         grouper || butterflyfish => habitats[4],
-        cavefish || lanternfish => habitats[5],
+        cavefish || lanternfish || moonfish => habitats[5],
+        seaDragon => habitats[6],
         flipFlop => 'Làng / Biển',
         tinCan => 'Mọi vùng nước',
       };
 
-  bool get nightActive => this == catfish || this == koi || this == lanternfish;
+  bool get nightActive =>
+      this == catfish || this == koi || this == lanternfish || this == moonfish;
 
   /// Affection a camp cat gains from eating one; rarer fish mean more.
   /// Lost items are not food.
@@ -172,7 +189,7 @@ enum FishSpecies {
         catfish || mackerel || mudskipper || grouper || cavefish => 3,
         koi || clownfish || butterflyfish => 4,
         goldfish || pufferfish || lanternfish => 6,
-        catMew => 10,
+        catMew || seaDragon || moonfish => 10,
         flipFlop || oldBoot || tinCan => 0,
       };
 

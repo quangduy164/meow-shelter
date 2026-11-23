@@ -11,10 +11,36 @@ class FishingControls extends StatelessWidget {
     return FittedBox(
         fit: BoxFit.scaleDown,
         child: SizedBox(
-            width: 80,
+            width: 144,
             height: 80,
             child: Stack(
               children: [
+                if (controller.canSail)
+                  Positioned(
+                      left: 0,
+                      top: 12,
+                      child: Column(children: [
+                        FishingActionButton(
+                            tool: FishingTool.bait,
+                            tooltip: controller.useLegendaryBait
+                                ? 'Mồi huyền thoại: BẬT · Chạm để tắt'
+                                : 'Mồi huyền thoại: TẮT · Chạm để bật',
+                            active: controller.useLegendaryBait,
+                            onPressed: controller.preparingCast
+                                ? null
+                                : controller.toggleLegendaryBait),
+                        Text('${controller.collection.legendaryBait}',
+                            style: TextStyle(
+                                color: controller.useLegendaryBait
+                                    ? const Color(0xFFFFDE85)
+                                    : const Color(0xFFFFF4DA),
+                                fontSize: 12,
+                                fontWeight: FontWeight.w900,
+                                shadows: const [
+                                  Shadow(
+                                      color: Color(0xFF493F30), blurRadius: 3)
+                                ])),
+                      ])),
                 Align(alignment: Alignment.centerRight, child: _action()),
               ],
             )));
@@ -44,7 +70,9 @@ class FishingControls extends StatelessWidget {
             tool: FishingTool.rod,
             tooltip: 'Thả câu tại đây',
             primary: true,
-            onPressed: controller.phase == FishingPhase.casting
+            busy: controller.preparingCast,
+            onPressed: controller.preparingCast ||
+                    controller.phase == FishingPhase.casting
                 ? null
                 : controller.castHere),
       };

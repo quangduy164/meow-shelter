@@ -22,7 +22,8 @@ class FishingFight {
       FishSpecies.grouper => FishSpecies.carp,
       FishSpecies.butterflyfish => FishSpecies.clownfish,
       FishSpecies.cavefish => FishSpecies.catfish,
-      FishSpecies.lanternfish => FishSpecies.koi,
+      FishSpecies.lanternfish || FishSpecies.moonfish => FishSpecies.koi,
+      FishSpecies.seaDragon => FishSpecies.mackerel,
       _ => fish,
     };
     switch (fish) {

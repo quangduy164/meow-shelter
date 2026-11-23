@@ -4,6 +4,9 @@ import 'fishing_river.dart';
 import 'river_frog.dart';
 import 'river_sea_land.dart';
 import 'fishing_cabin.dart';
+import 'fishing_market.dart';
+import 'fishing_shrine.dart';
+import 'fishing_bait_house.dart';
 import 'river_encounters.dart';
 
 enum RiverPropKind {
@@ -14,7 +17,10 @@ enum RiverPropKind {
   paperBoat,
   island,
   mangroveRoot,
-  cabinShip
+  cabinShip,
+  market,
+  shrine,
+  baitHouse
 }
 
 class RiverProp {
@@ -31,7 +37,10 @@ class RiverProp {
       kind == RiverPropKind.rock ||
       kind == RiverPropKind.island ||
       kind == RiverPropKind.mangroveRoot ||
-      kind == RiverPropKind.cabinShip;
+      kind == RiverPropKind.cabinShip ||
+      kind == RiverPropKind.market ||
+      kind == RiverPropKind.shrine ||
+      kind == RiverPropKind.baitHouse;
 
   /// Solid reach toward [p]; the island follows its coastline.
   double reachTowards(Offset p) =>
@@ -131,6 +140,12 @@ List<RiverProp> createRiverProps() {
   }
   props.add(RiverProp(RiverPropKind.cabinShip, FishingCabin.ship,
       radius: FishingCabin.radius));
+  props.add(RiverProp(RiverPropKind.market, FishingMarket.center,
+      radius: FishingMarket.radius));
+  props.add(RiverProp(RiverPropKind.shrine, FishingShrine.center,
+      radius: FishingShrine.radius));
+  props.add(RiverProp(RiverPropKind.baitHouse, FishingBaitHouse.center,
+      radius: FishingBaitHouse.radius));
   return props;
 }
 

@@ -36,6 +36,10 @@ import '../../collection/fish_collection.dart';
 import '../../fishing/fishing_boat.dart';
 import '../../fishing/fishing_lighting.dart';
 import '../widgets/fishing_boats.dart';
+import '../widgets/fishing_market_dialog.dart';
+import '../widgets/fishing_shrine.dart';
+import '../widgets/fishing_bait_house.dart';
+import '../widgets/fishing_market_art.dart';
 
 class FishingScreen extends StatefulWidget {
   const FishingScreen({super.key});
@@ -132,7 +136,18 @@ class _FishingScreenState extends State<FishingScreen>
     final dt = math.min((timestamp - previous).inMicroseconds / 1000000, .05);
     _controller.update(dt);
     // The boat picker only opens once the cat has reached the boathouse.
-    if (_controller.takeBoatHouseArrival()) _openBoatPicker();
+    switch (_controller.takeArrival()) {
+      case FishingVisit.boatHouse:
+        _openBoatPicker();
+      case FishingVisit.market:
+        _openMarket();
+      case FishingVisit.shrine:
+        _openShrine();
+      case FishingVisit.baitHouse:
+        _openBaitHouse();
+      case null:
+        break;
+    }
     _updateHud(dt);
     _frames.value++;
     _hud.value = _hudState;
@@ -221,6 +236,39 @@ class _FishingScreenState extends State<FishingScreen>
                               full: true),
                         ])));
               }));
+    } finally {
+      if (mounted) setState(() => _collectionOpen = false);
+      _lastTick = null;
+    }
+  }
+
+  Future<void> _openBaitHouse() async {
+    setState(() => _collectionOpen = true);
+    try {
+      await showGameDialog<void>(
+          context: context, builder: (_) => const FishingBaitHouseDialog());
+    } finally {
+      if (mounted) setState(() => _collectionOpen = false);
+      _lastTick = null;
+    }
+  }
+
+  Future<void> _openShrine() async {
+    setState(() => _collectionOpen = true);
+    try {
+      await showGameDialog<void>(
+          context: context, builder: (_) => const FishingShrineDialog());
+    } finally {
+      if (mounted) setState(() => _collectionOpen = false);
+      _lastTick = null;
+    }
+  }
+
+  Future<void> _openMarket() async {
+    setState(() => _collectionOpen = true);
+    try {
+      await showGameDialog<void>(
+          context: context, builder: (_) => const FishingMarketDialog());
     } finally {
       if (mounted) setState(() => _collectionOpen = false);
       _lastTick = null;
@@ -592,6 +640,9 @@ class _FishingScreenState extends State<FishingScreen>
                             fishing: _controller)),
                     CustomPaint(painter: FishingIslandPainter(_river, _frames)),
                     FishingCabinShip(round: _river, frames: _frames),
+                    FishingMarketStalls(round: _river, frames: _frames),
+                    FishingShrineView(round: _river, frames: _frames),
+                    FishingBaitHouseView(round: _river, frames: _frames),
                   ])),
                   FishingScenery(
                       round: _river,
@@ -728,7 +779,7 @@ class _FishingScreenState extends State<FishingScreen>
                               Positioned(
                                   right: padding.right + 8,
                                   bottom: padding.bottom + 8,
-                                  width: 80,
+                                  width: 144,
                                   height: 80,
                                   child: AnimatedBuilder(
                                       animation: _frames,

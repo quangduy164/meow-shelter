@@ -4,6 +4,9 @@ import 'river_navigation.dart';
 import 'river_sea_land.dart';
 import 'fishing_island.dart';
 import 'fishing_cabin.dart';
+import 'fishing_market.dart';
+import 'fishing_shrine.dart';
+import 'fishing_bait_house.dart';
 import 'fishing_cave.dart';
 import 'fishing_exploration.dart';
 import 'fishing_region.dart';
@@ -73,6 +76,10 @@ class FishingRiver {
         (FishingRegion.mangrove.fish, mangroveBlend(x)),
         (FishingRegion.rockyBay.fish, rockyBlend(x)),
         (FishingRegion.cave.fish, caveBlend(x, y: y)),
+        (
+          FishingRegion.openSea.fish,
+          ((x - (openSeaStart - 240)) / 480).clamp(0.0, 1.0)
+        ),
       ];
 
   static double _poolWeight(
@@ -88,13 +95,15 @@ class FishingRiver {
   static FishSpecies rollFish(int roll, double x, double hour,
       {bool activeWater = false,
       double? y,
-      double Function(FishSpecies)? weatherBoost}) {
+      double Function(FishSpecies)? weatherBoost,
+      bool legendaryBait = false}) {
     final night = hour < 6 || hour >= 18;
     final layers = fishLayers(x, y: y);
     final weights = <FishSpecies, double>{
       for (final fish in FishSpecies.values)
         fish: _poolWeight(fish, layers) *
             (weatherBoost?.call(fish) ?? 1) *
+            (legendaryBait && fish.rarity == 'Huyền thoại' ? 3 : 1) *
             (night && fish.nightActive ? 1.35 : 1) *
             (activeWater
                 ? (fish.isJunk
@@ -167,7 +176,10 @@ class FishingRiver {
       p.dy >= top(p.dx) &&
       p.dy <= bottom(p.dx) &&
       !fishingSeaIsland.contains(p) &&
-      (p - FishingCabin.ship).distance > FishingCabin.radius;
+      (p - FishingCabin.ship).distance > FishingCabin.radius &&
+      (p - FishingMarket.center).distance > FishingMarket.radius &&
+      (p - FishingShrine.center).distance > FishingShrine.radius &&
+      (p - FishingBaitHouse.center).distance > FishingBaitHouse.radius;
 
   static Offset constrain(Offset p) {
     var safe = constrainBanks(p);
@@ -178,13 +190,19 @@ class FishingRiver {
           delta.distance > .001 ? delta / delta.distance : const Offset(0, 1);
       safe = fishingSeaIsland.center + direction * clearance;
     }
-    final shipDelta = safe - FishingCabin.ship;
-    if (shipDelta.distance < FishingCabin.radius + boatMargin) {
-      safe = FishingCabin.ship +
-          (shipDelta.distance > .001
-                  ? shipDelta / shipDelta.distance
-                  : const Offset(0, 1)) *
-              (FishingCabin.radius + boatMargin);
+    // Moored structures: the pirate ship and the floating market.
+    for (final (at, reach) in [
+      (FishingCabin.ship, FishingCabin.radius),
+      (FishingMarket.center, FishingMarket.radius),
+      (FishingShrine.center, FishingShrine.radius),
+      (FishingBaitHouse.center, FishingBaitHouse.radius),
+    ]) {
+      final d = safe - at;
+      if (d.distance < reach + boatMargin) {
+        safe = at +
+            (d.distance > .001 ? d / d.distance : const Offset(0, 1)) *
+                (reach + boatMargin);
+      }
     }
     return safe;
   }
@@ -306,13 +324,16 @@ class FishingRiverRound {
     final weave = switch (fish) {
       FishSpecies.perch => math.sin(elapsed * 3) * .9,
       FishSpecies.sardine => math.sin(elapsed * 2.5) * .55,
-      FishSpecies.mackerel => math.sin(elapsed * .8) * .45,
+      FishSpecies.mackerel ||
+      FishSpecies.seaDragon =>
+        math.sin(elapsed * .8) * .45,
       FishSpecies.clownfish => math.sin(elapsed * 2.2) * 1.05,
       FishSpecies.pufferfish => math.sin(elapsed * .7) * .3,
       FishSpecies.carp => math.sin(elapsed * .5) * .25,
       FishSpecies.catfish => math.sin(elapsed * 1.3) * .6,
       FishSpecies.koi ||
-      FishSpecies.lanternfish =>
+      FishSpecies.lanternfish ||
+      FishSpecies.moonfish =>
         FishingFight.at(fish, elapsed).lateral,
       FishSpecies.goby => math.sin(elapsed * 3) * .55,
       FishSpecies.mudskipper => math.sin(elapsed * 3.5) * 1.1,

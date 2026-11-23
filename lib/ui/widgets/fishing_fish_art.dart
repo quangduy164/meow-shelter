@@ -144,6 +144,22 @@ class FishingFishArt extends CustomPainter {
             nose: -30,
             tailBase: 22,
             tailSize: 10),
+        FishSpecies.seaDragon => const _Look(
+            top: Color(0xFF218B86),
+            belly: Color(0xFFF5DB8B),
+            fin: Color(0xFFE6AF53),
+            height: 13,
+            nose: -44,
+            tailBase: 30,
+            tailSize: 17),
+        FishSpecies.moonfish => const _Look(
+            top: Color(0xFF7A86D6),
+            belly: Color(0xFFE3F7FF),
+            fin: Color(0xFF9CD9EC),
+            height: 27,
+            nose: -27,
+            tailBase: 19,
+            tailSize: 13),
         FishSpecies.catMew => const _Look(
             top: Color(0xFF8F8A92),
             belly: Color(0xFFEDE7EA),
@@ -206,6 +222,33 @@ class FishingFishArt extends CustomPainter {
         canvas.drawPath(spike, outline..strokeWidth = 1);
       }
       outline.strokeWidth = 2;
+    }
+    if (fish == FishSpecies.seaDragon) {
+      // Long gold fins, horns and flowing whiskers distinguish the sea dragon.
+      for (final side in [-1.0, 1.0]) {
+        final ribbon = Path()
+          ..moveTo(-10, side * 9)
+          ..cubicTo(2, side * 32, 24, side * 26, 42, side * 26)
+          ..quadraticBezierTo(18, side * 12, 4, side * 8)
+          ..close();
+        canvas.drawPath(ribbon, finPaint);
+        canvas.drawPath(ribbon, outline);
+      }
+      final horn = Path()
+        ..moveTo(n + 12, -8)
+        ..lineTo(n + 5, -25)
+        ..lineTo(n + 18, -12)
+        ..close();
+      canvas.drawPath(horn, finPaint);
+      canvas.drawPath(horn, outline);
+      canvas.drawPath(
+          Path()
+            ..moveTo(n + 3, 3)
+            ..cubicTo(n - 8, 14, n - 2, 24, n + 14, 21),
+          Paint()
+            ..color = look.fin
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = 2);
     }
     final tail = _tail(tb, look.tailSize);
     canvas.drawPath(tail, finPaint);
@@ -340,6 +383,31 @@ class FishingFishArt extends CustomPainter {
 
   void _pattern(Canvas canvas, double n, double h, double tb) {
     switch (fish) {
+      case FishSpecies.seaDragon:
+        for (var row = -1; row <= 1; row++) {
+          for (var i = 0; i < 7; i++) {
+            canvas.drawArc(
+                Rect.fromLTWH(n + 16 + i * 8.0 + row * 3, row * 6.0 - 4, 10, 9),
+                -.9,
+                1.8,
+                false,
+                Paint()
+                  ..color = const Color(0xAAEED38A)
+                  ..style = PaintingStyle.stroke
+                  ..strokeWidth = 1.3);
+          }
+        }
+      case FishSpecies.moonfish:
+        final moon = Path.combine(
+            PathOperation.difference,
+            Path()..addOval(const Rect.fromLTWH(-12, -15, 22, 25)),
+            Path()..addOval(const Rect.fromLTWH(-5, -18, 22, 25)));
+        canvas.drawPath(moon, Paint()..color = const Color(0xFFFFF1BF));
+        for (var i = 0; i < 6; i++) {
+          canvas.drawCircle(Offset(-9 + i * 4.5, 10 + (i % 2) * 3.0), 1.5,
+              Paint()..color = const Color(0xFFE2FFFF));
+        }
+
       case FishSpecies.goby:
       case FishSpecies.grouper:
         for (var row = -1; row <= 1; row++) {
