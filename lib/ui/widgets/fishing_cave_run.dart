@@ -124,9 +124,7 @@ class _FishingCaveRunState extends State<FishingCaveRun> {
           final catSize = 84 * scale;
           final screenCat =
               Offset((cave.cat.dx - camera) * scale, cave.cat.dy * scale);
-          final running = cave.state == CaveRunState.running ||
-              cave.state == CaveRunState.falling;
-          final airborne = !cave.grounded;
+          final pose = _pose(cave);
           final pad = MediaQuery.paddingOf(context);
           return PopScope(
               canPop: false,
@@ -143,28 +141,23 @@ class _FishingCaveRunState extends State<FishingCaveRun> {
                                 cave, _back, _level, scale, camera)))),
                 Positioned(
                     left: screenCat.dx - catSize / 2,
-                    top: screenCat.dy - catSize * .8,
+                    top: screenCat.dy - catSize * .8 + pose.$3 * catSize,
                     child: IgnorePointer(
                         child: Opacity(
                             opacity: cave.hurt > 0 &&
                                     (cave.clock * 16).floor().isEven
                                 ? .35
                                 : 1,
-                            child: Transform.rotate(
-                                angle:
-                                    airborne ? (cave.vy < 0 ? -.15 : .12) : 0,
-                                child: CatSprite(
-                                    type: widget.cat,
-                                    size: catSize,
-                                    action: running ? 'run' : 'idle',
-                                    frames: running ? framesRun : framesIdle,
-                                    frame: airborne
-                                        ? 2
-                                        : (cave.clock * (running ? 14 : 7))
-                                                .floor() %
-                                            (running
-                                                ? framesRun
-                                                : framesIdle)))))),
+                            child: CatSprite(
+                                type: widget.cat,
+                                size: catSize,
+                                action: pose.$1,
+                                frames: pose.$1 == 'jump'
+                                    ? framesJump
+                                    : pose.$1 == 'run'
+                                        ? framesRun
+                                        : framesIdle,
+                                frame: pose.$2)))),
                 Positioned(
                     left: pad.left + 8,
                     top: pad.top + 8,
@@ -207,6 +200,28 @@ class _FishingCaveRunState extends State<FishingCaveRun> {
               ]));
         }));
   }
+}
+
+/// Sheet, frame and vertical correction for the cat. The jump sheet draws
+/// the cat higher in its air frames; [_jumpLift] cancels that so the feet
+/// follow the physics.
+const _jumpLift = [0.0, .075, .19, .1, 0.0, 0.0];
+
+(String, int, double) _pose(FishingCave cave) {
+  final airborne = !cave.grounded || cave.state == CaveRunState.falling;
+  if (airborne) {
+    final frame = cave.vy < -280
+        ? 1
+        : cave.vy < 280
+            ? 2
+            : 3;
+    return ('jump', frame, _jumpLift[frame]);
+  }
+  if (cave.landing > 0) return ('jump', 4, 0);
+  if (cave.state == CaveRunState.running) {
+    return ('run', (cave.clock * 14).floor() % framesRun, 0);
+  }
+  return ('idle', (cave.clock * 7).floor() % framesIdle, 0);
 }
 
 class _CavePainter extends CustomPainter {

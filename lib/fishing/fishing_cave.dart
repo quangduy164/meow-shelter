@@ -67,6 +67,9 @@ class FishingCave {
   CaveRunState state = CaveRunState.ready;
   Offset cat = const Offset(40, floor);
   double vy = 0, clock = 0, runTime = 0, hurt = 0;
+
+  /// Seconds left of the landing pose after touching down.
+  double landing = 0;
   bool grounded = true, doubleJumpUsed = false;
   int checkpoint = 0, falls = 0;
   final collected = <int>{};
@@ -113,6 +116,7 @@ class FishingCave {
   void update(double dt) {
     clock += dt;
     hurt = math.max(0, hurt - dt);
+    landing = math.max(0, landing - dt);
     if (state == CaveRunState.falling) {
       vy += gravity * dt;
       cat += Offset(0, vy * dt);
@@ -136,6 +140,7 @@ class FishingCave {
       }
     }
     final before = cat;
+    final wasGrounded = grounded;
     vy += gravity * dt;
     var next = Offset(cat.dx + speed * dt, cat.dy + vy * dt);
     grounded = false;
@@ -144,6 +149,7 @@ class FishingCave {
         if (next.dx < l.left - 6 || next.dx > l.right + 6) continue;
         if (before.dy <= l.top + .5 && next.dy >= l.top) {
           next = Offset(next.dx, l.top);
+          if (!wasGrounded && vy > 120) landing = .12;
           vy = 0;
           grounded = true;
           doubleJumpUsed = false;

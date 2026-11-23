@@ -17,6 +17,7 @@ const double maxIdleTime = 2.5;
 const int framesIdle = 6;
 const int framesWalk = 6;
 const int framesRun = 8;
+const int framesJump = 6;
 const int framesTurnAround = 6;
 const int framesDragged = 4;
 const int framesDropSuccess = 5;
