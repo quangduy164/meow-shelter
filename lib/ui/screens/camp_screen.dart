@@ -113,9 +113,12 @@ class _CampScreenState extends State<CampScreen>
       final idle = CatBreed.of(cat.type).sheet(CampAct.idle.sheet);
       if (!_queue.contains(idle)) _queue.insert(0, idle);
     }
-    for (final act in CampAct.values.where((a) => a != CampAct.idle)) {
+    for (final sheet in [
+      ...CampAct.values.where((a) => a != CampAct.idle).map((a) => a.sheet),
+      campSleepSheet,
+    ]) {
       for (final cat in _cats) {
-        final path = CatBreed.of(cat.type).sheet(act.sheet);
+        final path = CatBreed.of(cat.type).sheet(sheet);
         if (!_queue.contains(path)) _queue.add(path);
       }
     }
@@ -1628,6 +1631,15 @@ class _CampCatsPainter extends CustomPainter {
       image = sprites[breed.sheet(CampAct.idle.sheet)];
       frames = CampAct.idle.frames;
       frame = 0;
+    }
+    if (cat.sleeping) {
+      // Curled-up sleep sheet once loaded; until then the closed-eye idle frame.
+      final sleep = sprites[breed.sheet(campSleepSheet)];
+      if (sleep != null) {
+        image = sleep;
+        frames = campSleepFrameCount;
+        frame = (cat.clock * 3).floor() % campSleepFrameCount;
+      }
     }
     var dst = Rect.fromCenter(center: c, width: spriteSize, height: spriteSize);
     if (cat.sleeping) {

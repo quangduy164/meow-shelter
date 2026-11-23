@@ -532,7 +532,7 @@ class FishingRiverBoatPainter extends CustomPainter {
       } else {
         paintBasketBoatFront(canvas);
       }
-      // The cat sprite has no rowing arm; the oar simply moves on its own.
+      // The row sheet draws the paws where [FishingOarPose.hand] grips.
       if (rowing) paintFishingOar(canvas, oar);
     }
     canvas.restore();

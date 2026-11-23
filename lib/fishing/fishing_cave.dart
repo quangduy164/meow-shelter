@@ -70,6 +70,10 @@ class FishingCave {
 
   /// Seconds left of the landing pose after touching down.
   double landing = 0;
+
+  /// Seconds left of the somersault after a double jump.
+  double spin = 0;
+  static const spinTime = .42;
   bool grounded = true, doubleJumpUsed = false;
   int checkpoint = 0, falls = 0;
   final collected = <int>{};
@@ -117,6 +121,7 @@ class FishingCave {
     clock += dt;
     hurt = math.max(0, hurt - dt);
     landing = math.max(0, landing - dt);
+    spin = math.max(0, spin - dt);
     if (state == CaveRunState.falling) {
       vy += gravity * dt;
       cat += Offset(0, vy * dt);
@@ -136,6 +141,7 @@ class FishingCave {
       } else if (!doubleJumpUsed) {
         vy = -doubleJumpSpeed;
         doubleJumpUsed = true;
+        spin = spinTime;
         _buffer = 0;
       }
     }
@@ -153,6 +159,7 @@ class FishingCave {
           vy = 0;
           grounded = true;
           doubleJumpUsed = false;
+          spin = 0;
           break;
         }
       }
@@ -182,6 +189,7 @@ class FishingCave {
   void _fall({bool hit = false}) {
     state = CaveRunState.falling;
     falls++;
+    spin = 0;
     hurt = .6;
     if (hit) vy = -420;
   }

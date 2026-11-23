@@ -40,8 +40,12 @@ const campToyActs = {
 /// Soft spots where a cat falls asleep instead of just sitting.
 const campNapToys = {'bed', 'sofa', 'rug'};
 
-/// Idle-sheet frame where each breed has its eyes closed. There is no sleep
-/// sheet yet, so a nap holds this frame, breathes and puffs "z"s.
+/// Napping cats play this curled-up sheet (6 frames) and puff "z"s.
+const campSleepSheet = 'sleep';
+const campSleepFrameCount = 6;
+
+/// Idle-sheet frame where each breed has its eyes closed, shown while the
+/// sleep sheet is still loading.
 const campSleepFrames = {
   'orange': 2,
   'black': 3,

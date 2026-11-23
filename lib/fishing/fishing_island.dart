@@ -209,10 +209,17 @@ class FishingIslandVisit {
   bool get ashore => phase != IslandVisitPhase.aboard;
   bool get walking =>
       phase == IslandVisitPhase.exploring && destination != null;
-  double get jump =>
+
+  /// 0..1 through the hop between boat and pier, or null when not hopping.
+  double? get hopProgress =>
       phase == IslandVisitPhase.landing || phase == IslandVisitPhase.boarding
-          ? math.sin((elapsed / .65).clamp(0.0, 1.0) * math.pi) * 28
-          : 0;
+          ? (elapsed / .65).clamp(0.0, 1.0)
+          : null;
+  double get jump {
+    final t = hopProgress;
+    return t == null ? 0 : math.sin(t * math.pi) * 28;
+  }
+
   static bool contains(Offset p) => fishingSeaIsland.contains(p);
   static Offset constrain(Offset p) {
     final delta = p - fishingSeaIsland.center;

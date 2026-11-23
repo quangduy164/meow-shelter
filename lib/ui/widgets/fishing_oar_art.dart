@@ -6,7 +6,7 @@ class FishingOarPose {
   FishingOarPose(double clock,
       {required bool moving, required bool facingRight}) {
     final side = facingRight ? 1.0 : -1.0;
-    final cycle = (clock / 1.65) % 1;
+    cycle = (clock / 1.65) % 1;
     double smooth(double t) {
       t = t.clamp(0.0, 1.0);
       return t * t * (3 - 2 * t);
@@ -29,10 +29,13 @@ class FishingOarPose {
         lift = math.sin(t * math.pi) * 15 + 12 * t;
         wet = 1 - smooth(t / .15);
       }
-      hand = Offset(side * (17 - sweep * 8), 12 + sweep * 5);
+      // Water contact keeps the original stroke; the grip follows the cat's
+      // paws in the row sheet (forward at the catch, at the chest when pulled).
+      final reach = Offset(side * (17 - sweep * 8), 12 + sweep * 5);
       final angle = -.15 + sweep * 1.1;
-      water =
-          hand + Offset(side * math.cos(angle) * 96, math.sin(angle) * 55 + 13);
+      water = reach +
+          Offset(side * math.cos(angle) * 96, math.sin(angle) * 55 + 13);
+      hand = Offset(side * (16 - sweep * 11), -7 - sweep * 4);
       blade = water - Offset(0, lift);
       lean = side * (.08 - sweep * .16);
     } else {
@@ -44,6 +47,17 @@ class FishingOarPose {
   }
 
   late final Offset hand, blade, water;
+
+  /// 0..1 through one stroke; the row sheet frame is picked from it.
+  double cycle = 0;
+
+  /// Row sheet frame for this point of the stroke: lean in at the catch,
+  /// pull back through the drive, come forward on the recovery.
+  int get rowFrame => cycle < .18
+      ? 0
+      : cycle < .65
+          ? 1 + ((cycle - .18) / .47 * 3).floor().clamp(0, 2)
+          : 4 + ((cycle - .65) / .35 * 2).floor().clamp(0, 1);
   late final double lean;
   late double wet;
 }

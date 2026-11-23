@@ -18,6 +18,66 @@ class FishingCabinRoom extends StatefulWidget {
 }
 
 class _FishingCabinRoomState extends State<FishingCabinRoom> {
+  /// The cat: walking, idling, hopping onto / off the bed, or asleep on it
+  /// with "z"s drifting up.
+  Widget _cat(Offset point, double size, double scale) {
+    final round = widget.round;
+    final clock = round.clock;
+    final (action, frames, frame) = round.sleeping
+        ? ('sleep', framesSleep, (clock * 3).floor() % framesSleep)
+        : round.hopping
+            ? (
+                'jump',
+                framesJump,
+                (round.hop * framesJump).floor().clamp(0, framesJump - 1)
+              )
+            : round.walking
+                ? ('walk', framesWalk, (clock * 10).floor() % framesWalk)
+                : ('idle', framesIdle, (clock * 7).floor() % framesIdle);
+    // A small arc for the hop; the jump sheet already lifts its air frames.
+    final lift = round.hopping
+        ? math.sin(round.hop * math.pi) * 38 * scale -
+            jumpSheetLift[frame] * size
+        : 0.0;
+    return Positioned(
+        left: point.dx - size / 2,
+        top: point.dy - size * .79 - lift - size * .3,
+        width: size,
+        height: size * 1.3,
+        child: IgnorePointer(
+            child: Stack(clipBehavior: Clip.none, children: [
+          Positioned(
+              left: 0,
+              top: size * .3,
+              child: CatSprite(
+                  type: widget.cat,
+                  size: size,
+                  action: action,
+                  frames: frames,
+                  frame: frame,
+                  flip: !round.facingRight)),
+          if (round.sleeping)
+            for (var i = 0; i < 3; i++)
+              Builder(builder: (context) {
+                final t = (clock * .45 + i / 3) % 1;
+                return Positioned(
+                    left: size * (.62 + t * .2),
+                    top: size * (.42 - t * .4),
+                    child: Opacity(
+                        opacity: math.sin(t * math.pi),
+                        child: Text('z',
+                            style: TextStyle(
+                                color: DS.cream,
+                                fontSize: (11 + t * 7) * scale,
+                                fontWeight: FontWeight.w900,
+                                shadows: const [
+                                  Shadow(
+                                      color: Color(0xFF4A2E1D), blurRadius: 3)
+                                ]))));
+              }),
+        ])));
+  }
+
   late final _pictures = [_record(_room), _record(_bedroom)];
   late bool _chestFull = FishingCabinChest.full(FishCollection.instance);
   bool _opening = false, _showChest = false;
@@ -126,6 +186,9 @@ class _FishingCabinRoomState extends State<FishingCabinRoom> {
                         } else if (room == 1 &&
                             FishingCabin.chestTap.contains(p)) {
                           widget.round.goToChest();
+                        } else if (room == 1 &&
+                            FishingCabin.bedTap.contains(p)) {
+                          widget.round.goToBed();
                         } else if ((room == 0
                                 ? FishingCabin.doorTap
                                 : FishingCabin.bedroomDoorTap)
@@ -154,21 +217,7 @@ class _FishingCabinRoomState extends State<FishingCabinRoom> {
                           decoration: const BoxDecoration(
                               color: Color(0x335E4937),
                               shape: BoxShape.circle)))),
-              Positioned(
-                  left: point.dx - catSize / 2,
-                  top: point.dy - catSize * .79,
-                  child: IgnorePointer(
-                      child: CatSprite(
-                          type: widget.cat,
-                          size: catSize,
-                          action: widget.round.walking ? 'walk' : 'idle',
-                          frames:
-                              widget.round.walking ? framesWalk : framesIdle,
-                          frame: (widget.round.clock *
-                                      (widget.round.walking ? 10 : 7))
-                                  .floor() %
-                              (widget.round.walking ? framesWalk : framesIdle),
-                          flip: !widget.round.facingRight))),
+              _cat(point, catSize, scale),
               Positioned.fill(
                   child: IgnorePointer(
                       child: CustomPaint(

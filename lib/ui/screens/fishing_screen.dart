@@ -368,18 +368,13 @@ class _FishingScreenState extends State<FishingScreen>
         : _river.heading.dx >= 0;
     final oar = FishingOarPose(_river.clock,
         moving: _river.moving && !fishing, facingRight: facingRight);
-    final side = facingRight ? 1.0 : -1.0;
-    final lean = switch (phase) {
-      FishingPhase.casting =>
-        side * math.sin(_controller.elapsed / .65 * math.pi * 2) * -.12,
-      FishingPhase.bite => math.sin(_controller.clock * 20) * .035,
-      FishingPhase.reeling => _controller.pulling
-          ? -side * (.08 + _controller.tension * .12)
-          : side * .025,
-      _ => oar.lean,
-    };
-    final action = won ? 'celebrate' : 'idle';
-    final frames = won ? framesCelebrate : framesIdle;
+    // The sheets animate casting, reeling and rowing; only the bite shakes.
+    final lean = phase == FishingPhase.bite
+        ? math.sin(_controller.clock * 20) * .035
+        : 0.0;
+    final rowing = _river.moving && !fishing;
+    final (action, frames, frame) = _anglerPose(oar, rowing: rowing) ??
+        ('idle', framesIdle, (_river.clock * 7).floor() % framesIdle);
     return Stack(fit: StackFit.expand, children: [
       CustomPaint(
           painter: FishingRiverBoatPainter(_river,
@@ -398,13 +393,13 @@ class _FishingScreenState extends State<FishingScreen>
                   size: catSize,
                   action: action,
                   frames: frames,
-                  frame: (_river.clock * 7).floor() % frames,
+                  frame: frame,
                   flip: !facingRight),
             )),
       CustomPaint(
           painter: FishingRiverBoatPainter(_river,
               front: true, fishing: fishing && !_river.island.ashore)),
-      if (fishing)
+      if (fishing && !won)
         Builder(builder: (context) {
           final spot = _river.toScreen(_controller.spot);
           return CustomPaint(
@@ -427,12 +422,14 @@ class _FishingScreenState extends State<FishingScreen>
             combo: _controller.combo,
           ));
         }),
-      if (won && _controller.elapsed < 1)
+      if (won)
         Builder(builder: (context) {
+          // The catch flies into the cupped paws, then rides along with them.
           final t =
               Curves.easeInOut.transform(_controller.elapsed.clamp(0.0, 1.0));
+          final paws = _anglerSheetPoint(fishHoldPaws[_holdFrame]);
           final position =
-              Offset.lerp(_river.toScreen(_controller.spot), point, t)! -
+              Offset.lerp(_river.toScreen(_controller.spot), paws, t)! -
                   Offset(0, math.sin(t * math.pi) * 45);
           final fishSize = _controller.fishScale;
           return Positioned(
@@ -447,14 +444,93 @@ class _FishingScreenState extends State<FishingScreen>
     ]);
   }
 
+  /// Sheet, frame count and frame for the angler while fishing or rowing;
+  /// null keeps the plain idle/walk choice.
+  (String, int, int)? _anglerPose(FishingOarPose? oar, {required bool rowing}) {
+    final elapsed = _controller.elapsed;
+    if (rowing && oar != null) return ('row', framesRow, oar.rowFrame);
+    return switch (_controller.phase) {
+      FishingPhase.casting => (
+          'fish-cast',
+          framesFishCast,
+          (elapsed / .65 * framesFishCast).floor().clamp(0, framesFishCast - 1)
+        ),
+      FishingPhase.waiting => (
+          'fish-wait',
+          framesFishWait,
+          (_river.clock * 5).floor() % framesFishWait
+        ),
+      // Yanked forward by the bite: the surprised reel frame.
+      FishingPhase.bite => ('fish-reel', framesFishReel, 2),
+      FishingPhase.reeling => (
+          'fish-reel',
+          framesFishReel,
+          _controller.pulling ? (_river.clock * 9).floor() % framesFishReel : 5
+        ),
+      FishingPhase.saving => ('fish-reel', framesFishReel, 5),
+      FishingPhase.caught => ('fish-hold', framesFishHold, _holdFrame),
+      // The sulk plays once and holds its last frame.
+      FishingPhase.lost => (
+          'drop-wrong',
+          framesDropWrong,
+          (elapsed * 8).floor().clamp(0, framesDropWrong - 1)
+        ),
+      FishingPhase.ready => null,
+    };
+  }
+
+  /// Paws stay cupped while the catch flies in, then lift it up to show off.
+  int get _holdFrame {
+    final t = _controller.elapsed;
+    return t < 1 ? 0 : 1 + ((t - 1) * 3).floor() % 2;
+  }
+
+  /// Screen position of a point given in sheet pixels (256 x 256 frame,
+  /// facing right) of the angler sprite, in the boat or on the bank.
+  Offset _anglerSheetPoint((double, double) sheet) {
+    final island = _river.island;
+    final ashore = island.ashore;
+    final point = _river.toScreen(_controller.angler);
+    final size = (ashore ? 84 : 114) * _river.scale;
+    final flip = _controller.spot.dx < _controller.angler.dx;
+    final top = ashore
+        ? point.dy - size * .78
+        : point.dy -
+            size * .69 +
+            math.sin(_river.clock * 2.5) * 1.8 * _river.scale;
+    final x = flip ? 256 - sheet.$1 : sheet.$1;
+    return Offset(
+        point.dx - size / 2 + x / 256 * size, top + sheet.$2 / 256 * size);
+  }
+
   Widget _islandCat() {
     final island = _river.island;
     if (!island.ashore) return const SizedBox.shrink();
     final point = _river.toScreen(island.cat);
     final fishing = _controller.showFishingArt;
     final size = 84 * _river.scale;
-    final action = island.walking ? 'walk' : 'idle';
-    final frames = island.walking ? framesWalk : framesIdle;
+    final hopping = island.hopProgress != null;
+    final angling = fishing && !hopping && !island.walking
+        ? _anglerPose(null, rowing: false)
+        : null;
+    final (action, frames, frame) = angling ??
+        (hopping
+            ? (
+                'jump',
+                framesJump,
+                (island.hopProgress! * framesJump)
+                    .floor()
+                    .clamp(0, framesJump - 1)
+              )
+            : island.walking
+                ? ('walk', framesWalk, (_river.clock * 10).floor() % framesWalk)
+                : (
+                    'idle',
+                    framesIdle,
+                    (_river.clock * 7).floor() % framesIdle
+                  ));
+    // The jump sheet already lifts the cat in its air frames.
+    final sheetLift = hopping ? jumpSheetLift[frame] * size : 0.0;
     return Stack(children: [
       if (!island.lookout)
         Positioned(
@@ -467,14 +543,13 @@ class _FishingScreenState extends State<FishingScreen>
                     color: Color(0x3359553B), shape: BoxShape.circle))),
       Positioned(
           left: point.dx - size / 2,
-          top: point.dy - size * .78 - island.jump * _river.scale,
+          top: point.dy - size * .78 - island.jump * _river.scale + sheetLift,
           child: CatSprite(
               type: _cat,
               size: size,
               action: action,
               frames: frames,
-              frame:
-                  (_river.clock * (island.walking ? 10 : 7)).floor() % frames,
+              frame: frame,
               flip: fishing
                   ? _controller.spot.dx < island.cat.dx
                   : !island.facingRight)),

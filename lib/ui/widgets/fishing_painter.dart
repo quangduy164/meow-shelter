@@ -138,7 +138,8 @@ class FishingPainter extends CustomPainter {
         phase == FishingPhase.reeling ? progress.clamp(0.0, 1.0) : 0.0;
     final body = point(boat.dx, boat.dy) +
         Offset(0, math.sin(clock * 2.5) * 1.8) * scale;
-    final base = body + Offset(side * 34, -6) * scale;
+    // Handle bottom just under the paws drawn by the fish-* sheets.
+    final base = body + Offset(side * 6, 0) * scale;
     // Rotate the rod around its handle, then bend the tip.
     Offset swing(Offset p) {
       final v = p - base;

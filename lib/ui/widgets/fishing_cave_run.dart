@@ -152,11 +152,13 @@ class _FishingCaveRunState extends State<FishingCaveRun> {
                                 type: widget.cat,
                                 size: catSize,
                                 action: pose.$1,
-                                frames: pose.$1 == 'jump'
-                                    ? framesJump
-                                    : pose.$1 == 'run'
-                                        ? framesRun
-                                        : framesIdle,
+                                frames: switch (pose.$1) {
+                                  'jump' => framesJump,
+                                  'roll' => framesRoll,
+                                  'run' => framesRun,
+                                  'panic' => framesPanic,
+                                  _ => framesIdle,
+                                },
                                 frame: pose.$2)))),
                 Positioned(
                     left: pad.left + 8,
@@ -203,11 +205,18 @@ class _FishingCaveRunState extends State<FishingCaveRun> {
 }
 
 /// Sheet, frame and vertical correction for the cat. The jump sheet draws
-/// the cat higher in its air frames; [_jumpLift] cancels that so the feet
+/// the cat higher in its air frames; [jumpSheetLift] cancels that so the feet
 /// follow the physics.
-const _jumpLift = [0.0, .075, .19, .1, 0.0, 0.0];
-
 (String, int, double) _pose(FishingCave cave) {
+  // Pit or crystal spike: the cat panics while it drops.
+  if (cave.state == CaveRunState.falling) {
+    return ('panic', (cave.clock * 12).floor() % framesPanic, 0);
+  }
+  // Double jump: a somersault through the curled frames 1-4 of the roll.
+  if (cave.spin > 0) {
+    final t = 1 - cave.spin / FishingCave.spinTime;
+    return ('roll', 1 + (t * 4).floor().clamp(0, 3), 0);
+  }
   final airborne = !cave.grounded || cave.state == CaveRunState.falling;
   if (airborne) {
     final frame = cave.vy < -280
@@ -215,7 +224,7 @@ const _jumpLift = [0.0, .075, .19, .1, 0.0, 0.0];
         : cave.vy < 280
             ? 2
             : 3;
-    return ('jump', frame, _jumpLift[frame]);
+    return ('jump', frame, jumpSheetLift[frame]);
   }
   if (cave.landing > 0) return ('jump', 4, 0);
   if (cave.state == CaveRunState.running) {

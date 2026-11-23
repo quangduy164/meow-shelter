@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/painting.dart';
 
 /// A moored vessel with a separate, session-only walkable cabin.
@@ -25,8 +27,47 @@ class FishingCabin {
   static const chest = Rect.fromLTRB(66, 338, 148, 418);
   static final chestTap = chest.inflate(10);
   static const chestSpot = Offset(172, 384);
+
+  /// Captain's bed in the bedroom: tap it and the cat walks to [bedSide],
+  /// hops onto [bedSpot] on the quilt and falls asleep.
+  static const bedTap = Rect.fromLTRB(540, 168, 734, 382);
+  static const bedSide = Offset(515, 300);
+  static const bedSpot = Offset(632, 296);
+  static const hopTime = .55;
+
   int room = 0;
-  bool chestRequested = false;
+  bool chestRequested = false, bedRequested = false, sleeping = false;
+
+  /// 0..1 through a hop onto or off the bed.
+  double hop = 0;
+  Offset _hopFrom = bedSide;
+  Offset? _hopTo;
+  void Function()? _afterHop;
+  bool get hopping => _hopTo != null;
+
+  /// Walks to the bed; on arrival the cat hops up and sleeps.
+  void goToBed() {
+    if (room != 1 || sleeping || hopping) return;
+    walkTo(bedSide);
+    bedRequested = true;
+  }
+
+  void _startHop(Offset from, Offset to, [void Function()? then]) {
+    _hopFrom = from;
+    _hopTo = to;
+    hop = 0;
+    _afterHop = then;
+    facingRight = to.dx > from.dx;
+  }
+
+  /// A sleeping cat hops down first, then does [then]. False when awake.
+  bool _leaveBed(void Function() then) {
+    if (!sleeping) return false;
+    sleeping = false;
+    _startHop(bedSpot, bedSide, then);
+    return true;
+  }
+
   bool get atChest =>
       chestRequested && room == 1 && !walking && (cat - chestSpot).distance < 1;
 
@@ -54,12 +95,16 @@ class FishingCabin {
     _nextRoom = null;
     cat = exit;
     destination = null;
+    sleeping = bedRequested = false;
+    _hopTo = null;
+    _afterHop = null;
   }
 
   void walkTo(Offset p) {
-    if (!inside) return;
+    if (!inside || hopping || _leaveBed(() => walkTo(p))) return;
     leaving = false;
     chestRequested = false;
+    bedRequested = false;
     _nextRoom = null;
     final f = currentFloor;
     destination =
@@ -68,23 +113,38 @@ class FishingCabin {
 
   /// Walks through the connecting door to the other room.
   void switchRoom() {
-    if (!inside) return;
+    if (!inside || hopping || _leaveBed(switchRoom)) return;
     leaving = false;
     chestRequested = false;
+    bedRequested = false;
     _nextRoom = 1 - room;
     destination = room == 0 ? door : bedroomDoor;
   }
 
   void requestExit() {
-    if (!inside) return;
+    if (!inside || hopping || _leaveBed(requestExit)) return;
     leaving = true;
     chestRequested = false;
+    bedRequested = false;
     _nextRoom = room == 1 ? 0 : null;
     destination = room == 1 ? bedroomDoor : exit;
   }
 
   void update(double dt) {
     clock += dt;
+    final hopTo = _hopTo;
+    if (hopTo != null) {
+      hop = math.min(1, hop + dt / hopTime);
+      cat = Offset.lerp(_hopFrom, hopTo, hop)!;
+      if (hop >= 1) {
+        _hopTo = null;
+        sleeping = hopTo == bedSpot;
+        final then = _afterHop;
+        _afterHop = null;
+        then?.call();
+      }
+      return;
+    }
     final target = destination;
     if (target == null) return;
     final delta = target - cat;
@@ -103,6 +163,10 @@ class FishingCabin {
       if (leaving) {
         inside = false;
         leaving = false;
+      }
+      if (bedRequested && room == 1 && cat == bedSide) {
+        bedRequested = false;
+        _startHop(bedSide, bedSpot);
       }
     } else {
       cat += delta / delta.distance * 145 * dt;
