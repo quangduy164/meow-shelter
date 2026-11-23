@@ -238,7 +238,8 @@ extension CatCatchBehaviour on CatComponent {
     }
     hasEaten = true;
     GameAudio.instance.playRescue(GameSound.catFed, important: true);
-    _setState(CatState.idle);
+    // The greedy orange cat dozes off right after its meal.
+    _setState(catType == 'orange' ? CatState.sleep : CatState.idle);
     if (catType == 'orange') {
       catchWindow.open(CatCatchRule.orangeNap);
       _dialogue.say('No quá… khò khò');
@@ -290,7 +291,7 @@ extension CatCatchBehaviour on CatComponent {
     _isTapTriggered = false;
     _skillActive = false;
     _velocityY = 0;
-    _setState(CatState.idle);
+    _setState(catType == 'orange' ? CatState.sleep : CatState.idle);
     catchWindow.open(catType == 'orange' ? CatCatchRule.orangeNap : 1);
     _dialogue.say('Được ban phước, ngoan rồi!');
   }
@@ -301,7 +302,7 @@ extension CatCatchBehaviour on CatComponent {
     _goingToNap = false;
     hasEaten = true;
     GameAudio.instance.playRescue(GameSound.catNap, important: true);
-    _setState(CatState.idle);
+    _setState(CatState.sleep);
     catchWindow.open(CatCatchRule.orangeNap);
     _dialogue.say('Khò khò… bế em đi');
   }

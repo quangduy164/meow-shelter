@@ -670,6 +670,7 @@ class CatComponent extends SpriteAnimationGroupComponent<CatState>
       case CatState.celebrate:
       case CatState.dropWrong:
       case CatState.vanish:
+      case CatState.sleep:
         break;
     }
 

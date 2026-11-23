@@ -16,7 +16,7 @@ import 'herd_market_painter.dart';
 import 'herd_desert_painter.dart';
 import 'herd_snow_painter.dart';
 import 'herd_trait_painter.dart';
-import '../../camp/camp_resident.dart' show campSleepFrames;
+import '../../camp/camp_resident.dart' show campSleepFrameCount, campSleepSheet;
 import 'herd_home_painter.dart';
 
 /// Coordinates simulation, input and sprite rendering. Rules live in HerdRound.
@@ -83,6 +83,7 @@ class HerdGame extends FlameGame {
       Vector2(85 + _safe.left, size.y - 75 - _safe.bottom);
   final _walk = <String, SpriteAnimation>{};
   final _idle = <String, SpriteAnimation>{};
+  final _sleep = <String, SpriteAnimation>{};
   bool _ready = false;
   bool pausedByApp = false;
   ui.Image? _background;
@@ -120,13 +121,17 @@ class HerdGame extends FlameGame {
   @override
   Future<void> onLoad() async {
     await super.onLoad();
-    // Decode all ten sheets at once; one after another kept the screen blank
+    // Decode all fifteen sheets at once; one after another kept the screen blank
     // for the sum of every load.
-    Future<void> loadSheet(String type, bool moving) async {
+    Future<void> loadSheet(String type, String sheet) async {
       final folder = 'Cat/${type[0].toUpperCase()}${type.substring(1)}';
-      final img = await images
-          .load('$folder/cat-$type-${moving ? 'walk' : 'idle'}.png');
-      (moving ? _walk : _idle)[type] = SpriteAnimation.fromFrameData(
+      final img = await images.load('$folder/cat-$type-$sheet.png');
+      final target = switch (sheet) {
+        'walk' => _walk,
+        'idle' => _idle,
+        _ => _sleep,
+      };
+      target[type] = SpriteAnimation.fromFrameData(
           img,
           SpriteAnimationData.sequenced(
               amount: img.width ~/ img.height,
@@ -136,7 +141,8 @@ class HerdGame extends FlameGame {
 
     await Future.wait([
       for (final type in ['orange', 'himalaya', 'scottish', 'calico', 'black'])
-        for (final moving in [false, true]) loadSheet(type, moving),
+        for (final sheet in ['idle', 'walk', campSleepSheet])
+          loadSheet(type, sheet),
     ]);
     _joystick = AdventureJoystick(position: _joystickAt);
     add(_joystick);
@@ -341,9 +347,9 @@ class HerdGame extends FlameGame {
       bool asleep = false,
       double scale = 1}) {
     final animation = (moving ? _walk : _idle)[type]!;
-    // Napping holds the closed-eye idle frame, exactly like the camp.
+    // Napping plays the curled-up sleep sheet, exactly like the camp.
     final frame = asleep
-        ? _idle[type]!.frames[campSleepFrames[type] ?? 0]
+        ? _sleep[type]!.frames[(round.time * 3).floor() % campSleepFrameCount]
         : animation
             .frames[(round.time / .12).floor() % animation.frames.length];
     canvas.drawOval(

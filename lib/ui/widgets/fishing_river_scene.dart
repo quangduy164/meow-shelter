@@ -15,8 +15,7 @@ import 'fishing_water_art.dart';
 import 'fishing_volcano_art.dart';
 import '../../fishing/river_props.dart';
 import 'river_encounter_art.dart';
-import 'fishing_boat_art.dart';
-import '../../fishing/fishing_boat.dart';
+import 'fishing_boats.dart';
 
 /// Like Adventure's cached background: only the visible stretch is replayed.
 class FishingRiverBackdrop extends StatefulWidget {
@@ -392,6 +391,59 @@ void paintBasketBoatBack(Canvas c) {
         ..color = const Color(0xFFF6DDA6)
         ..strokeWidth = 1.4);
   _paintLashings(c, math.pi, 2 * math.pi);
+  _paintLantern(c);
+}
+
+/// Little paper lantern hanging from a bamboo pole at the stern.
+void _paintLantern(Canvas c) {
+  _boatStroke
+    ..color = const Color(0xFF6B4729)
+    ..strokeWidth = 4;
+  c.drawLine(const Offset(40, -18), const Offset(46, -74), _boatStroke);
+  _boatStroke
+    ..color = const Color(0xFFD9B26F)
+    ..strokeWidth = 2.4;
+  c.drawLine(const Offset(40, -18), const Offset(46, -74), _boatStroke);
+  for (final y in [-34.0, -52.0]) {
+    c.drawLine(
+        Offset(40.5 + (y + 18) / -56 * 6 - 2, y),
+        Offset(40.5 + (y + 18) / -56 * 6 + 2, y),
+        _boatStroke..color = const Color(0xFF8A6A3E));
+  }
+  // Arm and string out over the water.
+  _boatStroke
+    ..color = const Color(0xFF6B4729)
+    ..strokeWidth = 2.2;
+  c.drawLine(const Offset(45, -72), const Offset(60, -70), _boatStroke);
+  _boatStroke
+    ..color = const Color(0xFF3B2C21)
+    ..strokeWidth = 1.2;
+  c.drawLine(const Offset(59, -70), const Offset(59, -62), _boatStroke);
+  c.drawCircle(
+      const Offset(59, -52), 14, _boatFill..color = const Color(0x33FFC46B));
+  final body =
+      Rect.fromCenter(center: const Offset(59, -52), width: 14, height: 17);
+  c.drawOval(body, _boatFill..color = const Color(0xFFE2553F));
+  c.drawOval(body.deflate(3.5), _boatFill..color = const Color(0xFFFFB45C));
+  _boatStroke
+    ..color = const Color(0x66802A1E)
+    ..strokeWidth = 1;
+  c.drawLine(const Offset(59, -60), const Offset(59, -44), _boatStroke);
+  for (final y in [-61.0, -43.0]) {
+    c.drawRRect(
+        RRect.fromRectAndRadius(
+            Rect.fromCenter(center: Offset(59, y), width: 9, height: 3),
+            const Radius.circular(1)),
+        _boatFill..color = const Color(0xFF3B2C21));
+  }
+  _boatStroke
+    ..color = const Color(0xFFF2C14E)
+    ..strokeWidth = 1.4;
+  c.drawLine(const Offset(59, -42), const Offset(59, -36), _boatStroke);
+  _boatStroke
+    ..color = const Color(0xFF6B2A1E)
+    ..strokeWidth = 1.4;
+  c.drawOval(body, _boatStroke);
 }
 
 void paintBasketBoatFront(Canvas c) {
@@ -521,17 +573,9 @@ class FishingRiverBoatPainter extends CustomPainter {
                 ..strokeWidth = 2);
         }
       }
-      if (round.boatStyle == FishingBoat.paper) {
-        paintPaperBoatBack(canvas);
-      } else {
-        paintBasketBoatBack(canvas);
-      }
+      paintBoatBack(canvas, round.boatStyle);
     } else {
-      if (round.boatStyle == FishingBoat.paper) {
-        paintPaperBoatFront(canvas);
-      } else {
-        paintBasketBoatFront(canvas);
-      }
+      paintBoatFront(canvas, round.boatStyle);
       // The row sheet draws the paws where [FishingOarPose.hand] grips.
       if (rowing) paintFishingOar(canvas, oar);
     }

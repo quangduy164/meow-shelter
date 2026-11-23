@@ -10,7 +10,7 @@ import 'fishing_coast_art.dart';
 import 'fishing_river_details.dart';
 import 'fishing_mangrove_art.dart';
 import 'fishing_rocky_bay_art.dart';
-import 'fishing_boat_art.dart';
+import 'fishing_harbor_art.dart';
 import '../../fishing/fishing_boat.dart';
 
 /// Recorded once per stretch; seeds and world positions agree across seams.
@@ -259,6 +259,7 @@ void _paintLandscape(Canvas canvas, double left, double right) {
   for (final x in [FishingRiver.startDockX, 1130.0, 2110.0, 3340.0]) {
     if (x < from || x > to) continue;
     _dock(canvas, Offset(x, FishingRiver.bottom(x) - 15));
+    if (x == FishingRiver.startDockX) paintHarbourPier(canvas);
   }
   if (FishingBoatHouse.bounds.left < to &&
       FishingBoatHouse.bounds.right > from) {

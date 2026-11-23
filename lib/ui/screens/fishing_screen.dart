@@ -35,7 +35,7 @@ import '../widgets/round_button.dart';
 import '../../collection/fish_collection.dart';
 import '../../fishing/fishing_boat.dart';
 import '../../fishing/fishing_lighting.dart';
-import '../widgets/fishing_boat_art.dart';
+import '../widgets/fishing_boats.dart';
 
 class FishingScreen extends StatefulWidget {
   const FishingScreen({super.key});
@@ -131,6 +131,8 @@ class _FishingScreenState extends State<FishingScreen>
     if (previous == null || _paused || _collectionOpen) return;
     final dt = math.min((timestamp - previous).inMicroseconds / 1000000, .05);
     _controller.update(dt);
+    // The boat picker only opens once the cat has reached the boathouse.
+    if (_controller.takeBoatHouseArrival()) _openBoatPicker();
     _updateHud(dt);
     _frames.value++;
     _hud.value = _hudState;
@@ -224,14 +226,6 @@ class _FishingScreenState extends State<FishingScreen>
       _lastTick = null;
     }
   }
-
-  /// The boathouse opens from the boat or from the near bank, never mid-cast.
-  bool _tapsBoatHouse(Offset screen) =>
-      !_collectionOpen &&
-      !_controller.active &&
-      !_river.island.lookout &&
-      (!_river.island.ashore || _river.island.onBank) &&
-      FishingBoatHouse.hit(_river.toWorld(screen));
 
   Future<void> _openBoatPicker() async {
     setState(() => _collectionOpen = true);
@@ -605,10 +599,6 @@ class _FishingScreenState extends State<FishingScreen>
                       child: GestureDetector(
                         behavior: HitTestBehavior.opaque,
                         onTapUp: (event) {
-                          if (_tapsBoatHouse(event.localPosition)) {
-                            _openBoatPicker();
-                            return;
-                          }
                           if (!_collectionOpen) {
                             _controller.setWorldHour(
                                 FishingLighting.gameHour(DateTime.now()));
@@ -792,7 +782,7 @@ class _BoatChoice extends StatelessWidget {
             padding: const EdgeInsets.all(DS.spaceSm),
             child: Column(mainAxisSize: MainAxisSize.min, children: [
               SizedBox(
-                  height: 90,
+                  height: 54,
                   child: CustomPaint(
                       size: Size.infinite, painter: _BoatPreview(boat))),
               const SizedBox(height: DS.spaceXs),
@@ -818,16 +808,12 @@ class _BoatPreview extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    canvas.translate(size.width / 2, size.height * .62);
-    canvas.scale(math.min(1, size.width / 150));
-    switch (boat) {
-      case FishingBoat.basket:
-        paintBasketBoatBack(canvas);
-        paintBasketBoatFront(canvas);
-      case FishingBoat.paper:
-        paintPaperBoatBack(canvas);
-        paintPaperBoatFront(canvas);
-    }
+    // Scaled to fit the card height (the tallest boat reaches y = -84).
+    final s = math.min(size.height / 112, size.width / 150);
+    canvas.translate(size.width / 2, size.height * .74);
+    canvas.scale(s);
+    paintBoatBack(canvas, boat);
+    paintBoatFront(canvas, boat);
   }
 
   @override

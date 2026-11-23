@@ -3,6 +3,7 @@ import 'fishing_activity.dart';
 import 'fishing_river.dart';
 import 'fishing_island.dart';
 import 'fishing_cabin.dart';
+import 'fishing_boat.dart';
 import '../camp/camp_state.dart';
 import '../audio/game_audio.dart';
 import 'dart:math' as math;
@@ -33,6 +34,19 @@ class FishingController extends ChangeNotifier {
   final river = FishingRiverRound();
   final activities = FishingActivities();
   bool _activeWater = false, _shoreCastPending = false;
+
+  /// Heading to the boathouse; the picker opens on arrival (see
+  /// [takeBoatHouseArrival]).
+  bool _boatHouseRequested = false, _boatHouseArrived = false;
+  bool get boatHouseRequested => _boatHouseRequested;
+
+  /// True once after the cat reaches the boathouse.
+  bool takeBoatHouseArrival() {
+    final arrived = _boatHouseArrived;
+    _boatHouseArrived = false;
+    return arrived;
+  }
+
   Offset get angler => river.island.ashore ? river.island.cat : river.boat;
   bool get shoreFishing => river.island.ashore;
   bool get showFishingArt =>
@@ -56,6 +70,11 @@ class FishingController extends ChangeNotifier {
       return 'Bấm thuyền lớn để vào khoang nghỉ';
     }
     if (island.lookout) return 'Ngắm toàn vùng biển · Bấm để leo xuống';
+    if (_boatHouseRequested) {
+      return island.ashore
+          ? 'Mèo đang tới nhà thuyền…'
+          : 'Đang chèo về bến nhà thuyền…';
+    }
     if (island.lookoutRequested) return 'Mèo đang tới hải đăng…';
     if (island.caveRequested) return 'Mèo đang tới cửa hang trong núi…';
     if (_shoreCastPending) return 'Mèo đang ra mép nước để câu…';
@@ -94,8 +113,13 @@ class FishingController extends ChangeNotifier {
     river.cabin.pending = false;
     final island = river.island;
     _shoreCastPending = false;
+    _boatHouseRequested = false;
     if (island.lookout) {
       island.climbDown();
+      notifyListeners();
+      return;
+    }
+    if (FishingBoatHouse.hit(point) && _goToBoatHouse()) {
       notifyListeners();
       return;
     }
@@ -144,6 +168,38 @@ class FishingController extends ChangeNotifier {
     island.dockRequested = docking || bank;
     river.sailTo(island.dockRequested ? island.visitMooring : point);
     notifyListeners();
+  }
+
+  /// Walks along the near bank or rows back to the starting pier; boats can
+  /// only be switched there. False when the boathouse cannot be reached from
+  /// here (island or far bank), so the tap is handled as usual.
+  bool _goToBoatHouse() {
+    final island = river.island;
+    if (island.ashore && island.northBank != false) return false;
+    if (active) cancelCast();
+    if (_phase == FishingPhase.lost) {
+      _error = null;
+      _setPhase(FishingPhase.ready);
+    }
+    _boatHouseRequested = true;
+    if (island.ashore) {
+      island.walkTo(FishingBoatHouse.door);
+    } else {
+      river.sailTo(FishingRiver.startBoat);
+    }
+    return true;
+  }
+
+  void _updateBoatHouse() {
+    if (!_boatHouseRequested) return;
+    final island = river.island;
+    final busy = island.ashore ? island.walking : river.moving;
+    if (busy) return;
+    _boatHouseRequested = false;
+    final arrived = island.ashore
+        ? FishingBoatHouse.near(island.cat)
+        : (river.boat - FishingRiver.startBoat).distance < 30;
+    if (arrived) _boatHouseArrived = true;
   }
 
   void steerBoat(Offset delta) {
@@ -384,6 +440,7 @@ class FishingController extends ChangeNotifier {
       river.cabin.enter();
       stopSteering();
     }
+    _updateBoatHouse();
     if (_shoreCastPending &&
         river.island.phase == IslandVisitPhase.exploring &&
         !river.island.walking) {

@@ -49,5 +49,10 @@ Future<Map<CatState, SpriteAnimation>> loadCatAnimations(
       framesVanish,
       stepTime: vanishStepTime,
     ),
+    CatState.sleep: await loadAnimation(
+      'cat-$catType-sleep.png',
+      framesSleep,
+      stepTime: sleepStepTime,
+    ),
   };
 }

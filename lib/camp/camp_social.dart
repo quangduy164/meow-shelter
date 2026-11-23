@@ -71,7 +71,7 @@ class CampSocial {
 
   // ---- for every cat ----
 
-  /// Two nearby cats meet, face each other and hop happily.
+  /// Two nearby cats meet, face each other and rub noses.
   bool _greet(List<CampResident> cats) {
     for (final a in cats) {
       if (!a.free) continue;
@@ -79,12 +79,13 @@ class CampSocial {
           .where((b) => b != a && b.free && !b.moving && _dist(a, b) < .35));
       if (b == null) continue;
       b.react(CampAct.idle, time: 6, faceX: a.x);
-      a.approach(_besideX(a, b, .08), b.y, onArrive: () {
+      b.prepare = CampAct.nuzzle;
+      // Close enough that the two noses meet when both lean in.
+      a.approach(_besideX(a, b, .065), b.y, arrive: CampAct.nuzzle,
+          onArrive: () {
         if (b.held) return;
-        a.react(CampAct.celebrate,
-            time: CampAct.celebrate.length * 2, faceX: b.x);
-        b.react(CampAct.celebrate,
-            time: CampAct.celebrate.length * 2, faceX: a.x);
+        a.react(CampAct.nuzzle, time: CampAct.nuzzle.length * 2, faceX: b.x);
+        b.react(CampAct.nuzzle, time: CampAct.nuzzle.length * 2, faceX: a.x);
         a.heart = b.heart = 1.4;
         _sound(GameSound.campWelcome);
       });

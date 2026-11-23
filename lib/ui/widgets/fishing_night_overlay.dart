@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 import 'package:material_ui/material_ui.dart';
+import '../../fishing/fishing_boat.dart';
 import '../../fishing/fishing_cabin.dart';
 import '../../fishing/fishing_island.dart';
 import '../../fishing/fishing_lighting.dart';
@@ -111,6 +112,20 @@ class FishingNightOverlay extends CustomPainter {
       lamp(p, 75 * s, const Color(0xFFFFC870), .45);
       lamp(p + Offset(0, 48 * s), 60 * s, const Color(0xFFFFC870), .2);
     }
+    // Basket boat's stern lantern (see paintBasketBoatBack), bobbing along.
+    if (round.boatStyle == FishingBoat.basket) {
+      final p =
+          round.boat + Offset(59, -52 + math.sin(round.clock * 2.5) * 1.8);
+      lamp(p, 26, const Color(0xFFFFB45C), .9);
+      lamp(p + const Offset(0, 40), 70, const Color(0xFFFFC46B), .35);
+    }
+    // Harbour: boathouse lantern, beacon tower and pier lamp.
+    final house = FishingBoatHouse.base;
+    lamp(house + const Offset(18, -60), 45, const Color(0xFFFFD27A), .7);
+    lamp(house + const Offset(73, -132), 80, const Color(0xFFFFE6A0), .8);
+    const pierX = FishingRiver.startDockX;
+    lamp(Offset(pierX + 50, FishingRiver.bottom(pierX) - 7), 55,
+        const Color(0xFFFFD27A), .7);
     // A warm lantern around the cat so the player is never lost in the dark.
     lamp(round.cameraFocus + const Offset(0, -20), 130, const Color(0xFFFFD79A),
         .3);

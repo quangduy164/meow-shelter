@@ -53,3 +53,4 @@ const int framesVanish = 6;
 // Tốc độ animation (step time giữa mỗi frame)
 const double animationStepTime = 0.12;
 const double vanishStepTime = 0.22;
+const double sleepStepTime = 0.32;

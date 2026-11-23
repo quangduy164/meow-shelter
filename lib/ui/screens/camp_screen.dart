@@ -65,11 +65,24 @@ class _CampScreenState extends State<CampScreen>
   /// only when decorations are bought or moved, not every frame.
   var _toys = <(String, double, double)>[];
 
-  /// Decoded sprite sheets by asset path, downscaled to the on-screen size
-  /// so they stay small in memory and never re-decode mid-walk.
+  /// Decoded sprite sheets by asset path, downscaled to the on-screen size.
+  /// Only [_coreSheets] stay loaded; the rest are decoded when a cat starts
+  /// (or is about to start) that action and freed after [_evictAfter] unused.
   final _sprites = <String, ui.Image>{};
   final _requested = <String>{};
   final _missing = <String>{};
+  final _lastUsed = <String, double>{};
+  double _now = 0, _nextSweep = 0;
+
+  /// Sheets every resident keeps: what it does most of the time, and what
+  /// must show the instant the player picks it up.
+  static final _coreSheets = [
+    CampAct.idle.sheet,
+    CampAct.walk.sheet,
+    campSleepSheet,
+    CampAct.held.sheet,
+  ];
+  static const _evictAfter = 20.0;
   final _labels = _CatLabels();
 
   /// Adds a resident for every owned breed that is not in the room yet
@@ -94,7 +107,7 @@ class _CampScreenState extends State<CampScreen>
   /// Sheets waiting to be decoded, one at a time so opening the camp never
   /// decodes dozens of images in the same frames as the screen change.
   final _queue = <String>[];
-  bool _loading = false;
+  bool _loading = false, _transitionWaited = false;
 
   /// Paw loader over the room until every cat's idle sheet is decoded.
   bool _ready = false;
@@ -105,18 +118,15 @@ class _CampScreenState extends State<CampScreen>
     setState(() => _ready = true);
   }
 
-  /// Idle sheets first so every cat shows up quickly; the other actions wait
-  /// until the screen change has finished. Until a sheet is ready the cat
-  /// holds its idle pose.
+  /// Idle sheets first so every cat shows up quickly; the other core sheets
+  /// wait until the screen change has finished. Until a sheet is ready the
+  /// cat holds its idle pose.
   void _loadSprites() {
     for (final cat in _cats) {
       final idle = CatBreed.of(cat.type).sheet(CampAct.idle.sheet);
       if (!_queue.contains(idle)) _queue.insert(0, idle);
     }
-    for (final sheet in [
-      ...CampAct.values.where((a) => a != CampAct.idle).map((a) => a.sheet),
-      campSleepSheet,
-    ]) {
+    for (final sheet in _coreSheets.skip(1)) {
       for (final cat in _cats) {
         final path = CatBreed.of(cat.type).sheet(sheet);
         if (!_queue.contains(path)) _queue.add(path);
@@ -125,16 +135,53 @@ class _CampScreenState extends State<CampScreen>
     _pumpSprites();
   }
 
+  /// Marks the sheets cats are using (or about to use) and decodes any that
+  /// are not loaded yet, ahead of the core queue.
+  void _requestUsedSheets() {
+    for (final cat in _cats) {
+      final breed = CatBreed.of(cat.type);
+      for (final sheet in [
+        cat.sleeping ? campSleepSheet : cat.act.sheet,
+        if (cat.upcoming != null) cat.upcoming!.sheet,
+      ]) {
+        final path = breed.sheet(sheet);
+        _lastUsed[path] = _now;
+        if (_requested.contains(path) || _queue.contains(path)) continue;
+        _queue.insert(0, path);
+      }
+    }
+    if (_queue.isNotEmpty) _pumpSprites();
+  }
+
+  /// Frees action sheets nobody has used for a while; core sheets stay.
+  void _evictUnused() {
+    final core = {
+      for (final cat in _cats)
+        for (final sheet in _coreSheets) CatBreed.of(cat.type).sheet(sheet)
+    };
+    final stale = [
+      for (final path in _sprites.keys)
+        if (!core.contains(path) && _now - (_lastUsed[path] ?? 0) > _evictAfter)
+          path
+    ];
+    for (final path in stale) {
+      _sprites.remove(path)?.dispose();
+      _requested.remove(path);
+      _lastUsed.remove(path);
+    }
+  }
+
   Future<void> _pumpSprites() async {
     if (_loading) return;
     _loading = true;
-    var waited = false;
     while (_queue.isNotEmpty && mounted) {
       final path = _queue.removeAt(0);
       final idle = path.endsWith('-${CampAct.idle.sheet}.png');
       if (!idle) _markReady();
-      if (!idle && !waited) {
-        waited = true;
+      // Only the very first non-idle sheet waits for the screen change;
+      // sheets requested later during play decode straight away.
+      if (!idle && !_transitionWaited) {
+        _transitionWaited = true;
         await Future<void>.delayed(DS.pageTransitionDuration);
         if (!mounted) break;
       }
@@ -177,8 +224,14 @@ class _CampScreenState extends State<CampScreen>
     _tick = createTicker((elapsed) {
       final dt = ((elapsed - _last).inMicroseconds / 1e6).clamp(0.0, .1);
       _last = elapsed;
+      _now += dt;
       for (final cat in _cats) {
         cat.update(dt, _random, _toys);
+      }
+      _requestUsedSheets();
+      if (_now >= _nextSweep) {
+        _nextSweep = _now + 5;
+        _evictUnused();
       }
       _social.update(dt, _cats);
       // Back to front, so lower cats are drawn over (and hit before) higher.

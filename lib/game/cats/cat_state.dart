@@ -10,4 +10,7 @@ enum CatState {
   celebrate,
   dropWrong,
   vanish,
+
+  /// Curled up asleep (a full orange cat napping in its catch window).
+  sleep,
 }

@@ -68,10 +68,32 @@ class _FishingCaveRunState extends State<FishingCaveRun> {
                               fontWeight: FontWeight.w900,
                               fontSize: DS.fontTitle)),
                       const SizedBox(height: DS.spaceSm),
+                      Row(mainAxisSize: MainAxisSize.min, children: [
+                        for (var i = 0; i < 3; i++)
+                          Icon(
+                              i < cave.stars
+                                  ? Icons.star_rounded
+                                  : Icons.star_outline_rounded,
+                              color: DS.star,
+                              size: 44),
+                      ]),
                       Text(
                           'Cá vàng ${cave.collected.length}/${FishingCave.tokens.length} · '
                           '${cave.runTime.toStringAsFixed(1)} giây · ngã ${cave.falls} lần',
                           style: const TextStyle(color: DS.ink)),
+                      if (cave.best case final best?)
+                        Text(
+                            cave.newBest
+                                ? 'Kỷ lục mới!'
+                                : 'Kỷ lục: ${best.stars} sao · ${best.time.toStringAsFixed(1)} giây',
+                            style: TextStyle(
+                                color: cave.newBest ? DS.wood : DS.ink,
+                                fontWeight: cave.newBest
+                                    ? FontWeight.w900
+                                    : FontWeight.normal)),
+                      if (cave.stars < 3)
+                        const Text('3 sao: gom 22 cá vàng, ngã tối đa 1 lần',
+                            style: TextStyle(color: DS.ink, fontSize: 12)),
                       const SizedBox(height: DS.spaceSm),
                       if (fish != null) ...[
                         Wrap(alignment: WrapAlignment.center, children: [
@@ -81,8 +103,11 @@ class _FishingCaveRunState extends State<FishingCaveRun> {
                                 height: 46,
                                 child: CustomPaint(painter: FishingFishArt(f))),
                         ]),
-                        const Text('Rương cuối hang tặng cá vào giỏ!',
-                            style: TextStyle(color: DS.ink)),
+                        Text(
+                            cave.stars >= 3
+                                ? 'Rương tặng ${fish.length} cá, có cá đèn lồng!'
+                                : 'Rương tặng ${fish.length} cá · 3 sao có cá đèn lồng',
+                            style: const TextStyle(color: DS.ink)),
                       ] else if (!_claiming)
                         const Text(
                             'Hôm nay đã nhận quà rương rồi, mai quay lại nhé!',
@@ -179,7 +204,9 @@ class _FishingCaveRunState extends State<FishingCaveRun> {
                                 color: const Color(0xB31E2A30),
                                 borderRadius: BorderRadius.circular(16)),
                             child: Text(
-                                'Cá vàng ${cave.collected.length}/${FishingCave.tokens.length}',
+                                '${FishingCave.sectionNames[cave.section]} '
+                                '${cave.section + 1}/${FishingCave.sectionNames.length}'
+                                '  ·  Cá vàng ${cave.collected.length}/${FishingCave.tokens.length}',
                                 style: const TextStyle(
                                     color: Color(0xFFFFE08A),
                                     fontWeight: FontWeight.w900))))),
@@ -188,7 +215,8 @@ class _FishingCaveRunState extends State<FishingCaveRun> {
                       child: IgnorePointer(
                           child: Center(
                               child: Text(
-                                  'CHẠM ĐỂ CHẠY\nChạm để nhảy · chạm lần nữa trên không để nhảy đôi',
+                                  'CHẠM ĐỂ CHẠY\nChạm để nhảy · chạm lần nữa trên không để nhảy đôi\n'
+                                  'Né thạch nhũ, dơi, gờ đá sập · gom cá vàng để được 3 sao',
                                   textAlign: TextAlign.center,
                                   style: TextStyle(
                                       color: Colors.white,
@@ -251,6 +279,89 @@ class _CavePainter extends CustomPainter {
     c.translate(-camera, 0);
     c.drawPicture(level);
     final t = cave.clock;
+    final viewLeft = camera - 120,
+        viewRight = camera + size.width / scale + 120;
+    // Crumbling ledges shake once stood on, then are gone.
+    for (var i = 0; i < FishingCave.ledges.length; i++) {
+      final l = FishingCave.ledges[i];
+      if (!l.crumble || cave.ledgeGone(i)) continue;
+      if (l.right < viewLeft || l.left > viewRight) continue;
+      final stood = cave.crumbleTime[i];
+      c.save();
+      if (stood != null) {
+        final k = stood / FishingCave.crumbleDelay;
+        c.translate(math.sin(t * 60) * 2.5 * k, k * k * 6);
+      }
+      _paintLedge(c, l);
+      c.restore();
+    }
+    // Stalactites hang from the ceiling, drop, then lie shattered.
+    for (var i = 0; i < FishingCave.stalactites.length; i++) {
+      final x = FishingCave.stalactites[i];
+      if (x < viewLeft || x > viewRight) continue;
+      final tip = cave.stalactiteY[i];
+      if (tip != null && tip >= FishingCave.floor) {
+        for (var k = -1; k <= 1; k++) {
+          final bx = x + k * FishingCave.shardHalf * .7;
+          final tall = k == 0 ? 20.0 : 13.0;
+          final shard = Path()
+            ..moveTo(bx - 8, FishingCave.floor)
+            ..lineTo(bx + k * 3, FishingCave.floor - tall)
+            ..lineTo(bx + 8, FishingCave.floor)
+            ..close();
+          c.drawPath(shard, fillPaint(0xFF9A8CA8));
+          c.drawPath(shard, strokePaint(0xFF2A2430, 1.8));
+        }
+        continue;
+      }
+      final y = tip ?? FishingCave.stalactiteTop;
+      // A hanging one trembles a bit so it reads as loose.
+      final shake = tip == null ? math.sin(t * 30 + i) * 1.2 : 0.0;
+      final rock = Path()
+        ..moveTo(x - 16 + shake, y - 74)
+        ..lineTo(x + 16 + shake, y - 74)
+        ..lineTo(x + 9 + shake, y - 30)
+        ..lineTo(x + shake, y)
+        ..lineTo(x - 9 + shake, y - 30)
+        ..close();
+      c.drawPath(rock, fillPaint(0xFF8E80A0));
+      c.drawPath(rock, strokePaint(0xFF1E1A24, 2.4));
+      c.drawLine(Offset(x - 5 + shake, y - 66), Offset(x - 2 + shake, y - 18),
+          strokePaint(0x88FFFFFF, 2));
+    }
+    // Bats flap in place.
+    for (var i = 0; i < FishingCave.bats.length; i++) {
+      final p = cave.batAt(i);
+      if (p.dx < viewLeft || p.dx > viewRight) continue;
+      final flap = math.sin(t * 18 + i * 2);
+      c.save();
+      c.translate(p.dx, p.dy);
+      for (final side in const [-1.0, 1.0]) {
+        c.drawPath(
+            Path()
+              ..moveTo(side * 6, -2)
+              ..quadraticBezierTo(
+                  side * 22, -16 * flap - 6, side * 34, -14 * flap)
+              ..lineTo(side * 26, 2 - 4 * flap)
+              ..lineTo(side * 18, -2 - 6 * flap)
+              ..lineTo(side * 10, 6)
+              ..close(),
+            fillPaint(0xFF3B2B4A));
+      }
+      c.drawOval(const Rect.fromLTWH(-10, -10, 20, 20), fillPaint(0xFF4A3860));
+      c.drawPath(
+          Path()
+            ..moveTo(-8, -8)
+            ..lineTo(-6, -16)
+            ..lineTo(-2, -9)
+            ..moveTo(8, -8)
+            ..lineTo(6, -16)
+            ..lineTo(2, -9),
+          fillPaint(0xFF4A3860));
+      c.drawCircle(const Offset(-4, -2), 2.2, fillPaint(0xFFFF6B5A));
+      c.drawCircle(const Offset(4, -2), 2.2, fillPaint(0xFFFF6B5A));
+      c.restore();
+    }
     // Torches at checkpoints flicker; reached ones burn bright.
     for (var i = 1; i < FishingCave.checkpoints.length; i++) {
       final p = Offset(FishingCave.checkpoints[i] + 10, FishingCave.floor - 62);
@@ -341,7 +452,6 @@ void _paintBackWall(Canvas c) {
 }
 
 void _paintLevel(Canvas c) {
-  const h = FishingCave.height;
   // Ceiling with stalactites.
   final ceiling = Path()..moveTo(0, 0);
   for (var x = 0.0; x <= FishingCave.length; x += 30) {
@@ -355,8 +465,46 @@ void _paintLevel(Canvas c) {
     ..close();
   c.drawPath(ceiling, fillPaint(0xFF2C2530));
   c.drawPath(ceiling, strokePaint(0xFF15111A, 2.5));
-  // Ledges: chunky outlined rock with mossy tops and a lit edge.
   for (final l in FishingCave.ledges) {
+    if (!l.crumble) _paintLedge(c, l);
+  }
+  // Low ceilings: heavy slabs hanging down to the head-bump line.
+  for (final ceil in FishingCave.ceilings) {
+    final slab = RRect.fromRectAndCorners(
+        Rect.fromLTRB(ceil.left, 0, ceil.right, ceil.bottom),
+        bottomLeft: const Radius.circular(22),
+        bottomRight: const Radius.circular(22));
+    c.drawRRect(slab, fillPaint(0xFF3A3140));
+    c.save();
+    c.clipRRect(slab);
+    for (var y = 30.0; y < ceil.bottom; y += 34) {
+      c.drawLine(Offset(ceil.left, y), Offset(ceil.right, y - 6),
+          strokePaint(0x33000000, 2));
+    }
+    c.drawRect(
+        Rect.fromLTRB(ceil.left, ceil.bottom - 10, ceil.right, ceil.bottom),
+        fillPaint(0xFF54485E));
+    c.restore();
+    c.drawRRect(slab, strokePaint(0xFF15111A, 3));
+    // Little drips under the slab warn the cat to keep low.
+    for (var x = ceil.left + 24; x < ceil.right - 10; x += 38) {
+      c.drawPath(
+          Path()
+            ..moveTo(x - 7, ceil.bottom - 2)
+            ..lineTo(x, ceil.bottom + 12)
+            ..lineTo(x + 7, ceil.bottom - 2)
+            ..close(),
+          fillPaint(0xFF3A3140));
+    }
+  }
+  _paintLevelRest(c);
+}
+
+/// Chunky outlined rock ledge with a mossy top; crumbling ones are paler
+/// and cracked.
+void _paintLedge(Canvas c, CaveLedge l) {
+  const h = FishingCave.height;
+  {
     final bottom = l.ground ? h : l.top + 46;
     final body = RRect.fromRectAndCorners(
         Rect.fromLTRB(l.left, l.top, l.right, bottom),
@@ -364,7 +512,7 @@ void _paintLevel(Canvas c) {
         topRight: const Radius.circular(10),
         bottomLeft: Radius.circular(l.ground ? 0 : 18),
         bottomRight: Radius.circular(l.ground ? 0 : 18));
-    c.drawRRect(body, fillPaint(0xFF5E5466));
+    c.drawRRect(body, fillPaint(l.crumble ? 0xFF7A6A62 : 0xFF5E5466));
     c.save();
     c.clipRRect(body);
     for (var y = l.top + 18; y < bottom; y += 22) {
@@ -372,15 +520,32 @@ void _paintLevel(Canvas c) {
           strokePaint(0x332A2430, 2));
     }
     c.drawRect(Rect.fromLTRB(l.left, l.top, l.right, l.top + 8),
-        fillPaint(0xFF8C7FA0));
+        fillPaint(l.crumble ? 0xFFA8957F : 0xFF8C7FA0));
+    if (l.crumble) {
+      final m = (l.left + l.right) / 2;
+      c.drawPath(
+          Path()
+            ..moveTo(m - 8, l.top)
+            ..lineTo(m + 4, l.top + 14)
+            ..lineTo(m - 6, l.top + 26)
+            ..lineTo(m + 6, bottom),
+          strokePaint(0xFF2A2024, 2.4));
+      c.drawLine(Offset(l.left + 14, l.top + 4),
+          Offset(l.left + 24, l.top + 20), strokePaint(0xFF2A2024, 1.8));
+    }
     c.restore();
     c.drawRRect(body, strokePaint(0xFF1E1A24, 3));
+    if (l.crumble) return;
     for (var x = l.left + 10; x < l.right - 10; x += 26) {
       c.drawOval(
           Rect.fromCenter(center: Offset(x, l.top + 1), width: 20, height: 7),
           fillPaint(artNoise(x.toInt(), 9) < .5 ? 0xFF6F9A5A : 0xFF5E8A4E));
     }
   }
+}
+
+void _paintLevelRest(Canvas c) {
+  const h = FishingCave.height;
   // Pits glow faintly from below.
   for (var i = 0; i + 1 < FishingCave.ledges.length; i++) {
     final a = FishingCave.ledges[i];
@@ -422,7 +587,13 @@ void _paintLevel(Canvas c) {
         Offset(x + 10, FishingCave.floor - 56), strokePaint(0xFF6B4A2C, 5));
   }
   // Boulders and a big treasure chest at the end.
-  for (final (x, r) in const [(150.0, 20.0), (1300.0, 16.0), (2700.0, 22.0)]) {
+  for (final (x, r) in const [
+    (150.0, 20.0),
+    (1300.0, 16.0),
+    (2650.0, 22.0),
+    (4200.0, 18.0),
+    (6640.0, 20.0)
+  ]) {
     paintBoulder(c, Offset(x, FishingCave.floor + 2), r, x.toInt(),
         inWater: false);
   }

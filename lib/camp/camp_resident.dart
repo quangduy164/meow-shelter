@@ -13,7 +13,8 @@ enum CampAct {
   vanish('vanish', 6, 6),
   held('dragged', 4, 7),
   land('drop-success', 5, 9),
-  sulk('drop-wrong', 5, 7);
+  sulk('drop-wrong', 5, 7),
+  nuzzle('nuzzle', 5, 6);
 
   const CampAct(this.sheet, this.frames, this.fps);
   final String sheet;
@@ -87,6 +88,14 @@ class CampResident {
   int get frame => sleeping
       ? campSleepFrames[type] ?? 0
       : (_anim * act.fps).floor() % act.frames;
+
+  /// The action this cat will play when it reaches where it is walking, so
+  /// its sheet can be decoded before it arrives.
+  CampAct? get upcoming => _tx != null ? _arrive : prepare;
+
+  /// Set while this cat waits for another to come and play [prepare] with
+  /// it (a greeting), so that sheet is ready too. Cleared by [react].
+  CampAct? prepare;
 
   /// Seconds into the current action; drives breathing and the "z"s.
   double get clock => _anim;
@@ -223,6 +232,7 @@ class CampResident {
 
   /// Stops and plays [a] once (or for [time]), optionally facing [faceX].
   void react(CampAct a, {double? time, double? faceX}) {
+    prepare = null;
     _tx = _ty = null;
     _onArrive = null;
     atToy = null;
@@ -231,12 +241,14 @@ class CampResident {
   }
 
   /// Walks (or runs) to a spot and calls [onArrive] there.
+  /// [arrive] is what the cat will do there, so its sheet loads on the way.
   void approach(double tx, double ty,
       {CampAct how = CampAct.walk,
+      CampAct arrive = CampAct.idle,
       double speed = .07,
       String? toy,
       void Function()? onArrive}) {
-    _arrive = CampAct.idle;
+    _arrive = arrive;
     _arriveTime = 1.5;
     _arriveSleep = false;
     _goTo(tx, ty, how, speed);

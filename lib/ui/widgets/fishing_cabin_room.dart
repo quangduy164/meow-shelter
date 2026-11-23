@@ -250,12 +250,11 @@ class _FishingCabinRoomState extends State<FishingCabinRoom> {
                               fontSize: DS.fontTitle)))),
               Positioned(
                   bottom: MediaQuery.paddingOf(context).bottom + 10,
-                  right: 16,
-                  child: ElevatedButton.icon(
-                      onPressed: widget.onExit,
-                      icon: const GameGlyphView(GameGlyph.back, size: 20),
-                      label: const Text('RA NGOÀI'),
-                      style: DS.primary)),
+                  right: MediaQuery.paddingOf(context).right + 16,
+                  child: FishingActionButton(
+                      tool: FishingTool.boat,
+                      tooltip: 'Ra ngoài thuyền',
+                      onPressed: widget.onExit)),
               if (_showChest) _chestPopup(),
             ]));
       }));

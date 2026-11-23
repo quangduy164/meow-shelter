@@ -1,7 +1,5 @@
 import 'package:flutter/painting.dart';
 
-import '../../fishing/fishing_boat.dart';
-
 // Origami paper boat, origin = boat point. The sail and the hull opening go
 // under the cat; the folded hull face goes over it, so the cat sits inside.
 // Notebook paper (faint blue lines, red margin) keeps it readable next to
@@ -149,104 +147,5 @@ void _ruled(Canvas c, Path shape, double top, double bottom) {
   for (var y = top + 6; y < bottom; y += 7) {
     c.drawLine(Offset(-70, y), Offset(70, y), _line);
   }
-  c.restore();
-}
-
-/// Village boathouse, recorded into the cached landscape.
-void paintBoatHouse(Canvas c) {
-  final b = FishingBoatHouse.base;
-  c.save();
-  c.translate(b.dx, b.dy);
-  // Ground shadow and a short plank ramp down toward the path.
-  c.drawOval(const Rect.fromLTWH(-82, -6, 164, 22),
-      _fill..color = const Color(0x334E5037));
-  c.drawPath(
-      Path()
-        ..moveTo(-26, 0)
-        ..lineTo(26, 0)
-        ..lineTo(32, 12)
-        ..lineTo(-32, 12)
-        ..close(),
-      _fill..color = const Color(0xFFB08A5A));
-  // Plank walls with a darker side.
-  c.drawRect(const Rect.fromLTWH(-64, -66, 128, 66),
-      _fill..color = const Color(0xFFC0915C));
-  c.drawRect(const Rect.fromLTWH(34, -66, 30, 66),
-      _fill..color = const Color(0xFFA27646));
-  _line
-    ..color = const Color(0x55704B28)
-    ..strokeWidth = 1.4;
-  for (var x = -56.0; x < 64; x += 12) {
-    c.drawLine(Offset(x, -64), Offset(x, -2), _line);
-  }
-  // Wide open doorway with both boats waiting inside.
-  c.drawRRect(
-      RRect.fromRectAndCorners(const Rect.fromLTWH(-40, -50, 64, 50),
-          topLeft: const Radius.circular(6),
-          topRight: const Radius.circular(6)),
-      _fill..color = const Color(0xFF4A3727));
-  c.save();
-  c.translate(-22, -12);
-  c.scale(.22);
-  paintPaperBoatBack(c);
-  paintPaperBoatFront(c);
-  c.restore();
-  c.drawOval(const Rect.fromLTWH(-4, -16, 26, 10),
-      _fill..color = const Color(0xFF3B2C21));
-  c.drawOval(const Rect.fromLTWH(-4, -20, 26, 9),
-      _fill..color = const Color(0xFFD9B26F));
-  c.drawRRect(
-      RRect.fromRectAndCorners(const Rect.fromLTWH(-40, -50, 64, 50),
-          topLeft: const Radius.circular(6),
-          topRight: const Radius.circular(6)),
-      _line
-        ..color = const Color(0xFF6E4A2A)
-        ..strokeWidth = 3);
-  // Teal roof so the boathouse stands out from the brown cottages.
-  final roof = Path()
-    ..moveTo(-78, -62)
-    ..lineTo(-50, -104)
-    ..lineTo(46, -104)
-    ..lineTo(78, -62)
-    ..close();
-  c.drawPath(roof, _fill..color = const Color(0xFF4F8E93));
-  _line
-    ..color = const Color(0x5590D2CF)
-    ..strokeWidth = 2;
-  for (var y = -96.0; y < -64; y += 8) {
-    final t = (y + 104) / 42;
-    c.drawLine(Offset(-50 - 28 * t, y), Offset(46 + 32 * t, y), _line);
-  }
-  c.drawPath(
-      roof,
-      _line
-        ..color = const Color(0xFF2F5E63)
-        ..strokeWidth = 3);
-  // Sign over the door: a little boat on a wooden board.
-  c.drawRRect(
-      RRect.fromRectAndRadius(
-          const Rect.fromLTWH(-30, -80, 44, 22), const Radius.circular(4)),
-      _fill..color = const Color(0xFFF2DDAE));
-  c.drawRRect(
-      RRect.fromRectAndRadius(
-          const Rect.fromLTWH(-30, -80, 44, 22), const Radius.circular(4)),
-      _line
-        ..color = const Color(0xFF7A5533)
-        ..strokeWidth = 2);
-  c.drawPath(
-      Path()
-        ..moveTo(-20, -70)
-        ..lineTo(4, -70)
-        ..lineTo(-1, -63)
-        ..lineTo(-15, -63)
-        ..close(),
-      _fill..color = const Color(0xFF6E4A2A));
-  c.drawPath(
-      Path()
-        ..moveTo(-8, -77)
-        ..lineTo(-8, -71)
-        ..lineTo(-2, -71)
-        ..close(),
-      _fill);
   c.restore();
 }
