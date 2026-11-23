@@ -15,6 +15,8 @@ import 'fishing_water_art.dart';
 import 'fishing_volcano_art.dart';
 import '../../fishing/river_props.dart';
 import 'river_encounter_art.dart';
+import 'fishing_boat_art.dart';
+import '../../fishing/fishing_boat.dart';
 
 /// Like Adventure's cached background: only the visible stretch is replayed.
 class FishingRiverBackdrop extends StatefulWidget {
@@ -87,6 +89,14 @@ final _wetArea = Path.combine(
           const Rect.fromLTWH(0, 0, FishingRiver.length, FishingRiver.height)),
     _dryLand);
 
+final _faintFish = Paint()..color = const Color(0x44355E65);
+final _leafPaint = Paint()..color = const Color(0xCCB5C68A);
+final _faintTail = Path()
+  ..moveTo(-6, 0)
+  ..lineTo(-12, -4)
+  ..lineTo(-12, 4)
+  ..close();
+
 class FishingRiverSurface extends CustomPainter {
   FishingRiverSurface(this.round, Listenable frames, {this.fishing})
       : super(repaint: frames);
@@ -131,18 +141,16 @@ class FishingRiverSurface extends CustomPainter {
       final x = point.dx, y = point.dy;
       canvas.drawOval(
           Rect.fromCenter(center: Offset(x, y), width: 15, height: 5),
-          Paint()..color = const Color(0x44355E65));
-      canvas.drawPath(
-          Path()
-            ..moveTo(x - 6, y)
-            ..lineTo(x - 12, y - 4)
-            ..lineTo(x - 12, y + 4)
-            ..close(),
-          Paint()..color = const Color(0x44355E65));
+          _faintFish);
+      canvas
+        ..save()
+        ..translate(x, y)
+        ..drawPath(_faintTail, _faintFish)
+        ..restore();
       final leaf = Offset(x + 70, FishingRiver.center(x + 70) + 60);
       if (FishingRiver.coastBlend(x) < .8) {
-        canvas.drawOval(Rect.fromCenter(center: leaf, width: 7, height: 3),
-            Paint()..color = const Color(0xCCB5C68A));
+        canvas.drawOval(
+            Rect.fromCenter(center: leaf, width: 7, height: 3), _leafPaint);
       }
     }
     for (final rock in round.props.rocks) {
@@ -203,14 +211,171 @@ class FishingRiverSurface extends CustomPainter {
       oldDelegate.round != round;
 }
 
+// Thúng chai (round basket boat), origin = boat point. The back half and
+// woven floor go under the cat; the tarred front wall goes over it so the
+// cat sits inside the basket.
+const _rim = Rect.fromLTWH(-54, -26, 108, 32); // rim top, centre y = -10
+const _depth = 15.0;
+final _hullBottom = _rim.shift(const Offset(0, _depth)).deflate(3);
+final _boatFill = Paint();
+final _boatStroke = Paint()
+  ..style = PaintingStyle.stroke
+  ..strokeCap = StrokeCap.round;
+
+Path _frontWall() => Path()
+  ..addArc(_rim, 0, math.pi)
+  ..arcTo(_hullBottom, math.pi, -math.pi, false)
+  ..close();
+final _wall = _frontWall();
+
+void paintBasketBoatBack(Canvas c) {
+  // Shadow in the water and a bright waterline ring around the hull.
+  c.drawOval(const Rect.fromLTWH(-60, 4, 120, 30),
+      _boatFill..color = const Color(0x40345A5C));
+  c.drawOval(
+      const Rect.fromLTWH(-58, 2, 116, 26),
+      _boatStroke
+        ..color = const Color(0x88E9FFF7)
+        ..strokeWidth = 2);
+  // Back of the tarred hull, peeking out at the sides.
+  c.drawPath(
+      Path()
+        ..addOval(_rim)
+        ..addOval(_hullBottom),
+      _boatFill..color = const Color(0xFF3B2C21));
+  c.drawPath(_wall, _boatFill);
+  // Rim top and inside of the basket: darker far wall, lighter floor.
+  c.drawOval(_rim, _boatFill..color = const Color(0xFFE3C07F));
+  final inner = _rim.deflate(5);
+  c.drawOval(inner, _boatFill..color = const Color(0xFF9C7144));
+  c.drawOval(
+      Rect.fromCenter(
+          center: inner.center + const Offset(0, 4),
+          width: inner.width - 12,
+          height: inner.height - 6),
+      _boatFill..color = const Color(0xFFBE905A));
+  // Woven bamboo: diagonal weave squashed into the basket's perspective.
+  c.save();
+  c.clipPath(Path()..addOval(inner));
+  c.translate(0, inner.center.dy);
+  c.scale(1, inner.height / inner.width);
+  _boatStroke.strokeWidth = 2.2;
+  for (var i = -8; i <= 8; i++) {
+    final x = i * 8.0;
+    c.drawLine(Offset(x - 60, -60), Offset(x + 60, 60),
+        _boatStroke..color = const Color(0x40603F1F));
+    c.drawLine(Offset(x + 60, -60), Offset(x - 60, 60),
+        _boatStroke..color = const Color(0x2EFFE7B0));
+  }
+  c.restore();
+  // Inner wall shade under the far rim.
+  c.drawArc(
+      inner.deflate(1),
+      math.pi,
+      math.pi,
+      false,
+      _boatStroke
+        ..color = const Color(0x55402A15)
+        ..strokeWidth = 4);
+  // Rim outline, highlight and rope lashings on the far side.
+  c.drawOval(
+      _rim,
+      _boatStroke
+        ..color = const Color(0xFF6B4729)
+        ..strokeWidth = 2.5);
+  c.drawOval(
+      _rim.deflate(2.5),
+      _boatStroke
+        ..color = const Color(0xFFF6DDA6)
+        ..strokeWidth = 1.4);
+  _paintLashings(c, math.pi, 2 * math.pi);
+}
+
+void paintBasketBoatFront(Canvas c) {
+  // Tarred front wall with a soft top-to-bottom shade.
+  c.drawPath(
+      _wall,
+      _boatFill
+        ..shader = const LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [Color(0xFF55402E), Color(0xFF2E231B)],
+        ).createShader(Rect.fromLTRB(-54, -10, 54, _hullBottom.bottom)));
+  _boatFill.shader = null;
+  // Faint woven ribs showing through the tar.
+  c.save();
+  c.clipPath(_wall);
+  _boatStroke
+    ..color = const Color(0x1FFFE2B0)
+    ..strokeWidth = 1.2;
+  for (var i = 1; i < 12; i++) {
+    final t = i * math.pi / 12;
+    final top = Offset(math.cos(t) * 54, -10 + math.sin(t) * 16);
+    final bottom = Offset(math.cos(t) * 51, -10 + _depth + math.sin(t) * 13);
+    c.drawLine(top, bottom, _boatStroke);
+  }
+  c.restore();
+  // Water glinting along the bottom of the hull.
+  c.drawArc(
+      _hullBottom.deflate(2),
+      math.pi * .2,
+      math.pi * .45,
+      false,
+      _boatStroke
+        ..color = const Color(0x55FFFFFF)
+        ..strokeWidth = 1.6);
+  // Thick bamboo lip on the near rim.
+  c.drawArc(
+      _rim,
+      0,
+      math.pi,
+      false,
+      _boatStroke
+        ..color = const Color(0xFFD9B26F)
+        ..strokeWidth = 5);
+  c.drawArc(
+      _rim.inflate(2.2),
+      0,
+      math.pi,
+      false,
+      _boatStroke
+        ..color = const Color(0xFF6B4729)
+        ..strokeWidth = 1.6);
+  c.drawArc(
+      _rim.deflate(1),
+      .15,
+      math.pi - .3,
+      false,
+      _boatStroke
+        ..color = const Color(0xFFF6DDA6)
+        ..strokeWidth = 1.2);
+  _paintLashings(c, 0, math.pi);
+}
+
+/// Rope bindings across the rim between angles [from] and [to].
+void _paintLashings(Canvas c, double from, double to) {
+  for (var a = from + .25; a < to; a += math.pi / 5) {
+    final p = Offset(_rim.center.dx + math.cos(a) * _rim.width / 2,
+        _rim.center.dy + math.sin(a) * _rim.height / 2);
+    final along = Offset(-math.sin(a) * _rim.width, math.cos(a) * _rim.height);
+    final dir = along / along.distance;
+    for (final k in [-1.6, 1.6]) {
+      final q = p + dir * k;
+      c.drawLine(
+          q + const Offset(0, -3),
+          q + const Offset(0, 3),
+          _boatStroke
+            ..color = const Color(0xFF7A5A33)
+            ..strokeWidth = 1.6);
+    }
+  }
+}
+
 class FishingRiverBoatPainter extends CustomPainter {
   FishingRiverBoatPainter(this.round,
-      {this.front = false,
-      this.fishing = false,
-      this.pawColor = const Color(0xFFF4A34E)});
+      {this.front = false, this.fishing = false});
   final FishingRiverRound round;
   final bool front, fishing;
-  final Color pawColor;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -219,8 +384,6 @@ class FishingRiverBoatPainter extends CustomPainter {
     canvas.translate(
         point.dx, point.dy + math.sin(round.clock * 2.5) * 1.8 * round.scale);
     canvas.scale(round.scale);
-    final p = Paint();
-    const rim = Rect.fromLTWH(-52, -21, 104, 48);
     final rowing = round.moving && !fishing;
     final oar = FishingOarPose(round.clock,
         moving: rowing, facingRight: round.heading.dx >= 0);
@@ -255,102 +418,19 @@ class FishingRiverBoatPainter extends CustomPainter {
                 ..strokeWidth = 2);
         }
       }
-      canvas.drawOval(const Rect.fromLTWH(-55, -9, 112, 51),
-          p..color = const Color(0x33466360));
-      canvas.drawOval(
-          rim.shift(const Offset(0, 10)), p..color = const Color(0xFF8A603B));
-      canvas.drawOval(
-          rim.shift(const Offset(0, 5)),
-          Paint()
-            ..color = const Color(0xFFC39960)
-            ..style = PaintingStyle.stroke
-            ..strokeWidth = 6);
-      canvas.drawOval(rim, p..color = const Color(0xFFE0BB7B));
-      canvas.drawOval(rim.deflate(7), p..color = const Color(0xFFA77D4C));
-      canvas.save();
-      canvas.clipPath(Path()..addOval(rim.deflate(7)));
-      for (var i = -3; i < 5; i++) {
-        canvas.drawLine(
-            Offset(-50, i * 6.0),
-            Offset(50, i * 6.0),
-            Paint()
-              ..color = const Color(0xFF947044)
-              ..strokeWidth = 1.3);
-        canvas.drawLine(
-            Offset(i * 12.0, -25),
-            Offset(i * 12.0, 25),
-            Paint()
-              ..color = const Color(0x55E3C085)
-              ..strokeWidth = 1.5);
+      if (round.boatStyle == FishingBoat.paper) {
+        paintPaperBoatBack(canvas);
+      } else {
+        paintBasketBoatBack(canvas);
       }
-      canvas.restore();
-      canvas.drawOval(
-          rim,
-          Paint()
-            ..color = const Color(0xFF795837)
-            ..style = PaintingStyle.stroke
-            ..strokeWidth = 3);
-      canvas.drawOval(
-          rim.deflate(4),
-          Paint()
-            ..color = const Color(0xFFF0D49B)
-            ..style = PaintingStyle.stroke
-            ..strokeWidth = 2);
-      if (!rowing) paintFishingOar(canvas, oar);
     } else {
-      canvas.drawArc(
-          rim,
-          0,
-          math.pi,
-          false,
-          Paint()
-            ..color = const Color(0xFFCEAA6E)
-            ..style = PaintingStyle.stroke
-            ..strokeWidth = 7);
-      for (var i = 0; i < 17; i++) {
-        final a = i * math.pi / 16;
-        final outer = rim.center + Offset(math.cos(a) * 51, math.sin(a) * 23);
-        canvas.drawLine(
-            outer,
-            outer + const Offset(0, 5),
-            Paint()
-              ..color = const Color(0xFF997344)
-              ..strokeWidth = 1.3);
+      if (round.boatStyle == FishingBoat.paper) {
+        paintPaperBoatFront(canvas);
+      } else {
+        paintBasketBoatFront(canvas);
       }
-      if (rowing) {
-        paintFishingOar(canvas, oar);
-        final side = round.heading.dx >= 0 ? 1.0 : -1.0;
-        final arm = Path()
-          ..moveTo(side * 6, 7)
-          ..quadraticBezierTo(side * 15, 10, oar.hand.dx, oar.hand.dy);
-        canvas.drawPath(
-            arm,
-            Paint()
-              ..color = const Color(0xFF66513A)
-              ..style = PaintingStyle.stroke
-              ..strokeWidth = 7
-              ..strokeCap = StrokeCap.round);
-        canvas.drawPath(
-            arm,
-            Paint()
-              ..color = pawColor
-              ..style = PaintingStyle.stroke
-              ..strokeWidth = 5
-              ..strokeCap = StrokeCap.round);
-        canvas.drawCircle(oar.hand, 4, Paint()..color = pawColor);
-      }
-      canvas.drawRRect(
-          RRect.fromRectAndRadius(
-              const Rect.fromLTWH(-42, 1, 23, 20), const Radius.circular(4)),
-          p..color = const Color(0xFFE2BE7B));
-      for (var i = 0; i < 3; i++) {
-        canvas.drawLine(
-            Offset(-40, 6 + i * 5.0),
-            Offset(-21, 6 + i * 5.0),
-            Paint()
-              ..color = const Color(0xFFAC8553)
-              ..strokeWidth = 1.5);
-      }
+      // The cat sprite has no rowing arm; the oar simply moves on its own.
+      if (rowing) paintFishingOar(canvas, oar);
     }
     canvas.restore();
   }

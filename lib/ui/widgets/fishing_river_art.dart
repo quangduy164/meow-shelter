@@ -10,6 +10,8 @@ import 'fishing_coast_art.dart';
 import 'fishing_river_details.dart';
 import 'fishing_mangrove_art.dart';
 import 'fishing_rocky_bay_art.dart';
+import 'fishing_boat_art.dart';
+import '../../fishing/fishing_boat.dart';
 
 /// Recorded once per stretch; seeds and world positions agree across seams.
 ui.Picture recordFishingRiver(int section) {
@@ -240,11 +242,15 @@ void _paintLandscape(Canvas canvas, double left, double right) {
     if (x >= FishingRiver.seaStart - 160) continue;
     final y = FishingRiver.bottom(x);
     if (x < 1800) {
-      _flowers(canvas, Offset(x, y + 36), seed: i);
-      if (i % 3 == 0) {
+      // Keep the meadow clear of the boathouse.
+      bool clear(double at) => (at - FishingBoatHouse.x).abs() > 125;
+      if (clear(x)) _flowers(canvas, Offset(x, y + 36), seed: i);
+      if (i % 3 == 0 && clear(x + 90)) {
         paintLeafyTree(canvas, Offset(x + 90, y + 157), 83, seed: i + 51);
       }
-      if (i % 3 == 1) _garden(canvas, Offset(x + 70, y + 100));
+      if (i % 3 == 1 && clear(x + 70)) {
+        _garden(canvas, Offset(x + 70, y + 100));
+      }
     } else {
       _rice(canvas, Offset(x, y + 88), seed: i);
       if (i % 3 == 0) _bamboo(canvas, Offset(x + 120, y + 157), 70, seed: i);
@@ -253,6 +259,10 @@ void _paintLandscape(Canvas canvas, double left, double right) {
   for (final x in [FishingRiver.startDockX, 1130.0, 2110.0, 3340.0]) {
     if (x < from || x > to) continue;
     _dock(canvas, Offset(x, FishingRiver.bottom(x) - 15));
+  }
+  if (FishingBoatHouse.bounds.left < to &&
+      FishingBoatHouse.bounds.right > from) {
+    paintBoatHouse(canvas);
   }
   if (left < 2850 && right > 2500) {
     _watermill(canvas, Offset(2680, FishingRiver.bottom(2680) + 43));

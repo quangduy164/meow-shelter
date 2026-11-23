@@ -8,6 +8,7 @@ import 'fishing_cave.dart';
 import 'fishing_exploration.dart';
 import 'fishing_region.dart';
 import 'fishing_weather.dart';
+import 'fishing_boat.dart';
 export 'fishing_region.dart';
 import 'dart:math' as math;
 import 'package:flutter/painting.dart';
@@ -243,8 +244,11 @@ class FishingRiverRound {
   /// Camera zoom: 1 normally, eases out to [lookoutZoom] on the lighthouse.
   double zoom = 1;
 
-  /// Real local hour (0..24) driving day/night; set by the screen.
+  /// In-game hour (0..24) driving day/night (40-minute day); set by the screen.
   double hour = 12;
+
+  /// Boat drawn under the cat; picked at the village boathouse.
+  FishingBoat boatStyle = FishingBoat.basket;
 
   /// Current weather from the real clock; set by the screen.
   FishingWeather weather = FishingWeather.clear;

@@ -144,12 +144,12 @@ enum FishSpecies {
       this == lanternfish;
 
   static const habitats = [
-    'Làng ven sông',
-    'Khúc sông tre',
+    'Làng',
+    'Sông tre',
     'Rừng ngập mặn',
-    'Cửa biển nắng vàng',
-    'Vịnh đá bạc',
-    'Hang biển ánh ngọc'
+    'Cửa biển',
+    'Vịnh đá',
+    'Hang biển'
   ];
 
   String get habitat => switch (this) {
@@ -159,7 +159,7 @@ enum FishSpecies {
         goby || mudskipper => habitats[2],
         grouper || butterflyfish => habitats[4],
         cavefish || lanternfish => habitats[5],
-        flipFlop => 'Làng ven sông / Biển',
+        flipFlop => 'Làng / Biển',
         tinCan => 'Mọi vùng nước',
       };
 

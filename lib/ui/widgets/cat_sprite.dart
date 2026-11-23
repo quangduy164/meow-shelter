@@ -39,9 +39,14 @@ class CatSprite extends StatelessWidget {
             alignment:
                 Alignment(frames <= 1 ? -1 : -1 + 2 * frame / (frames - 1), 0),
             child: Image.asset('assets/images/${breed.sheet(action)}',
-                // Decode at the size drawn, not the full 256px sheet.
+                // Decode at the size drawn, not the full 256px sheet. Rounded
+                // up to 64px steps so zooming or resizing the cat does not
+                // decode a new image every frame.
                 cacheHeight:
-                    (size * MediaQuery.devicePixelRatioOf(context)).ceil(),
+                    ((size * MediaQuery.devicePixelRatioOf(context)) / 64)
+                            .ceil()
+                            .clamp(1, 1 << 20) *
+                        64,
                 width: size * frames,
                 height: size,
                 fit: BoxFit.fill,

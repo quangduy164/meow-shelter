@@ -33,6 +33,9 @@ import '../widgets/game_glyphs.dart';
 import '../widgets/game_surfaces.dart';
 import '../widgets/round_button.dart';
 import '../../collection/fish_collection.dart';
+import '../../fishing/fishing_boat.dart';
+import '../../fishing/fishing_lighting.dart';
+import '../widgets/fishing_boat_art.dart';
 
 class FishingScreen extends StatefulWidget {
   const FishingScreen({super.key});
@@ -50,6 +53,20 @@ class _FishingScreenState extends State<FishingScreen>
   Duration? _lastTick;
   bool _collectionOpen = false, _paused = false, _choosingCat = true;
 
+  /// Everything the HUD shows except per-frame animation; it rebuilds only
+  /// when this value changes (records compare by value).
+  final _hud = ValueNotifier<Object?>(null);
+  Object get _hudState => (
+        _controller.phase,
+        _controller.active,
+        _river.island.ashore,
+        _river.island.lookout,
+        _river.island.phase,
+        _controller.showFishingArt,
+        _controller.phase == FishingPhase.caught && _controller.elapsed >= 1,
+        _area,
+      );
+
   /// Scene shown by the last build; a change triggers one rebuild.
   bool _shownCabin = false, _shownCave = false;
 
@@ -65,9 +82,9 @@ class _FishingScreenState extends State<FishingScreen>
 
   double _sinceClock = 0, _sinceWeather = 0;
 
-  /// Day/night follows the device clock; refreshed every few seconds.
+  /// Day/night runs on a 40-minute game day (FishingLighting.gameHour).
   void _setHour(DateTime now) {
-    final hour = now.hour + now.minute / 60 + now.second / 3600;
+    final hour = FishingLighting.gameHour(now);
     _river.hour = hour;
     _river.weather = FishingWeather.at(now);
     _controller.setWorldHour(hour);
@@ -80,7 +97,8 @@ class _FishingScreenState extends State<FishingScreen>
       _river.weather = FishingWeather.at(DateTime.now());
     }
     _sinceClock += dt;
-    if (_sinceClock > 10) {
+    // A 40-minute day moves 0.6 game minutes per second: refresh every second.
+    if (_sinceClock > 1) {
       _sinceClock = 0;
       _setHour(DateTime.now());
     }
@@ -102,6 +120,7 @@ class _FishingScreenState extends State<FishingScreen>
     final preferences = FishCollection.instance.preferences;
     FishingTrip.restore(preferences, _river);
     _savedBoat = _river.boat;
+    _river.boatStyle = FishingBoat.load(preferences);
     _lastCat = FishingTrip.lastCat(preferences);
     _ticker = createTicker(_tick);
   }
@@ -114,6 +133,7 @@ class _FishingScreenState extends State<FishingScreen>
     _controller.update(dt);
     _updateHud(dt);
     _frames.value++;
+    _hud.value = _hudState;
     if (_river.cabin.inside != _shownCabin ||
         _river.cave.inside != _shownCave) {
       setState(() {});
@@ -205,6 +225,48 @@ class _FishingScreenState extends State<FishingScreen>
     }
   }
 
+  /// The boathouse opens from the boat or from the near bank, never mid-cast.
+  bool _tapsBoatHouse(Offset screen) =>
+      !_collectionOpen &&
+      !_controller.active &&
+      !_river.island.lookout &&
+      (!_river.island.ashore || _river.island.onBank) &&
+      FishingBoatHouse.hit(_river.toWorld(screen));
+
+  Future<void> _openBoatPicker() async {
+    setState(() => _collectionOpen = true);
+    try {
+      await showGameDialog<void>(
+          context: context,
+          builder: (context) => GameDialog(
+              maxWidth: 420,
+              child: Column(mainAxisSize: MainAxisSize.min, children: [
+                GameDialogHeader(
+                    title: 'Nhà thuyền', onClose: () => Navigator.pop(context)),
+                const SizedBox(height: DS.spaceSm),
+                Row(children: [
+                  for (final boat in FishingBoat.values) ...[
+                    if (boat != FishingBoat.values.first)
+                      const SizedBox(width: DS.spaceMd),
+                    Expanded(
+                        child: _BoatChoice(
+                            boat: boat,
+                            selected: boat == _river.boatStyle,
+                            onTap: () {
+                              _river.boatStyle = boat;
+                              FishingBoat.save(
+                                  FishCollection.instance.preferences, boat);
+                              Navigator.pop(context);
+                            })),
+                  ],
+                ]),
+              ])));
+    } finally {
+      if (mounted) setState(() => _collectionOpen = false);
+      _lastTick = null;
+    }
+  }
+
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
@@ -212,6 +274,7 @@ class _FishingScreenState extends State<FishingScreen>
     _ticker.dispose();
     _controller.dispose();
     _frames.dispose();
+    _hud.dispose();
     super.dispose();
   }
 
@@ -340,9 +403,7 @@ class _FishingScreenState extends State<FishingScreen>
             )),
       CustomPaint(
           painter: FishingRiverBoatPainter(_river,
-              front: true,
-              fishing: fishing && !_river.island.ashore,
-              pawColor: CatBreed.of(_cat).color)),
+              front: true, fishing: fishing && !_river.island.ashore)),
       if (fishing)
         Builder(builder: (context) {
           final spot = _river.toScreen(_controller.spot);
@@ -469,10 +530,13 @@ class _FishingScreenState extends State<FishingScreen>
                       child: GestureDetector(
                         behavior: HitTestBehavior.opaque,
                         onTapUp: (event) {
+                          if (_tapsBoatHouse(event.localPosition)) {
+                            _openBoatPicker();
+                            return;
+                          }
                           if (!_collectionOpen) {
-                            final now = DateTime.now();
-                            _controller
-                                .setWorldHour(now.hour + now.minute / 60);
+                            _controller.setWorldHour(
+                                FishingLighting.gameHour(DateTime.now()));
                             _controller.tapRiver(event.localPosition);
                           }
                         },
@@ -496,9 +560,11 @@ class _FishingScreenState extends State<FishingScreen>
                     CustomPaint(
                         painter: FishingWeatherOverlay(_river, _frames)),
                   ]))),
-                  AnimatedBuilder(
-                      animation: _frames,
-                      builder: (context, _) =>
+                  // HUD rebuilds only when its state changes; the reel
+                  // button and distance bar animate on their own.
+                  ValueListenableBuilder(
+                      valueListenable: _hud,
+                      builder: (context, _, __) =>
                           Stack(fit: StackFit.expand, children: [
                             Positioned(
                                 left: padding.left + 8,
@@ -569,8 +635,12 @@ class _FishingScreenState extends State<FishingScreen>
                                   bottom: padding.bottom + 85,
                                   width: 54,
                                   child: IgnorePointer(
-                                      child: FishingDistance(
-                                          progress: _controller.progress))),
+                                      child: AnimatedBuilder(
+                                          animation: _frames,
+                                          builder: (context, _) =>
+                                              FishingDistance(
+                                                  progress:
+                                                      _controller.progress)))),
                             if (_river.island.ashore &&
                                 !_river.island.lookout &&
                                 !_controller.showFishingArt)
@@ -595,8 +665,10 @@ class _FishingScreenState extends State<FishingScreen>
                                   bottom: padding.bottom + 8,
                                   width: 80,
                                   height: 80,
-                                  child:
-                                      FishingControls(controller: _controller)),
+                                  child: AnimatedBuilder(
+                                      animation: _frames,
+                                      builder: (context, _) => FishingControls(
+                                          controller: _controller))),
                             if (_controller.active &&
                                 _controller.phase != FishingPhase.saving)
                               Positioned(
@@ -620,4 +692,69 @@ class _FishingScreenState extends State<FishingScreen>
                 ]);
               }),
       );
+}
+
+/// One boat card in the boathouse: preview, name and a "đang dùng" mark.
+class _BoatChoice extends StatelessWidget {
+  const _BoatChoice(
+      {required this.boat, required this.selected, required this.onTap});
+  final FishingBoat boat;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) => Material(
+        color: selected ? DS.gold : Colors.white,
+        shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(DS.radiusMd),
+            side: BorderSide(
+                color: selected ? DS.goldEdge : DS.wood.withValues(alpha: .4),
+                width: 2)),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.all(DS.spaceSm),
+            child: Column(mainAxisSize: MainAxisSize.min, children: [
+              SizedBox(
+                  height: 90,
+                  child: CustomPaint(
+                      size: Size.infinite, painter: _BoatPreview(boat))),
+              const SizedBox(height: DS.spaceXs),
+              Text(boat.label,
+                  style: const TextStyle(
+                      color: DS.ink,
+                      fontSize: DS.fontButton,
+                      fontWeight: FontWeight.w900)),
+              Text(selected ? 'Đang dùng' : 'Chọn',
+                  style: const TextStyle(
+                      color: DS.wood,
+                      fontSize: DS.fontCaption,
+                      fontWeight: FontWeight.w700)),
+            ]),
+          ),
+        ),
+      );
+}
+
+class _BoatPreview extends CustomPainter {
+  _BoatPreview(this.boat);
+  final FishingBoat boat;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    canvas.translate(size.width / 2, size.height * .62);
+    canvas.scale(math.min(1, size.width / 150));
+    switch (boat) {
+      case FishingBoat.basket:
+        paintBasketBoatBack(canvas);
+        paintBasketBoatFront(canvas);
+      case FishingBoat.paper:
+        paintPaperBoatBack(canvas);
+        paintPaperBoatFront(canvas);
+    }
+  }
+
+  @override
+  bool shouldRepaint(_BoatPreview old) => old.boat != boat;
 }

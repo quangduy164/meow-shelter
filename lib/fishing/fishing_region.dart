@@ -10,7 +10,7 @@ enum FishingLand { village, bamboo, mangrove, beach, rocky }
 /// The cave is an optional inlet inside the rocky bay: it has no x range of
 /// its own and is detected by [FishingRiver.caveBlend].
 enum FishingRegion {
-  village('Làng ven sông', 0, FishingRiver.sectionLength, FishingLand.village, {
+  village('Làng', 0, FishingRiver.sectionLength, FishingLand.village, {
     FishSpecies.perch: 32.0,
     FishSpecies.tilapia: 32.0,
     FishSpecies.carp: 28.0,
@@ -18,8 +18,8 @@ enum FishingRegion {
     FishSpecies.flipFlop: 3.0,
     FishSpecies.tinCan: 2.0,
   }),
-  bamboo('Khúc sông tre', FishingRiver.sectionLength,
-      FishingRiver.mangroveStart, FishingLand.bamboo, {
+  bamboo('Sông tre', FishingRiver.sectionLength, FishingRiver.mangroveStart,
+      FishingLand.bamboo, {
     FishSpecies.catfish: 49.0,
     FishSpecies.koi: 43.0,
     FishSpecies.catMew: 1.0,
@@ -35,9 +35,9 @@ enum FishingRegion {
     FishSpecies.pufferfish: 3.0,
     FishSpecies.tinCan: 3.0,
   }),
-  coast('Cửa biển nắng vàng', FishingRiver.seaStart, FishingRiver.rockyBayStart,
+  coast('Cửa biển', FishingRiver.seaStart, FishingRiver.rockyBayStart,
       FishingLand.beach, _seaFish),
-  rockyBay('Vịnh đá bạc', FishingRiver.rockyBayStart, FishingRiver.openSeaStart,
+  rockyBay('Vịnh đá', FishingRiver.rockyBayStart, FishingRiver.openSeaStart,
       FishingLand.rocky, {
     FishSpecies.grouper: 40.0,
     FishSpecies.butterflyfish: 15.0,
@@ -48,8 +48,8 @@ enum FishingRegion {
   }),
   openSea('Biển rộng', FishingRiver.openSeaStart, FishingRiver.length,
       FishingLand.beach, _seaFish),
-  cave('Hang biển ánh ngọc', FishingRiver.rockyBayStart,
-      FishingRiver.openSeaStart, FishingLand.rocky, {
+  cave('Hang biển', FishingRiver.rockyBayStart, FishingRiver.openSeaStart,
+      FishingLand.rocky, {
     FishSpecies.cavefish: 52.0,
     FishSpecies.lanternfish: 4.0,
     FishSpecies.catfish: 24.0,

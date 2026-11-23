@@ -34,6 +34,20 @@ final _noMountain = Path.combine(
     Path()..addRect(const Rect.fromLTWH(0, 0, 20000, 4000)),
     mountainSilhouette());
 
+// Reused every frame by the shells and crabs; colours set before each draw.
+final _fill = Paint();
+final _shellLine = Paint()
+  ..color = const Color(0xFFC68E7A)
+  ..strokeWidth = 1;
+final _crabLeg = Paint()
+  ..strokeWidth = 2
+  ..strokeCap = StrokeCap.round;
+final _shell = Path()
+  ..moveTo(0, 5)
+  ..lineTo(-8, -2)
+  ..quadraticBezierTo(0, -12, 8, -2)
+  ..close();
+
 class FishingIslandPainter extends CustomPainter {
   FishingIslandPainter(this.round, Listenable frames) : super(repaint: frames);
   final FishingRiverRound round;
@@ -164,38 +178,29 @@ class FishingIslandPainter extends CustomPainter {
       final p = fishingSeaIsland.center + FishingIslandVisit.shellOffsets[i];
       c.drawOval(
           Rect.fromCenter(center: p + const Offset(1, 3), width: 15, height: 6),
-          Paint()..color = const Color(0x3386755A));
-      final shell = Path()
-        ..moveTo(p.dx, p.dy + 5)
-        ..lineTo(p.dx - 8, p.dy - 2)
-        ..quadraticBezierTo(p.dx, p.dy - 12, p.dx + 8, p.dy - 2)
-        ..close();
-      c.drawPath(
-          shell,
-          Paint()
-            ..color =
-                i.isEven ? const Color(0xFFF9BFA8) : const Color(0xFFFFF0CC));
+          _fill..color = const Color(0x3386755A));
+      c
+        ..save()
+        ..translate(p.dx, p.dy)
+        ..drawPath(
+            _shell,
+            _fill
+              ..color =
+                  i.isEven ? const Color(0xFFF9BFA8) : const Color(0xFFFFF0CC))
+        ..restore();
       for (final dx in [-4.0, 0.0, 4.0]) {
-        c.drawLine(
-            p + const Offset(0, 4),
-            p + Offset(dx, -4),
-            Paint()
-              ..color = const Color(0xFFC68E7A)
-              ..strokeWidth = 1);
+        c.drawLine(p + const Offset(0, 4), p + Offset(dx, -4), _shellLine);
       }
       if ((round.clock + i) % 3 < .7) {
-        c.drawCircle(p + const Offset(7, -7), 2,
-            Paint()..color = const Color(0xFFFFF8DE));
+        c.drawCircle(
+            p + const Offset(7, -7), 2, _fill..color = const Color(0xFFFFF8DE));
       }
     }
     for (final crab in island.crabs) {
       final p = crab.position;
       final leg =
           math.sin(round.clock * (crab.fleeing ? 22 : 8) + crab.seed) * 3;
-      final paint = Paint()
-        ..color = const Color(0xFFB76F4B)
-        ..strokeWidth = 2
-        ..strokeCap = StrokeCap.round;
+      final paint = _crabLeg..color = const Color(0xFFB76F4B);
       for (final side in [-1.0, 1.0]) {
         for (var j = 0; j < 3; j++) {
           c.drawLine(
@@ -209,12 +214,12 @@ class FishingIslandPainter extends CustomPainter {
         paint.color = const Color(0xFFB76F4B);
       }
       c.drawOval(Rect.fromCenter(center: p, width: 18, height: 12),
-          Paint()..color = const Color(0xFFD98558));
+          _fill..color = const Color(0xFFD98558));
       for (final x in [-4.0, 4.0]) {
         c.drawCircle(
-            p + Offset(x, -6), 2.5, Paint()..color = const Color(0xFFFFE4AA));
+            p + Offset(x, -6), 2.5, _fill..color = const Color(0xFFFFE4AA));
         c.drawCircle(
-            p + Offset(x, -7), 1.3, Paint()..color = const Color(0xFF534A3D));
+            p + Offset(x, -7), 1.3, _fill..color = const Color(0xFF534A3D));
       }
     }
     c.restore();

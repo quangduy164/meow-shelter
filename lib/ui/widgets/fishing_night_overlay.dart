@@ -11,6 +11,8 @@ import 'fishing_river_art.dart';
 /// Day/night over the whole fishing world: one multiply tint for the hour,
 /// then additive glows for lights that matter at night. Drawn above the
 /// world and below the HUD; nothing is re-recorded.
+final _firefly = Paint()..blendMode = BlendMode.plus;
+
 class FishingNightOverlay extends CustomPainter {
   FishingNightOverlay(this.round, Listenable frames) : super(repaint: frames);
   final FishingRiverRound round;
@@ -126,18 +128,14 @@ class FishingNightOverlay extends CustomPainter {
                 (north ? -1 : 1) * (40 + artNoise(i, 2) * 160) +
                 math.cos(t * .8 + i * 1.7) * 12);
         final blink = math.max(0.0, math.sin(t * (1.2 + artNoise(i, 3)) + i));
+        if (blink <= 0) continue;
         canvas.drawCircle(
             p,
             6,
-            Paint()
-              ..blendMode = BlendMode.plus
+            _firefly
               ..color = Color.fromRGBO(220, 255, 140, blink * .35 * glow));
-        canvas.drawCircle(
-            p,
-            1.8,
-            Paint()
-              ..blendMode = BlendMode.plus
-              ..color = Color.fromRGBO(240, 255, 190, blink * glow));
+        canvas.drawCircle(p, 1.8,
+            _firefly..color = Color.fromRGBO(240, 255, 190, blink * glow));
       }
     }
     canvas.restore();

@@ -6,6 +6,16 @@ class FishingLighting {
       : hour = time.hour + time.minute / 60 + time.second / 3600;
   const FishingLighting.at(this.hour);
 
+  /// Real time for one full in-game day in the fishing world.
+  static const dayLength = Duration(minutes: 40);
+
+  /// In-game hour (0..24) for [now]: a 40-minute day that keeps running
+  /// while the app is closed, so every visit picks up where the sky is.
+  static double gameHour(DateTime now) {
+    final cycle = dayLength.inMilliseconds;
+    return (now.millisecondsSinceEpoch % cycle) / cycle * 24;
+  }
+
   final double hour;
 
   static double _smooth(double value) {
