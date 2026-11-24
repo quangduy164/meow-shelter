@@ -11,6 +11,8 @@ import 'fishing_activity_art.dart';
 import 'fishing_fight_art.dart';
 import 'fishing_river_details.dart';
 import 'fishing_rock_art.dart';
+import 'fishing_rocky_bay_art.dart';
+import 'fishing_art_kit.dart' show bankBand;
 import 'fishing_water_art.dart';
 import 'fishing_volcano_art.dart';
 import '../../fishing/river_props.dart';
@@ -177,6 +179,29 @@ class _RiverBackdropPainter extends CustomPainter {
       oldDelegate.devicePixelRatio != devicePixelRatio;
 }
 
+/// Sea Cave land between the chamber and the bay: no ripples on it.
+final _caveLipBounds = Rect.fromLTRB(
+    FishingRiver.caveStart - FishingRiver.caveRadius,
+    FishingRiver.caveCenterY,
+    FishingRiver.caveStart + FishingRiver.caveRadius,
+    FishingRiver.bayTop(FishingRiver.caveStart) + 20);
+final _caveWet = Path.combine(
+    PathOperation.difference,
+    Path()
+      ..addRect(
+          const Rect.fromLTWH(0, 0, FishingRiver.length, FishingRiver.height)),
+    Path.combine(
+        PathOperation.difference,
+        Path()..addRect(_caveLipBounds),
+        Path.combine(
+            PathOperation.union,
+            seaCaveWater(),
+            bankBand(
+                _caveLipBounds.left,
+                _caveLipBounds.right,
+                (x) => 2 * FishingRiver.bayCenter(x) - FishingRiver.bottom(x),
+                FishingRiver.bottom))));
+
 final _dryLand = Path.combine(
     PathOperation.union, fishingSeaIsland.outline(), mountainSilhouette());
 
@@ -218,6 +243,11 @@ class FishingRiverSurface extends CustomPainter {
         .inflate(60)
         .overlaps(_dryBounds)) {
       canvas.clipPath(_wetArea);
+    }
+    if (Rect.fromLTWH(round.cameraLeft, round.cameraTop, round.visibleWidth,
+            round.visibleHeight)
+        .overlaps(_caveLipBounds)) {
+      canvas.clipPath(_caveWet);
     }
     final left = math.max(0.0, round.cameraLeft - 30);
     final right = math.min(

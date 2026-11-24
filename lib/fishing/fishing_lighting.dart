@@ -13,8 +13,40 @@ class FishingLighting {
   /// while the app is closed, so every visit picks up where the sky is.
   static double gameHour(DateTime now) {
     final cycle = dayLength.inMilliseconds;
-    return (now.millisecondsSinceEpoch % cycle) / cycle * 24;
+    return ((now.millisecondsSinceEpoch + shiftMs) % cycle) / cycle * 24;
   }
+
+  /// Saved jump added to the clock, e.g. after sleeping through the night.
+  static int shiftMs = 0;
+  static const shiftKey = 'fishing_clock_shift_v1';
+
+  /// Moves the game clock forward to the next [hour] (0..24) and returns
+  /// the new shift to save.
+  static int skipTo(double hour, DateTime now) {
+    final cycle = dayLength.inMilliseconds;
+    final ahead = (hour - gameHour(now)) % 24;
+    shiftMs = (shiftMs + (ahead / 24 * cycle).round()) % cycle;
+    return shiftMs;
+  }
+
+  /// "07:30" for an in-game hour.
+  static String clock(double hour) {
+    final minutes = (hour * 60).floor() % (24 * 60);
+    String two(int v) => v.toString().padLeft(2, '0');
+    return '${two(minutes ~/ 60)}:${two(minutes % 60)}';
+  }
+
+  /// Vietnamese name for the part of the day.
+  static String partOfDay(double hour) => switch (hour) {
+        < 5 => 'Đêm khuya',
+        < 7 => 'Bình minh',
+        < 11 => 'Buổi sáng',
+        < 14 => 'Buổi trưa',
+        < 17 => 'Buổi chiều',
+        < 19 => 'Hoàng hôn',
+        < 22 => 'Buổi tối',
+        _ => 'Đêm khuya',
+      };
 
   final double hour;
 

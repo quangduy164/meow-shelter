@@ -11,6 +11,8 @@ import 'fishing_river_details.dart';
 import 'fishing_mangrove_art.dart';
 import 'fishing_rocky_bay_art.dart';
 import 'fishing_harbor_art.dart';
+import 'fishing_rod_house.dart';
+import '../../fishing/fishing_rod.dart';
 import '../../fishing/fishing_boat.dart';
 
 /// Recorded once per stretch; seeds and world positions agree across seams.
@@ -243,7 +245,9 @@ void _paintLandscape(Canvas canvas, double left, double right) {
     final y = FishingRiver.bottom(x);
     if (x < 1800) {
       // Keep the meadow clear of the boathouse.
-      bool clear(double at) => (at - FishingBoatHouse.x).abs() > 125;
+      bool clear(double at) =>
+          (at - FishingBoatHouse.x).abs() > 125 &&
+          (at - FishingRodHouse.x).abs() > 130;
       if (clear(x)) _flowers(canvas, Offset(x, y + 36), seed: i);
       if (i % 3 == 0 && clear(x + 90)) {
         paintLeafyTree(canvas, Offset(x + 90, y + 157), 83, seed: i + 51);
@@ -264,6 +268,9 @@ void _paintLandscape(Canvas canvas, double left, double right) {
   if (FishingBoatHouse.bounds.left < to &&
       FishingBoatHouse.bounds.right > from) {
     paintBoatHouse(canvas);
+  }
+  if (FishingRodHouse.bounds.left < to && FishingRodHouse.bounds.right > from) {
+    paintFishingRodHouse(canvas);
   }
   if (left < 2850 && right > 2500) {
     _watermill(canvas, Offset(2680, FishingRiver.bottom(2680) + 43));

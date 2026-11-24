@@ -22,6 +22,7 @@ import '../widgets/fishing_island_art.dart';
 import '../widgets/fishing_scenery.dart';
 import '../widgets/fishing_cabin_art.dart';
 import '../widgets/fishing_minimap.dart';
+import '../widgets/fishing_clock_chip.dart';
 import '../widgets/fishing_cave_run.dart';
 import '../widgets/fishing_night_overlay.dart';
 import '../widgets/fishing_weather_overlay.dart';
@@ -39,6 +40,7 @@ import '../widgets/fishing_boats.dart';
 import '../widgets/fishing_market_dialog.dart';
 import '../widgets/fishing_shrine.dart';
 import '../widgets/fishing_bait_house.dart';
+import '../widgets/fishing_rod_house.dart';
 import '../widgets/fishing_market_art.dart';
 
 class FishingScreen extends StatefulWidget {
@@ -56,6 +58,7 @@ class _FishingScreenState extends State<FishingScreen>
   late final Ticker _ticker;
   Duration? _lastTick;
   bool _collectionOpen = false, _paused = false, _choosingCat = true;
+  bool _loadingCat = false;
 
   /// Everything the HUD shows except per-frame animation; it rebuilds only
   /// when this value changes (records compare by value).
@@ -95,6 +98,14 @@ class _FishingScreenState extends State<FishingScreen>
   }
 
   void _updateHud(double dt) {
+    // A night in the cabin bed: jump the shared game clock to sunrise (6:00).
+    if (_river.cabin.dawnDue) {
+      _river.cabin.dawnDue = false;
+      final now = DateTime.now();
+      FishCollection.instance.preferences
+          .setInt(FishingLighting.shiftKey, FishingLighting.skipTo(6, now));
+      _setHour(now);
+    }
     _sinceWeather += dt;
     if (_sinceWeather > .5) {
       _sinceWeather = 0;
@@ -119,9 +130,10 @@ class _FishingScreenState extends State<FishingScreen>
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _controller = FishingController(FishCollection.instance);
+    final preferences = FishCollection.instance.preferences;
+    FishingLighting.shiftMs = preferences.getInt(FishingLighting.shiftKey) ?? 0;
     final now = DateTime.now();
     _setHour(now);
-    final preferences = FishCollection.instance.preferences;
     FishingTrip.restore(preferences, _river);
     _savedBoat = _river.boat;
     _river.boatStyle = FishingBoat.load(preferences);
@@ -137,6 +149,8 @@ class _FishingScreenState extends State<FishingScreen>
     _controller.update(dt);
     // The boat picker only opens once the cat has reached the boathouse.
     switch (_controller.takeArrival()) {
+      case FishingVisit.rodHouse:
+        _openRodHouse();
       case FishingVisit.boatHouse:
         _openBoatPicker();
       case FishingVisit.market:
@@ -222,6 +236,8 @@ class _FishingScreenState extends State<FishingScreen>
                                             color: DS.cream,
                                             fontWeight: FontWeight.w900,
                                             fontSize: DS.fontButton))),
+                                const FishingClockChip(),
+                                const SizedBox(width: DS.spaceSm),
                                 RoundButton(
                                     glyph: GameGlyph.close,
                                     size: 40,
@@ -269,6 +285,18 @@ class _FishingScreenState extends State<FishingScreen>
     try {
       await showGameDialog<void>(
           context: context, builder: (_) => const FishingMarketDialog());
+    } finally {
+      if (mounted) setState(() => _collectionOpen = false);
+      _lastTick = null;
+    }
+  }
+
+  Future<void> _openRodHouse() async {
+    setState(() => _collectionOpen = true);
+    try {
+      await showGameDialog<void>(
+          context: context,
+          builder: (_) => FishingRodHouseDialog(controller: _controller));
     } finally {
       if (mounted) setState(() => _collectionOpen = false);
       _lastTick = null;
@@ -331,7 +359,7 @@ class _FishingScreenState extends State<FishingScreen>
                   width: 140,
                   child: OutlinedButton(
                     style: OutlinedButton.styleFrom(backgroundColor: DS.cream),
-                    onPressed: () => onSelected(breed.id),
+                    onPressed: _loadingCat ? null : () => onSelected(breed.id),
                     child: Padding(
                       padding: const EdgeInsets.all(DS.spaceSm),
                       child: Column(mainAxisSize: MainAxisSize.min, children: [
@@ -350,6 +378,33 @@ class _FishingScreenState extends State<FishingScreen>
                   )),
         ],
       );
+
+  Future<void> _startWithCat(String type) async {
+    if (!_choosingCat || _loadingCat) return;
+    setState(() => _loadingCat = true);
+    final scale = MediaQuery.sizeOf(context).height / FishingRiver.viewHeight;
+    await CatSprite.precacheActions(context, type: type, actions: const [
+      'idle',
+      'row',
+      'walk',
+      'jump',
+      'fish-cast',
+      'fish-wait',
+      'fish-reel',
+      'fish-hold'
+    ], sizes: [
+      114 * scale,
+      84 * scale
+    ]);
+    if (!mounted) return;
+    setState(() {
+      _cat = type;
+      _choosingCat = false;
+      _loadingCat = false;
+      _lastTick = null;
+    });
+    _ticker.start();
+  }
 
   Widget _catSelection() => DecoratedBox(
         decoration: const BoxDecoration(
@@ -378,22 +433,17 @@ class _FishingScreenState extends State<FishingScreen>
               const SizedBox(width: 48),
             ]),
             const SizedBox(height: DS.spaceMd),
-            const Text('Chọn một bé mèo để bắt đầu chuyến đi câu',
+            Text(
+                _loadingCat
+                    ? 'Đang chuẩn bị chuyến đi…'
+                    : 'Chọn một bé mèo để bắt đầu chuyến đi câu',
                 textAlign: TextAlign.center,
-                style: TextStyle(color: DS.cream, fontSize: DS.fontBody)),
+                style: const TextStyle(color: DS.cream, fontSize: DS.fontBody)),
             Expanded(
                 child: Center(
                     child: SingleChildScrollView(
               padding: const EdgeInsets.symmetric(vertical: DS.spaceLg),
-              child: _catChoices((type) {
-                if (!_choosingCat) return;
-                setState(() {
-                  _cat = type;
-                  _choosingCat = false;
-                  _lastTick = null;
-                });
-                _ticker.start();
-              }),
+              child: _catChoices(_startWithCat),
             ))),
           ]),
         )),
@@ -446,6 +496,7 @@ class _FishingScreenState extends State<FishingScreen>
           final spot = _river.toScreen(_controller.spot);
           return CustomPaint(
               painter: FishingPainter(
+            rod: _controller.rod,
             phase: phase,
             fish: _controller.fish,
             boat: Offset(point.dx / _river.viewport.width,
@@ -761,7 +812,7 @@ class _FishingScreenState extends State<FishingScreen>
                                 !_river.island.lookout &&
                                 !_controller.showFishingArt)
                               Positioned(
-                                  right: padding.right + 98,
+                                  right: padding.right + 164,
                                   bottom: padding.bottom + 22,
                                   child: FishingActionButton(
                                       tool: FishingTool.boat,

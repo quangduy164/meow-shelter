@@ -38,16 +38,70 @@ class FishingRiver {
   static double mangroveBlend(double x) =>
       _blend(x, mangroveStart - 300, 600) *
       (1 - _blend(x, seaStart - 300, 600));
+
+  /// The Sea Cave is a round chamber north of the bay, reached through one
+  /// short neck from the bay at [caveStart].
+  static const caveRadius = 430.0, caveHalfWidth = caveRadius;
+  static const caveNeckHalf = 85.0;
+  static double get caveCenterY => bayTop(caveStart) - 560;
+
+  /// Uneven ceiling and floor so the chamber reads as eroded rock: half
+  /// height above / below [caveCenterY] at x, grown by [widen].
+  static double caveCeilingChord(double x, {double widen = 0}) {
+    final dx = x - caveStart, r = caveRadius + widen;
+    if (dx.abs() >= r) return 0;
+    final wobble = 1 +
+        .13 * math.sin(dx / 70 + .7) +
+        .07 * math.sin(dx / 31 + 2.1) +
+        .1 * math.exp(-math.pow((dx + 200) / 90, 2).toDouble());
+    return math.sqrt(r * r - dx * dx) * wobble;
+  }
+
+  static double caveFloorChord(double x, {double widen = 0}) {
+    final dx = x - caveStart, r = caveRadius + widen;
+    if (dx.abs() >= r) return 0;
+    final wobble = .82 +
+        .1 * math.sin(dx / 55 + 1.3) +
+        .06 * math.sin(dx / 23 + .4) +
+        .08 * math.exp(-math.pow((dx - 230) / 80, 2).toDouble());
+    return math.sqrt(r * r - dx * dx) * wobble;
+  }
+
   static double caveDepth(double x) {
-    final t = (x - caveStart).abs() / 360;
-    return t < 1
-        ? (640 * math.pow((1 + math.cos(t * math.pi)) / 2, 2)).toDouble()
-        : 0;
+    final chord = caveCeilingChord(x);
+    return chord <= 0 ? 0 : bayTop(x) - (caveCenterY - chord);
   }
 
   static double caveBlend(double x, {double? y}) => y == null
       ? 0
       : _blend(bayTop(x) - y, 15, 100) * _blend(caveDepth(x), 20, 100);
+
+  static bool inCave(Offset p) => caveBlend(p.dx, y: p.dy) > .1;
+
+  static const caveGapX = caveStart;
+
+  /// Land between the chamber floor and the bay, except the neck.
+  static bool inCaveLip(Offset p, {double margin = 0}) {
+    final chord = caveFloorChord(p.dx);
+    if (chord <= 0) return false;
+    if ((p.dx - caveStart).abs() < caveNeckHalf - margin) return false;
+    return p.dy >= caveCenterY + chord - margin &&
+        p.dy <= bayTop(p.dx) + margin;
+  }
+
+  /// Nearest water point outside that land (bay, chamber or neck).
+  static Offset _outOfLip(Offset p) {
+    const m = boatMargin + .5;
+    final x = p.dx, chord = caveFloorChord(x);
+    final options = <Offset>[
+      constrainBanks(Offset(x, bayTop(x) + m)),
+      if (chord > m) Offset(x, caveCenterY + chord - m),
+      if ((x - caveStart).abs() < caveNeckHalf + m)
+        Offset(caveStart + (x < caveStart ? -1 : 1) * (caveNeckHalf - m), p.dy),
+    ]..removeWhere((o) => inCaveLip(o, margin: boatMargin - .01));
+    options.sort((a, b) => (a - p).distance.compareTo((b - p).distance));
+    return options.isEmpty ? p : options.first;
+  }
 
   static double coastBlend(double x) {
     final t = ((x - (seaStart - 240)) / 720).clamp(0.0, 1.0);
@@ -169,12 +223,17 @@ class FishingRiver {
   static double bottom(double x) =>
       _mainCenter(x) + _mainWidth(x) + _inlet(x, false);
   static double center(double x) => (top(x) + bottom(x)) / 2;
+
+  /// Middle of the open channel, ignoring the Sea Cave chamber.
+  static double bayCenter(double x) =>
+      (bayTop(x) - _inlet(x, true) + bottom(x)) / 2;
   static double halfWidth(double x) => (bottom(x) - top(x)) / 2;
   static bool contains(Offset p) =>
       p.dx >= 0 &&
       p.dx <= length &&
       p.dy >= top(p.dx) &&
       p.dy <= bottom(p.dx) &&
+      !inCaveLip(p) &&
       !fishingSeaIsland.contains(p) &&
       (p - FishingCabin.ship).distance > FishingCabin.radius &&
       (p - FishingMarket.center).distance > FishingMarket.radius &&
@@ -183,6 +242,7 @@ class FishingRiver {
 
   static Offset constrain(Offset p) {
     var safe = constrainBanks(p);
+    if (inCaveLip(safe, margin: boatMargin)) safe = _outOfLip(safe);
     final delta = safe - fishingSeaIsland.center;
     final clearance = fishingSeaIsland.radiusTowards(safe) + boatMargin;
     if (delta.distance < clearance) {
@@ -232,6 +292,8 @@ class FishingRiverRound {
   bool chasing = false;
   double hitTime = 0;
   double _chaseDirection = 1;
+  bool _caveFight = false;
+  Offset _fightAnchor = Offset.zero;
   final _route = <Offset>[];
 
   /// Minimap fog, revealed around [cameraFocus] every update.
@@ -312,6 +374,8 @@ class FishingRiverRound {
     steering = Offset.zero;
     hitTime = 0;
     _chaseDirection = fish.dx < boat.dx ? -1 : 1;
+    _caveFight = FishingRiver.inCave(boat);
+    _fightAnchor = boat;
   }
 
   void steer(Offset delta) {
@@ -347,9 +411,9 @@ class FishingRiverRound {
     final move = FishingFight.at(fish, elapsed).move;
     final reverse = fish == FishSpecies.catMew && move == FishFightMove.dash;
     final forward = _chaseDirection * (reverse ? -1 : 1);
-    final slope =
-        (FishingRiver.center(boat.dx + 5) - FishingRiver.center(boat.dx - 5)) /
-            10;
+    final slope = (FishingRiver.bayCenter(boat.dx + 5) -
+            FishingRiver.bayCenter(boat.dx - 5)) /
+        10;
     final speedFactor = switch (move) {
       FishFightMove.inflate => .12,
       FishFightMove.dash => 1.6,
@@ -361,14 +425,28 @@ class FishingRiverRound {
         (pulling ? .7 : 1) *
         speedFactor *
         weightPull;
-    final velocity = Offset(
+    var velocity = Offset(
         forward * pullSpeed + steering.dx * 160,
         slope * forward * pullSpeed +
             weave * (beginner ? 25 : 42) +
             steering.dy * 140);
+    if (_caveFight) {
+      // Cave fish circle the casting area instead of following the main bay
+      // slope, which points straight out of this narrow north-side inlet.
+      final orbit = _fightAnchor +
+          Offset(math.sin(elapsed * .7) * 100, math.sin(elapsed * .5) * 60);
+      final target = FishingRiver.inCave(orbit) ? orbit : _fightAnchor;
+      var tug = (target - boat) * .9;
+      if (tug.distance > pullSpeed) tug = tug / tug.distance * pullSpeed;
+      final auto = props.slide(boat, tug * dt * props.dragAt(boat));
+      final safeAuto = FishingRiver.inCave(auto) ? auto : boat;
+      velocity = (safeAuto - boat) / math.max(dt, .001) +
+          Offset(steering.dx * 160, steering.dy * 140);
+    }
     heading = velocity / math.max(.001, velocity.distance);
     final intended = boat + velocity * dt;
-    boat = props.resolve(boat + velocity * dt * props.dragAt(boat));
+    boat = props.slide(boat, velocity * dt * props.dragAt(boat));
+    if (_caveFight && !FishingRiver.inCave(boat)) _caveFight = false;
     steering *= math.max(0, 1 - dt * 2.8);
     if ((FishingRiver.constrainBanks(intended) - intended).distance > .1 &&
         hitTime <= 0) {
@@ -376,6 +454,51 @@ class FishingRiverRound {
       return true;
     }
     return false;
+  }
+
+  bool _castLineClear(Offset from, Offset to, bool caveOnly) {
+    if (!props.clearLine(from, to)) return false;
+    if (!caveOnly) return true;
+    final steps = math.max(1, ((to - from).distance / 16).ceil());
+    for (var i = 1; i <= steps; i++) {
+      if (!FishingRiver.inCave(Offset.lerp(from, to, i / steps)!)) return false;
+    }
+    return true;
+  }
+
+  /// Stop the line at the first obstruction, never project it through a wall.
+  Offset clipCast(Offset from, Offset to, {bool caveOnly = false}) {
+    if (_castLineClear(from, to, caveOnly)) return to;
+    var lo = 0.0, hi = 1.0;
+    for (var i = 0; i < 9; i++) {
+      final mid = (lo + hi) / 2;
+      if (_castLineClear(from, Offset.lerp(from, to, mid)!, caveOnly)) {
+        lo = mid;
+      } else {
+        hi = mid;
+      }
+    }
+    return Offset.lerp(from, to, lo)!;
+  }
+
+  /// Prefer the facing direction, then try other angles in the same cave.
+  /// The longest clear ray wins, so narrow water naturally shortens the cast.
+  Offset castPoint(Offset from, double facing) {
+    final caveOnly = FishingRiver.inCave(from);
+    var best = from, distance = 0.0;
+    for (var i = 0; i < 16; i++) {
+      final angle = -math.atan2(25, 280) +
+          (i == 0 ? 0 : (i.isOdd ? 1 : -1) * ((i + 1) ~/ 2) * math.pi / 8);
+      final ray = Offset(math.cos(angle) * facing, math.sin(angle));
+      final point = clipCast(from, from + ray * 280, caveOnly: caveOnly);
+      final reach = (point - from).distance;
+      if (reach > distance) {
+        best = point;
+        distance = reach;
+      }
+      if (reach >= 279.9) break;
+    }
+    return best;
   }
 
   void sailTo(Offset world) {
@@ -396,19 +519,28 @@ class FishingRiverRound {
     }
     // Otherwise follow the channel's bends (a straight line would cut a
     // bank), then pull the path tight so it only bends where it must.
-    final startLane = (start.dy - FishingRiver.center(start.dx)) /
-        (FishingRiver.halfWidth(start.dx) - FishingRiver.boatMargin);
-    final endLane = (target.dy - FishingRiver.center(target.dx)) /
-        (FishingRiver.halfWidth(target.dx) - FishingRiver.boatMargin);
+    // Lanes follow the bay itself (cave inlet excluded); trips into or out
+    // of the cave fall back to the A* detour through the mouth gap.
+    double laneCenter(double x) =>
+        (FishingRiver.bayTop(x) -
+            FishingRiver._inlet(x, true) +
+            FishingRiver.bottom(x)) /
+        2;
+    double laneHalf(double x) =>
+        (FishingRiver.bottom(x) -
+                FishingRiver.bayTop(x) +
+                FishingRiver._inlet(x, true)) /
+            2 -
+        FishingRiver.boatMargin;
+    final startLane = (start.dy - laneCenter(start.dx)) / laneHalf(start.dx);
+    final endLane = (target.dy - laneCenter(target.dx)) / laneHalf(target.dx);
     final steps = math.max(1, ((target.dx - start.dx).abs() / 24).ceil());
     for (var i = 1; i <= steps; i++) {
       final t = i / steps;
       final x = start.dx + (target.dx - start.dx) * t;
       final lane = startLane + (endLane - startLane) * t;
-      _route.add(FishingRiver.constrain(Offset(
-          x,
-          FishingRiver.center(x) +
-              lane * (FishingRiver.halfWidth(x) - FishingRiver.boatMargin))));
+      _route.add(FishingRiver.constrain(
+          Offset(x, laneCenter(x) + lane * laneHalf(x))));
     }
     _avoidRocks();
     if (_route.isNotEmpty) {

@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 import 'package:flutter/painting.dart';
 import '../../fishing/fishing_river.dart';
+import '../../fishing/fishing_rod.dart';
 import 'fishing_art_kit.dart';
 import 'fishing_river_art.dart';
 
@@ -20,12 +21,17 @@ void paintLandScenery(Canvas c, double left, double right) {
       if (x < from || x > to || y < 300 || y > FishingRiver.height - 70) {
         continue;
       }
+      if (FishingRodHouse.bounds.inflate(100).contains(Offset(x, y))) continue;
       final region = _region(x);
       final margin = _margin(region);
       final north = y < FishingRiver.top(x) - margin.$1;
       final south = y > FishingRiver.bottom(x) + margin.$2;
       if (!north && !south) continue;
-      if (north && (x - FishingRiver.caveStart).abs() < 480) continue;
+      if (north &&
+          (x - FishingRiver.caveStart).abs() <
+              FishingRiver.caveHalfWidth + 120) {
+        continue;
+      }
       if (region != _Land.beach && (y - _pathY(x, north)).abs() < 75) {
         continue;
       }
@@ -105,7 +111,8 @@ void _footpath(Canvas c, double from, double to, bool north) {
       flush(last);
       last = r;
     }
-    if (north && (x - FishingRiver.caveStart).abs() < 480) {
+    if (north &&
+        (x - FishingRiver.caveStart).abs() < FishingRiver.caveHalfWidth + 120) {
       flush(r);
       continue;
     }

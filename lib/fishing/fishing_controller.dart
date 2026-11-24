@@ -4,6 +4,7 @@ import 'fishing_river.dart';
 import 'fishing_island.dart';
 import 'fishing_cabin.dart';
 import 'fishing_boat.dart';
+import 'fishing_rod.dart';
 import 'fishing_market.dart';
 import 'fishing_shrine.dart';
 import 'fishing_bait_house.dart';
@@ -39,6 +40,14 @@ class FishingController extends ChangeNotifier {
     if (!canSail || _preparingCast) return;
     useLegendaryBait = !useLegendaryBait;
     notifyListeners();
+  }
+
+  late FishingRod rod = FishingRod.load(collection.preferences);
+  Future<bool> selectRod(FishingRod choice) async {
+    if (!await choice.save(collection.preferences)) return false;
+    rod = choice;
+    if (!_disposed) notifyListeners();
+    return true;
   }
 
   final FishCollection collection;
@@ -83,6 +92,8 @@ class FishingController extends ChangeNotifier {
     }
     if (island.lookout) return 'Ngắm toàn vùng biển · Bấm để leo xuống';
     switch (_visit) {
+      case FishingVisit.rodHouse:
+        return 'Đang tới nhà đổi cần câu…';
       case FishingVisit.boatHouse:
         return island.ashore
             ? 'Mèo đang tới nhà thuyền…'
@@ -161,7 +172,8 @@ class FishingController extends ChangeNotifier {
     if ((FishingBoatHouse.hit(point) && _goTo(FishingVisit.boatHouse)) ||
         (FishingMarket.hit(point) && _goTo(FishingVisit.market)) ||
         (FishingShrine.hit(point) && _goTo(FishingVisit.shrine)) ||
-        (FishingBaitHouse.hit(point) && _goTo(FishingVisit.baitHouse))) {
+        (FishingBaitHouse.hit(point) && _goTo(FishingVisit.baitHouse)) ||
+        (FishingRodHouse.hit(point) && _goTo(FishingVisit.rodHouse))) {
       notifyListeners();
       return;
     }
@@ -218,8 +230,7 @@ class FishingController extends ChangeNotifier {
   bool _goTo(FishingVisit visit) {
     final island = river.island;
     final walk = island.ashore;
-    if (walk &&
-        (visit != FishingVisit.boatHouse || island.northBank != false)) {
+    if (walk && (visit.bankDoor == null || island.northBank != false)) {
       return false;
     }
     if (active) cancelCast();
@@ -229,7 +240,7 @@ class FishingController extends ChangeNotifier {
     }
     _visit = visit;
     if (walk) {
-      island.walkTo(FishingBoatHouse.door);
+      island.walkTo(visit.bankDoor!);
     } else {
       river.sailTo(visit.mooring);
     }
@@ -243,7 +254,8 @@ class FishingController extends ChangeNotifier {
     if (island.ashore ? island.walking : river.moving) return;
     _visit = null;
     final arrived = island.ashore
-        ? FishingBoatHouse.near(island.cat)
+        ? visit.bankDoor != null &&
+            (island.cat - visit.bankDoor!).distance < 110
         : (river.boat - visit.mooring).distance < 30;
     if (arrived) _arrived = visit;
   }
@@ -274,7 +286,12 @@ class FishingController extends ChangeNotifier {
   bool _newRecord = false, _catchSaved = false, _coinsSaved = false;
   bool get newRecord => _newRecord;
   double get sizeFraction => _fish.weightFraction(_grams);
-  double get fishScale => _fish.isJunk ? 1 : .8 + sizeFraction * .7;
+  // Legendary fish always look huge: up to twice a trophy common fish.
+  double get fishScale => _fish.isJunk
+      ? 1
+      : FishSpecies.legendary.contains(_fish)
+          ? 1.6 + sizeFraction * .5
+          : .8 + sizeFraction * .7;
   double get weightPull =>
       beginner || _fish.isJunk ? 1 : .95 + sizeFraction * .2;
   FishingPhase _phase = FishingPhase.ready;
@@ -297,10 +314,14 @@ class FishingController extends ChangeNotifier {
     final reeled =
         ((_progress - _hookProgress) / (1 - _hookProgress)).clamp(0.0, 1.0);
     final startDistance = _castOffset.distance;
-    final distance = startDistance + (95 - startDistance) * reeled;
-    // Steering changes boat motion, never teleports the fish behind the cat.
-    return FishingRiver.constrain(
-        angler + _castOffset / startDistance * distance);
+    final finishDistance = math.min(95.0, startDistance * .5);
+    final distance = startDistance + (finishDistance - startDistance) * reeled;
+    if (startDistance < .001) return angler;
+    final target = angler + _castOffset / startDistance * distance;
+    // Keep the float on this side of walls while the boat moves.
+    return shoreFishing
+        ? FishingRiver.constrain(target)
+        : river.clipCast(angler, target, caveOnly: FishingRiver.inCave(angler));
   }
 
   double get drift => _drift;
@@ -563,16 +584,20 @@ class FishingController extends ChangeNotifier {
     final location = angler;
     final direction = river.heading.dx >= 0 ? 1.0 : -1.0;
     river.stop();
-    _spot = FishingRiver.constrain(location + Offset(direction * 280, -25));
-    if ((_spot - location).distance < 200) {
-      _spot = FishingRiver.constrain(location + Offset(-direction * 280, -25));
-    }
+    _spot = shoreFishing
+        ? river.island.fishingWater(location)
+        : river.castPoint(location, direction);
     if (shoreFishing) {
-      _spot = river.island.fishingWater(location);
       river.island.facingRight = _spot.dx >= location.dx;
     }
-    final activity =
+    var activity =
         shoreFishing ? null : activities.nearby(river.clock, location);
+    if (activity != null &&
+        (!river.props.clearLine(location, activity.position) ||
+            (FishingRiver.inCave(location) &&
+                !FishingRiver.inCave(activity.position)))) {
+      activity = null;
+    }
     _activeWater = activity != null;
     if (activity != null) {
       if ((activity.position - location).distance >= 110) {
@@ -686,7 +711,14 @@ enum FishingVisit {
   boatHouse,
   market,
   shrine,
-  baitHouse;
+  baitHouse,
+  rodHouse;
+
+  Offset? get bankDoor => switch (this) {
+        boatHouse => FishingBoatHouse.door,
+        rodHouse => FishingRodHouse.door,
+        _ => null,
+      };
 
   /// Where the boat stops for this place.
   Offset get mooring => switch (this) {
@@ -694,5 +726,6 @@ enum FishingVisit {
         market => FishingMarket.mooring,
         shrine => FishingShrine.mooring,
         baitHouse => FishingBaitHouse.mooring,
+        rodHouse => FishingRodHouse.mooring,
       };
 }

@@ -28,12 +28,35 @@ class FishingCabin {
   static final chestTap = chest.inflate(10);
   static const chestSpot = Offset(172, 384);
 
-  /// Captain's bed in the bedroom: tap it and the cat walks to [bedSide],
-  /// hops onto [bedSpot] on the quilt and falls asleep.
-  static const bedTap = Rect.fromLTRB(540, 168, 734, 382);
+  /// Captain's double bed, fitted between the wall post (x 528) and the
+  /// right wall (x 746). Art and tap area both derive from [bed].
+  static const bed = Rect.fromLTRB(552, 198, 724, 400);
+  static const bedTap = Rect.fromLTRB(546, 104, 730, 404);
+
+  /// One sleeping place per side of the double bed: the local cat takes the
+  /// left; the right is reserved for a second (online) player's cat.
+  static const bedSpots = [Offset(596, 300), Offset(681, 300)];
+
+  /// Tap the bed and the cat walks to [bedSide], hops onto [bedSpot] on the
+  /// quilt and falls asleep.
   static const bedSide = Offset(515, 300);
-  static const bedSpot = Offset(632, 296);
+  static const bedSpot = Offset(596, 300);
   static const hopTime = .55;
+
+  /// Sleeping long enough fades to black, jumps the clock to morning and
+  /// fades back in. [dawnDue] is raised once at the darkest moment for the
+  /// screen to move the game clock.
+  static const sleepFade = 1.2, sleepHold = .6, sleepWake = 1.2;
+  double sleptFor = 0;
+  bool dawnDue = false;
+
+  /// 0..1 darkness of the sleep fade.
+  double get sleepDark {
+    if (!sleeping) return 0;
+    if (sleptFor < sleepFade) return sleptFor / sleepFade;
+    if (sleptFor < sleepFade + sleepHold) return 1;
+    return (1 - (sleptFor - sleepFade - sleepHold) / sleepWake).clamp(0.0, 1.0);
+  }
 
   int room = 0;
   bool chestRequested = false, bedRequested = false, sleeping = false;
@@ -132,6 +155,16 @@ class FishingCabin {
 
   void update(double dt) {
     clock += dt;
+    if (sleeping) {
+      final before = sleptFor;
+      sleptFor += dt;
+      if (before < sleepFade + sleepHold / 2 &&
+          sleptFor >= sleepFade + sleepHold / 2) {
+        dawnDue = true;
+      }
+    } else {
+      sleptFor = 0;
+    }
     final hopTo = _hopTo;
     if (hopTo != null) {
       hop = math.min(1, hop + dt / hopTime);

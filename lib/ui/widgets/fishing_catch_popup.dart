@@ -19,6 +19,7 @@ class FishingCatchPopup extends StatelessWidget {
   final int? grams;
   final bool newRecord;
   final double fishScale;
+  bool get legendary => FishSpecies.legendary.contains(fish);
 
   @override
   Widget build(BuildContext context) => Material(
@@ -40,12 +41,16 @@ class FishingCatchPopup extends StatelessWidget {
                           fontWeight: FontWeight.w900)),
                   const SizedBox(height: DS.spaceXs),
                   SizedBox(
-                      width: 150,
-                      height: 92,
+                      width: legendary ? 220 : 150,
+                      height: legendary ? 136 : 92,
                       child: Center(
                           child: SizedBox(
-                              width: 150 * (fishScale / 1.5).clamp(.55, 1.0),
-                              height: 92 * (fishScale / 1.5).clamp(.55, 1.0),
+                              width: legendary
+                                  ? 220
+                                  : 150 * (fishScale / 1.5).clamp(.55, 1.0),
+                              height: legendary
+                                  ? 136
+                                  : 92 * (fishScale / 1.5).clamp(.55, 1.0),
                               child:
                                   CustomPaint(painter: FishingFishArt(fish))))),
                   Text(fish.label,

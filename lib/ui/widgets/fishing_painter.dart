@@ -4,6 +4,8 @@ import 'dart:math' as math;
 import 'package:material_ui/material_ui.dart';
 import '../../fishing/fishing_controller.dart';
 import '../../collection/fish_species.dart';
+import '../../fishing/fishing_rod.dart';
+import 'fishing_rod_art.dart';
 
 class FishingPainter extends CustomPainter {
   const FishingPainter(
@@ -20,7 +22,9 @@ class FishingPainter extends CustomPainter {
       this.artScale,
       this.drift = 0,
       this.sweetCenter = .45,
-      this.combo = 0});
+      this.combo = 0,
+      this.rod = FishingRod.classic});
+  final FishingRod rod;
   final FishingPhase phase;
   final FishSpecies fish;
   final Offset spot, boat;
@@ -130,6 +134,7 @@ class FishingPainter extends CustomPainter {
 
   Offset _drawRod(Canvas canvas, Size size) {
     Offset point(double x, double y) => Offset(x * size.width, y * size.height);
+    final bamboo = rod == FishingRod.bamboo;
     final load = phase == FishingPhase.reeling ? tension : 0.0;
     final motion = _rodMotion();
     final scale = artScale ?? math.min(size.width / 800, size.height / 327);
@@ -190,98 +195,127 @@ class FishingPainter extends CustomPainter {
           shaft(t),
           shaft((i + 1) / 24),
           stroke
-            ..color = const Color(0xFF254D49)
-            ..strokeWidth = (4.5 - t * 3) * scale);
+            ..color = bamboo ? const Color(0xFF387E42) : const Color(0xFF254D49)
+            ..strokeWidth =
+                ((bamboo ? 5.5 : 4.5) - t * (bamboo ? 4 : 3)) * scale);
       canvas.drawLine(
           shaft(t) + const Offset(-.6, 0),
           shaft((i + 1) / 24) + const Offset(-.6, 0),
           stroke
-            ..color = const Color(0xFF8FB8A2)
+            ..color = bamboo ? const Color(0xFFA4D776) : const Color(0xFF8FB8A2)
             ..strokeWidth = (1.2 - t * .7) * scale);
     }
-    final threadedLine = Path()..moveTo(reel.dx, reel.dy);
-    for (final t in guides) {
-      final eye = guide(t);
-      threadedLine.lineTo(eye.dx, eye.dy);
-    }
-    canvas.drawPath(
-        threadedLine,
-        Paint()
-          ..color = const Color(0xCCF4F5DB)
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = 1);
-    for (final t in guides) {
-      final center = shaft(t);
-      final direction = tangent(t);
-      canvas.save();
-      canvas.translate(center.dx, center.dy);
-      canvas.rotate(math.atan2(direction.dy, direction.dx));
-      canvas.scale(scale);
-      canvas.drawLine(
-          const Offset(-2, 0),
-          const Offset(2, 0),
-          stroke
-            ..color = const Color(0xFFD7B76C)
-            ..strokeWidth = 3);
-      canvas.drawOval(
-          Rect.fromCenter(center: Offset(0, side * 5), width: 4, height: 5),
+    if (!bamboo) {
+      final threadedLine = Path()..moveTo(reel.dx, reel.dy);
+      for (final t in guides) {
+        final eye = guide(t);
+        threadedLine.lineTo(eye.dx, eye.dy);
+      }
+      canvas.drawPath(
+          threadedLine,
           Paint()
-            ..color = const Color(0xFFDFE4D4)
+            ..color = const Color(0xCCF4F5DB)
             ..style = PaintingStyle.stroke
             ..strokeWidth = 1);
+      for (final t in guides) {
+        final center = shaft(t);
+        final direction = tangent(t);
+        canvas.save();
+        canvas.translate(center.dx, center.dy);
+        canvas.rotate(math.atan2(direction.dy, direction.dx));
+        canvas.scale(scale);
+        canvas.drawLine(
+            const Offset(-2, 0),
+            const Offset(2, 0),
+            stroke
+              ..color = const Color(0xFFD7B76C)
+              ..strokeWidth = 3);
+        canvas.drawOval(
+            Rect.fromCenter(center: Offset(0, side * 5), width: 4, height: 5),
+            Paint()
+              ..color = const Color(0xFFDFE4D4)
+              ..style = PaintingStyle.stroke
+              ..strokeWidth = 1);
+        canvas.restore();
+      }
+    } else {
+      for (final t in [.18, .37, .56, .75, .92]) {
+        final v = tangent(t);
+        final normal = Offset(-v.dy, v.dx) / math.max(.001, v.distance);
+        final p = shaft(t);
+        canvas.drawLine(
+            p - normal * 2.4 * scale,
+            p + normal * 2.4 * scale,
+            Paint()
+              ..color = const Color(0xFF27683A)
+              ..strokeWidth = 2 * scale);
+      }
+      for (final (t, leafSide) in [(.48, side), (.73, -side)]) {
+        paintBambooLeaves(canvas, shaft(t), tangent(t),
+            scale: scale * .8, side: leafSide);
+      }
+      final along = tangent(0) / math.max(.001, tangent(0).distance);
+      canvas.drawLine(
+          base - along * 9 * scale,
+          base,
+          Paint()
+            ..color = const Color(0xFF387E42)
+            ..strokeWidth = 5.5 * scale
+            ..strokeCap = StrokeCap.round);
+    }
+    if (!bamboo) {
+      canvas.save();
+      canvas.translate(base.dx, base.dy);
+      canvas.rotate(handleAngle);
+      canvas.scale(scale);
+      canvas.drawRRect(
+          RRect.fromRectAndRadius(
+              const Rect.fromLTWH(-4, -34, 8, 40), const Radius.circular(3)),
+          Paint()..color = const Color(0xFF725338));
+      canvas.drawRRect(
+          RRect.fromRectAndRadius(
+              const Rect.fromLTWH(-3, -32, 5, 35), const Radius.circular(2)),
+          Paint()..color = const Color(0xFFD5AF75));
+      for (var i = 0; i < 7; i++) {
+        canvas.drawLine(
+            Offset(-3, -28 + i * 4.0),
+            Offset(3, -27 + i * 4.0),
+            stroke
+              ..color = const Color(0x887A5D3D)
+              ..strokeWidth = .8);
+      }
+      canvas.drawRect(const Rect.fromLTWH(-4, -38, 8, 5),
+          Paint()..color = const Color(0xFFDBD5BA));
+      canvas.scale(side, 1);
+      canvas.drawLine(
+          const Offset(3, -24),
+          const Offset(11, -20),
+          stroke
+            ..color = const Color(0xFF3B5350)
+            ..strokeWidth = 3);
+      canvas.drawCircle(
+          const Offset(12, -17), 8, Paint()..color = const Color(0xFF284C49));
+      canvas.drawCircle(
+          const Offset(12, -17), 6, Paint()..color = const Color(0xFFE1C486));
+      canvas.drawCircle(
+          const Offset(12, -17),
+          3.5,
+          Paint()
+            ..color = const Color(0xFF91AAA0)
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = 2);
+      final crank = const Offset(12, -17) +
+          Offset.fromDirection(pulling ? clock * 8 : .6, 10);
+      canvas.drawLine(
+          const Offset(12, -17),
+          crank,
+          stroke
+            ..color = const Color(0xFFE7DEBC)
+            ..strokeWidth = 2);
+      canvas.drawCircle(crank, 2.5, Paint()..color = const Color(0xFF725338));
       canvas.restore();
     }
-    canvas.save();
-    canvas.translate(base.dx, base.dy);
-    canvas.rotate(handleAngle);
-    canvas.scale(scale);
-    canvas.drawRRect(
-        RRect.fromRectAndRadius(
-            const Rect.fromLTWH(-4, -34, 8, 40), const Radius.circular(3)),
-        Paint()..color = const Color(0xFF725338));
-    canvas.drawRRect(
-        RRect.fromRectAndRadius(
-            const Rect.fromLTWH(-3, -32, 5, 35), const Radius.circular(2)),
-        Paint()..color = const Color(0xFFD5AF75));
-    for (var i = 0; i < 7; i++) {
-      canvas.drawLine(
-          Offset(-3, -28 + i * 4.0),
-          Offset(3, -27 + i * 4.0),
-          stroke
-            ..color = const Color(0x887A5D3D)
-            ..strokeWidth = .8);
-    }
-    canvas.drawRect(const Rect.fromLTWH(-4, -38, 8, 5),
-        Paint()..color = const Color(0xFFDBD5BA));
-    canvas.scale(side, 1);
-    canvas.drawLine(
-        const Offset(3, -24),
-        const Offset(11, -20),
-        stroke
-          ..color = const Color(0xFF3B5350)
-          ..strokeWidth = 3);
-    canvas.drawCircle(
-        const Offset(12, -17), 8, Paint()..color = const Color(0xFF284C49));
-    canvas.drawCircle(
-        const Offset(12, -17), 6, Paint()..color = const Color(0xFFE1C486));
-    canvas.drawCircle(
-        const Offset(12, -17),
-        3.5,
-        Paint()
-          ..color = const Color(0xFF91AAA0)
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = 2);
-    final crank = const Offset(12, -17) +
-        Offset.fromDirection(pulling ? clock * 8 : .6, 10);
-    canvas.drawLine(
-        const Offset(12, -17),
-        crank,
-        stroke
-          ..color = const Color(0xFFE7DEBC)
-          ..strokeWidth = 2);
-    canvas.drawCircle(crank, 2.5, Paint()..color = const Color(0xFF725338));
-    canvas.restore();
-    return guide(1);
+    return bamboo ? tip : guide(1);
   }
 
   /// Rod pose per phase: [angle] in radians (+ = swung back over the

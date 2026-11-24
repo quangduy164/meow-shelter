@@ -186,54 +186,7 @@ void _bedroom(Canvas c) {
         Rect.fromLTRB(w.left - 14, w.bottom + 6, w.right + 14, w.bottom + 14),
         const Color(0xFF6E4429));
   }
-  // Captain's bed: posts, headboard on the back wall, quilt and pillows.
-  const bed = Rect.fromLTRB(540, 168, 734, 382);
-  _rect(c, bed.translate(6, 8), const Color(0x334A2E1D));
-  _rect(c, const Rect.fromLTWH(536, 92, 202, 90), const Color(0xFF5E3A22));
-  for (var x = 552.0; x < 730; x += 30) {
-    c.drawRRect(
-        RRect.fromRectAndCorners(Rect.fromLTWH(x, 108, 20, 58),
-            topLeft: const Radius.circular(10),
-            topRight: const Radius.circular(10)),
-        _fill(0xFF8A5A33));
-  }
-  _line(c, const Offset(532, 92), const Offset(742, 92),
-      const Color(0xFFD9A441), 4);
-  _rect(c, bed, const Color(0xFF7A4A27));
-  _rect(c, bed.deflate(8), const Color(0xFFF3E9D2));
-  for (final x in [568.0, 650.0]) {
-    c.drawRRect(
-        RRect.fromRectAndRadius(
-            Rect.fromLTWH(x, 182, 66, 34), const Radius.circular(14)),
-        _fill(0xFFFFFBF0));
-    _line(c, Offset(x + 10, 199), Offset(x + 56, 199), const Color(0xFFE6DCC6),
-        1.5);
-  }
-  const quilt = Rect.fromLTRB(548, 232, 726, 374);
-  _rect(c, quilt, const Color(0xFF8E2F2A));
-  c.save();
-  c.clipRect(quilt);
-  for (var x = quilt.left; x < quilt.right; x += 30) {
-    for (var y = quilt.top; y < quilt.bottom; y += 30) {
-      if (((x - quilt.left) ~/ 30 + (y - quilt.top) ~/ 30).isEven) {
-        _rect(c, Rect.fromLTWH(x + 3, y + 3, 24, 24), const Color(0xFFA63C33));
-      }
-    }
-  }
-  c.restore();
-  _rect(c, const Rect.fromLTRB(548, 232, 726, 246), const Color(0xFFF1E2BE));
-  _line(c, const Offset(548, 372), const Offset(726, 372),
-      const Color(0xFFD9A441), 3);
-  for (final p in [
-    bed.topLeft,
-    bed.topRight,
-    bed.bottomLeft,
-    bed.bottomRight
-  ]) {
-    _rect(c, Rect.fromCenter(center: p, width: 16, height: 16),
-        const Color(0xFF4A2E1D));
-    c.drawCircle(p, 4, _fill(0xFFD9A441));
-  }
+  _doubleBed(c);
   // Open treasure chest in the free corner below the door.
   c.save();
   // Drawn at (66, 304) originally; shift onto FishingCabin.chest.
@@ -485,4 +438,146 @@ void _chandelierFlames(Canvas c, double clock, double night) {
         _fill(0xFFFFF1B8));
   }
   c.restore();
+}
+
+/// Captain's double bed: arched headboard against the back wall, one pillow
+/// and one quilt half per sleeper, turned posts and a low footboard.
+void _doubleBed(Canvas c) {
+  const bed = FishingCabin.bed;
+  const wood = Color(0xFF6B4026), dark = Color(0xFF4A2E1D);
+  const gold = Color(0xFFD9A441);
+  final mid = bed.center.dx;
+  // Soft floor shadow.
+  c.drawRRect(
+      RRect.fromRectAndRadius(
+          bed.translate(5, 9).inflate(2), const Radius.circular(14)),
+      _fill(0x40311C10));
+  // Arched headboard with one carved panel per side and a ship-wheel crest.
+  final head = Path()
+    ..moveTo(bed.left - 4, bed.top + 8)
+    ..lineTo(bed.left - 4, 128)
+    ..quadraticBezierTo(bed.left + 4, 112, mid - 34, 112)
+    ..quadraticBezierTo(mid, 96, mid + 34, 112)
+    ..quadraticBezierTo(bed.right - 4, 112, bed.right + 4, 128)
+    ..lineTo(bed.right + 4, bed.top + 8)
+    ..close();
+  c.drawPath(head, Paint()..color = wood);
+  c.drawPath(head, _stroke(0xFF3E2618, 3));
+  for (final side in [-1.0, 1.0]) {
+    final cx = mid + side * 42;
+    final panel = RRect.fromRectAndCorners(
+        Rect.fromCenter(center: Offset(cx, 162), width: 64, height: 58),
+        topLeft: const Radius.circular(26),
+        topRight: const Radius.circular(26),
+        bottomLeft: const Radius.circular(4),
+        bottomRight: const Radius.circular(4));
+    c.drawRRect(panel, _fill(0xFF8A5A33));
+    c.drawRRect(panel.deflate(5), _fill(0xFF7A4A27));
+    c.drawRRect(panel, _stroke(0xFFD9A441, 1.6));
+  }
+  _line(c, Offset(bed.left + 2, 126), Offset(mid - 36, 117), gold, 2);
+  _line(c, Offset(mid + 36, 117), Offset(bed.right - 2, 126), gold, 2);
+  const crest = Offset(638, 116);
+  c.drawCircle(crest, 13, _fill(0xFF3E2618));
+  c.drawCircle(crest, 10, _stroke(0xFFD9A441, 2.4));
+  for (var i = 0; i < 8; i++) {
+    final d = Offset(math.cos(i * math.pi / 4), math.sin(i * math.pi / 4));
+    _line(c, crest + d * 3, crest + d * 14, gold, 2);
+  }
+  c.drawCircle(crest, 3.4, _fill(0xFFD9A441));
+  // Frame and mattress.
+  final frame = RRect.fromRectAndRadius(bed, const Radius.circular(10));
+  c.drawRRect(frame, Paint()..color = wood);
+  c.drawRRect(frame, _stroke(0xFF3E2618, 3));
+  final mattress = RRect.fromRectAndRadius(
+      Rect.fromLTRB(bed.left + 9, bed.top + 6, bed.right - 9, bed.bottom - 22),
+      const Radius.circular(10));
+  c.drawRRect(mattress, _fill(0xFFF6EEDB));
+  // Two plump pillows, one for each sleeper.
+  for (final cx in [bed.left + 44.0, bed.right - 44.0]) {
+    final pillow = RRect.fromRectAndRadius(
+        Rect.fromCenter(
+            center: Offset(cx, bed.top + 28), width: 70, height: 36),
+        const Radius.circular(16));
+    c.drawRRect(pillow.shift(const Offset(0, 3)), _fill(0x33704626));
+    c.drawRRect(pillow, _fill(0xFFFFFCF3));
+    c.drawRRect(
+        RRect.fromRectAndRadius(
+            Rect.fromCenter(
+                center: Offset(cx, bed.top + 34), width: 56, height: 12),
+            const Radius.circular(6)),
+        _fill(0xFFF0E6D0));
+    c.drawRRect(pillow, _stroke(0xFFD8C9A8, 1.4));
+  }
+  // Quilt: two patchwork halves meeting in a stitched seam, folded sheet on
+  // top and a gold hem, draping slightly over both sides of the frame.
+  final quilt = RRect.fromRectAndCorners(
+      Rect.fromLTRB(bed.left + 4, bed.top + 58, bed.right - 4, bed.bottom - 18),
+      bottomLeft: const Radius.circular(12),
+      bottomRight: const Radius.circular(12),
+      topLeft: const Radius.circular(4),
+      topRight: const Radius.circular(4));
+  c.drawRRect(quilt.shift(const Offset(0, 4)), _fill(0xFF5E1E1B));
+  c.drawRRect(quilt, _fill(0xFF8E2F2A));
+  c.save();
+  c.clipRRect(quilt);
+  const cell = 21.5;
+  for (var row = 0; row < 7; row++) {
+    for (var col = 0; col < 8; col++) {
+      final x = quilt.left + col * cell, y = quilt.top + 18 + row * cell;
+      if ((row + col).isEven) {
+        c.drawPath(
+            Path()
+              ..moveTo(x + cell / 2, y + 3)
+              ..lineTo(x + cell - 3, y + cell / 2)
+              ..lineTo(x + cell / 2, y + cell - 3)
+              ..lineTo(x + 3, y + cell / 2)
+              ..close(),
+            _fill(0xFFA63C33));
+      } else {
+        c.drawCircle(
+            Offset(x + cell / 2, y + cell / 2), 1.8, _fill(0xFFE3B65A));
+      }
+    }
+  }
+  // Side shading so the quilt reads as draping over the mattress edge.
+  c.drawRect(Rect.fromLTRB(quilt.left, quilt.top, quilt.left + 8, quilt.bottom),
+      _fill(0x33000000));
+  c.drawRect(
+      Rect.fromLTRB(quilt.right - 8, quilt.top, quilt.right, quilt.bottom),
+      _fill(0x33000000));
+  c.restore();
+  for (var y = quilt.top + 22; y < quilt.bottom - 6; y += 9) {
+    _line(c, Offset(mid, y), Offset(mid, y + 5), const Color(0xFFE3B65A), 1.4);
+  }
+  final sheet = RRect.fromRectAndRadius(
+      Rect.fromLTRB(quilt.left, quilt.top - 2, quilt.right, quilt.top + 16),
+      const Radius.circular(5));
+  c.drawRRect(sheet, _fill(0xFFF1E2BE));
+  _line(c, Offset(quilt.left + 4, quilt.top + 11),
+      Offset(quilt.right - 4, quilt.top + 11), const Color(0xFFD9C397), 1.4);
+  c.drawRRect(quilt, _stroke(0xFF5E1E1B, 1.6));
+  _line(c, Offset(quilt.left + 6, quilt.bottom - 5),
+      Offset(quilt.right - 6, quilt.bottom - 5), gold, 2.4);
+  // Low footboard with a gold rail.
+  final foot = RRect.fromRectAndRadius(
+      Rect.fromLTRB(
+          bed.left - 4, bed.bottom - 16, bed.right + 4, bed.bottom + 4),
+      const Radius.circular(6));
+  c.drawRRect(foot, Paint()..color = dark);
+  c.drawRRect(foot.deflate(4), Paint()..color = wood);
+  _line(c, Offset(bed.left + 6, bed.bottom - 6),
+      Offset(bed.right - 6, bed.bottom - 6), gold, 2);
+  // Turned corner posts with brass knobs, kept inside the frame.
+  for (final p in [
+    Offset(bed.left, bed.top + 6),
+    Offset(bed.right, bed.top + 6),
+    Offset(bed.left, bed.bottom - 4),
+    Offset(bed.right, bed.bottom - 4),
+  ]) {
+    c.drawCircle(p, 9, _fill(0xFF3E2618));
+    c.drawCircle(p, 7, Paint()..color = wood);
+    c.drawCircle(p, 4.2, _fill(0xFFD9A441));
+    c.drawCircle(p - const Offset(1.4, 1.4), 1.4, _fill(0xFFFFE7A6));
+  }
 }

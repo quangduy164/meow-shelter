@@ -4,6 +4,7 @@ import 'package:material_ui/material_ui.dart';
 
 import '../../collection/fish_species.dart';
 import 'fishing_junk_art.dart';
+import 'fishing_legendary_art.dart';
 
 class _Look {
   const _Look(
@@ -178,6 +179,14 @@ class FishingFishArt extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     if (fish.isJunk) {
       FishingJunkArt(fish, locked: locked).paint(canvas, size);
+      return;
+    }
+    if (FishSpecies.legendary.contains(fish)) {
+      canvas.save();
+      canvas.translate(size.width / 2, size.height / 2);
+      canvas.scale(math.min(size.width / 100, size.height / 64));
+      paintLegendaryFish(canvas, fish, locked: locked);
+      canvas.restore();
       return;
     }
     canvas.save();

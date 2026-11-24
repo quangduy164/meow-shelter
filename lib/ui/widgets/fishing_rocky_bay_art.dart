@@ -1,6 +1,4 @@
 import 'dart:math' as math;
-import 'dart:typed_data';
-import 'dart:ui' as ui;
 import 'package:material_ui/material_ui.dart';
 import '../../fishing/fishing_river.dart';
 import '../../fishing/river_props.dart';
@@ -29,52 +27,41 @@ void paintRockyBay(Canvas c, double left, double right) {
           (x) => FishingRiver.bottom(x) + 48),
       Paint()..color = const Color(0xFFDCCCA8));
   paintWaterBody(c, from, to, tint: 0x22355E70);
-  // The cavern is a north-side inlet; the main bay remains an open route east.
+  // The cavern: a round chamber whose neck opens onto the bay. Ground rings
+  // follow the water shape, dark rock fades out away from it.
+  final water = seaCaveWater(widen: 0);
+  const outer = Rect.fromLTRB(
+      FishingRiver.caveStart - FishingRiver.caveRadius - 600,
+      0,
+      FishingRiver.caveStart + FishingRiver.caveRadius + 600,
+      FishingRiver.height);
   c.save();
-  c.clipRect(const Rect.fromLTRB(FishingRiver.caveStart - 360, 0,
-      FishingRiver.caveStart + 360, FishingRiver.height));
-  c.clipPath(bankBand(
-      math.max(from, FishingRiver.caveStart - 360),
-      math.min(to, FishingRiver.caveStart + 360),
-      (_) => 0,
-      (x) => FishingRiver.bayTop(x) + 12));
-  c.saveLayer(Rect.fromLTRB(from - 4, 0, to + 4, FishingRiver.height), Paint());
-  c.drawRect(Rect.fromLTRB(from - 4, 0, to + 4, FishingRiver.height),
-      Paint()..color = const Color(0xFF343F49));
+  c.clipPath(bankBand(math.max(from, outer.left), math.min(to, outer.right),
+      (_) => 0, (x) => FishingRiver.bayTop(x) + 12));
+  c.saveLayer(outer, Paint());
+  c.drawRect(outer, fillPaint(0xFF343F49));
+  c.drawPath(water, strokePaint(0xFF687471, 160));
+  c.drawPath(water, strokePaint(0xFF929A89, 60));
+  c.drawPath(water, fillPaint(0xFF2E7580));
+  c.drawPath(seaCaveWater(widen: -18), fillPaint(0xFF235E70));
+  _cavePools(c, from, to);
   c.drawPath(
-      bankBand(from, to, (x) => FishingRiver.top(x) - 80,
-          (x) => FishingRiver.bottom(x) + 90),
-      Paint()..color = const Color(0xFF687471));
-  c.drawPath(
-      bankBand(from, to, (x) => FishingRiver.top(x) - 30,
-          (x) => FishingRiver.bottom(x) + 35),
-      Paint()..color = const Color(0xFF929A89));
-  c.drawPath(bankBand(from, to, FishingRiver.top, FishingRiver.bottom),
-      Paint()..color = const Color(0xFF285F6B));
-  c.drawPath(
-      bankBand(from, to, (x) => FishingRiver.top(x) + 18,
-          (x) => FishingRiver.bottom(x) - 18),
-      Paint()..color = const Color(0xFF245261));
-  // An elliptical fade hugs the inlet so no straight seams show at its sides.
-  final caveCenter = Offset(FishingRiver.caveStart,
-      FishingRiver.bayTop(FishingRiver.caveStart) - 250);
-  const stretch = 1.9;
-  c.drawRect(
-      Rect.fromLTRB(from - 4, 0, to + 4, FishingRiver.height),
+      Path.combine(
+          PathOperation.difference,
+          Path()..addRect(outer),
+          Path.combine(
+              PathOperation.union,
+              seaCaveWater(widen: 150),
+              // Keep the rock solid over the land between chamber and bay.
+              Path()
+                ..addRect(Rect.fromLTRB(
+                    FishingRiver.caveStart - FishingRiver.caveRadius - 90,
+                    FishingRiver.caveCenterY,
+                    FishingRiver.caveStart + FishingRiver.caveRadius + 90,
+                    FishingRiver.height)))),
       Paint()
-        ..blendMode = BlendMode.dstIn
-        ..shader = ui.Gradient.radial(
-            caveCenter,
-            330,
-            const [Color(0xFFFFFFFF), Color(0xFFFFFFFF), Color(0x00FFFFFF)],
-            const [0, .55, 1],
-            TileMode.clamp,
-            Float64List.fromList([
-              1, 0, 0, 0, //
-              0, stretch, 0, 0,
-              0, 0, 1, 0,
-              0, caveCenter.dy * (1 - stretch), 0, 1,
-            ])));
+        ..blendMode = BlendMode.dstOut
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 45));
   c.restore();
   c.restore();
   final rng = math.Random(721);
@@ -113,17 +100,7 @@ void paintRockyBay(Canvas c, double left, double right) {
     }
   }
   _shoreLife(c, from, to);
-  // A recognisable cleft marks the entrance without drawing a wall over the channel.
-  if (from < 8350 && to > 7750) {
-    for (final north in [true, false]) {
-      const x = 8100.0;
-      final p = Offset(
-          x, north ? FishingRiver.top(x) - 35 : FishingRiver.bayTop(x) - 20);
-      paintBoulder(c, p, 70, north ? 41 : 42, inWater: false);
-      paintBoulder(c, p + const Offset(78, 18), 34, north ? 43 : 44,
-          inWater: false);
-    }
-  }
+  _caveCrystalAlcoves(c, from, to);
   for (var i = (from / 95).floor(); i * 95 < to; i++) {
     final x = i * 95.0 + 18;
     if (FishingRiver.caveDepth(x) < 100) continue;
@@ -434,6 +411,100 @@ void _seaStack(Canvas c, Offset p, double r, int seed) {
   if (artNoise(seed, 62) < .5) {
     _seal(c, Offset(p.dx - r * .2, p.dy + 2), artNoise(seed, 63) < .5);
   }
+}
+
+// These pools and formations are recorded with the landscape, not redrawn
+// for every water animation frame.
+void _cavePools(Canvas c, double from, double to) {
+  c.save();
+  c.clipPath(seaCaveWater(widen: 0));
+  for (final (dx, depth, width) in const [
+    (-210.0, 360.0, 490.0),
+    (240.0, 470.0, 430.0)
+  ]) {
+    final x = FishingRiver.caveStart + dx;
+    if (x + width / 2 < from || x - width / 2 > to) continue;
+    final p = Offset(x, FishingRiver.bayTop(x) - depth);
+    final r = Rect.fromCenter(center: p, width: width, height: 300);
+    c.drawOval(
+        r,
+        Paint()
+          ..shader = const RadialGradient(colors: [
+            Color(0x665CBBAE),
+            Color(0x222E8D9A),
+            Color(0x002E8D9A),
+          ]).createShader(r));
+    for (var i = 0; i < 16; i++) {
+      final q = p +
+          Offset((artNoise(i, dx.toInt()) - .5) * width,
+              (artNoise(i, 92) - .5) * 210);
+      c.drawOval(
+          Rect.fromCenter(
+              center: q, width: 12 + i % 4 * 4, height: 5 + i % 3 * 2),
+          fillPaint(i.isEven ? 0x226CB1AF : 0x22497980));
+    }
+  }
+  c.restore();
+}
+
+void _caveCrystalAlcoves(Canvas c, double from, double to) {
+  for (final (dx, tone, shadow) in const [
+    (-235.0, 0xFF8EDDD0, 0xFF428D98),
+    (255.0, 0xFFB9ACE8, 0xFF726BA5),
+  ]) {
+    final x = FishingRiver.caveStart + dx;
+    if (x < from - 90 || x > to + 90) continue;
+    final p = Offset(x, FishingRiver.top(x) - 12);
+    c.drawOval(
+        Rect.fromCenter(
+            center: p + const Offset(0, -25), width: 150, height: 85),
+        fillPaint((tone & 0x00FFFFFF) | 0x22000000));
+    for (var i = 0; i < 5; i++) {
+      final bx = p.dx - 45 + i * 20;
+      final h = const [42.0, 82.0, 115.0, 74.0, 47.0][i];
+      final lean = (i - 2) * 5.0;
+      final gem = Path()
+        ..moveTo(bx - 10, p.dy)
+        ..lineTo(bx - 8 + lean, p.dy - h * .78)
+        ..lineTo(bx + lean, p.dy - h)
+        ..lineTo(bx + 10 + lean, p.dy - h * .72)
+        ..lineTo(bx + 12, p.dy)
+        ..close();
+      c.drawPath(gem, fillPaint(tone));
+      c.drawPath(
+          Path()
+            ..moveTo(bx + lean, p.dy - h)
+            ..lineTo(bx + 3, p.dy)
+            ..lineTo(bx + 12, p.dy)
+            ..lineTo(bx + 10 + lean, p.dy - h * .72)
+            ..close(),
+          fillPaint(shadow));
+      c.drawPath(gem, strokePaint(0xFF3B626D, 1.5));
+      c.drawLine(Offset(bx - 5 + lean, p.dy - h * .75),
+          Offset(bx - 3, p.dy - 8), strokePaint(0x99EAFFF7, 1.5));
+    }
+  }
+}
+
+/// Water of the cave chamber plus its neck down into the bay, grown by
+/// [widen] (negative shrinks).
+Path seaCaveWater({double widen = 0}) {
+  const cx = FishingRiver.caveStart, r = FishingRiver.caveRadius;
+  final cy = FishingRiver.caveCenterY, mouth = FishingRiver.bayTop(cx);
+  final room = Path()..moveTo(cx - r - widen, cy);
+  for (var x = cx - r - widen; x <= cx + r + widen; x += 6) {
+    room.lineTo(x, cy - FishingRiver.caveCeilingChord(x, widen: widen));
+  }
+  for (var x = cx + r + widen; x >= cx - r - widen; x -= 6) {
+    room.lineTo(x, cy + FishingRiver.caveFloorChord(x, widen: widen));
+  }
+  room.close();
+  return Path.combine(
+      PathOperation.union,
+      room,
+      Path()
+        ..addRect(Rect.fromLTRB(cx - FishingRiver.caveNeckHalf - widen, cy,
+            cx + FishingRiver.caveNeckHalf + widen, mouth + 60 + widen)));
 }
 
 /// Stalagmites on the cave floor and roosting bats on the walls.

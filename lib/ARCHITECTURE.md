@@ -538,3 +538,62 @@ tools or test files.
   FishCollection.legendaryBait combines exchanged basket bait and camp paid
   bait; consumption uses exchanged bait first, then paid bait. Exchanging
   fish updates only the basket portion; it must never copy the combined count.
+
+- Fish-pulled boat movement uses `RiverProps.slide(from, delta)` (bounded,
+  swept steps with tangential sliding and boundary clipping). Never use
+  `resolve` for this motion: it projects click destinations out of overlapping
+  obstacles and can jump far across rock/root clusters. Keep `resolve` for
+  navigation targets and initial placement. The ashore return-boat button
+  sits left of the bait control, with separate hit areas for all three actions.
+
+- Casting uses `FishingRiverRound.castPoint` to choose a clear water ray,
+  shortening casts near obstructions instead of projecting through banks.
+  Cave casts and activity targets stay in the cave; `clipCast` stops the
+  reeling float at the first obstruction. Short casts reel inward too.
+  A fight begun in the Sea Cave uses a small orbit around its casting point
+  instead of the main bay's horizontal slope, keeping automatic pulls in
+  the inlet. Player steering can still leave the cave deliberately.
+
+- Village rod workshop (`FishingRodHouse`, next to the boathouse) is static
+  chunk art (`paintFishingRodHouse`); meadow/far-land decoration leaves its
+  footprint clear. `FishingVisit.bankDoor` shares ashore arrival handling for
+  both village shops; boats use each shop's own mooring.
+  `FishingRod` (classic, bamboo) saves by name in `fishing_rod_v1`, defaults
+  to the existing classic rod, and is selected through the controller.
+  FishingPainter reads the selected rod for both directions and every cast/
+  reeling pose. Bamboo uses shaft nodes and a tip-tied line, without the
+  classic reel or guide rings; gameplay tuning is shared.
+
+- Flutter CatSprite owns an ImageStream subscription and its delivered
+  ImageInfo handle. While a new sheet/decode size loads, retain the previous
+  image AND its frame-count/crop; switch them together on successful load.
+  Late deliveries cannot replace a newer request. Remove listeners on swap/
+  dispose and release old ImageInfo handles after painting, without evicting
+  shared image caches. CatSprite.decodeHeight/provider defines the same
+  64-pixel decode buckets used by precacheActions.
+- Fishing cat selection warms only the chosen cat's idle/row/walk/jump and
+  four fishing sheets at the normal boat/shore decode sizes before starting
+  the ticker. Keep selection disabled while preparing; do not preload every
+  breed or decode full-size sheets. Other newly encountered actions keep
+  the previous frame visible while loading through CatSprite.
+
+- Bamboo rod is a green branch through to its cut butt, with no machine-rod
+  handle/reel. Its two leaf sprigs use cached shared paths in
+  `fishing_rod_art.dart` and follow shaft tangents, facing and bending in
+  both live rod art and the workshop preview/sign.
+
+- Sea Cave is a round chamber (`caveRadius`, centre `caveStart`/`caveCenterY`)
+  with one neck (`caveNeckHalf`) into the bay. `caveDepth` gives the chamber
+  top; `inCaveLip` is the land between the chamber floor and the bay, excluded
+  by `contains`/`constrain`. Art draws the water shape `seaCaveWater` once;
+  the bay cliff runs across the lip and breaks only at the neck. Channel lanes,
+  fish pulls and depth shading use `bayCenter`, ignoring the chamber.
+
+## Legendary fish art and shrine statues
+
+- `ui/widgets/fishing_legendary_art.dart` draws the three legendary fish (Mèo Nessie, Rồng biển, Cá nguyệt quang) in the shared 100x64 fish box. `FishingFishArt` routes legendary species there, so journals, baskets, fights and popups all use it. `locked: true` renders the same art as grey stone.
+- Legendary fish use a bigger `FishingController.fishScale` (1.6 to 2.1) and a larger catch popup frame.
+- The Sea Cave shrine (`ui/widgets/fishing_shrine.dart`) places one statue per species at `shrineStatues`. Stone statues are recorded in the static shrine Picture; coloured statues are recorded once per species and drawn only after `hasShrineOffering`. Glow gradients are built once; per frame only opacity, rays and sparkles change. All three offered adds a light beam and threads to the arch.
+- `FishingShrine.radius`, `hit` and `mooring` match the wider statue island; the night overlay lamps read `shrineStatues` positions.
+- Ship cabin bed: `FishingCabin.bed` is the single source for the double bed art and tap area, and it sits inside the bedroom walls. `FishingCabin.bedSpots` holds one sleeping spot per side. The local cat uses the left one (`bedSpot`); the right one is reserved for a second player's cat if the mode goes online.
+- Sleeping through the night: while the cat sleeps in the cabin bed, `FishingCabin.sleepDark` fades the room to black. At the darkest moment `dawnDue` is raised, and the fishing screen calls `FishingLighting.skipTo(6)`. That adds a saved shift (`FishingLighting.shiftMs`, prefs key `fishing_clock_shift_v1`) to the shared 40-minute game clock, so the whole world wakes at sunrise (06:00). Fade, hold and fade-in take 3 s in total; tapping elsewhere hops the cat off the bed. The full map header shows the in-game time through `FishingClockChip`.

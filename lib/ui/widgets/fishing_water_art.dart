@@ -7,10 +7,13 @@ import 'fishing_art_kit.dart';
 /// Water art. [paintWaterBody] is recorded into the cached chunks (depth,
 /// sandy shallows, reefs); the rest is drawn live and limited to the view.
 
+// Depth shading follows the open channel; the Sea Cave chamber has its own.
+double _shadeTop(double x) =>
+    2 * FishingRiver.bayCenter(x) - FishingRiver.bottom(x);
 double _towardCenter(double x, double d) =>
-    math.min(FishingRiver.top(x) + d, FishingRiver.center(x));
+    math.min(_shadeTop(x) + d, FishingRiver.bayCenter(x));
 double _fromCenter(double x, double d) =>
-    math.max(FishingRiver.bottom(x) - d, FishingRiver.center(x));
+    math.max(FishingRiver.bottom(x) - d, FishingRiver.bayCenter(x));
 
 /// Water with depth: light turquoise shallows along both banks that deepen
 /// toward the middle, sandy ripples on the bottom near shore and dark reef
@@ -57,7 +60,7 @@ void paintWaterBody(Canvas c, double from, double to, {int? tint}) {
   // Clear shallows: stacked light bands give a soft gradient to the shore.
   for (var i = 1; i <= 10; i++) {
     final d = i * 15.0;
-    c.drawPath(bankBand(from, to, FishingRiver.top, (x) => _towardCenter(x, d)),
+    c.drawPath(bankBand(from, to, _shadeTop, (x) => _towardCenter(x, d)),
         fillPaint(0x14A6EADD));
     c.drawPath(
         bankBand(from, to, (x) => _fromCenter(x, d), FishingRiver.bottom),

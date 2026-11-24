@@ -227,6 +227,14 @@ class _FishingCabinRoomState extends State<FishingCabinRoom> {
                               offset,
                               widget.round.clock,
                               widget.round.room)))),
+              // Sleeping fades to night-black, the clock jumps to morning,
+              // then the room fades back in at dawn.
+              if (widget.round.sleepDark > 0)
+                Positioned.fill(
+                    child: IgnorePointer(
+                        child: ColoredBox(
+                            color: Color.fromRGBO(
+                                8, 10, 28, widget.round.sleepDark * .92)))),
               Positioned(
                   left: MediaQuery.paddingOf(context).left + 8,
                   top: MediaQuery.paddingOf(context).top + 8,

@@ -8,6 +8,7 @@ import '../../fishing/fishing_shrine.dart';
 import '../design.dart';
 import 'fishing_art_kit.dart';
 import 'fishing_fish_art.dart';
+import 'fishing_legendary_art.dart';
 import 'game_surfaces.dart';
 
 class FishingShrineView extends StatefulWidget {
@@ -20,59 +21,151 @@ class FishingShrineView extends StatefulWidget {
 }
 
 class _ShrineViewState extends State<FishingShrineView> {
-  late final ui.Picture _picture = () {
+  static ui.Picture _record(void Function(Canvas) draw) {
     final recorder = ui.PictureRecorder();
-    _stoneShrine(Canvas(recorder));
+    draw(Canvas(recorder));
     return recorder.endRecording();
-  }();
+  }
+
+  late final ui.Picture _picture = _record(_stoneShrine);
+  // Coloured statues, recorded once and only drawn once their fish is offered.
+  late final List<ui.Picture> _lit = [
+    for (var i = 0; i < shrineStatues.length; i++)
+      _record((c) => _statue(c, i, locked: false))
+  ];
   @override
   void dispose() {
     _picture.dispose();
+    for (final p in _lit) {
+      p.dispose();
+    }
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) => IgnorePointer(
       child: CustomPaint(
-          painter: _ShrinePainter(widget.round, widget.frames, _picture)));
+          painter: _ShrinePainter(
+              widget.round, widget.frames, _picture, _lit)));
 }
 
+/// Statue spots in shrine-local space, in [FishSpecies.legendary] order:
+/// Nessie on the left facing in, the sea dragon guarding the gate, the
+/// moonfish on the right.
+const shrineStatues = [
+  (at: Offset(-150, -64), scale: 1.15, flip: true),
+  (at: Offset(0, -84), scale: 1.25, flip: false),
+  (at: Offset(150, -64), scale: 1.15, flip: false),
+];
+
+void _statue(Canvas c, int i, {required bool locked}) {
+  final s = shrineStatues[i];
+  c.save();
+  c.translate(s.at.dx, s.at.dy);
+  c.scale(s.flip ? -s.scale : s.scale, s.scale);
+  paintLegendaryFish(c, FishSpecies.legendary[i], locked: locked);
+  c.restore();
+}
+
+// Glow shaders live in shrine-local space, so they are built once and only
+// their opacity changes per frame.
+final List<Paint> _statueGlow = [
+  for (final s in shrineStatues)
+    Paint()
+      ..blendMode = BlendMode.plus
+      ..shader = ui.Gradient.radial(s.at, 105 * s.scale, const [
+        Color(0x88FFF3B0),
+        Color(0x3380FFF2),
+        Color(0x0080FFF2)
+      ], const [
+        0,
+        .45,
+        1
+      ])
+];
+final Paint _beamPaint = Paint()
+  ..blendMode = BlendMode.plus
+  ..shader = ui.Gradient.linear(const Offset(0, -440), const Offset(0, -150),
+      const [Color(0x00FFF6C8), Color(0x99FFF6C8), Color(0x5580FFF2)],
+      const [0, .55, 1]);
+
 class _ShrinePainter extends CustomPainter {
-  _ShrinePainter(this.round, Listenable frames, this.picture)
+  _ShrinePainter(this.round, Listenable frames, this.picture, this.lit)
       : super(repaint: frames);
   final FishingRiverRound round;
   final ui.Picture picture;
+  final List<ui.Picture> lit;
   @override
   void paint(Canvas c, Size size) {
     final p = round.toScreen(FishingShrine.center);
-    if (!(Offset.zero & size).inflate(220 * round.scale).contains(p)) return;
+    if (!(Offset.zero & size).inflate(460 * round.scale).contains(p)) return;
     c.save();
     c.clipRect(Offset.zero & size);
     c.translate(p.dx, p.dy);
     c.scale(round.scale);
-    c.drawPicture(picture);
     final n = FishCollection.instance.shrineOfferings;
+    final t = round.clock;
+    final complete = n == FishingShrine.requiredFish;
+    if (complete) {
+      // The awakened shrine sends a pillar of light up to the cave roof.
+      final w = 70 + math.sin(t * 1.6) * 8;
+      c.drawPath(
+          Path()
+            ..moveTo(-w * .5, -170)
+            ..lineTo(-w, -440)
+            ..lineTo(w, -440)
+            ..lineTo(w * .5, -170)
+            ..close(),
+          _beamPaint);
+    }
+    c.drawPicture(picture);
     for (var i = 0; i < FishSpecies.legendary.length; i++) {
       if (!FishCollection.instance
           .hasShrineOffering(FishSpecies.legendary[i])) {
         continue;
       }
-      final flame = Offset((i - 1) * 68.0, i == 1 ? -92 : -42);
-      final pulse = math.sin(round.clock * 5 + i) * 2;
-      c.drawCircle(flame, 24 + pulse, fillPaint(0x3380FFF2));
-      c.drawOval(Rect.fromCenter(center: flame, width: 14 + pulse, height: 24),
-          fillPaint(0xFF51D8CD));
-      c.drawOval(
-          Rect.fromCenter(
-              center: flame + const Offset(0, 3), width: 7, height: 14),
-          fillPaint(0xFFEBFFF1));
+      final s = shrineStatues[i];
+      final pulse = .5 + .5 * math.sin(t * 2.4 + i * 2.1);
+      final glow = _statueGlow[i]
+        ..color = Color.fromRGBO(255, 255, 255, .7 + .3 * pulse);
+      c.drawCircle(s.at, 105 * s.scale, glow);
+      // Slowly turning sun rays behind the statue.
+      final ray = Paint()
+        ..blendMode = BlendMode.plus
+        ..color = Color.fromRGBO(255, 240, 170, .12 + .1 * pulse)
+        ..strokeWidth = 5 * s.scale
+        ..strokeCap = StrokeCap.round;
+      for (var k = 0; k < 10; k++) {
+        final a = t * .35 * (i.isEven ? 1 : -1) + k * math.pi / 5;
+        final d = Offset(math.cos(a), math.sin(a));
+        c.drawLine(s.at + d * 44 * s.scale,
+            s.at + d * (66 + 8 * pulse) * s.scale, ray);
+      }
+      c.drawPicture(lit[i]);
+      // Sparkles drifting up from the statue.
+      for (var k = 0; k < 7; k++) {
+        final life = (t * .45 + k / 7) % 1;
+        final x = s.at.dx + math.sin(k * 2.7 + t) * 46 * s.scale;
+        final y = s.at.dy + (30 - life * 90) * s.scale;
+        final r = (1 - life) * 3.2 * s.scale;
+        c.drawCircle(Offset(x, y), r,
+            fillPaint(Color.fromRGBO(255, 250, 220, 1 - life).toARGB32()));
+      }
     }
-    if (n == FishingShrine.requiredFish) {
-      c.drawCircle(const Offset(0, -132), 26 + math.sin(round.clock * 2) * 3,
-          strokePaint(0x99B8FFF0, 2));
-      for (var i = 0; i < 8; i++) {
-        final a = round.clock * .3 + i * math.pi / 4;
-        c.drawCircle(Offset(math.cos(a) * 32, -132 + math.sin(a) * 32), 2,
+    if (complete) {
+      // Threads of light join the three statues to the arch's heart.
+      const heart = Offset(0, -158);
+      final thread = strokePaint(0xAAFFF3B0, 2.5)..blendMode = BlendMode.plus;
+      for (final s in shrineStatues) {
+        c.drawLine(s.at, heart, thread);
+        final f = (t * .6) % 1;
+        c.drawCircle(Offset.lerp(s.at, heart, f)!, 4, fillPaint(0xFFFFFDE8));
+      }
+      c.drawCircle(heart, 16 + math.sin(t * 3) * 3, fillPaint(0xCCFFF6C8));
+      c.drawCircle(heart, 30 + math.sin(t * 2) * 4, strokePaint(0x99B8FFF0, 2));
+      for (var k = 0; k < 8; k++) {
+        final a = t * .5 + k * math.pi / 4;
+        c.drawCircle(heart + Offset(math.cos(a), math.sin(a)) * 40, 2.4,
             fillPaint(0xFFE4FFF4));
       }
     }
@@ -81,26 +174,30 @@ class _ShrinePainter extends CustomPainter {
 
   @override
   bool shouldRepaint(_ShrinePainter old) =>
-      old.round != round || old.picture != picture;
+      old.round != round || old.picture != picture || old.lit != lit;
 }
 
-// Static stonework is recorded once; only flames and the completed halo animate.
+// Static stonework (and the stone statues) is recorded once; only the lit
+// statues, their glow and the completed beam animate.
 void _stoneShrine(Canvas c) {
-  c.drawOval(const Rect.fromLTRB(-132, -8, 132, 80), fillPaint(0x44334852));
+  c.drawOval(const Rect.fromLTRB(-212, -14, 212, 86), fillPaint(0x44334852));
   final island = Path()
-    ..moveTo(-128, 30)
-    ..lineTo(-106, -30)
-    ..lineTo(-70, -50)
-    ..lineTo(70, -50)
-    ..lineTo(113, -26)
-    ..lineTo(130, 28)
-    ..lineTo(104, 60)
-    ..lineTo(38, 70)
-    ..lineTo(-80, 62)
+    ..moveTo(-208, 30)
+    ..lineTo(-190, -22)
+    ..lineTo(-140, -44)
+    ..lineTo(-70, -54)
+    ..lineTo(70, -54)
+    ..lineTo(146, -42)
+    ..lineTo(196, -18)
+    ..lineTo(210, 28)
+    ..lineTo(170, 62)
+    ..lineTo(60, 74)
+    ..lineTo(-90, 68)
+    ..lineTo(-170, 58)
     ..close();
   c.drawPath(island, fillPaint(0xFF687C88));
   c.drawPath(island, strokePaint(0xFF364B59, 3));
-  c.drawOval(const Rect.fromLTRB(-120, 2, 120, 76), strokePaint(0x77C6F5EF, 2));
+  c.drawOval(const Rect.fromLTRB(-196, 0, 196, 80), strokePaint(0x77C6F5EF, 2));
   for (var i = 0; i < 3; i++) {
     final r =
         Rect.fromLTRB(-66 + i * 8.0, 12 - i * 9.0, 66 - i * 8.0, 32 - i * 9.0);
@@ -136,31 +233,46 @@ void _stoneShrine(Canvas c) {
     ..close();
   c.drawPath(arch, fillPaint(0xFFAAC2BC));
   c.drawPath(arch, strokePaint(0xFF415F6B, 3));
-  // Fish carving suspended in the arch.
-  c.save();
-  c.translate(-25, -164);
-  c.scale(.5);
-  const FishingFishArt(FishSpecies.catMew).paint(c, const Size(100, 64));
-  c.restore();
-  for (var i = 0; i < 3; i++) {
-    final p = Offset((i - 1) * 68.0, i == 1 ? -76 : -26);
-    c.drawRect(
-        Rect.fromCenter(center: p + const Offset(0, 12), width: 12, height: 27),
-        fillPaint(0xFF819DA3));
-    c.drawOval(
-        Rect.fromCenter(center: p + const Offset(0, 25), width: 30, height: 8),
-        fillPaint(0xFF4C6670));
-    c.drawArc(Rect.fromCenter(center: p, width: 34, height: 20), 0, math.pi,
-        true, fillPaint(0xFF425D69));
-    c.drawOval(Rect.fromCenter(center: p, width: 34, height: 8),
-        fillPaint(0xFF799396));
+  // Low plinth for the sea dragon on the top step, framed by the gate.
+  _pedestal(c, const Rect.fromLTRB(-40, -46, 40, -8));
+  // Side pedestals with carved wave bands.
+  for (final x in [-150.0, 150.0]) {
+    _pedestal(c, Rect.fromLTRB(x - 44, -26, x + 44, 30));
+    for (var k = 0; k < 4; k++) {
+      c.drawArc(
+          Rect.fromCenter(
+              center: Offset(x - 27 + k * 18.0, 8), width: 16, height: 10),
+          math.pi,
+          math.pi,
+          false,
+          strokePaint(0xFF4C6670, 1.6));
+    }
+  }
+  for (var i = 0; i < shrineStatues.length; i++) {
+    _statue(c, i, locked: true);
   }
   // Coral and shell fragments at the foot of the rocks.
-  for (final x in [-106.0, 98.0]) {
-    c.drawLine(Offset(x, 30), Offset(x, 6), strokePaint(0xFFCC8C90, 5));
-    c.drawLine(Offset(x, 20), Offset(x - 9, 11), strokePaint(0xFFCC8C90, 4));
-    c.drawLine(Offset(x, 25), Offset(x + 9, 14), strokePaint(0xFFCC8C90, 4));
+  for (final x in [-196.0, 186.0]) {
+    c.drawLine(Offset(x, 34), Offset(x, 10), strokePaint(0xFFCC8C90, 5));
+    c.drawLine(Offset(x, 24), Offset(x - 9, 15), strokePaint(0xFFCC8C90, 4));
+    c.drawLine(Offset(x, 29), Offset(x + 9, 18), strokePaint(0xFFCC8C90, 4));
   }
+}
+
+void _pedestal(Canvas c, Rect r) {
+  final cap = Rect.fromLTRB(r.left - 6, r.top, r.right + 6, r.top + 9);
+  final foot = Rect.fromLTRB(r.left - 4, r.bottom - 8, r.right + 4, r.bottom);
+  c.drawRect(r, fillPaint(0xFF8EA8AD));
+  c.drawRect(Rect.fromLTRB(r.left + 5, r.top + 9, r.left + 12, r.bottom - 8),
+      fillPaint(0xFFBCD0C9));
+  for (final b in [cap, foot]) {
+    c.drawRRect(RRect.fromRectAndRadius(b, const Radius.circular(3)),
+        fillPaint(0xFFA8BDB6));
+    c.drawRRect(RRect.fromRectAndRadius(b, const Radius.circular(3)),
+        strokePaint(0xFF415F6B, 2));
+  }
+  c.drawRect(Rect.fromLTRB(r.left, r.top + 9, r.right, r.bottom - 8),
+      strokePaint(0xFF415F6B, 2));
 }
 
 class FishingShrineDialog extends StatefulWidget {
@@ -206,9 +318,9 @@ class _ShrineDialogState extends State<FishingShrineDialog> {
           Row(mainAxisAlignment: MainAxisAlignment.center, children: [
             for (var i = 0; i < FishingShrine.requiredFish; i++)
               Container(
-                  margin: const EdgeInsets.symmetric(horizontal: 6),
-                  width: 64,
-                  height: 54,
+                  margin: const EdgeInsets.symmetric(horizontal: 5),
+                  width: 104,
+                  height: 72,
                   padding: const EdgeInsets.all(6),
                   decoration: BoxDecoration(
                       color: collection.hasShrineOffering(fish[i])
@@ -232,8 +344,8 @@ class _ShrineDialogState extends State<FishingShrineDialog> {
           const SizedBox(height: 8),
           Text(
               complete
-                  ? 'Ba ngọn lửa đã thức tỉnh. Đền Hang biển tỏa sáng!'
-                  : 'Dâng mỗi loài 1 con để thắp sáng đền. Cá được lấy từ giỏ.',
+                  ? 'Ba tượng thần đã thức tỉnh. Đền Hang biển tỏa sáng!'
+                  : 'Dâng mỗi loài 1 con để thắp sáng tượng của nó. Cá được lấy từ giỏ.',
               textAlign: TextAlign.center,
               style: const TextStyle(color: DS.ink)),
           if (!complete) ...[

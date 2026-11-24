@@ -147,8 +147,9 @@ void paintCliffBand(Canvas c, double from, double to) {
   final a = math.max(from, start), b = math.min(to, end);
   if (a >= b) return;
   for (final (s, e) in [
-    (a, math.min(b, FishingRiver.caveStart - 400)),
-    (math.max(a, FishingRiver.caveStart + 400), b),
+    // Only the Sea Cave neck breaks the cliff.
+    (a, math.min(b, FishingRiver.caveStart - FishingRiver.caveNeckHalf - 6)),
+    (math.max(a, FishingRiver.caveStart + FishingRiver.caveNeckHalf + 6), b),
   ]) {
     if (s < e) _northCliff(c, s, e);
   }
@@ -156,7 +157,9 @@ void paintCliffBand(Canvas c, double from, double to) {
 }
 
 void _northCliff(Canvas c, double s, double e) {
-  double base(double x) => FishingRiver.top(x) - 2;
+  // The open channel's edge (the cave chamber is behind the cliff).
+  double base(double x) =>
+      2 * FishingRiver.bayCenter(x) - FishingRiver.bottom(x) - 2;
   // Ends slope down instead of stopping in a vertical wall.
   double taper(double x) {
     final t = (math.min(x - s, e - x) / 160).clamp(0.0, 1.0);

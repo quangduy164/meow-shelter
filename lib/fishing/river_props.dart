@@ -132,8 +132,6 @@ List<RiverProp> createRiverProps() {
     const Offset(7660, 1530),
     const Offset(7920, 2020),
     const Offset(7970, 2070),
-    const Offset(8000, 1300),
-    const Offset(8235, 1300)
   ]) {
     props.add(RiverProp(RiverPropKind.rock, point,
         radius: point.dy < 1400 ? 24 : 38));
@@ -268,6 +266,72 @@ class RiverProps {
       if ((FishingRiver.constrain(p) - p).distance > .001) return false;
     }
     return true;
+  }
+
+  /// Physical movement stays on the current side of obstacles. `resolve`
+  /// projects click targets out of overlapping rocks and can jump too far
+  /// to use as a movement step.
+  Offset slide(Offset from, Offset delta) {
+    if (delta.distanceSquared < 1e-12) return from;
+    if (clearLine(from, from + delta)) return from + delta;
+    final steps = math.max(1, (delta.distance / 4).ceil());
+    final step = delta / steps.toDouble();
+    var p = from;
+    for (var i = 0; i < steps; i++) {
+      if (clearLine(p, p + step)) {
+        p += step;
+        continue;
+      }
+      var tangent = step;
+      for (final rock in rocks) {
+        final target = p + step;
+        if ((target - rock.anchor).distance >=
+            rock.reachTowards(target) + boatRadius + 4) {
+          continue;
+        }
+        final normal = p - rock.anchor;
+        if (normal.distance < .001) continue;
+        final n = normal / normal.distance;
+        final inward = tangent.dx * n.dx + tangent.dy * n.dy;
+        if (inward < 0) tangent -= n * inward;
+      }
+      var best = p;
+      var advance = 0.0;
+      // Bank clamping provides a shoreline tangent; all candidates are
+      // swept and bounded so none can eject the boat to another shore.
+      for (final candidate in [
+        FishingRiver.constrainBanks(p + tangent) - p,
+        Offset(step.dx, 0),
+        Offset(0, step.dy),
+        step,
+      ]) {
+        final motion = candidate.distance > step.distance
+            ? candidate / candidate.distance * step.distance
+            : candidate;
+        var fraction = 1.0;
+        if (!clearLine(p, p + motion)) {
+          var lo = 0.0, hi = 1.0;
+          for (var j = 0; j < 8; j++) {
+            final mid = (lo + hi) / 2;
+            if (clearLine(p, p + motion * mid)) {
+              lo = mid;
+            } else {
+              hi = mid;
+            }
+          }
+          fraction = lo;
+        }
+        final moved = motion * fraction;
+        final dot = moved.dx * step.dx + moved.dy * step.dy;
+        if (dot > advance) {
+          advance = dot;
+          best = p + moved;
+        }
+        if (fraction == 1 && dot > 0) break;
+      }
+      p = best;
+    }
+    return p;
   }
 
   Offset resolve(Offset point) {

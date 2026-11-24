@@ -33,7 +33,7 @@ class _Scenery {
 
 class _FishingSceneryState extends State<FishingScenery> {
   late final items = [
-    for (final x in [420.0, 1260.0])
+    for (final x in [760.0, 1260.0])
       _Scenery(0, Offset(x, FishingRiver.bottom(x) + 235)),
     for (final x in [650.0, 1640.0])
       _Scenery(0, Offset(x, FishingRiver.top(x) - 80)),
