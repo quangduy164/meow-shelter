@@ -6,12 +6,18 @@ import '../camp/camp_state.dart';
 import '../collection/fish_collection.dart';
 
 enum FishingRod {
-  classic('Cần máy', 'Cơ bản'),
-  bamboo('Cần tre', 'Cơ bản'),
+  classic('Cần máy', 'Kéo cá nhanh hơn 10%'),
+  bamboo('Cần tre', 'Cá cắn câu sớm hơn 25%'),
   lantern('Cần đèn lồng', 'Cá đêm ×1,5 khi trời tối', price: 200);
 
   const FishingRod(this.label, this.effect, {this.price = 0});
   final String label, effect;
+
+  /// Reeling speed multiplier while the fish is coming in.
+  double get reel => this == classic ? 1.1 : 1;
+
+  /// Multiplier on the wait before a bite.
+  double get biteWait => this == bamboo ? .75 : 1;
 
   /// Coins to buy; 0 means every player has it.
   final int price;

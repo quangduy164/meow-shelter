@@ -116,6 +116,44 @@ class FishingJunkArt extends CustomPainter {
             outline..strokeWidth = 1.5);
         canvas.drawLine(const Offset(-17, 17), const Offset(14, 17),
             outline..strokeWidth = 1);
+      case FishSpecies.seashell:
+        // Fan-shaped scallop with ribs and a small hinge.
+        canvas.rotate(-.15);
+        final fan = Path()
+          ..moveTo(0, 20)
+          ..lineTo(-24, -2)
+          ..quadraticBezierTo(-22, -24, 0, -26)
+          ..quadraticBezierTo(22, -24, 24, -2)
+          ..close();
+        canvas.drawPath(fan.shift(const Offset(0, 3)),
+            Paint()..color = color(const Color(0xFFD98A73)));
+        canvas.drawPath(fan, Paint()..color = color(const Color(0xFFF9BFA8)));
+        for (var i = -3; i <= 3; i++) {
+          canvas.drawLine(
+              const Offset(0, 18),
+              Offset(i * 7.0, -22 + i.abs() * 2.0),
+              Paint()
+                ..color = color(const Color(0xFFE59A84))
+                ..strokeWidth = 1.6);
+        }
+        canvas.drawPath(fan, outline);
+        final hinge = Path()
+          ..moveTo(-8, 18)
+          ..lineTo(8, 18)
+          ..lineTo(5, 25)
+          ..lineTo(-5, 25)
+          ..close();
+        canvas.drawPath(hinge, Paint()..color = color(const Color(0xFFF2A890)));
+        canvas.drawPath(hinge, outline..strokeWidth = 1.5);
+        canvas.drawArc(
+            const Rect.fromLTWH(-14, -20, 16, 12),
+            3.4,
+            1.2,
+            false,
+            Paint()
+              ..color = const Color(0xBBFFFFFF)
+              ..style = PaintingStyle.stroke
+              ..strokeWidth = 2);
       default:
         break;
     }

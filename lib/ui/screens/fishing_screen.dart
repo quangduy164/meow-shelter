@@ -167,15 +167,22 @@ class _FishingScreenState extends State<FishingScreen>
     _lastTick = timestamp;
     if (previous == null || _paused || _collectionOpen) return;
     final dt = math.min((timestamp - previous).inMicroseconds / 1000000, .05);
-    final strokeBefore = (_river.clock / 1.65) % 1;
+    final swan = _river.boatStyle == FishingBoat.swan;
+    final strokeBefore = swan
+        ? (_river.clock * 9 / (2 * math.pi)).floor()
+        : ((_river.clock / 1.65) % 1);
     _controller.update(dt);
-    final strokeAfter = (_river.clock / 1.65) % 1;
-    // Sync the splash to the blade entering the water.
+    final strokeAfter = swan
+        ? (_river.clock * 9 / (2 * math.pi)).floor()
+        : ((_river.clock / 1.65) % 1);
+    // Sync the sound to the swan's pedal push or the oar entering the water.
     if (_river.moving &&
         !_controller.showFishingArt &&
-        strokeBefore < .18 &&
-        strokeAfter >= .18) {
-      GameAudio.instance.playGameplay(GameSound.fishingRow);
+        (swan
+            ? strokeAfter != strokeBefore
+            : strokeBefore < .18 && strokeAfter >= .18)) {
+      GameAudio.instance
+          .playGameplay(swan ? GameSound.fishingPedal : GameSound.fishingRow);
     }
     // The boat picker only opens once the cat has reached the boathouse.
     switch (_controller.takeArrival()) {
@@ -353,7 +360,7 @@ class _FishingScreenState extends State<FishingScreen>
       await showGameDialog<void>(
           context: context,
           builder: (context) => GameDialog(
-              maxWidth: 420,
+              maxWidth: 540,
               child: Column(mainAxisSize: MainAxisSize.min, children: [
                 FishingDialogHeader(
                     icon: Icons.sailing_rounded,
@@ -1064,6 +1071,13 @@ class _BoatChoice extends StatelessWidget {
                       color: DS.ink,
                       fontSize: DS.fontButton,
                       fontWeight: FontWeight.w900)),
+              Text(boat.effect,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                      color: Color(0xFFB0662F),
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.w700)),
+              const SizedBox(height: 2),
               Text(selected ? 'Đang dùng' : 'Chọn',
                   style: const TextStyle(
                       color: DS.wood,

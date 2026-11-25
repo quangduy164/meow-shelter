@@ -211,7 +211,9 @@ class FishingController extends ChangeNotifier {
     return switch (_phase) {
       FishingPhase.ready => river.moving
           ? 'Đang chèo · Bấm cần câu góc phải để câu tại đây'
-          : activities.nearby(river.clock, river.boat) != null
+          : activities.nearby(FishingActivities.worldClock(), river.boat,
+                      reach: river.boatStyle.activeReach) !=
+                  null
               ? 'Có cá động gần đây! Bấm cần câu để thử vận may'
               : 'Bấm nước để chèo · Bấm bờ để xuống đi bộ',
       FishingPhase.casting => _activeWater
@@ -468,6 +470,8 @@ class FishingController extends ChangeNotifier {
   }
 
   void update(double dt) {
+    activities.density =
+        FishingActivities.densityAt(_worldHour, rain: river.weather.rain);
     if (river.cabin.inside) {
       river.cabin.update(dt);
       notifyListeners();
@@ -565,6 +569,7 @@ class FishingController extends ChangeNotifier {
                             : .11;
         final reelRate = baseReelRate > 0
             ? baseReelRate *
+                rod.reel *
                 behavior.reelBonus *
                 (behavior.move == FishFightMove.orbit
                     ? (orbitControlled ? 1.25 : .75)
@@ -706,8 +711,10 @@ class FishingController extends ChangeNotifier {
     if (shoreFishing) {
       river.island.facingRight = _spot.dx >= location.dx;
     }
-    var activity =
-        shoreFishing ? null : activities.nearby(river.clock, location);
+    var activity = shoreFishing
+        ? null
+        : activities.nearby(FishingActivities.worldClock(), location,
+            reach: river.boatStyle.activeReach);
     if (activity != null &&
         (!river.props.clearLine(location, activity.position) ||
             (FishingRiver.inCave(location) &&
@@ -749,7 +756,7 @@ class FishingController extends ChangeNotifier {
     _newRecord = false;
     _catchSaved = false;
     _coinsSaved = false;
-    _wait = 1.2 + _random.nextDouble() * 2;
+    _wait = (1.2 + _random.nextDouble() * 2) * rod.biteWait;
     _fight = _random.nextDouble() * math.pi * 2;
     _error = null;
     _setPhase(FishingPhase.casting);

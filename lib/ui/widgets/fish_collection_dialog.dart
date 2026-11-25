@@ -593,6 +593,7 @@ class _DetailPanel extends StatelessWidget {
         FishSpecies.flipFlop => 'Ai đó làm rơi khi lội suối.',
         FishSpecies.oldBoot => 'Đã cũ nhưng vẫn còn nguyên đế.',
         FishSpecies.tinCan => 'Nhớ nhặt rác giúp hồ sạch nhé.',
+        FishSpecies.seashell => 'Nhặt trên bãi cát của đảo, mỗi ngày 6 chiếc.',
       };
 
   @override

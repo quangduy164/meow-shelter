@@ -5,6 +5,7 @@ import 'package:material_ui/material_ui.dart';
 import '../../fishing/fishing_river.dart';
 import '../../fishing/river_sea_land.dart';
 import '../../fishing/fishing_controller.dart';
+import '../../fishing/fishing_activity.dart';
 import 'fishing_river_art.dart';
 import 'fishing_oar_art.dart';
 import 'fishing_activity_art.dart';
@@ -313,8 +314,10 @@ class FishingRiverSurface extends CustomPainter {
     final controller = fishing;
     if (controller != null) {
       if (controller.canSail) {
-        for (final activity
-            in controller.activities.visible(round.clock, left, right)) {
+        for (final activity in controller.activities.visible(
+            FishingActivities.worldClock(), left, right,
+            top: round.cameraTop,
+            bottom: round.cameraTop + round.visibleHeight)) {
           paintFishingActivity(canvas, activity, round.clock);
         }
       }

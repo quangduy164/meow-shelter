@@ -3,6 +3,8 @@ import 'package:flutter/painting.dart';
 import 'river_sea_land.dart';
 import 'fishing_river.dart';
 import '../audio/game_audio.dart';
+import '../collection/fish_collection.dart';
+import '../collection/fish_species.dart';
 
 enum IslandVisitPhase { aboard, landing, exploring, boarding }
 
@@ -201,6 +203,36 @@ class FishingIslandVisit {
   Offset? destination;
   double elapsed = 0, clock = 0;
   final collectedShells = <int>{};
+
+  /// Shells refill every real day; picked ones are remembered for the day.
+  static const shellKey = 'island_shells_v1';
+  bool _shellsLoaded = false;
+  static Future<Object?> _shellSaves = Future.value();
+  static String _today() {
+    final d = DateTime.now();
+    return '${d.year}-${d.month}-${d.day}';
+  }
+
+  void loadShells() {
+    _shellsLoaded = true;
+    final saved =
+        FishCollection.instance.preferences.getString(shellKey)?.split('|');
+    if (saved == null || saved.length != 2 || saved[0] != _today()) return;
+    collectedShells
+        .addAll(saved[1].split(',').map(int.tryParse).whereType<int>());
+  }
+
+  void pickShell(int i) {
+    if (!collectedShells.add(i)) return;
+    GameAudio.instance.playGameplay(GameSound.toyBeat);
+    FishCollection.instance.preferences
+        .setString(shellKey, '${_today()}|${collectedShells.join(',')}');
+    // Saves run one after another so quick pickups never overwrite each other.
+    _shellSaves = _shellSaves
+        .then((_) => FishCollection.instance.catchFish(FishSpecies.seashell))
+        .catchError((_) => false);
+  }
+
   final crabs = [
     for (var i = 0; i < 3; i++)
       IslandCrab(
@@ -316,6 +348,7 @@ class FishingIslandVisit {
   void update(double dt) {
     clock += dt;
     elapsed += dt;
+    if (!_shellsLoaded && ashore) loadShells();
     if ((phase == IslandVisitPhase.landing ||
             phase == IslandVisitPhase.boarding) &&
         elapsed == dt) {
@@ -368,9 +401,7 @@ class FishingIslandVisit {
         for (var i = 0; i < shellOffsets.length; i++) {
           if ((cat - (fishingSeaIsland.center + shellOffsets[i])).distance <
               23) {
-            if (collectedShells.add(i)) {
-              GameAudio.instance.playGameplay(GameSound.toyBeat);
-            }
+            pickShell(i);
           }
         }
       }

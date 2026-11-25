@@ -38,7 +38,7 @@ enum FishingQuest {
       bait: 1),
   shrine('Hiến đủ 3 loài huyền thoại',
       'Mang 3 cá huyền thoại tới đền trong Hang biển.', 3,
-      coins: 100);
+      coins: 99999);
 
   const FishingQuest(this.title, this.hint, this.goal,
       {this.coins = 0, this.bait = 0});

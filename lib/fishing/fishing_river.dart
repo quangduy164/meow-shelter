@@ -477,7 +477,8 @@ class FishingRiverRound {
         (.65 + surge * .65) *
         (pulling ? .7 : 1) *
         speedFactor *
-        weightPull;
+        weightPull *
+        boatStyle.dragByFish;
     var velocity = Offset(
         forward * pullSpeed + steering.dx * 160,
         slope * forward * pullSpeed +
@@ -654,7 +655,8 @@ class FishingRiverRound {
         previous = point;
       }
       final wantedSpeed =
-          math.min(185.0, math.sqrt(2 * 210 * remaining)) * props.dragAt(boat);
+          math.min(185.0 * boatStyle.speed, math.sqrt(2 * 210 * remaining)) *
+              props.dragAt(boat);
       speed += (wantedSpeed - speed) * (1 - math.exp(-7 * dt));
       var travel = speed * dt;
       while (_route.isNotEmpty && travel > 0) {

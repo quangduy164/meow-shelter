@@ -24,7 +24,7 @@ class _FishingMarketDialogState extends State<FishingMarketDialog> {
   String? _note;
 
   late final _wanted = FishingMarket.wantedOn(_today);
-  List<FishSpecies> get _fish => FishCollection.instance.basket;
+  List<FishSpecies> get _fish => FishCollection.instance.sellable;
 
   Future<void> _sell(List<(FishSpecies, int)> lots) async {
     if (_busy) return;

@@ -23,14 +23,17 @@ class FishingMarket {
           center: center - const Offset(0, 30), width: 400, height: 290)
       .contains(world);
 
-  static int basePrice(FishSpecies fish) => switch (fish.rarity) {
-        'Phổ biến' => 6,
-        'Hiếm' => 16,
-        'Quý' => 30,
-        'Cực hiếm' => 60,
-        'Huyền thoại' => 120,
-        _ => 0,
-      };
+  static int basePrice(FishSpecies fish) => fish == FishSpecies.seashell
+      ? 8
+      : switch (fish.rarity) {
+          'Đồ thất lạc' => 3,
+          'Phổ biến' => 6,
+          'Hiếm' => 16,
+          'Quý' => 30,
+          'Cực hiếm' => 60,
+          'Huyền thoại' => 120,
+          _ => 0,
+        };
 
   /// Species the market wants today: same for everyone on a given day.
   static FishSpecies wantedOn(DateTime day) {

@@ -96,6 +96,7 @@ enum GameSound {
   fishingCoins,
   fishingJunk,
   fishingRow,
+  fishingPedal,
 }
 
 // Fishing WAVs: edited CC0 recordings from BigSoundBank, IDs 1529, 1531,
@@ -149,7 +150,8 @@ enum GameSound {
 // Fishing additions, BigSoundBank CC0: 1519 big splash (fishingSurge),
 // 1841 wooden pontoon jump (fishingJump), 0292 small bell (fishingRare),
 // 0193 coins (fishingCoins), 1204 glass placed on table (fishingJunk),
-// 1514 rowing slowly (fishingRow).
+// 1514 rowing slowly (fishingRow), mixed 1275 plastic pedal tractor and
+// 2768 bladed mill wheel (fishingPedal).
 // https://bigsoundbank.com/UPLOAD/ogg/<ID>.ogg
 
 /// Music and reel playback are separate from preloaded, low-latency effects.

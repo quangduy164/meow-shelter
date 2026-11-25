@@ -122,6 +122,12 @@ class FishCollection {
           if (!fish.isJunk && stockOf(fish) > 0) fish
       ];
 
+  /// Everything the market can buy: fish plus lost items and shells.
+  List<FishSpecies> get sellable => [
+        for (final fish in FishSpecies.values)
+          if (stockOf(fish) > 0) fish
+      ];
+
   static Map<String, int> _loadBasket(
       SharedPreferences preferences, Map<String, int> counts) {
     final saved = preferences.getString(_basketKey);
@@ -154,7 +160,7 @@ class FishCollection {
   /// not enough or the save failed, and then nothing changes.
   Future<bool> takeMany(FishSpecies fish, int count) async {
     final left = stockOf(fish);
-    if (fish.isJunk || count <= 0 || left < count) return false;
+    if (count <= 0 || left < count) return false;
     final next = {..._basket, fish.name: left - count}
       ..removeWhere((_, n) => n <= 0);
     if (!await preferences.setString(_basketKey, jsonEncode(next))) {
@@ -269,7 +275,7 @@ class FishCollection {
     }
     _counts = next;
     _heaviest = heaviest;
-    if (fish.isJunk) return false;
+    // Lost items go into the basket too, so the market can buy them.
     final basket = {..._basket, fish.name: stockOf(fish) + 1};
     // The journal already counts it; a failed basket write only loses the
     // snack, so it is logged instead of failing the catch.

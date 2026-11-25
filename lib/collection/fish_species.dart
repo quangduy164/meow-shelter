@@ -27,7 +27,9 @@ enum FishSpecies {
   cavefish('Cá hang mù', 0, 'Hiếm'),
   lanternfish('Cá đèn lồng', 0, 'Cực hiếm'),
   seaDragon('Cá rồng biển', 0, 'Huyền thoại'),
-  moonfish('Cá nguyệt quang', 0, 'Huyền thoại');
+  moonfish('Cá nguyệt quang', 0, 'Huyền thoại'),
+  // Picked up on the island beach, never hooked.
+  seashell('Vỏ sò', 0, 'Đồ thất lạc', isJunk: true);
 
   const FishSpecies(this.label, this.weight, this.rarity,
       {this.isJunk = false});
@@ -57,7 +59,7 @@ enum FishSpecies {
         mackerel => (500, 12000),
         clownfish => (20, 250),
         pufferfish => (150, 3000),
-        flipFlop || oldBoot || tinCan => (0, 0),
+        flipFlop || oldBoot || tinCan || seashell => (0, 0),
       };
 
   int rollGrams(math.Random random) {
@@ -97,7 +99,7 @@ enum FishSpecies {
         catMew => 1.3,
         seaDragon => 1.5,
         moonfish => 1.4,
-        flipFlop || oldBoot || tinCan => .6,
+        flipFlop || oldBoot || tinCan || seashell => .6,
       };
 
   double get movementSpeed => switch (this) {
@@ -120,7 +122,7 @@ enum FishSpecies {
         catMew => 1.1,
         seaDragon => .9,
         moonfish => .7,
-        flipFlop || oldBoot || tinCan => .35,
+        flipFlop || oldBoot || tinCan || seashell => .35,
       };
 
   double get movementAmplitude => switch (this) {
@@ -143,7 +145,7 @@ enum FishSpecies {
         catMew => 1.2,
         seaDragon => 1.1,
         moonfish => .85,
-        flipFlop || oldBoot || tinCan => .3,
+        flipFlop || oldBoot || tinCan || seashell => .3,
       };
 
   bool get isSea =>
@@ -177,6 +179,7 @@ enum FishSpecies {
         seaDragon => habitats[6],
         flipFlop => 'Làng / Biển',
         tinCan => 'Mọi vùng nước',
+        seashell => 'Bãi cát trên đảo',
       };
 
   bool get nightActive =>
@@ -205,7 +208,7 @@ enum FishSpecies {
         koi || clownfish || butterflyfish => 4,
         goldfish || pufferfish || lanternfish => 6,
         catMew || seaDragon || moonfish => 10,
-        flipFlop || oldBoot || tinCan => 0,
+        flipFlop || oldBoot || tinCan || seashell => 0,
       };
 
   static FishSpecies fromRollAtTime(int roll, double hour) {

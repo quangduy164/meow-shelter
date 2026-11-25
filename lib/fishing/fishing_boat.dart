@@ -5,12 +5,21 @@ import 'fishing_river.dart';
 
 /// Boats the cat can row; picked at the village boathouse.
 enum FishingBoat {
-  basket('Thúng chai'),
-  paper('Thuyền giấy'),
-  swan('Thiên nga');
+  basket('Thúng chai', 'Cá kéo trôi ít hơn 30%'),
+  paper('Thuyền giấy', 'Chèo nhanh hơn 25%'),
+  swan('Thiên nga', 'Thấy cá động xa hơn 50%');
 
-  const FishingBoat(this.label);
-  final String label;
+  const FishingBoat(this.label, this.effect);
+  final String label, effect;
+
+  /// How hard a hooked fish can drag this boat around.
+  double get dragByFish => this == basket ? .7 : 1;
+
+  /// Top rowing / pedalling speed multiplier.
+  double get speed => this == paper ? 1.25 : 1;
+
+  /// Reach for spotting active water when casting.
+  double get activeReach => this == swan ? 1.5 : 1;
 
   /// The swan pedal boat seats two; the first aboard drives.
   int get seats => this == swan ? 2 : 1;
