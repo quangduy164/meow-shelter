@@ -18,6 +18,7 @@ import 'fishing_volcano_art.dart';
 import '../../fishing/river_props.dart';
 import 'river_encounter_art.dart';
 import 'fishing_boats.dart';
+import '../../fishing/fishing_boat.dart';
 
 /// Like Adventure's cached background: only the visible stretch is replayed.
 class FishingRiverBackdrop extends StatefulWidget {
@@ -569,11 +570,17 @@ class FishingRiverBoatPainter extends CustomPainter {
     canvas.translate(
         point.dx, point.dy + math.sin(round.clock * 2.5) * 1.8 * round.scale);
     canvas.scale(round.scale);
-    final rowing = round.moving && !fishing;
+    final pedals = round.boatStyle == FishingBoat.swan;
+    final rowing = round.moving && !fishing && !pedals;
     final oar = FishingOarPose(round.clock,
         moving: rowing, facingRight: round.heading.dx >= 0);
     if (!front) {
       if (rowing) paintFishingOarWater(canvas, oar, round.clock);
+      if (pedals) {
+        paintSwanPaddleWheel(canvas, round.clock,
+            moving: round.moving,
+            facingRight: round.catFacingRight ?? round.heading.dx >= 0);
+      }
       if (round.wake > .02) {
         // Foam trails spreading behind the boat.
         final back = -round.heading.dx >= 0 ? 1.0 : -1.0;
@@ -609,7 +616,9 @@ class FishingRiverBoatPainter extends CustomPainter {
       paintBoatFront(canvas, round.boatStyle,
           facingRight: round.catFacingRight ?? round.heading.dx >= 0);
       // The row sheet draws the paws where [FishingOarPose.hand] grips.
-      if (rowing) paintFishingOar(canvas, oar);
+      if (rowing) {
+        paintFishingOar(canvas, oar, toy: round.boatStyle == FishingBoat.paper);
+      }
     }
     canvas.restore();
   }

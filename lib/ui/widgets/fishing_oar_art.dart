@@ -88,12 +88,64 @@ void paintFishingOarWater(Canvas canvas, FishingOarPose pose, double clock) {
   }
 }
 
-void paintFishingOar(Canvas canvas, FishingOarPose pose) {
+/// The paper boat's toy oar: a popsicle stick with a plastic spoon blade.
+void _paintToyOar(Canvas canvas, double length, double wet) {
+  final stick = RRect.fromRectAndRadius(
+      Rect.fromLTRB(-10, -3, length - 6, 3), const Radius.circular(3));
+  canvas.drawRRect(stick, Paint()..color = const Color(0xFFF3DDB0));
+  canvas.drawRRect(
+      stick,
+      Paint()
+        ..color = const Color(0xFFB58B52)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.2);
+  canvas.drawLine(
+      const Offset(-4, -1),
+      Offset(length - 12, -1),
+      Paint()
+        ..color = const Color(0x55FFFFFF)
+        ..strokeWidth = 1);
+  // Spoon: thin neck taped to the stick, then a round bowl.
+  for (final x in [length - 16, length - 11]) {
+    canvas.drawRect(
+        Rect.fromLTWH(x, -4, 3, 8), Paint()..color = const Color(0xFFF7F3E6));
+  }
+  final bowl =
+      Rect.fromCenter(center: Offset(length + 8, 0), width: 26, height: 17);
+  canvas.drawOval(bowl, Paint()..color = const Color(0xFF6CC2E8));
+  canvas.drawOval(bowl.deflate(3), Paint()..color = const Color(0xFF9AD8F2));
+  canvas.drawArc(
+      bowl.deflate(5),
+      math.pi * 1.1,
+      math.pi * .5,
+      false,
+      Paint()
+        ..color = const Color(0xCCFFFFFF)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.6);
+  canvas.drawOval(
+      bowl,
+      Paint()
+        ..color = const Color(0xFF3B8FB8)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.4);
+  if (wet > .05) {
+    canvas.drawOval(
+        bowl, Paint()..color = Color.fromRGBO(57, 128, 128, .2 * wet));
+  }
+}
+
+void paintFishingOar(Canvas canvas, FishingOarPose pose, {bool toy = false}) {
   final delta = pose.blade - pose.hand;
   final length = delta.distance;
   canvas.save();
   canvas.translate(pose.hand.dx, pose.hand.dy);
   canvas.rotate(math.atan2(delta.dy, delta.dx));
+  if (toy) {
+    _paintToyOar(canvas, length, pose.wet);
+    canvas.restore();
+    return;
+  }
   final stroke = Paint()..strokeCap = StrokeCap.round;
   canvas.drawLine(
       const Offset(-10, 0),

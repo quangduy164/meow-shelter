@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:flutter/painting.dart';
 import '../collection/fish_collection.dart';
 import '../collection/fish_species.dart';
+import '../audio/game_audio.dart';
 
 /// One-way ledge: the cat lands on [top] between [left] and [right].
 /// A [crumble] ledge drops away [CaveRun.crumbleDelay] after it is stood on.
@@ -233,6 +234,7 @@ class FishingCave {
     switch (state) {
       case CaveRunState.ready:
         state = CaveRunState.running;
+        GameAudio.instance.playGameplay(GameSound.fishingJump);
       case CaveRunState.running:
         _buffer = .12;
       case CaveRunState.falling || CaveRunState.finished:
@@ -260,11 +262,13 @@ class FishingCave {
     if (_buffer > 0) {
       if (grounded || _coyote > 0) {
         vy = -jumpSpeed;
+        GameAudio.instance.playGameplay(GameSound.fishingJump);
         grounded = false;
         _coyote = 0;
         _buffer = 0;
       } else if (!doubleJumpUsed) {
         vy = -doubleJumpSpeed;
+        GameAudio.instance.playGameplay(GameSound.adventureWings);
         doubleJumpUsed = true;
         spin = spinTime;
         _buffer = 0;
@@ -280,6 +284,7 @@ class FishingCave {
       if (vy < 0 && next.dy - headHeight < c.bottom) {
         next = Offset(next.dx, c.bottom + headHeight);
         vy = 80;
+        if (bonk <= 0) GameAudio.instance.playGameplay(GameSound.homeImpact);
         bonk = .25;
         spin = 0;
       }
@@ -292,7 +297,10 @@ class FishingCave {
         if (next.dx < l.left - 6 || next.dx > l.right + 6) continue;
         if (before.dy <= l.top + .5 && next.dy >= l.top) {
           next = Offset(next.dx, l.top);
-          if (!wasGrounded && vy > 120) landing = .12;
+          if (!wasGrounded && vy > 120) {
+            landing = .12;
+            GameAudio.instance.playGameplay(GameSound.rackShake);
+          }
           vy = 0;
           grounded = true;
           doubleJumpUsed = false;
@@ -315,7 +323,9 @@ class FishingCave {
     }
     final body = cat - const Offset(0, 30);
     for (var i = 0; i < tokens.length; i++) {
-      if ((tokens[i] - body).distance < 34) collected.add(i);
+      if ((tokens[i] - body).distance < 34 && collected.add(i)) {
+        GameAudio.instance.playGameplay(GameSound.toyBeat);
+      }
     }
     for (final (x, half) in spikes) {
       if ((cat.dx - x).abs() < half + 10 && cat.dy > floor - 26) {
@@ -356,12 +366,16 @@ class FishingCave {
             cat.dx > stalactites[i] - stalactiteTrigger &&
             cat.dx < stalactites[i]) {
           stalactiteY[i] = stalactiteTop;
+          GameAudio.instance.playGameplay(GameSound.rescueFlood);
         }
         continue;
       }
       if (y >= floor) continue;
       _stalactiteSpeed[i] += gravity * .8 * dt;
       stalactiteY[i] = math.min(floor, y + _stalactiteSpeed[i] * dt);
+      if (stalactiteY[i] == floor) {
+        GameAudio.instance.playGameplay(GameSound.adventureStoneBreak);
+      }
     }
   }
 
@@ -370,6 +384,7 @@ class FishingCave {
     falls++;
     spin = 0;
     hurt = .6;
+    GameAudio.instance.playGameplay(GameSound.homeHit, priority: 2);
     if (hit) vy = -420;
   }
 
@@ -393,6 +408,7 @@ class FishingCave {
   void _finish() {
     state = CaveRunState.finished;
     stars = rate(collected.length, falls);
+    GameAudio.instance.playGameplay(GameSound.homeWin, priority: 3);
   }
 
   static String _day(DateTime now) => '${now.year}-${now.month}-${now.day}';
@@ -445,5 +461,6 @@ class FishingCave {
     if (!await collection.addToBasket(fish)) return;
     await collection.preferences.setString(rewardKey, today);
     reward = fish;
+    GameAudio.instance.playGameplay(GameSound.fishingCoins, priority: 2);
   }
 }

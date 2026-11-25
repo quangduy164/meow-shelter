@@ -7,6 +7,7 @@ import 'fishing_art_kit.dart';
 import 'fishing_rod_art.dart';
 import 'game_surfaces.dart';
 import 'fishing_dialog_kit.dart';
+import '../../audio/game_audio.dart';
 
 /// Static village workshop, recorded into the river landscape chunks.
 void paintFishingRodHouse(Canvas c) {
@@ -196,6 +197,7 @@ class _RodHouseDialogState extends State<FishingRodHouseDialog> {
     if (!mounted) return;
     setState(() => _saving = false);
     if (ok) {
+      GameAudio.instance.play(GameSound.campBuy);
       await _choose(rod);
     } else {
       setState(() => _error = 'Chưa mua được cần, hãy thử lại.');

@@ -56,6 +56,7 @@ class FishingController extends ChangeNotifier {
   final river = FishingRiverRound();
   final activities = FishingActivities();
   bool _activeWater = false, _shoreCastPending = false;
+  FishFightMove? _soundMove;
 
   /// Place the cat is heading to; its screen opens on arrival (see
   /// [takeArrival]).
@@ -444,11 +445,16 @@ class FishingController extends ChangeNotifier {
       FishingPhase.casting => GameSound.fishingCast,
       FishingPhase.bite => GameSound.fishingBite,
       FishingPhase.reeling => GameSound.fishingHook,
-      FishingPhase.caught => GameSound.fishingCatch,
+      FishingPhase.caught => _fish.isJunk
+          ? GameSound.fishingJunk
+          : _fish.isLegendary || _newRecord
+              ? GameSound.fishingRare
+              : GameSound.fishingCatch,
       _ => null,
     };
     if (sound != null) GameAudio.instance.play(sound);
     _phase = phase;
+    _soundMove = null;
     if (phase != FishingPhase.reeling) {
       river.chasing = false;
       stopSteering();
@@ -477,7 +483,10 @@ class FishingController extends ChangeNotifier {
     _elapsed += dt;
     switch (_phase) {
       case FishingPhase.casting:
-        if (_elapsed >= .65) _setPhase(FishingPhase.waiting);
+        if (_elapsed >= .65) {
+          _setPhase(FishingPhase.waiting);
+          if (_activeWater) GameAudio.instance.play(GameSound.rescueSplash);
+        }
       case FishingPhase.waiting:
         if (_elapsed >= _wait) {
           _setPhase(FishingPhase.bite);
@@ -489,6 +498,14 @@ class FishingController extends ChangeNotifier {
         }
       case FishingPhase.reeling:
         final behavior = fight;
+        if (behavior.move != _soundMove) {
+          if (behavior.warning) {
+            GameAudio.instance.play(GameSound.rescueFlood);
+          } else if (behavior.dangerous) {
+            GameAudio.instance.play(GameSound.fishingSurge);
+          }
+          _soundMove = behavior.move;
+        }
         final steeringError =
             (river.steering.dy * 140 + behavior.lateral * (beginner ? 25 : 42))
                 .abs();
@@ -501,6 +518,7 @@ class FishingController extends ChangeNotifier {
                 weightPull: weightPull)) {
           _progress = math.max(.08, _progress - (beginner ? .05 : .1));
           _combo = 0;
+          GameAudio.instance.play(GameSound.fishingSurge);
           _vibrate(HapticFeedback.mediumImpact);
         }
         _drift = river.heading.dx;
@@ -525,6 +543,9 @@ class FishingController extends ChangeNotifier {
           if (_comboTime >= .8) {
             _comboTime = 0;
             _combo++;
+            if (_combo == 1 || _combo % 3 == 0) {
+              GameAudio.instance.play(GameSound.toyBeat);
+            }
             _vibrate(HapticFeedback.selectionClick);
           }
         } else if (_pulling) {

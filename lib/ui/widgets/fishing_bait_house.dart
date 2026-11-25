@@ -11,6 +11,7 @@ import 'fishing_fish_art.dart';
 import 'fishing_tool_art.dart';
 import 'game_surfaces.dart';
 import 'fishing_dialog_kit.dart';
+import '../../audio/game_audio.dart';
 
 class FishingBaitHouseView extends StatefulWidget {
   const FishingBaitHouseView(
@@ -190,6 +191,7 @@ class _BaitHouseDialogState extends State<FishingBaitHouseDialog> {
           ? await CampState.instance.buyLegendaryBait()
           : await FishCollection.instance.exchangeLegendaryBait();
       if (mounted) {
+        if (ok) GameAudio.instance.play(GameSound.rescueMilestone);
         setState(() => _note = ok
             ? 'Đã nhận 1 mồi huyền thoại!'
             : 'Chưa đổi được mồi, hãy thử lại.');

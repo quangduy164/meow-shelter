@@ -12,6 +12,20 @@ enum FishingBoat {
   const FishingBoat(this.label);
   final String label;
 
+  /// The swan pedal boat seats two; the first aboard drives.
+  int get seats => this == swan ? 2 : 1;
+
+  /// Seat positions relative to the boat point, boat facing right. Seat 0
+  /// (the driver) is the boat point itself, so the local cat, oar and rod
+  /// keep their anchors; the passenger sits behind.
+  static const _swanSeats = [Offset.zero, Offset(-46, 0)];
+  Offset seatOffset(int seat, {bool facingRight = true}) {
+    final o = this == swan && seat < _swanSeats.length
+        ? _swanSeats[seat]
+        : Offset.zero;
+    return facingRight ? o : Offset(-o.dx, o.dy);
+  }
+
   static const _key = 'fishing_boat_v1';
 
   static FishingBoat load(SharedPreferences preferences) {

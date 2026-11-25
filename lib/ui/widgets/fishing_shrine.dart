@@ -9,6 +9,7 @@ import '../design.dart';
 import 'fishing_art_kit.dart';
 import 'fishing_fish_art.dart';
 import 'fishing_legendary_art.dart';
+import '../../audio/game_audio.dart';
 
 class FishingShrineView extends StatefulWidget {
   const FishingShrineView(
@@ -288,6 +289,7 @@ class _ShrineDialogState extends State<FishingShrineDialog> {
     });
     try {
       final ok = await FishCollection.instance.offerToShrine(fish);
+      if (ok) GameAudio.instance.play(GameSound.fishingRare);
       if (mounted && !ok) {
         setState(() => _error = 'Chưa dâng được cá, hãy thử lại.');
       }

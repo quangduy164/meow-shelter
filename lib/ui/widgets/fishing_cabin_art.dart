@@ -19,6 +19,7 @@ import '../design.dart';
 import 'cat_sprite.dart';
 import 'game_glyphs.dart';
 import 'round_button.dart';
+import '../../audio/game_audio.dart';
 
 part 'fishing_cabin_ship_art.dart';
 part 'fishing_cabin_room.dart';

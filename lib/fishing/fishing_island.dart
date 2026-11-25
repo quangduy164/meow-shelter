@@ -2,6 +2,7 @@ import 'dart:math' as math;
 import 'package:flutter/painting.dart';
 import 'river_sea_land.dart';
 import 'fishing_river.dart';
+import '../audio/game_audio.dart';
 
 enum IslandVisitPhase { aboard, landing, exploring, boarding }
 
@@ -99,6 +100,7 @@ class FishingIslandVisit {
   void climbDown() {
     if (!lookout) return;
     lookout = false;
+    GameAudio.instance.playGameplay(GameSound.nightBridge);
     cat = lookoutDoor;
     facingRight = false;
   }
@@ -314,6 +316,11 @@ class FishingIslandVisit {
   void update(double dt) {
     clock += dt;
     elapsed += dt;
+    if ((phase == IslandVisitPhase.landing ||
+            phase == IslandVisitPhase.boarding) &&
+        elapsed == dt) {
+      GameAudio.instance.playGameplay(GameSound.fishingJump);
+    }
     if (phase == IslandVisitPhase.landing ||
         phase == IslandVisitPhase.boarding) {
       final boarding = phase == IslandVisitPhase.boarding;
@@ -344,11 +351,13 @@ class FishingIslandVisit {
           (cat - caveMouth).distance < 1) {
         caveRequested = false;
         caveArrived = true;
+        GameAudio.instance.playGameplay(GameSound.nightDoor);
       } else if (lookoutRequested &&
           destination == null &&
           (cat - lookoutDoor).distance < 1) {
         lookoutRequested = false;
         lookout = true;
+        GameAudio.instance.playGameplay(GameSound.nightBridge);
         cat = lookoutTop;
         facingRight = true;
       } else if (boardRequested && destination == null) {
@@ -359,7 +368,9 @@ class FishingIslandVisit {
         for (var i = 0; i < shellOffsets.length; i++) {
           if ((cat - (fishingSeaIsland.center + shellOffsets[i])).distance <
               23) {
-            collectedShells.add(i);
+            if (collectedShells.add(i)) {
+              GameAudio.instance.playGameplay(GameSound.toyBeat);
+            }
           }
         }
       }

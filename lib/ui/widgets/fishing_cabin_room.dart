@@ -86,6 +86,8 @@ class _FishingCabinRoomState extends State<FishingCabinRoom> {
   Future<void> _openChest() async {
     final fish = await FishingCabinChest.open(FishCollection.instance);
     if (!mounted) return;
+    GameAudio.instance
+        .play(fish == null ? GameSound.nightLatch : GameSound.fishingCoins);
     setState(() {
       _opening = false;
       _showChest = true;

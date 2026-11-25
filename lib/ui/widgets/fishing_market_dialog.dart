@@ -7,6 +7,7 @@ import '../design.dart';
 import 'fishing_fish_art.dart';
 import 'game_surfaces.dart';
 import 'fishing_dialog_kit.dart';
+import '../../audio/game_audio.dart';
 
 /// The floating market's counter: tap a basket fish to sell one, or sell
 /// everything at once. Today's wanted species sells for double.
@@ -37,6 +38,7 @@ class _FishingMarketDialogState extends State<FishingMarketDialog> {
       }
     }
     if (!mounted) return;
+    if (coins > 0) GameAudio.instance.play(GameSound.fishingCoins);
     setState(() {
       _busy = false;
       _note = coins > 0

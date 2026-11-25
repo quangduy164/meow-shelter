@@ -33,6 +33,7 @@ import '../../fishing/fishing_weather.dart';
 import '../../fishing/fishing_trip.dart';
 import '../widgets/fishing_rocky_bay_art.dart';
 import '../widgets/fishing_oar_art.dart';
+import '../../audio/game_audio.dart';
 import '../widgets/game_glyphs.dart';
 import '../widgets/game_surfaces.dart';
 import '../widgets/round_button.dart';
@@ -166,7 +167,16 @@ class _FishingScreenState extends State<FishingScreen>
     _lastTick = timestamp;
     if (previous == null || _paused || _collectionOpen) return;
     final dt = math.min((timestamp - previous).inMicroseconds / 1000000, .05);
+    final strokeBefore = (_river.clock / 1.65) % 1;
     _controller.update(dt);
+    final strokeAfter = (_river.clock / 1.65) % 1;
+    // Sync the splash to the blade entering the water.
+    if (_river.moving &&
+        !_controller.showFishingArt &&
+        strokeBefore < .18 &&
+        strokeAfter >= .18) {
+      GameAudio.instance.playGameplay(GameSound.fishingRow);
+    }
     // The boat picker only opens once the cat has reached the boathouse.
     switch (_controller.takeArrival()) {
       case FishingVisit.rodHouse:
@@ -506,19 +516,52 @@ class _FishingScreenState extends State<FishingScreen>
     final lean = phase == FishingPhase.bite
         ? math.sin(_controller.clock * 20) * .035
         : 0.0;
-    final rowing = _river.moving && !fishing;
+    // The swan is pedalled: no oar, the cat bobs gently with each push.
+    final pedalling =
+        _river.boatStyle == FishingBoat.swan && _river.moving && !fishing;
+    final rowing =
+        _river.moving && !fishing && _river.boatStyle != FishingBoat.swan;
+    final pedalBob = pedalling
+        ? -math.sin(_river.clock * 9).abs() * 2.2 * _river.scale
+        : 0.0;
+    // The idle sheet sits lower than the row/fish sheets; on the swan's
+    // raised seat lift it so the cat shows above the side like the others.
+    double swanSeatLift(String action) =>
+        _river.boatStyle == FishingBoat.swan && action == 'idle'
+            ? 10 * _river.scale
+            : 0;
     final (action, frames, frame) = _anglerPose(oar, rowing: rowing) ??
         ('idle', framesIdle, (_river.clock * 7).floor() % framesIdle);
+    final bob = math.sin(_river.clock * 2.5) * 1.8 * _river.scale;
     return Stack(fit: StackFit.expand, children: [
       CustomPaint(
           painter: FishingRiverBoatPainter(_river,
               fishing: fishing && !_river.island.ashore)),
+      // Passengers (online friends) sit in the seats behind the driver.
+      if (!_river.island.ashore)
+        for (final (seat, member) in _river.crew.passengers)
+          Builder(builder: (context) {
+            final p = _river.toScreen(_river.boat +
+                _river.boatStyle.seatOffset(seat, facingRight: facingRight));
+            return Positioned(
+                left: p.dx - catSize / 2,
+                top: p.dy - catSize * .69 + bob - swanSeatLift('idle'),
+                child: CatSprite(
+                    type: member.cat,
+                    size: catSize,
+                    action: 'idle',
+                    frames: framesIdle,
+                    frame: (_river.clock * 7).floor() % framesIdle,
+                    flip: !facingRight));
+          }),
       if (!_river.island.ashore)
         Positioned(
             left: point.dx - catSize / 2,
             top: point.dy -
                 catSize * .69 +
-                math.sin(_river.clock * 2.5) * 1.8 * _river.scale,
+                math.sin(_river.clock * 2.5) * 1.8 * _river.scale +
+                pedalBob -
+                swanSeatLift(action),
             child: Transform.rotate(
               angle: lean,
               alignment: Alignment.bottomCenter,
@@ -1038,7 +1081,7 @@ class _BoatPreview extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    // Scaled to fit the card height (the swan's crest reaches y = -116).
+    // Scaled to fit the card height (the swan's roof reaches y = -112).
     final s = math.min(size.height / 140, size.width / 160);
     canvas.translate(size.width / 2, size.height * .8);
     canvas.scale(s);

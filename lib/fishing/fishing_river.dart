@@ -12,6 +12,7 @@ import 'fishing_exploration.dart';
 import 'fishing_region.dart';
 import 'fishing_weather.dart';
 import 'fishing_boat.dart';
+import 'fishing_crew.dart';
 export 'fishing_region.dart';
 import 'dart:math' as math;
 import 'package:flutter/painting.dart';
@@ -368,8 +369,18 @@ class FishingRiverRound {
   /// head turn with it. Null falls back to the rowing heading.
   bool? catFacingRight;
 
-  /// Boat drawn under the cat; picked at the village boathouse.
-  FishingBoat boatStyle = FishingBoat.basket;
+  /// Boat drawn under the cat; picked at the village boathouse. Changing it
+  /// refits [crew] to the new boat's seats.
+  FishingBoat get boatStyle => _boatStyle;
+  FishingBoat _boatStyle = FishingBoat.basket;
+  set boatStyle(FishingBoat boat) {
+    _boatStyle = boat;
+    crew.refit(boat);
+  }
+
+  /// Who rides the boat; only the driver (seat 0) rows and steers.
+  final crew = FishingCrew();
+  bool get localDrives => crew.canSteer(FishingCrew.localId);
 
   /// Current weather from the real clock; set by the screen.
   FishingWeather weather = FishingWeather.clear;
@@ -420,6 +431,7 @@ class FishingRiverRound {
   }
 
   void steer(Offset delta) {
+    if (!localDrives) return;
     steering = Offset((steering.dx + delta.dx).clamp(-1.0, 1.0),
         (steering.dy + delta.dy).clamp(-1.0, 1.0));
   }
@@ -543,6 +555,7 @@ class FishingRiverRound {
   }
 
   void sailTo(Offset world) {
+    if (!localDrives) return;
     final target = props.resolve(world);
     destination = target;
     _route.clear();

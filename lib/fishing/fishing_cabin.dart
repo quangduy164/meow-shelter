@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 
 import 'package:flutter/painting.dart';
+import '../audio/game_audio.dart';
 
 /// A moored vessel with a separate, session-only walkable cabin.
 class FishingCabin {
@@ -76,6 +77,7 @@ class FishingCabin {
   }
 
   void _startHop(Offset from, Offset to, [void Function()? then]) {
+    GameAudio.instance.playGameplay(GameSound.fishingJump);
     _hopFrom = from;
     _hopTo = to;
     hop = 0;
@@ -111,6 +113,7 @@ class FishingCabin {
   double clock = 0;
   bool get walking => destination != null;
   void enter() {
+    GameAudio.instance.playGameplay(GameSound.nightDoor);
     pending = false;
     inside = true;
     leaving = false;
@@ -161,6 +164,7 @@ class FishingCabin {
       if (before < sleepFade + sleepHold / 2 &&
           sleptFor >= sleepFade + sleepHold / 2) {
         dawnDue = true;
+        GameAudio.instance.playGameplay(GameSound.moonReveal);
       }
     } else {
       sleptFor = 0;
@@ -172,6 +176,7 @@ class FishingCabin {
       if (hop >= 1) {
         _hopTo = null;
         sleeping = hopTo == bedSpot;
+        if (sleeping) GameAudio.instance.playGameplay(GameSound.catNap);
         final then = _afterHop;
         _afterHop = null;
         then?.call();
@@ -188,12 +193,14 @@ class FishingCabin {
       final next = _nextRoom;
       if (next != null) {
         _nextRoom = null;
+        GameAudio.instance.playGameplay(GameSound.nightDoor);
         room = next;
         cat = next == 1 ? bedroomDoor : door;
         if (leaving) destination = exit;
         return;
       }
       if (leaving) {
+        GameAudio.instance.playGameplay(GameSound.nightDoor);
         inside = false;
         leaving = false;
       }

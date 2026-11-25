@@ -90,6 +90,12 @@ enum GameSound {
   campWelcome,
   campScratch,
   campSulk,
+  fishingSurge,
+  fishingJump,
+  fishingRare,
+  fishingCoins,
+  fishingJunk,
+  fishingRow,
 }
 
 // Fishing WAVs: edited CC0 recordings from BigSoundBank, IDs 1529, 1531,
@@ -140,6 +146,11 @@ enum GameSound {
 // https://freesound.org/people/Samantha_Dolman/sounds/490730/
 // campSulk: Joseph SARDIN, Cat complaining
 // https://bigsoundbank.com/cat-complaining-s0658.html
+// Fishing additions, BigSoundBank CC0: 1519 big splash (fishingSurge),
+// 1841 wooden pontoon jump (fishingJump), 0292 small bell (fishingRare),
+// 0193 coins (fishingCoins), 1204 glass placed on table (fishingJunk),
+// 1514 rowing slowly (fishingRow).
+// https://bigsoundbank.com/UPLOAD/ogg/<ID>.ogg
 
 /// Music and reel playback are separate from preloaded, low-latency effects.
 class GameAudio with WidgetsBindingObserver {
