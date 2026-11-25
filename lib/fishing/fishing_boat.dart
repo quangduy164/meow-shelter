@@ -7,7 +7,7 @@ import 'fishing_river.dart';
 enum FishingBoat {
   basket('Thúng chai'),
   paper('Thuyền giấy'),
-  melon('Vỏ dưa hấu');
+  swan('Thiên nga');
 
   const FishingBoat(this.label);
   final String label;
@@ -15,7 +15,9 @@ enum FishingBoat {
   static const _key = 'fishing_boat_v1';
 
   static FishingBoat load(SharedPreferences preferences) {
-    final name = preferences.getString(_key);
+    final saved = preferences.getString(_key);
+    // The watermelon boat (then the rubber duck) became the swan.
+    final name = saved == 'melon' || saved == 'duck' ? 'swan' : saved;
     return values.firstWhere((b) => b.name == name, orElse: () => basket);
   }
 

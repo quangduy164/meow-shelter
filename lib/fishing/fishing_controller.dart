@@ -718,7 +718,8 @@ class FishingController extends ChangeNotifier {
             y: location.dy,
             weatherBoost: river.weather.boost,
             legendaryBait: baited,
-            legendaryBoost: legendaryBoost);
+            legendaryBoost: legendaryBoost,
+            nightLure: rod == FishingRod.lantern);
     if (!_fish.isLegendary &&
         FishingRiver.legendaryHere(location.dx, _worldHour, y: location.dy)) {
       _setLegendMisses(_legendMisses + 1);
@@ -789,7 +790,9 @@ class FishingController extends ChangeNotifier {
         await quests.onCatch(_fish, _castFrom, activeWater: _activeWater);
       }
       if (!_coinsSaved) {
-        await CampState.instance.addCoins(2);
+        if (!await CampState.instance.addCoins(2)) {
+          throw StateError('Could not save coins');
+        }
         _coinsSaved = true;
       }
       await CampState.instance.markGuidesSeen([boatGuideKey]);

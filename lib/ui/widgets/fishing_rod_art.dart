@@ -40,3 +40,48 @@ void paintBambooLeaves(Canvas c, Offset base, Offset direction,
   c.drawPath(_leaves, _twigStroke);
   c.restore();
 }
+
+/// Small red paper lantern hanging from [tip] on a short cord; [scale] is
+/// the art scale and [swing] a gentle sway in radians.
+void paintRodLantern(Canvas c, Offset tip,
+    {double scale = 1, double swing = 0}) {
+  c.save();
+  c.translate(tip.dx, tip.dy);
+  c.scale(scale);
+  c.rotate(swing);
+  c.drawLine(
+      Offset.zero,
+      const Offset(0, 7),
+      Paint()
+        ..color = const Color(0xFF4A2E1D)
+        ..strokeWidth = 1.2);
+  c.drawCircle(
+      const Offset(0, 14), 13, Paint()..color = const Color(0x55FFC870));
+  final body = RRect.fromRectAndRadius(
+      Rect.fromCenter(center: const Offset(0, 14), width: 11, height: 13),
+      const Radius.circular(5));
+  c.drawRRect(body, Paint()..color = const Color(0xFFE0533D));
+  c.drawRRect(
+      RRect.fromRectAndRadius(
+          Rect.fromCenter(center: const Offset(0, 14), width: 5, height: 9),
+          const Radius.circular(3)),
+      Paint()..color = const Color(0xFFFFD27A));
+  for (final dy in [-1.0, 1.0]) {
+    c.drawLine(
+        Offset(-4.5, 14 + dy * 3),
+        Offset(4.5, 14 + dy * 3),
+        Paint()
+          ..color = const Color(0x66802A1E)
+          ..strokeWidth = .7);
+  }
+  final cap = Paint()..color = const Color(0xFFD9A441);
+  c.drawRect(const Rect.fromLTWH(-3.5, 6.5, 7, 2.2), cap);
+  c.drawRect(const Rect.fromLTWH(-3.5, 19.5, 7, 2.2), cap);
+  c.drawLine(
+      const Offset(0, 21.5),
+      const Offset(0, 25),
+      Paint()
+        ..color = const Color(0xFFE0533D)
+        ..strokeWidth = 1.4);
+  c.restore();
+}

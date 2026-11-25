@@ -70,7 +70,7 @@ class _FishingCaveRunState extends State<FishingCaveRun> {
                 ? 'Rương tặng ${fish.length} cá, có cá đèn lồng!'
                 : 'Rương tặng ${fish.length} cá · 3 sao có cá đèn lồng',
           if (fish == null && !_claiming)
-            'Hôm nay đã nhận quà rương rồi, mai quay lại nhé!',
+            'Đã nhận quà hôm nay · Có quà lại sau ${fishingUntilReset()}',
           if (cave.stars < 3) '3 sao: gom 22 cá vàng, ngã tối đa 1 lần',
           if (!cave.newBest && best != null)
             'Kỷ lục: ${best.stars} sao · ${best.time.toStringAsFixed(1)} giây',

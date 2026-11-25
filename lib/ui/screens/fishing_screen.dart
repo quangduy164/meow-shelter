@@ -38,6 +38,7 @@ import '../widgets/game_surfaces.dart';
 import '../widgets/round_button.dart';
 import '../../collection/fish_collection.dart';
 import '../../fishing/fishing_boat.dart';
+import '../../fishing/fishing_rod.dart';
 import '../../fishing/fishing_lighting.dart';
 import '../widgets/fishing_boats.dart';
 import '../widgets/fishing_market_dialog.dart';
@@ -495,6 +496,12 @@ class _FishingScreenState extends State<FishingScreen>
         : _river.heading.dx >= 0;
     final oar = FishingOarPose(_river.clock,
         moving: _river.moving && !fishing, facingRight: facingRight);
+    _river.catFacingRight = facingRight;
+    // Where the lantern rod's lantern hangs, for its glow in the dark.
+    final f = _river.island.ashore ? .74 : 1.0;
+    _river.rodLantern = fishing && !won && _controller.rod == FishingRod.lantern
+        ? _controller.angler + Offset((facingRight ? 1 : -1) * 80, -62) * f
+        : null;
     // The sheets animate casting, reeling and rowing; only the bite shakes.
     final lean = phase == FishingPhase.bite
         ? math.sin(_controller.clock * 20) * .035
@@ -1031,9 +1038,9 @@ class _BoatPreview extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    // Scaled to fit the card height (the tallest boat reaches y = -84).
-    final s = math.min(size.height / 112, size.width / 150);
-    canvas.translate(size.width / 2, size.height * .74);
+    // Scaled to fit the card height (the swan's crest reaches y = -116).
+    final s = math.min(size.height / 140, size.width / 160);
+    canvas.translate(size.width / 2, size.height * .8);
     canvas.scale(s);
     paintBoatBack(canvas, boat);
     paintBoatFront(canvas, boat);

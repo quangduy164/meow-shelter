@@ -1,17 +1,35 @@
 import 'package:flutter/painting.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'fishing_river.dart';
+import 'fishing_quests.dart';
+import '../camp/camp_state.dart';
+import '../collection/fish_collection.dart';
 
 enum FishingRod {
-  classic('Cần máy'),
-  bamboo('Cần tre');
+  classic('Cần máy', 'Cơ bản'),
+  bamboo('Cần tre', 'Cơ bản'),
+  lantern('Cần đèn lồng', 'Cá đêm ×1,5 khi trời tối', price: 200);
 
-  const FishingRod(this.label);
-  final String label;
+  const FishingRod(this.label, this.effect, {this.price = 0});
+  final String label, effect;
+
+  /// Coins to buy; 0 means every player has it.
+  final int price;
+  String get itemId => 'rod:$name';
+
+  /// Bought rods are kept in the camp save together with the coins.
+  bool get owned => price == 0 || CampState.instance.owned.contains(itemId);
+
+  /// The lantern rod is sold once the Sea Cave shrine has been found.
+  bool get available =>
+      this != lantern ||
+      FishCollection.instance.shrineOfferings > 0 ||
+      FishingQuests.instance.index > FishingQuest.findShrine.index;
   static const _key = 'fishing_rod_v1';
   static FishingRod load(SharedPreferences preferences) {
     final name = preferences.getString(_key);
-    return values.firstWhere((r) => r.name == name, orElse: () => classic);
+    final rod = values.firstWhere((r) => r.name == name, orElse: () => classic);
+    return rod.owned ? rod : classic;
   }
 
   Future<bool> save(SharedPreferences preferences) =>

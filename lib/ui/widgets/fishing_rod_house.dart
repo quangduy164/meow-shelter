@@ -1,6 +1,7 @@
 import 'package:material_ui/material_ui.dart';
 import '../../fishing/fishing_controller.dart';
 import '../../fishing/fishing_rod.dart';
+import '../../camp/camp_state.dart';
 import '../design.dart';
 import 'fishing_art_kit.dart';
 import 'fishing_rod_art.dart';
@@ -78,11 +79,28 @@ void paintRodPreview(Canvas c, Size size, FishingRod rod) {
   c.save();
   c.scale(size.width / 100, size.height / 100);
   final bamboo = rod == FishingRod.bamboo;
+  final lantern = rod == FishingRod.lantern;
   final shaft = Path()
     ..moveTo(22, 86)
     ..quadraticBezierTo(43, 12, 77, 17);
-  c.drawPath(shaft, strokePaint(bamboo ? 0xFF28663B : 0xFF4D5A37, 5));
-  c.drawPath(shaft, strokePaint(bamboo ? 0xFFA4D776 : 0xFF8FB8A2, 2.5));
+  c.drawPath(
+      shaft,
+      strokePaint(
+          bamboo
+              ? 0xFF28663B
+              : lantern
+                  ? 0xFF5B2E22
+                  : 0xFF4D5A37,
+          5));
+  c.drawPath(
+      shaft,
+      strokePaint(
+          bamboo
+              ? 0xFFA4D776
+              : lantern
+                  ? 0xFFD08A55
+                  : 0xFF8FB8A2,
+          2.5));
   if (bamboo) {
     for (final t in [.2, .4, .6, .8]) {
       final p = const Offset(22, 86) * ((1 - t) * (1 - t)) +
@@ -117,6 +135,15 @@ void paintRodPreview(Canvas c, Size size, FishingRod rod) {
       strokePaint(0xFF8D9F98, 1.2));
   c.drawOval(const Rect.fromLTWH(76, 63, 8, 15), fillPaint(0xFFF6E8C5));
   c.drawOval(const Rect.fromLTWH(76, 63, 8, 7), fillPaint(0xFFE27859));
+  if (lantern) {
+    for (final t in [.25, .5]) {
+      final p = const Offset(22, 86) * ((1 - t) * (1 - t)) +
+          const Offset(43, 12) * (2 * (1 - t) * t) +
+          const Offset(77, 17) * (t * t);
+      c.drawCircle(p, 2.6, fillPaint(0xFFD9A441));
+    }
+    paintRodLantern(c, const Offset(60, 17), scale: 1.25);
+  }
   c.restore();
 }
 
@@ -159,53 +186,119 @@ class _RodHouseDialogState extends State<FishingRodHouseDialog> {
     }
   }
 
+  Future<void> _buy(FishingRod rod) async {
+    if (_saving) return;
+    setState(() {
+      _saving = true;
+      _error = null;
+    });
+    final ok = await CampState.instance.buyItem(rod.itemId, rod.price);
+    if (!mounted) return;
+    setState(() => _saving = false);
+    if (ok) {
+      await _choose(rod);
+    } else {
+      setState(() => _error = 'Chưa mua được cần, hãy thử lại.');
+    }
+  }
+
   @override
   Widget build(BuildContext context) => GameDialog(
-      maxWidth: 400,
+      maxWidth: 560,
       child: SingleChildScrollView(
           child: Column(mainAxisSize: MainAxisSize.min, children: [
         FishingDialogHeader(
             icon: Icons.phishing_rounded,
             title: 'Nhà đổi cần câu',
+            trailing: const FishingCoinPill(),
             onClose: () => Navigator.pop(context)),
         const SizedBox(height: 12),
-        Row(children: [
+        IntrinsicHeight(
+            child:
+                Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
           for (final rod in FishingRod.values) ...[
-            if (rod != FishingRod.values.first) const SizedBox(width: 12),
-            Expanded(
-                child: Material(
-                    color: widget.controller.rod == rod
-                        ? DS.gold
-                        : DS.surfaceRaised,
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        side: const BorderSide(color: DS.wood, width: 2)),
-                    clipBehavior: Clip.antiAlias,
-                    child: InkWell(
-                        onTap: _saving ? null : () => _choose(rod),
-                        child: Padding(
-                            padding: const EdgeInsets.all(8),
-                            child: Column(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  SizedBox(
-                                      height: 64,
-                                      width: 80,
-                                      child: CustomPaint(
-                                          painter: _RodPreview(rod))),
-                                  Text(rod.label,
-                                      style: const TextStyle(
-                                          color: DS.ink,
-                                          fontWeight: FontWeight.w900)),
-                                  Text(
-                                      widget.controller.rod == rod
-                                          ? 'Đang dùng'
-                                          : 'Chọn',
-                                      style: const TextStyle(color: DS.soft)),
-                                ]))))),
+            if (rod != FishingRod.values.first) const SizedBox(width: 10),
+            Expanded(child: _card(rod)),
           ]
-        ]),
+        ])),
         if (_error != null)
           Text(_error!, style: const TextStyle(color: DS.danger)),
       ])));
+
+  Widget _card(FishingRod rod) {
+    final using = widget.controller.rod == rod;
+    final locked = !rod.available;
+    final owned = rod.owned;
+    final afford = CampState.instance.coins >= rod.price;
+    final VoidCallback? onTap = _saving || locked || using
+        ? null
+        : owned
+            ? () => _choose(rod)
+            : afford
+                ? () => _buy(rod)
+                : null;
+    final status = using
+        ? 'Đang dùng'
+        : locked
+            ? 'Mở khi tìm thấy đền Hang biển'
+            : owned
+                ? 'Chọn'
+                : 'Mua · ${rod.price} xu';
+    return Material(
+        color: using
+            ? DS.gold
+            : locked
+                ? const Color(0xFFEFE8DC)
+                : DS.surfaceRaised,
+        shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+            side: BorderSide(
+                color: locked ? const Color(0xFFD3C8B6) : DS.wood, width: 2)),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+            onTap: onTap,
+            child: Padding(
+                padding: const EdgeInsets.all(8),
+                child: Column(mainAxisSize: MainAxisSize.min, children: [
+                  SizedBox(
+                      height: 64,
+                      width: 80,
+                      child: Opacity(
+                          opacity: locked ? .35 : 1,
+                          child: CustomPaint(painter: _RodPreview(rod)))),
+                  Text(rod.label,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                          color: DS.ink, fontWeight: FontWeight.w900)),
+                  Text(rod.effect,
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                          color:
+                              rod.price > 0 ? const Color(0xFFB0662F) : DS.soft,
+                          fontSize: 11.5,
+                          fontWeight: FontWeight.w700)),
+                  const Spacer(),
+                  const SizedBox(height: 4),
+                  Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                    if (locked)
+                      const Icon(Icons.lock_rounded,
+                          size: 13, color: Color(0xFFA89D8B))
+                    else if (!owned)
+                      Icon(Icons.monetization_on_rounded,
+                          size: 13, color: afford ? fishingGold : DS.danger),
+                    if (locked || !owned) const SizedBox(width: 3),
+                    Flexible(
+                        child: Text(status,
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                                color: !owned && !locked && !afford
+                                    ? DS.danger
+                                    : locked
+                                        ? const Color(0xFFA89D8B)
+                                        : DS.ink,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w800))),
+                  ]),
+                ]))));
+  }
 }

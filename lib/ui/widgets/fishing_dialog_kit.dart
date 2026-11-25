@@ -13,6 +13,18 @@ import 'fishing_fish_art.dart';
 const fishingWood = Color(0xFF8A5A33);
 const fishingGold = Color(0xFFE2A93B);
 
+/// Time left until daily rewards reset at local midnight, e.g. "5 giờ 12
+/// phút". Chests, cave gifts and the market order all follow the real date.
+String fishingUntilReset([DateTime? now]) {
+  now ??= DateTime.now();
+  final seconds =
+      DateTime(now.year, now.month, now.day + 1).difference(now).inSeconds;
+  final left = (seconds + 59) ~/ 60;
+  final h = left ~/ 60, m = left % 60;
+  if (h == 0) return '$m phút';
+  return m == 0 ? '$h giờ' : '$h giờ $m phút';
+}
+
 /// Icon badge, title, optional trailing widget (coins, progress) and close.
 class FishingDialogHeader extends StatelessWidget {
   const FishingDialogHeader(

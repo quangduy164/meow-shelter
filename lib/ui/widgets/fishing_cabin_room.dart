@@ -101,7 +101,7 @@ class _FishingCabinRoomState extends State<FishingCabinRoom> {
         title: 'RƯƠNG KHO BÁU',
         fish: fish,
         note: fish == null
-            ? 'Rương trống rồi, mai quay lại nhé!'
+            ? 'Rương đầy lại sau ${fishingUntilReset()}'
             : 'Đã cho cá vào giỏ!',
         actions: [
           ElevatedButton(

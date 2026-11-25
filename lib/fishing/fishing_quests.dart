@@ -100,11 +100,16 @@ class FishingQuests extends ChangeNotifier {
 
   Future<void> _complete() async {
     final quest = current!;
+    // Pay first, keyed per quest: if the app dies before the step is saved,
+    // the step completes again on the next visit but is not paid twice.
+    final paid = await CampState.instance.grantReward(
+        'quest-reward:${quest.name}',
+        coins: quest.coins,
+        legendaryBait: quest.bait);
+    if (!paid) return;
     _index++;
     _progress = 0;
     justDone = quest;
-    if (quest.coins > 0) await CampState.instance.addCoins(quest.coins);
-    if (quest.bait > 0) await CampState.instance.grantLegendaryBait(quest.bait);
     await _save();
     await sync();
   }

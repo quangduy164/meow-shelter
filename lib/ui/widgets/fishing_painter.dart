@@ -135,6 +135,7 @@ class FishingPainter extends CustomPainter {
   Offset _drawRod(Canvas canvas, Size size) {
     Offset point(double x, double y) => Offset(x * size.width, y * size.height);
     final bamboo = rod == FishingRod.bamboo;
+    final lantern = rod == FishingRod.lantern;
     final load = phase == FishingPhase.reeling ? tension : 0.0;
     final motion = _rodMotion();
     final scale = artScale ?? math.min(size.width / 800, size.height / 327);
@@ -195,14 +196,22 @@ class FishingPainter extends CustomPainter {
           shaft(t),
           shaft((i + 1) / 24),
           stroke
-            ..color = bamboo ? const Color(0xFF387E42) : const Color(0xFF254D49)
+            ..color = bamboo
+                ? const Color(0xFF387E42)
+                : lantern
+                    ? const Color(0xFF5B2E22)
+                    : const Color(0xFF254D49)
             ..strokeWidth =
                 ((bamboo ? 5.5 : 4.5) - t * (bamboo ? 4 : 3)) * scale);
       canvas.drawLine(
           shaft(t) + const Offset(-.6, 0),
           shaft((i + 1) / 24) + const Offset(-.6, 0),
           stroke
-            ..color = bamboo ? const Color(0xFFA4D776) : const Color(0xFF8FB8A2)
+            ..color = bamboo
+                ? const Color(0xFFA4D776)
+                : lantern
+                    ? const Color(0xFFD08A55)
+                    : const Color(0xFF8FB8A2)
             ..strokeWidth = (1.2 - t * .7) * scale);
     }
     if (!bamboo) {
@@ -314,6 +323,22 @@ class FishingPainter extends CustomPainter {
             ..strokeWidth = 2);
       canvas.drawCircle(crank, 2.5, Paint()..color = const Color(0xFF725338));
       canvas.restore();
+    }
+    if (lantern) {
+      // Gold lacquer bands and the paper lantern swaying under the tip.
+      for (final t in [.2, .45, .7]) {
+        final v = tangent(t);
+        final n = Offset(-v.dy, v.dx) / math.max(.001, v.distance);
+        canvas.drawLine(
+            shaft(t) - n * 2.4 * scale,
+            shaft(t) + n * 2.4 * scale,
+            Paint()
+              ..color = const Color(0xFFD9A441)
+              ..strokeWidth = 1.8 * scale);
+      }
+      final hang = shaft(.82);
+      paintRodLantern(canvas, hang,
+          scale: scale * .95, swing: math.sin(clock * 2.2) * .18);
     }
     return bamboo ? tip : guide(1);
   }

@@ -153,11 +153,6 @@ class CampState {
   }
 
   /// Free bait from fishing quests, stored with the purchased bait.
-  Future<void> grantLegendaryBait(int count) async {
-    purchasedLegendaryBait += count;
-    await _save();
-  }
-
   Future<bool> consumePurchasedBait() async {
     if (_savingBait || purchasedLegendaryBait <= 0) return false;
     _savingBait = true;
@@ -301,9 +296,29 @@ class CampState {
           if (unlocked(b.id)) b.id
       ];
 
-  Future<void> addCoins(int amount) async {
+  /// Adds coins and saves; on a failed save the coins are taken back and
+  /// false is returned, so callers never show coins that were not stored.
+  Future<bool> addCoins(int amount) async {
     coins += amount;
-    await _save();
+    if (await _save()) return true;
+    coins -= amount;
+    return false;
+  }
+
+  /// One-time reward ([key] is remembered in the same save as the coins and
+  /// bait), so running it again after a crash never pays twice. True when the
+  /// reward is stored, including when it was already paid earlier.
+  Future<bool> grantReward(String key,
+      {int coins = 0, int legendaryBait = 0}) async {
+    if (seenGuides.contains(key)) return true;
+    this.coins += coins;
+    purchasedLegendaryBait += legendaryBait;
+    seenGuides.add(key);
+    if (await _save()) return true;
+    this.coins -= coins;
+    purchasedLegendaryBait -= legendaryBait;
+    seenGuides.remove(key);
+    return false;
   }
 
   Future<void> rescue(String type) async {
@@ -323,13 +338,27 @@ class CampState {
     await _save();
   }
 
+  /// Buys a one-time item by id (e.g. a fishing rod); coins and ownership
+  /// are saved together and rolled back on failure.
+  Future<bool> buyItem(String id, int price) async {
+    if (owned.contains(id) || coins < price) return false;
+    coins -= price;
+    owned.add(id);
+    if (await _save()) return true;
+    coins += price;
+    owned.remove(id);
+    return false;
+  }
+
   /// Returns false when the player cannot afford it or already owns it.
   Future<bool> buy(CampDecoration item) async {
     if (owned.contains(item.id) || coins < item.price) return false;
     coins -= item.price;
     owned.add(item.id);
-    await _save();
-    return true;
+    if (await _save()) return true;
+    coins += item.price;
+    owned.remove(item.id);
+    return false;
   }
 
   /// Writes progress. Callers inside the game loop may not await this, so it

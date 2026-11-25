@@ -126,6 +126,10 @@ class FishingNightOverlay extends CustomPainter {
       lamp(p, 26, const Color(0xFFFFB45C), .9);
       lamp(p + const Offset(0, 40), 70, const Color(0xFFFFC46B), .35);
     }
+    if (round.rodLantern case final p?) {
+      lamp(p, 24, const Color(0xFFFFB45C), .95);
+      lamp(p + const Offset(0, 30), 85, const Color(0xFFFFC46B), .4);
+    }
     // Each legendary offering lights its shrine statue permanently.
     for (var i = 0; i < FishSpecies.legendary.length; i++) {
       if (!FishCollection.instance

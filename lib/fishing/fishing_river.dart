@@ -151,8 +151,10 @@ class FishingRiver {
       double? y,
       double Function(FishSpecies)? weatherBoost,
       bool legendaryBait = false,
-      double legendaryBoost = 1}) {
+      double legendaryBoost = 1,
+      bool nightLure = false}) {
     final weights = catchWeights(x, hour,
+        nightLure: nightLure,
         activeWater: activeWater,
         y: y,
         weatherBoost: weatherBoost,
@@ -170,7 +172,8 @@ class FishingRiver {
   /// Relative catch weight of every species at a spot.
   ///
   /// - Legendary fish bite only in their home area (no leaking over borders).
-  /// - Night doubles night fish; lanternfish and moonfish bite only at night.
+  /// - Night doubles night fish (x3 with the lantern rod, [nightLure]);
+  ///   lanternfish and moonfish bite only at night.
   /// - Active water favours the rarer tiers and scares off junk.
   /// - Legendary bait is x6; [legendaryBoost] is the bad-luck protection.
   static Map<FishSpecies, double> catchWeights(double x, double hour,
@@ -178,7 +181,8 @@ class FishingRiver {
       double? y,
       double Function(FishSpecies)? weatherBoost,
       bool legendaryBait = false,
-      double legendaryBoost = 1}) {
+      double legendaryBoost = 1,
+      bool nightLure = false}) {
     final night = hour < 6 || hour >= 18;
     final layers = fishLayers(x, y: y);
     final home = regionAt(x, y: y).fish;
@@ -194,7 +198,7 @@ class FishingRiver {
             (fish.nightOnly && !night
                 ? 0
                 : night && fish.nightActive
-                    ? 2
+                    ? (nightLure ? 3 : 2)
                     : 1) *
             (activeWater ? fish.activeWaterBoost : 1),
     };
@@ -355,6 +359,14 @@ class FishingRiverRound {
 
   /// In-game hour (0..24) driving day/night (40-minute day); set by the screen.
   double hour = 12;
+
+  /// World point of the lantern rod's lantern while fishing, for its night
+  /// glow; null when the lantern rod is not out.
+  Offset? rodLantern;
+
+  /// Which way the cat faces (toward the float while fishing); boats with a
+  /// head turn with it. Null falls back to the rowing heading.
+  bool? catFacingRight;
 
   /// Boat drawn under the cat; picked at the village boathouse.
   FishingBoat boatStyle = FishingBoat.basket;

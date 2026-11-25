@@ -51,9 +51,14 @@ class FishingMarket {
     final collection = FishCollection.instance;
     final n = math.min(count, collection.stockOf(fish));
     if (n <= 0 || basePrice(fish) <= 0) return 0;
-    if (!await collection.takeMany(fish, n)) return 0;
     final coins = priceOf(fish, now ?? DateTime.now()) * n;
-    await CampState.instance.addCoins(coins);
+    // Coins first: if taking the fish then fails they are refunded, and an
+    // app kill in between leaves the player ahead rather than robbed.
+    if (!await CampState.instance.addCoins(coins)) return 0;
+    if (!await collection.takeMany(fish, n)) {
+      await CampState.instance.addCoins(-coins);
+      return 0;
+    }
     await FishingQuests.instance.onSold(n);
     return coins;
   }

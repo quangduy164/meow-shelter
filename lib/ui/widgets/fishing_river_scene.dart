@@ -603,9 +603,11 @@ class FishingRiverBoatPainter extends CustomPainter {
                 ..strokeWidth = 2);
         }
       }
-      paintBoatBack(canvas, round.boatStyle);
+      paintBoatBack(canvas, round.boatStyle,
+          facingRight: round.catFacingRight ?? round.heading.dx >= 0);
     } else {
-      paintBoatFront(canvas, round.boatStyle);
+      paintBoatFront(canvas, round.boatStyle,
+          facingRight: round.catFacingRight ?? round.heading.dx >= 0);
       // The row sheet draws the paws where [FishingOarPose.hand] grips.
       if (rowing) paintFishingOar(canvas, oar);
     }

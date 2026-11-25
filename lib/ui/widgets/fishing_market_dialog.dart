@@ -269,6 +269,14 @@ class _FishingMarketDialogState extends State<FishingMarketDialog> {
                               : const Color(0xFFE7CFAE),
                           fontSize: 12,
                           fontWeight: FontWeight.w800)),
+                  const SizedBox(height: 2),
+                  Text('Đổi đơn sau\n${fishingUntilReset()}',
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                          color: Color(0xFFE7CFAE),
+                          fontSize: 11,
+                          height: 1.2,
+                          fontWeight: FontWeight.w700)),
                 ]))));
   }
 }
