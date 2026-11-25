@@ -23,6 +23,9 @@ import '../widgets/fishing_scenery.dart';
 import '../widgets/fishing_cabin_art.dart';
 import '../widgets/fishing_minimap.dart';
 import '../widgets/fishing_clock_chip.dart';
+import '../widgets/fishing_quest_hud.dart';
+import '../widgets/fishing_dialog_kit.dart';
+import '../../fishing/fishing_quests.dart';
 import '../widgets/fishing_cave_run.dart';
 import '../widgets/fishing_night_overlay.dart';
 import '../widgets/fishing_weather_overlay.dart';
@@ -72,7 +75,13 @@ class _FishingScreenState extends State<FishingScreen>
         _controller.showFishingArt,
         _controller.phase == FishingPhase.caught && _controller.elapsed >= 1,
         _area,
+        _controller.tutorialStep,
+        _questToast,
       );
+
+  /// Step just finished, shown as a banner for a few seconds.
+  FishingQuest? _questToast;
+  double _questToastLeft = 0;
 
   /// Scene shown by the last build; a change triggers one rebuild.
   bool _shownCabin = false, _shownCave = false;
@@ -98,6 +107,15 @@ class _FishingScreenState extends State<FishingScreen>
   }
 
   void _updateHud(double dt) {
+    final quests = FishingQuests.instance;
+    if (quests.justDone != null) {
+      _questToast = quests.justDone;
+      quests.justDone = null;
+      _questToastLeft = 3;
+    } else if (_questToast != null) {
+      _questToastLeft -= dt;
+      if (_questToastLeft <= 0) _questToast = null;
+    }
     // A night in the cabin bed: jump the shared game clock to sunrise (6:00).
     if (_river.cabin.dawnDue) {
       _river.cabin.dawnDue = false;
@@ -134,6 +152,7 @@ class _FishingScreenState extends State<FishingScreen>
     FishingLighting.shiftMs = preferences.getInt(FishingLighting.shiftKey) ?? 0;
     final now = DateTime.now();
     _setHour(now);
+    FishingQuests.instance.sync();
     FishingTrip.restore(preferences, _river);
     _savedBoat = _river.boat;
     _river.boatStyle = FishingBoat.load(preferences);
@@ -195,6 +214,7 @@ class _FishingScreenState extends State<FishingScreen>
 
   Future<void> _openCollection() async {
     if (_collectionOpen || _controller.active) return;
+    if (_controller.tutorialAwaitsBasket) _controller.finishTutorial();
     setState(() => _collectionOpen = true);
     try {
       await showGameDialog<void>(
@@ -258,6 +278,18 @@ class _FishingScreenState extends State<FishingScreen>
     }
   }
 
+  Future<void> _openQuests() async {
+    if (_collectionOpen) return;
+    setState(() => _collectionOpen = true);
+    try {
+      await showGameDialog<void>(
+          context: context, builder: (_) => const FishingQuestDialog());
+    } finally {
+      if (mounted) setState(() => _collectionOpen = false);
+      _lastTick = null;
+    }
+  }
+
   Future<void> _openBaitHouse() async {
     setState(() => _collectionOpen = true);
     try {
@@ -274,6 +306,7 @@ class _FishingScreenState extends State<FishingScreen>
     try {
       await showGameDialog<void>(
           context: context, builder: (_) => const FishingShrineDialog());
+      await FishingQuests.instance.sync();
     } finally {
       if (mounted) setState(() => _collectionOpen = false);
       _lastTick = null;
@@ -311,8 +344,10 @@ class _FishingScreenState extends State<FishingScreen>
           builder: (context) => GameDialog(
               maxWidth: 420,
               child: Column(mainAxisSize: MainAxisSize.min, children: [
-                GameDialogHeader(
-                    title: 'Nhà thuyền', onClose: () => Navigator.pop(context)),
+                FishingDialogHeader(
+                    icon: Icons.sailing_rounded,
+                    title: 'Nhà thuyền',
+                    onClose: () => Navigator.pop(context)),
                 const SizedBox(height: DS.spaceSm),
                 Row(children: [
                   for (final boat in FishingBoat.values) ...[
@@ -846,6 +881,28 @@ class _FishingScreenState extends State<FishingScreen>
                                       size: 36,
                                       tooltip: 'Cất cần để chèo tiếp',
                                       onPressed: _controller.cancelCast)),
+                            Positioned.fill(
+                                child: IgnorePointer(
+                                    child: CustomPaint(
+                                        painter: FishingQuestArrowPainter(
+                                            _river, _frames,
+                                            hidden: _controller.tutorial ||
+                                                _controller.active)))),
+                            if (!_controller.tutorial &&
+                                _controller.phase != FishingPhase.reeling)
+                              Positioned(
+                                  left: padding.left + 8,
+                                  top: padding.top + 60,
+                                  child: FishingQuestChip(onTap: _openQuests)),
+                            if (_questToast case final quest?)
+                              Positioned(
+                                  top: padding.top + 12,
+                                  left: 0,
+                                  right: 0,
+                                  child: Center(
+                                      child: FishingQuestToast(quest: quest))),
+                            if (_controller.tutorialStep case final step?)
+                              ..._tutorialOverlay(step, padding),
                             if (_controller.phase == FishingPhase.caught &&
                                 _controller.elapsed >= 1)
                               Positioned.fill(
@@ -859,6 +916,70 @@ class _FishingScreenState extends State<FishingScreen>
                 ]);
               }),
       );
+}
+
+extension on _FishingScreenState {
+  /// Translucent step caption between Home and the minimap, a skip chip,
+  /// and a bouncing arrow over the button the step needs.
+  List<Widget> _tutorialOverlay(
+      (String, FishingTutorialTarget) step, EdgeInsets padding) {
+    final (text, target) = step;
+    Widget arrow() => IgnorePointer(
+        child: AnimatedBuilder(
+            animation: _frames,
+            builder: (context, _) => Transform.translate(
+                offset: Offset(0, math.sin(_controller.clock * 6).abs() * -10),
+                child: const Icon(Icons.arrow_downward_rounded,
+                    size: 44,
+                    color: Color(0xFFFFE08A),
+                    shadows: [
+                      Shadow(color: Color(0xFF4A2E1D), blurRadius: 4),
+                      Shadow(color: Color(0xFF4A2E1D), blurRadius: 2),
+                    ]))));
+    return [
+      Positioned(
+          top: padding.top + 10,
+          left: padding.left + 64,
+          right: padding.right + 132,
+          child: Center(
+              child: Container(
+                  constraints: const BoxConstraints(maxWidth: 520),
+                  padding: const EdgeInsets.fromLTRB(14, 7, 6, 7),
+                  decoration: BoxDecoration(
+                      color: const Color(0xCCF1F8E7),
+                      borderRadius: BorderRadius.circular(10)),
+                  child: Row(mainAxisSize: MainAxisSize.min, children: [
+                    Flexible(
+                        child: Text(text,
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(
+                                color: Color(0xFF28564C),
+                                fontSize: DS.fontBody,
+                                fontWeight: FontWeight.bold,
+                                height: 1.25))),
+                    const SizedBox(width: 6),
+                    TextButton(
+                        style: TextButton.styleFrom(
+                            minimumSize: const Size(0, 28),
+                            padding: const EdgeInsets.symmetric(horizontal: 8),
+                            foregroundColor: const Color(0xFF6B7F74)),
+                        onPressed: _controller.finishTutorial,
+                        child: const Text('Bỏ qua',
+                            style: TextStyle(
+                                fontSize: 12, fontWeight: FontWeight.w700))),
+                  ])))),
+      if (target == FishingTutorialTarget.rod)
+        Positioned(
+            right: padding.right + 22,
+            bottom: padding.bottom + 88,
+            child: arrow()),
+      if (target == FishingTutorialTarget.basket)
+        Positioned(
+            left: padding.left + 22,
+            bottom: padding.bottom + 82,
+            child: arrow()),
+    ];
+  }
 }
 
 /// One boat card in the boathouse: preview, name and a "đang dùng" mark.

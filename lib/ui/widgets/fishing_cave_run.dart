@@ -1,3 +1,4 @@
+import 'fishing_dialog_kit.dart';
 import 'dart:math' as math;
 import 'dart:ui' as ui;
 import 'package:material_ui/material_ui.dart';
@@ -7,7 +8,6 @@ import '../../game/constants.dart';
 import '../design.dart';
 import 'cat_sprite.dart';
 import 'fishing_art_kit.dart';
-import 'fishing_fish_art.dart';
 import 'fishing_rock_art.dart';
 import 'game_glyphs.dart';
 import 'round_button.dart';
@@ -50,83 +50,40 @@ class _FishingCaveRunState extends State<FishingCaveRun> {
   Widget _finishPanel() {
     final cave = widget.cave;
     final fish = cave.reward;
-    return Positioned.fill(
-        child: ColoredBox(
-            color: const Color(0x88000000),
-            child: Center(
-                child: Container(
-                    width: 360,
-                    padding: const EdgeInsets.all(DS.spaceMd),
-                    decoration: BoxDecoration(
-                        color: DS.cream,
-                        borderRadius: BorderRadius.circular(DS.radiusSm),
-                        border: Border.all(color: DS.wood, width: 3)),
-                    child: Column(mainAxisSize: MainAxisSize.min, children: [
-                      const Text('VƯỢT QUA HANG!',
-                          style: TextStyle(
-                              color: DS.ink,
-                              fontWeight: FontWeight.w900,
-                              fontSize: DS.fontTitle)),
-                      const SizedBox(height: DS.spaceSm),
-                      Row(mainAxisSize: MainAxisSize.min, children: [
-                        for (var i = 0; i < 3; i++)
-                          Icon(
-                              i < cave.stars
-                                  ? Icons.star_rounded
-                                  : Icons.star_outline_rounded,
-                              color: DS.star,
-                              size: 44),
-                      ]),
-                      Text(
-                          'Cá vàng ${cave.collected.length}/${FishingCave.tokens.length} · '
-                          '${cave.runTime.toStringAsFixed(1)} giây · ngã ${cave.falls} lần',
-                          style: const TextStyle(color: DS.ink)),
-                      if (cave.best case final best?)
-                        Text(
-                            cave.newBest
-                                ? 'Kỷ lục mới!'
-                                : 'Kỷ lục: ${best.stars} sao · ${best.time.toStringAsFixed(1)} giây',
-                            style: TextStyle(
-                                color: cave.newBest ? DS.wood : DS.ink,
-                                fontWeight: cave.newBest
-                                    ? FontWeight.w900
-                                    : FontWeight.normal)),
-                      if (cave.stars < 3)
-                        const Text('3 sao: gom 22 cá vàng, ngã tối đa 1 lần',
-                            style: TextStyle(color: DS.ink, fontSize: 12)),
-                      const SizedBox(height: DS.spaceSm),
-                      if (fish != null) ...[
-                        Wrap(alignment: WrapAlignment.center, children: [
-                          for (final f in fish)
-                            SizedBox(
-                                width: 70,
-                                height: 46,
-                                child: CustomPaint(painter: FishingFishArt(f))),
-                        ]),
-                        Text(
-                            cave.stars >= 3
-                                ? 'Rương tặng ${fish.length} cá, có cá đèn lồng!'
-                                : 'Rương tặng ${fish.length} cá · 3 sao có cá đèn lồng',
-                            style: const TextStyle(color: DS.ink)),
-                      ] else if (!_claiming)
-                        const Text(
-                            'Hôm nay đã nhận quà rương rồi, mai quay lại nhé!',
-                            textAlign: TextAlign.center,
-                            style: TextStyle(color: DS.ink)),
-                      const SizedBox(height: DS.spaceMd),
-                      Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            OutlinedButton(
-                                onPressed: () => setState(cave.restart),
-                                child: const Text('CHƠI LẠI')),
-                            const SizedBox(width: DS.spaceSm),
-                            ElevatedButton(
-                                onPressed: widget.onExit,
-                                style: DS.primary,
-                                child: const Text('RA NGOÀI')),
-                          ]),
-                    ])))));
+    final best = cave.best;
+    return FishingRewardPanel(
+        hero: FishingStarsHero(stars: cave.stars),
+        title: 'VƯỢT QUA HANG!',
+        badge: cave.newBest ? 'Kỷ lục mới!' : null,
+        stats: [
+          (
+            Icons.set_meal_rounded,
+            '${cave.collected.length}/${FishingCave.tokens.length}'
+          ),
+          (Icons.timer_rounded, '${cave.runTime.toStringAsFixed(1)} s'),
+          (Icons.personal_injury_rounded, 'Ngã ${cave.falls}'),
+        ],
+        fish: fish,
+        note: [
+          if (fish != null)
+            cave.stars >= 3
+                ? 'Rương tặng ${fish.length} cá, có cá đèn lồng!'
+                : 'Rương tặng ${fish.length} cá · 3 sao có cá đèn lồng',
+          if (fish == null && !_claiming)
+            'Hôm nay đã nhận quà rương rồi, mai quay lại nhé!',
+          if (cave.stars < 3) '3 sao: gom 22 cá vàng, ngã tối đa 1 lần',
+          if (!cave.newBest && best != null)
+            'Kỷ lục: ${best.stars} sao · ${best.time.toStringAsFixed(1)} giây',
+        ].join('\n'),
+        actions: [
+          OutlinedButton(
+              onPressed: () => setState(cave.restart),
+              child: const Text('CHƠI LẠI')),
+          ElevatedButton(
+              onPressed: widget.onExit,
+              style: DS.primary,
+              child: const Text('RA NGOÀI')),
+        ]);
   }
 
   @override

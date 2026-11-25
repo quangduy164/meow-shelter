@@ -182,6 +182,21 @@ enum FishSpecies {
   bool get nightActive =>
       this == catfish || this == koi || this == lanternfish || this == moonfish;
 
+  /// Only bites between 18:00 and 6:00.
+  bool get nightOnly => this == lanternfish || this == moonfish;
+
+  bool get isLegendary => rarity == 'Huyền thoại';
+
+  /// Catch weight multiplier on active (bubbling) water.
+  double get activeWaterBoost => isJunk
+      ? .3
+      : switch (rarity) {
+          'Phổ biến' => 1,
+          'Hiếm' => 1.6,
+          'Huyền thoại' => 2,
+          _ => 3,
+        };
+
   /// Affection a camp cat gains from eating one; rarer fish mean more.
   /// Lost items are not food.
   int get affection => switch (this) {

@@ -1,12 +1,12 @@
 import 'package:material_ui/material_ui.dart';
 
-import '../../camp/camp_state.dart';
 import '../../collection/fish_collection.dart';
 import '../../collection/fish_species.dart';
 import '../../fishing/fishing_market.dart';
 import '../design.dart';
 import 'fishing_fish_art.dart';
 import 'game_surfaces.dart';
+import 'fishing_dialog_kit.dart';
 
 /// The floating market's counter: tap a basket fish to sell one, or sell
 /// everything at once. Today's wanted species sells for double.
@@ -24,12 +24,6 @@ class _FishingMarketDialogState extends State<FishingMarketDialog> {
 
   late final _wanted = FishingMarket.wantedOn(_today);
   List<FishSpecies> get _fish => FishCollection.instance.basket;
-  int get _total => _fish.fold(
-      0,
-      (sum, f) =>
-          sum +
-          FishingMarket.priceOf(f, _today) *
-              FishCollection.instance.stockOf(f));
 
   Future<void> _sell(List<(FishSpecies, int)> lots) async {
     if (_busy) return;
@@ -51,192 +45,230 @@ class _FishingMarketDialogState extends State<FishingMarketDialog> {
     });
   }
 
+  /// Legendary fish are kept back from "Bán hết": the shrine needs them.
+  List<FishSpecies> get _sellAll => [
+        for (final f in _fish)
+          if (!f.isLegendary) f
+      ];
+  int get _sellAllCoins => _sellAll.fold(
+      0,
+      (sum, f) =>
+          sum +
+          FishingMarket.priceOf(f, _today) *
+              FishCollection.instance.stockOf(f));
+
+  static const _wood = Color(0xFF8A5A33);
+
   @override
   Widget build(BuildContext context) {
-    final fish = _fish;
+    final fish = [..._fish]..sort((a, b) => FishingMarket.priceOf(b, _today)
+        .compareTo(FishingMarket.priceOf(a, _today)));
+    final keep = fish.where((f) => f.isLegendary).length;
     return GameDialog(
-      maxWidth: 460,
+      maxWidth: 660,
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 14),
       child: SingleChildScrollView(
           child: Column(mainAxisSize: MainAxisSize.min, children: [
-        GameDialogHeader(
-            title: 'Chợ cá nổi', onClose: () => Navigator.pop(context)),
-        Row(children: [
-          const Icon(Icons.monetization_on_rounded, color: DS.gold),
-          const SizedBox(width: DS.spaceXs),
-          Text('${CampState.instance.coins} xu',
-              style: const TextStyle(
-                  color: DS.ink, fontWeight: FontWeight.w900, fontSize: 16)),
-          const Spacer(),
-          if (_note case final note?)
-            Flexible(
-                child: Text(note,
-                    textAlign: TextAlign.right,
-                    style: const TextStyle(
-                        color: DS.success, fontWeight: FontWeight.w700))),
-        ]),
-        const SizedBox(height: DS.spaceSm),
-        // Today's order: the wanted fish pays double.
+        FishingDialogHeader(
+            icon: Icons.storefront_rounded,
+            title: 'Chợ cá nổi',
+            trailing: const FishingCoinPill(),
+            onClose: () => Navigator.pop(context)),
+        const SizedBox(height: 6),
+        SizedBox(
+            // Shrinks on short phones so "Bán hết" stays on screen.
+            height:
+                (MediaQuery.sizeOf(context).height - 196).clamp(110.0, 196.0),
+            child:
+                Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+              _order(),
+              const SizedBox(width: 10),
+              Expanded(
+                  child: Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: .7),
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: const Color(0xFFE2D3B5))),
+                      child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(children: [
+                              const Icon(Icons.shopping_basket_rounded,
+                                  color: _wood, size: 18),
+                              const SizedBox(width: 6),
+                              const Text('Giỏ cá',
+                                  style: TextStyle(
+                                      color: _wood,
+                                      fontWeight: FontWeight.w900)),
+                              const Spacer(),
+                              if (fish.isNotEmpty)
+                                const Text('Chạm cá để bán 1 con',
+                                    style: TextStyle(
+                                        color: DS.soft, fontSize: 11.5)),
+                            ]),
+                            const SizedBox(height: 2),
+                            if (fish.isEmpty)
+                              const Expanded(
+                                  child: Center(
+                                      child: Text(
+                                          'Giỏ trống rồi, đi câu thêm cá rồi quay lại nhé!',
+                                          textAlign: TextAlign.center,
+                                          style: TextStyle(color: DS.soft))))
+                            else
+                              Expanded(
+                                  child: SingleChildScrollView(
+                                      padding:
+                                          const EdgeInsets.fromLTRB(6, 8, 6, 4),
+                                      child: Wrap(
+                                          spacing: 10,
+                                          runSpacing: 10,
+                                          children: [
+                                            for (final f in fish) _lot(f),
+                                          ]))),
+                          ]))),
+            ])),
+        const SizedBox(height: 10),
         Container(
-          padding: const EdgeInsets.symmetric(
-              horizontal: DS.spaceSm, vertical: DS.spaceXs),
-          decoration: BoxDecoration(
-              color: DS.selectedFill,
-              borderRadius: BorderRadius.circular(DS.radiusSm),
-              border: Border.all(color: DS.borderMedium)),
-          child: Row(children: [
-            SizedBox(
-                width: 44,
-                height: 28,
-                child: CustomPaint(painter: FishingFishArt(_wanted))),
-            const SizedBox(width: DS.spaceSm),
-            Expanded(
-                child: Text(
-                    'Hôm nay chợ cần ${_wanted.label} · giá gấp đôi '
-                    '(${FishingMarket.priceOf(_wanted, _today)} xu/con)',
-                    style: const TextStyle(
-                        color: DS.ink, fontWeight: FontWeight.w700))),
-          ]),
-        ),
-        const SizedBox(height: DS.spaceMd),
-        if (fish.isEmpty)
-          const Padding(
-            padding: EdgeInsets.symmetric(vertical: DS.spaceLg),
-            child: Text('Giỏ trống rồi, đi câu thêm cá rồi quay lại nhé!',
-                style: TextStyle(color: DS.soft)),
-          )
-        else
-          Wrap(spacing: DS.spaceSm, runSpacing: DS.spaceSm, children: [
-            for (final f in fish)
-              _FishLot(
-                  fish: f,
-                  left: FishCollection.instance.stockOf(f),
-                  price: FishingMarket.priceOf(f, _today),
-                  wanted: f == _wanted,
-                  onSell: _busy ? null : () => _sell([(f, 1)])),
-          ]),
-        const SizedBox(height: DS.spaceMd),
-        Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-          const Text('Chạm vào cá để bán 1 con',
-              style: TextStyle(color: DS.soft, fontSize: 12)),
-          const SizedBox(height: DS.spaceSm),
-          ElevatedButton(
-              style: DS.primary,
-              onPressed: fish.isEmpty || _busy
-                  ? null
-                  : () => _sell([
-                        for (final f in fish)
-                          (f, FishCollection.instance.stockOf(f))
+            padding: const EdgeInsets.fromLTRB(12, 8, 8, 8),
+            decoration: BoxDecoration(
+                color: const Color(0xFFF3E6CC),
+                borderRadius: BorderRadius.circular(14)),
+            child: Row(children: [
+              Expanded(
+                  child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                    Text(
+                        _note ??
+                            (fish.isEmpty
+                                ? 'Chưa có cá để bán'
+                                : 'Bán hết được $_sellAllCoins xu'),
+                        style: TextStyle(
+                            color: _note == null
+                                ? DS.ink
+                                : _note!.startsWith('Đã')
+                                    ? DS.success
+                                    : DS.danger,
+                            fontWeight: FontWeight.w900)),
+                    if (keep > 0)
+                      const Row(children: [
+                        Icon(Icons.shield_rounded,
+                            size: 13, color: Color(0xFF6B5BB5)),
+                        SizedBox(width: 3),
+                        Flexible(
+                            child: Text(
+                                'Cá huyền thoại được giữ lại để hiến tế',
+                                style: TextStyle(
+                                    color: Color(0xFF6B5BB5),
+                                    fontSize: 11.5,
+                                    fontWeight: FontWeight.w700))),
                       ]),
-              child: Text('BÁN HẾT · $_total XU')),
-        ]),
+                  ])),
+              ElevatedButton.icon(
+                  style: DS.primary,
+                  onPressed: _sellAll.isEmpty || _busy
+                      ? null
+                      : () => _sell([
+                            for (final f in _sellAll)
+                              (f, FishCollection.instance.stockOf(f))
+                          ]),
+                  icon: const Icon(Icons.sell_rounded, size: 18),
+                  label: Text('BÁN HẾT · $_sellAllCoins XU')),
+            ])),
       ])),
     );
   }
-}
 
-/// Basket fish in an item frame with its count and price.
-class _FishLot extends StatelessWidget {
-  const _FishLot(
-      {required this.fish,
-      required this.left,
-      required this.price,
-      required this.wanted,
-      required this.onSell});
-  final FishSpecies fish;
-  final int left, price;
-  final bool wanted;
-  final VoidCallback? onSell;
-
-  @override
-  Widget build(BuildContext context) => Semantics(
+  /// One basket fish: tap sells one. Price in red for today's order.
+  Widget _lot(FishSpecies f) {
+    final price = FishingMarket.priceOf(f, _today);
+    final left = FishCollection.instance.stockOf(f);
+    final wanted = f == _wanted;
+    return Semantics(
         button: true,
-        label: 'Bán 1 ${fish.label}, $price xu, còn $left',
-        child: Tooltip(
-          message: '${fish.label} · $price xu/con',
-          child: GestureDetector(
-            onTap: onSell,
-            child: SizedBox(
-              width: 66,
-              child: Column(mainAxisSize: MainAxisSize.min, children: [
-                SizedBox.square(
-                  dimension: 58,
-                  child: Stack(clipBehavior: Clip.none, children: [
-                    Positioned.fill(
-                      child: Container(
-                        padding: const EdgeInsets.fromLTRB(5, 5, 5, 7),
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                              begin: Alignment.topCenter,
-                              end: Alignment.bottomCenter,
-                              colors: wanted
-                                  ? const [Color(0xFFFFB58A), Color(0xFFE8704A)]
-                                  : const [
-                                      Color(0xFFFFDE85),
-                                      Color(0xFFF7B940)
-                                    ]),
-                          borderRadius: BorderRadius.circular(13),
-                          border: Border.all(
-                              color: const Color(0xFF774016), width: 2.5),
-                          boxShadow: const [
-                            BoxShadow(
-                                color: Color(0x44402616), offset: Offset(0, 3))
-                          ],
-                        ),
-                        child: Container(
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFFFF4DA),
-                            borderRadius: BorderRadius.circular(9),
-                            border: Border.all(
-                                color: const Color(0x55B27A3E), width: 1.5),
-                          ),
-                          padding: const EdgeInsets.all(2),
-                          child: CustomPaint(painter: FishingFishArt(fish)),
-                        ),
-                      ),
-                    ),
-                    Positioned(
-                      right: -5,
-                      top: -5,
-                      child: _Badge('$left', const Color(0xFF31586C)),
-                    ),
-                    if (wanted)
-                      const Positioned(
-                          left: -5,
-                          top: -5,
-                          child: _Badge('x2', Color(0xFFC0503A))),
-                  ]),
-                ),
-                const SizedBox(height: 3),
-                Text('$price xu',
-                    style: TextStyle(
-                        color: wanted ? const Color(0xFFC0503A) : DS.ink,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w900)),
-              ]),
-            ),
-          ),
-        ),
-      );
-}
+        label: 'Bán 1 ${f.label}, $price xu, còn $left',
+        child: FishingFishTile(
+            fish: f,
+            count: left,
+            wanted: wanted,
+            shield: f.isLegendary,
+            tooltip: '${f.label} · $price xu/con',
+            onTap: _busy ? null : () => _sell([(f, 1)]),
+            caption:
+                Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+              const Icon(Icons.monetization_on_rounded,
+                  size: 13, color: fishingGold),
+              const SizedBox(width: 2),
+              Text('$price',
+                  style: TextStyle(
+                      color: wanted ? const Color(0xFFC0503A) : DS.ink,
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.w900)),
+            ])));
+  }
 
-class _Badge extends StatelessWidget {
-  const _Badge(this.text, this.color);
-  final String text;
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) => Container(
-        constraints: const BoxConstraints(minWidth: 21, minHeight: 21),
-        padding: const EdgeInsets.symmetric(horizontal: 4),
-        alignment: Alignment.center,
+  /// Today's order board: the wanted fish, its doubled price and stock.
+  Widget _order() {
+    final have = FishCollection.instance.stockOf(_wanted);
+    return Container(
+        width: 150,
+        padding: const EdgeInsets.fromLTRB(10, 8, 10, 10),
         decoration: BoxDecoration(
-            color: color,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: const Color(0xFFFFEFCA), width: 1.5)),
-        child: Text(text,
-            style: const TextStyle(
-                color: Colors.white,
-                fontSize: 11,
-                fontWeight: FontWeight.w900)),
-      );
+            borderRadius: BorderRadius.circular(16),
+            color: const Color(0xFF5E3A22),
+            border: Border.all(color: const Color(0xFF3E2618), width: 2)),
+        child: FittedBox(
+            child: SizedBox(
+                width: 126,
+                child: Column(mainAxisSize: MainAxisSize.min, children: [
+                  const Text('ĐƠN HÀNG HÔM NAY',
+                      style: TextStyle(
+                          color: Color(0xFFFFE08A),
+                          fontSize: 11,
+                          letterSpacing: .6,
+                          fontWeight: FontWeight.w900)),
+                  const SizedBox(height: 6),
+                  (Container(
+                      width: double.infinity,
+                      decoration: BoxDecoration(
+                          color: const Color(0xFFFFF4DA),
+                          borderRadius: BorderRadius.circular(10)),
+                      padding: const EdgeInsets.all(8),
+                      child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Stack(clipBehavior: Clip.none, children: [
+                              SizedBox(
+                                  width: 86,
+                                  height: 56,
+                                  child: CustomPaint(
+                                      painter: FishingFishArt(_wanted))),
+                              const Positioned(
+                                  right: -10,
+                                  top: -6,
+                                  child: FishingBadge('x2', Color(0xFFC0503A))),
+                            ]),
+                            const SizedBox(height: 4),
+                            Text(_wanted.label,
+                                textAlign: TextAlign.center,
+                                style: const TextStyle(
+                                    color: DS.ink,
+                                    fontWeight: FontWeight.w900)),
+                            Text(
+                                '${FishingMarket.priceOf(_wanted, _today)} xu/con',
+                                style: const TextStyle(
+                                    color: Color(0xFFC0503A),
+                                    fontWeight: FontWeight.w900)),
+                          ]))),
+                  const SizedBox(height: 6),
+                  Text(have > 0 ? 'Bạn có $have con' : 'Chưa có trong giỏ',
+                      style: TextStyle(
+                          color: have > 0
+                              ? const Color(0xFFB4E8A5)
+                              : const Color(0xFFE7CFAE),
+                          fontSize: 12,
+                          fontWeight: FontWeight.w800)),
+                ]))));
+  }
 }

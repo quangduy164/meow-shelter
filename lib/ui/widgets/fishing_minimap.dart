@@ -1,3 +1,4 @@
+import '../../fishing/fishing_quests.dart';
 import 'dart:math' as math;
 import 'dart:ui' as ui;
 import 'package:material_ui/material_ui.dart';
@@ -129,6 +130,10 @@ class _MinimapPainter extends CustomPainter {
     ..strokeWidth = 1.2;
   static final _dot = Paint()..color = const Color(0xFFFF8A3D);
   static final _dotRing = Paint()..color = const Color(0xFFFFFFFF);
+  static final _quest = Paint()..color = const Color(0xFFFFD36B);
+  static final _questEdge = Paint()
+    ..color = const Color(0xFF6E4429)
+    ..style = PaintingStyle.stroke;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -166,6 +171,21 @@ class _MinimapPainter extends CustomPainter {
         Rect.fromLTWH(round.cameraLeft, round.cameraTop, round.visibleWidth,
             round.visibleHeight),
         _view..strokeWidth = 1.2 / s);
+    // Quest destination: a gold star, drawn over the fog so it can lead
+    // the player into unexplored water.
+    if (FishingQuests.instance.current?.target case final t?) {
+      final r = (full ? 11 : 6) / s;
+      final star = Path();
+      for (var i = 0; i < 10; i++) {
+        final a = -math.pi / 2 + i * math.pi / 5;
+        final p =
+            t + Offset(math.cos(a), math.sin(a)) * (i.isEven ? r : r * .45);
+        i == 0 ? star.moveTo(p.dx, p.dy) : star.lineTo(p.dx, p.dy);
+      }
+      star.close();
+      canvas.drawPath(star, _quest);
+      canvas.drawPath(star, _questEdge..strokeWidth = 1.2 / s);
+    }
     canvas.drawCircle(focus, 4.5 / s, _dotRing);
     canvas.drawCircle(focus, 3 / s, _dot);
     canvas.restore();

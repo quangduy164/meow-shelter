@@ -1,3 +1,4 @@
+import 'fishing_quests.dart';
 import 'dart:math' as math;
 import 'package:flutter/painting.dart';
 
@@ -53,6 +54,7 @@ class FishingMarket {
     if (!await collection.takeMany(fish, n)) return 0;
     final coins = priceOf(fish, now ?? DateTime.now()) * n;
     await CampState.instance.addCoins(coins);
+    await FishingQuests.instance.onSold(n);
     return coins;
   }
 }

@@ -12,7 +12,7 @@ import '../../fishing/fishing_cabin_chest.dart';
 import '../../fishing/fishing_lighting.dart';
 import 'fishing_art_kit.dart';
 import 'fishing_action_button.dart';
-import 'fishing_fish_art.dart';
+import 'fishing_dialog_kit.dart';
 import '../../fishing/fishing_river.dart';
 import '../../game/constants.dart';
 import '../design.dart';

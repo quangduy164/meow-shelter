@@ -5,6 +5,7 @@ import '../design.dart';
 import 'fishing_art_kit.dart';
 import 'fishing_rod_art.dart';
 import 'game_surfaces.dart';
+import 'fishing_dialog_kit.dart';
 
 /// Static village workshop, recorded into the river landscape chunks.
 void paintFishingRodHouse(Canvas c) {
@@ -163,8 +164,10 @@ class _RodHouseDialogState extends State<FishingRodHouseDialog> {
       maxWidth: 400,
       child: SingleChildScrollView(
           child: Column(mainAxisSize: MainAxisSize.min, children: [
-        GameDialogHeader(
-            title: 'Nhà đổi cần câu', onClose: () => Navigator.pop(context)),
+        FishingDialogHeader(
+            icon: Icons.phishing_rounded,
+            title: 'Nhà đổi cần câu',
+            onClose: () => Navigator.pop(context)),
         const SizedBox(height: 12),
         Row(children: [
           for (final rod in FishingRod.values) ...[

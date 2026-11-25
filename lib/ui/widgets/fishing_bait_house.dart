@@ -1,3 +1,4 @@
+import '../../collection/fish_species.dart';
 import 'dart:ui' as ui;
 import 'package:material_ui/material_ui.dart';
 import '../../collection/fish_collection.dart';
@@ -9,6 +10,7 @@ import 'fishing_art_kit.dart';
 import 'fishing_fish_art.dart';
 import 'fishing_tool_art.dart';
 import 'game_surfaces.dart';
+import 'fishing_dialog_kit.dart';
 
 class FishingBaitHouseView extends StatefulWidget {
   const FishingBaitHouseView(
@@ -199,72 +201,213 @@ class _BaitHouseDialogState extends State<FishingBaitHouseDialog> {
     }
   }
 
+  static const _wood = Color(0xFF8A5A33), _gold = Color(0xFFE2A93B);
+
   @override
   Widget build(BuildContext context) {
     final collection = FishCollection.instance;
     final common = collection.basket.where((f) => f.rarity == 'Phổ biến');
+    final fishHave = collection.commonFishStock;
+    final coins = CampState.instance.coins;
+    const cost = FishCollection.baitCost, price = CampState.legendaryBaitPrice;
     return GameDialog(
-        maxWidth: 420,
+        maxWidth: 620,
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 14),
         child: SingleChildScrollView(
             child: Column(mainAxisSize: MainAxisSize.min, children: [
-          GameDialogHeader(
-              title: 'Nhà pha mồi', onClose: () => Navigator.pop(context)),
+          FishingDialogHeader(
+              icon: Icons.science_rounded,
+              title: 'Nhà pha mồi',
+              trailing: const FishingCoinPill(),
+              onClose: () => Navigator.pop(context)),
           const SizedBox(height: 8),
-          const SizedBox(
-              width: 66,
-              height: 66,
-              child: CustomPaint(
-                  painter:
-                      FishingToolArt(tool: FishingTool.bait, active: true))),
-          Text('Mồi huyền thoại: ${collection.legendaryBait}', style: DS.title),
-          Text('Bạn có ${CampState.instance.coins} xu',
-              style: const TextStyle(color: DS.ink)),
-          const SizedBox(height: 8),
-          const Text('Đổi 5 cá phổ biến lấy 1 mồi huyền thoại',
-              style: TextStyle(color: DS.ink, fontWeight: FontWeight.w900)),
-          const SizedBox(height: 8),
-          const Text(
-              'Mỗi mồi dùng cho 1 lần thả câu, tăng cơ hội gặp cá huyền thoại gấp 3. Cá xuất hiện tùy vùng đang câu.',
-              textAlign: TextAlign.center,
-              style: TextStyle(color: DS.ink)),
-          const SizedBox(height: 12),
-          Wrap(spacing: 12, runSpacing: 8, children: [
-            for (final fish in common)
-              SizedBox(
-                  width: 60,
-                  child: Column(children: [
-                    SizedBox(
-                        width: 52,
-                        height: 34,
-                        child: CustomPaint(painter: FishingFishArt(fish))),
-                    Text('×${collection.stockOf(fish)}',
-                        style: const TextStyle(color: DS.ink)),
-                  ]))
-          ]),
-          Text(
-              'Có ${collection.commonFishStock} cá phổ biến · Có thể dùng nhiều loài',
-              style: const TextStyle(color: DS.soft)),
-          const SizedBox(height: 12),
-          ElevatedButton(
-              style: DS.primary,
-              onPressed:
-                  _busy || collection.commonFishStock < FishCollection.baitCost
-                      ? null
-                      : () => _exchange(),
-              child: Text(_busy ? 'Đang đổi…' : 'ĐỔI 5 CÁ LẤY 1 MỒI')),
-          const SizedBox(height: 8),
-          ElevatedButton(
-              style: DS.primary,
-              onPressed: _busy ||
-                      CampState.instance.coins < CampState.legendaryBaitPrice
-                  ? null
-                  : () => _exchange(withCoins: true),
-              child:
-                  const Text('MUA 1 MỒI · ${CampState.legendaryBaitPrice} XU')),
+          IntrinsicHeight(
+              child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                _showcase(collection.legendaryBait),
+                const SizedBox(width: 10),
+                Expanded(
+                    child: _offer(
+                        title: 'Đổi cá',
+                        price: const SizedBox(
+                            width: 50,
+                            height: 34,
+                            child: CustomPaint(
+                                painter: FishingFishArt(FishSpecies.perch))),
+                        cost: '$cost cá phổ biến',
+                        have: 'Đang có $fishHave cá',
+                        enough: fishHave >= cost,
+                        button: 'ĐỔI 5 CÁ LẤY 1 MỒI',
+                        onPressed: () => _exchange())),
+                const SizedBox(width: 10),
+                Expanded(
+                    child: _offer(
+                        title: 'Mua bằng xu',
+                        price: const Icon(Icons.monetization_on_rounded,
+                            color: _gold, size: 40),
+                        cost: '$price xu',
+                        have: 'Đang có $coins xu',
+                        enough: coins >= price,
+                        button: 'MUA 1 MỒI · $price XU',
+                        onPressed: () => _exchange(withCoins: true))),
+              ])),
+          const SizedBox(height: 10),
+          _basket(common.toList(), collection),
           if (_note != null)
             Padding(
                 padding: const EdgeInsets.only(top: 8),
-                child: Text(_note!, style: const TextStyle(color: DS.success))),
+                child: Text(_note!,
+                    style: TextStyle(
+                        color: _note!.startsWith('Đã') ? DS.success : DS.danger,
+                        fontWeight: FontWeight.w800))),
         ])));
   }
+
+  /// Glowing jar of legendary bait with the player's stock and its effect.
+  Widget _showcase(int bait) => Container(
+      width: 150,
+      padding: const EdgeInsets.fromLTRB(10, 10, 10, 10),
+      decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(16),
+          gradient: const LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [Color(0xFF2B4256), Color(0xFF1B2B3A)]),
+          border: Border.all(color: _gold, width: 2)),
+      child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+        Stack(alignment: Alignment.center, children: [
+          Container(
+              width: 84,
+              height: 84,
+              decoration: const BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: RadialGradient(colors: [
+                    Color(0x99FFE08A),
+                    Color(0x00FFE08A),
+                  ]))),
+          const SizedBox(
+              width: 62,
+              height: 62,
+              child: CustomPaint(
+                  painter:
+                      FishingToolArt(tool: FishingTool.bait, active: true))),
+        ]),
+        Text('×$bait',
+            style: const TextStyle(
+                color: Color(0xFFFFE08A),
+                fontSize: 26,
+                height: 1.1,
+                fontWeight: FontWeight.w900)),
+        const Text('Mồi huyền thoại',
+            style: TextStyle(
+                color: Color(0xFFF4FFFB),
+                fontSize: 12,
+                fontWeight: FontWeight.w800)),
+        const SizedBox(height: 6),
+        Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+            decoration: BoxDecoration(
+                color: const Color(0x33FFE08A),
+                borderRadius: BorderRadius.circular(10)),
+            child: const Text('Cá huyền thoại ×6',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                    color: Color(0xFFFFE08A),
+                    fontSize: 11,
+                    fontWeight: FontWeight.w800))),
+        const SizedBox(height: 4),
+        const Text('1 mồi cho 1 lần câu',
+            textAlign: TextAlign.center,
+            style: TextStyle(color: Color(0xFF9FC3C8), fontSize: 10.5)),
+      ]));
+
+  /// One way to get bait: price, what the player has, and the button.
+  Widget _offer(
+          {required String title,
+          required Widget price,
+          required String cost,
+          required String have,
+          required bool enough,
+          required String button,
+          required VoidCallback onPressed}) =>
+      Container(
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: .75),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                  color: enough ? _gold : const Color(0xFFD9CDB8), width: 2)),
+          child: Column(children: [
+            Text(title,
+                style: const TextStyle(
+                    color: _wood,
+                    fontSize: 12,
+                    letterSpacing: .6,
+                    fontWeight: FontWeight.w900)),
+            const SizedBox(height: 6),
+            FittedBox(
+                child:
+                    Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+              price,
+              const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 8),
+                  child: Icon(Icons.arrow_forward_rounded,
+                      color: _wood, size: 22)),
+              const SizedBox(
+                  width: 44,
+                  height: 44,
+                  child: CustomPaint(
+                      painter: FishingToolArt(
+                          tool: FishingTool.bait, active: true))),
+            ])),
+            const Spacer(),
+            Text(cost,
+                style: const TextStyle(
+                    color: DS.ink,
+                    fontSize: DS.fontButton,
+                    fontWeight: FontWeight.w900)),
+            Text(have,
+                style: TextStyle(
+                    color: enough ? DS.success : DS.danger,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700)),
+            const Spacer(),
+            SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                    style: DS.primary,
+                    onPressed: _busy || !enough ? null : onPressed,
+                    child:
+                        FittedBox(child: Text(_busy ? 'Đang đổi…' : button)))),
+          ]));
+
+  /// Common fish in the basket that can be traded.
+  Widget _basket(List<FishSpecies> common, FishCollection collection) =>
+      Container(
+          width: double.infinity,
+          padding: const EdgeInsets.fromLTRB(10, 6, 10, 6),
+          decoration: BoxDecoration(
+              color: const Color(0xFFF3E6CC),
+              borderRadius: BorderRadius.circular(12)),
+          child: Row(children: [
+            const Icon(Icons.shopping_basket_rounded, color: _wood, size: 20),
+            const SizedBox(width: 8),
+            if (common.isEmpty)
+              const Expanded(
+                  child: Text('Giỏ chưa có cá phổ biến · Câu ở Làng là dễ nhất',
+                      style: TextStyle(color: _wood, fontSize: 12)))
+            else
+              Expanded(
+                  child: Padding(
+                      padding: const EdgeInsets.only(top: 6),
+                      child: Wrap(spacing: 12, runSpacing: 8, children: [
+                        for (final fish in common)
+                          FishingFishTile(
+                              fish: fish,
+                              count: collection.stockOf(fish),
+                              width: 50,
+                              height: 38),
+                      ]))),
+          ]));
 }

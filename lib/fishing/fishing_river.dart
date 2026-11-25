@@ -150,23 +150,14 @@ class FishingRiver {
       {bool activeWater = false,
       double? y,
       double Function(FishSpecies)? weatherBoost,
-      bool legendaryBait = false}) {
-    final night = hour < 6 || hour >= 18;
-    final layers = fishLayers(x, y: y);
-    final weights = <FishSpecies, double>{
-      for (final fish in FishSpecies.values)
-        fish: _poolWeight(fish, layers) *
-            (weatherBoost?.call(fish) ?? 1) *
-            (legendaryBait && fish.rarity == 'Huyền thoại' ? 3 : 1) *
-            (night && fish.nightActive ? 1.35 : 1) *
-            (activeWater
-                ? (fish.isJunk
-                    ? .3
-                    : fish.rarity == 'Phổ biến'
-                        ? 1
-                        : 3)
-                : 1),
-    };
+      bool legendaryBait = false,
+      double legendaryBoost = 1}) {
+    final weights = catchWeights(x, hour,
+        activeWater: activeWater,
+        y: y,
+        weatherBoost: weatherBoost,
+        legendaryBait: legendaryBait,
+        legendaryBoost: legendaryBoost);
     final total = weights.values.fold(0.0, (sum, weight) => sum + weight);
     var ticket = (roll % 10000) / 10000 * total;
     for (final entry in weights.entries) {
@@ -175,6 +166,44 @@ class FishingRiver {
     }
     return FishSpecies.tinCan;
   }
+
+  /// Relative catch weight of every species at a spot.
+  ///
+  /// - Legendary fish bite only in their home area (no leaking over borders).
+  /// - Night doubles night fish; lanternfish and moonfish bite only at night.
+  /// - Active water favours the rarer tiers and scares off junk.
+  /// - Legendary bait is x6; [legendaryBoost] is the bad-luck protection.
+  static Map<FishSpecies, double> catchWeights(double x, double hour,
+      {bool activeWater = false,
+      double? y,
+      double Function(FishSpecies)? weatherBoost,
+      bool legendaryBait = false,
+      double legendaryBoost = 1}) {
+    final night = hour < 6 || hour >= 18;
+    final layers = fishLayers(x, y: y);
+    final home = regionAt(x, y: y).fish;
+    return {
+      for (final fish in FishSpecies.values)
+        fish: _poolWeight(fish, layers) *
+            (weatherBoost?.call(fish) ?? 1) *
+            (fish.isLegendary
+                ? (home.containsKey(fish) ? 1 : 0) *
+                    (legendaryBait ? 6 : 1) *
+                    legendaryBoost
+                : 1) *
+            (fish.nightOnly && !night
+                ? 0
+                : night && fish.nightActive
+                    ? 2
+                    : 1) *
+            (activeWater ? fish.activeWaterBoost : 1),
+    };
+  }
+
+  /// True when a legendary fish can bite at this spot right now.
+  static bool legendaryHere(double x, double hour, {double? y}) =>
+      FishSpecies.legendary
+          .any((f) => (catchWeights(x, hour, y: y)[f] ?? 0) > 0);
 
   // Smooth bank inlets stay part of the same navigable channel and route rules.
   static const coves = [

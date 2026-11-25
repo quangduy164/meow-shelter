@@ -94,58 +94,23 @@ class _FishingCabinRoomState extends State<FishingCabinRoom> {
     });
   }
 
-  Widget _chestPopup() => Positioned.fill(
-      child: ColoredBox(
-          color: const Color(0x88000000),
-          child: Center(
-              child: Container(
-                  width: 340,
-                  padding: const EdgeInsets.all(DS.spaceMd),
-                  decoration: BoxDecoration(
-                      color: DS.cream,
-                      borderRadius: BorderRadius.circular(DS.radiusSm),
-                      border: Border.all(color: DS.wood, width: 3)),
-                  child: Column(mainAxisSize: MainAxisSize.min, children: [
-                    const Text('RƯƠNG KHO BÁU',
-                        style: TextStyle(
-                            color: DS.ink,
-                            fontWeight: FontWeight.w900,
-                            fontSize: DS.fontTitle)),
-                    const SizedBox(height: DS.spaceSm),
-                    if (_reward case final fish?) ...[
-                      Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            for (final f in fish)
-                              Padding(
-                                  padding:
-                                      const EdgeInsets.symmetric(horizontal: 6),
-                                  child: Column(children: [
-                                    SizedBox(
-                                        width: 70,
-                                        height: 46,
-                                        child: CustomPaint(
-                                            painter: FishingFishArt(f))),
-                                    Text(f.label,
-                                        style: const TextStyle(
-                                            color: DS.ink,
-                                            fontSize: DS.fontCaption,
-                                            fontWeight: FontWeight.w700)),
-                                  ])),
-                          ]),
-                      const SizedBox(height: DS.spaceSm),
-                      const Text('Đã cho cá vào giỏ!',
-                          style: TextStyle(color: DS.ink)),
-                    ] else
-                      const Text('Rương trống rồi, mai quay lại nhé!',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(color: DS.ink)),
-                    const SizedBox(height: DS.spaceMd),
-                    ElevatedButton(
-                        onPressed: () => setState(() => _showChest = false),
-                        style: DS.primary,
-                        child: Text(_reward == null ? 'ĐÓNG' : 'NHẬN')),
-                  ])))));
+  Widget _chestPopup() {
+    final fish = _reward;
+    return FishingRewardPanel(
+        hero: FishingChestHero(empty: fish == null),
+        title: 'RƯƠNG KHO BÁU',
+        fish: fish,
+        note: fish == null
+            ? 'Rương trống rồi, mai quay lại nhé!'
+            : 'Đã cho cá vào giỏ!',
+        actions: [
+          ElevatedButton(
+              onPressed: () => setState(() => _showChest = false),
+              style: DS.primary,
+              child: Text(fish == null ? 'ĐÓNG' : 'NHẬN')),
+        ]);
+  }
+
   @override
   void dispose() {
     for (final p in _pictures) {

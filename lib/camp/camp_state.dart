@@ -152,6 +152,12 @@ class CampState {
     }
   }
 
+  /// Free bait from fishing quests, stored with the purchased bait.
+  Future<void> grantLegendaryBait(int count) async {
+    purchasedLegendaryBait += count;
+    await _save();
+  }
+
   Future<bool> consumePurchasedBait() async {
     if (_savingBait || purchasedLegendaryBait <= 0) return false;
     _savingBait = true;

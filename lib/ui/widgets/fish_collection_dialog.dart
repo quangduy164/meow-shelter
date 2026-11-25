@@ -689,7 +689,9 @@ class _DetailPanel extends StatelessWidget {
             _InfoRow(
                 icon: Icons.place_rounded,
                 label: 'Khu vực',
-                value: fish.habitat),
+                value: fish.nightOnly
+                    ? '${fish.habitat} · ban đêm'
+                    : fish.habitat),
             const SizedBox(height: DS.spaceXs),
             _InfoRow(
                 icon: timeIcon,

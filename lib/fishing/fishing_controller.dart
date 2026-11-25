@@ -7,6 +7,7 @@ import 'fishing_boat.dart';
 import 'fishing_rod.dart';
 import 'fishing_market.dart';
 import 'fishing_shrine.dart';
+import 'fishing_quests.dart';
 import 'fishing_bait_house.dart';
 import '../camp/camp_state.dart';
 import '../audio/game_audio.dart';
@@ -74,8 +75,78 @@ class FishingController extends ChangeNotifier {
       active ||
       _phase == FishingPhase.caught ||
       (_phase == FishingPhase.lost && _elapsed < .6);
+  FishingQuests get quests => FishingQuests.instance;
+
+  /// Where the current cast was made from; quests use its region.
+  Offset _castFrom = Offset.zero;
   static const boatGuideKey = 'mode:fishing:boat:v1';
   bool get beginner => !CampState.instance.seenGuides.contains(boatGuideKey);
+
+  // ---- First-visit tutorial -------------------------------------------
+  // Five steps on the very first trip: row, cast, strike, reel, open the
+  // basket. The tutorial catch can never be lost. Done after the basket is
+  // opened or when skipped; existing players never see it.
+  static const tutorialKey = 'mode:fishing:tutorial:v1';
+  late bool _tutorial =
+      beginner && !CampState.instance.seenGuides.contains(tutorialKey);
+  bool _tutorialRowed = false, _tutorialCaught = false;
+  String? _tutorialNudge;
+  double _nudgeUntil = 0;
+  FishingPhase? _nudgePhase;
+  bool get tutorial => _tutorial;
+
+  /// The tutorial is waiting for the player to open the fish basket.
+  bool get tutorialAwaitsBasket => _tutorial && _tutorialCaught;
+
+  /// Caption and the button it points at, or null when nothing to show.
+  (String, FishingTutorialTarget)? get tutorialStep {
+    if (!_tutorial || river.cabin.inside || river.cave.inside) return null;
+    if (_tutorialNudge != null &&
+        _clock < _nudgeUntil &&
+        _nudgePhase == _phase) {
+      return (_tutorialNudge!, FishingTutorialTarget.none);
+    }
+    const none = FishingTutorialTarget.none, rod = FishingTutorialTarget.rod;
+    return switch (_phase) {
+      FishingPhase.ready || FishingPhase.lost => _tutorialCaught
+          ? (
+              'Bước 5/5 · Bấm giỏ cá ở góc trái dưới để xem cá vừa câu',
+              FishingTutorialTarget.basket
+            )
+          : !_tutorialRowed
+              ? ('Bước 1/5 · Bấm vào mặt nước để chèo thuyền tới đó', none)
+              : ('Bước 2/5 · Bấm nút cần câu ở góc phải để thả câu', rod),
+      FishingPhase.casting || FishingPhase.waiting => (
+          'Bước 3/5 · Chờ phao chìm xuống, đừng bấm vội…',
+          none
+        ),
+      FishingPhase.bite => ('Bước 3/5 · Cá cắn rồi! Bấm nút giật cần!', rod),
+      FishingPhase.reeling => fight.dangerous || fight.blocked
+          ? ('Bước 4/5 · Thả tay ra! Cá đang giật mạnh', rod)
+          : _tension > .7
+              ? ('Bước 4/5 · Dây căng quá, thả tay cho dây chùng', rod)
+              : ('Bước 4/5 · Giữ nút để kéo cá vào', rod),
+      FishingPhase.saving || FishingPhase.caught => (
+          'Câu được rồi! Giỏi lắm',
+          none
+        ),
+    };
+  }
+
+  void _nudge(String text) {
+    _tutorialNudge = text;
+    _nudgeUntil = _clock + 2;
+    _nudgePhase = _phase;
+  }
+
+  /// Ends the tutorial (after the basket, or when the player skips it).
+  Future<void> finishTutorial() async {
+    if (!_tutorial) return;
+    _tutorial = false;
+    notifyListeners();
+    await CampState.instance.markGuidesSeen([tutorialKey]);
+  }
+
   bool get canSail =>
       _phase == FishingPhase.ready || _phase == FishingPhase.lost;
   bool get surging => _surging;
@@ -413,7 +484,9 @@ class FishingController extends ChangeNotifier {
           _vibrate(HapticFeedback.mediumImpact);
         }
       case FishingPhase.bite:
-        if (_elapsed > (beginner ? 3 : 2)) _lose('Cá đã nhả mồi');
+        if (!_tutorial && _elapsed > (beginner ? 3 : 2)) {
+          _lose('Cá đã nhả mồi');
+        }
       case FishingPhase.reeling:
         final behavior = fight;
         final steeringError =
@@ -477,6 +550,15 @@ class FishingController extends ChangeNotifier {
                     : 1)
             : baseReelRate;
         _progress = (_progress + reelRate * dt).clamp(0.0, 1.0);
+        // The tutorial fish cannot escape: the line holds and it stays on.
+        if (_tutorial) {
+          if (_tension >= .97) {
+            _tension = .97;
+            _nudge('Bước 4/5 · Dây sắp đứt! Thả tay ra');
+          }
+          _progress = math.max(_progress, .1);
+          _elapsed = math.min(_elapsed, 30);
+        }
         // Slack lets the fish gain distance; it does not snap the line.
         if (_tension >= 1) {
           _lose('Dây câu bị đứt', snapped: true);
@@ -501,6 +583,8 @@ class FishingController extends ChangeNotifier {
         break;
     }
     river.update(dt);
+    quests.onBoatAt(river.boat);
+    if (_tutorial && !_tutorialRowed && river.moving) _tutorialRowed = true;
     if (river.cabin.pending &&
         !river.moving &&
         (river.boat - FishingCabin.mooring).distance < 2) {
@@ -552,6 +636,16 @@ class FishingController extends ChangeNotifier {
     _startCast();
   }
 
+  /// Bad-luck protection: casts in legendary water without one. Each miss
+  /// adds 1/30 to the legendary odds (up to x4); a legendary catch resets it.
+  static const legendMissKey = 'fishing_legend_misses_v1';
+  late int _legendMisses = collection.preferences.getInt(legendMissKey) ?? 0;
+  double get legendaryBoost => 1 + math.min(_legendMisses, 90) / 30;
+  void _setLegendMisses(int value) {
+    _legendMisses = value;
+    collection.preferences.setInt(legendMissKey, value);
+  }
+
   Future<void> _startCast() async {
     if (!canSail || _preparingCast) return;
     _preparingCast = true;
@@ -582,6 +676,7 @@ class FishingController extends ChangeNotifier {
   void _finishCast(bool baited) {
     if (shoreFishing) river.island.stopWalking();
     final location = angler;
+    _castFrom = location;
     final direction = river.heading.dx >= 0 ? 1.0 : -1.0;
     river.stop();
     _spot = shoreFishing
@@ -622,7 +717,12 @@ class FishingController extends ChangeNotifier {
             activeWater: _activeWater,
             y: location.dy,
             weatherBoost: river.weather.boost,
-            legendaryBait: baited);
+            legendaryBait: baited,
+            legendaryBoost: legendaryBoost);
+    if (!_fish.isLegendary &&
+        FishingRiver.legendaryHere(location.dx, _worldHour, y: location.dy)) {
+      _setLegendMisses(_legendMisses + 1);
+    }
     _grams = _fish.rollGrams(_random);
     _newRecord = false;
     _catchSaved = false;
@@ -651,7 +751,11 @@ class FishingController extends ChangeNotifier {
       _setPhase(FishingPhase.reeling);
       _vibrate(HapticFeedback.mediumImpact);
     } else if (_phase == FishingPhase.waiting) {
-      _lose('Giật cần quá sớm');
+      if (_tutorial) {
+        _nudge('Bước 3/5 · Chưa đâu! Chờ phao chìm hẳn rồi mới bấm');
+      } else {
+        _lose('Giật cần quá sớm');
+      }
     }
     notifyListeners();
   }
@@ -680,6 +784,9 @@ class FishingController extends ChangeNotifier {
         _newRecord = await collection.catchFish(_fish,
             grams: _fish.isJunk ? null : _grams);
         _catchSaved = true;
+        if (_fish.isLegendary) _setLegendMisses(0);
+        if (_tutorial) _tutorialCaught = true;
+        await quests.onCatch(_fish, _castFrom, activeWater: _activeWater);
       }
       if (!_coinsSaved) {
         await CampState.instance.addCoins(2);
@@ -707,6 +814,9 @@ class FishingController extends ChangeNotifier {
 }
 
 /// Places that open their own screen once the cat gets there.
+/// Button the tutorial arrow points at.
+enum FishingTutorialTarget { none, rod, basket }
+
 enum FishingVisit {
   boatHouse,
   market,
