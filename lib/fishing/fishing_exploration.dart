@@ -13,6 +13,9 @@ class FishingExploration {
   /// Set when a new cell opens; the trip saver clears it after saving.
   bool changed = false;
 
+  /// Bumped whenever a cell opens or a save is loaded (minimap repaints).
+  int version = 0;
+
   bool isExplored(int column, int row) => cells[row * columns + column];
 
   /// Restores saved cells row by row, so saves made before the world grew
@@ -26,6 +29,7 @@ class FishingExploration {
         cells[r * columns + c] = saved[r * savedColumns + c];
       }
     }
+    version++;
   }
 
   /// Opens a rough circle of cells around [p].
@@ -41,6 +45,7 @@ class FishingExploration {
         if (!cells[i]) {
           cells[i] = true;
           changed = true;
+          version++;
         }
       }
     }

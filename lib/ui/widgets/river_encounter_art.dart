@@ -39,10 +39,8 @@ void paintRiverEncounters(Canvas c, FishingRiverRound round, Rect visible) {
             p);
       }
     }
-    c.drawOval(const Rect.fromLTWH(-15, -10, 30, 20),
-        Paint()..color = const Color(0xFF516B51));
-    c.drawOval(const Rect.fromLTWH(-12, -9, 25, 16),
-        Paint()..color = const Color(0xFF91A66B));
+    c.drawOval(const Rect.fromLTWH(-15, -10, 30, 20), _kRiverEncounterArt0);
+    c.drawOval(const Rect.fromLTWH(-12, -9, 25, 16), _kRiverEncounterArt1);
     c.drawPath(
         Path()
           ..moveTo(-8, -4)
@@ -52,21 +50,13 @@ void paintRiverEncounters(Canvas c, FishingRiverRound round, Rect visible) {
           ..lineTo(0, 6)
           ..lineTo(-8, 3)
           ..close(),
-        Paint()
-          ..color = const Color(0xFF627E55)
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = 1.3);
+        _kRiverEncounterArt2);
     c.drawOval(const Rect.fromLTWH(11, -5, 13, 9), p);
     if ((round.clock + turtle.seed) % 6 < 5.7) {
-      c.drawCircle(
-          const Offset(20, -4), 1.4, Paint()..color = const Color(0xFF2D493D));
+      c.drawCircle(const Offset(20, -4), 1.4, _kRiverEncounterArt3);
     } else {
       c.drawLine(
-          const Offset(18, -4),
-          const Offset(21, -4),
-          Paint()
-            ..color = const Color(0xFF2D493D)
-            ..strokeWidth = 1);
+          const Offset(18, -4), const Offset(21, -4), _kRiverEncounterArt4);
     }
     c.restore();
   }
@@ -79,7 +69,7 @@ void paintRiverEncounters(Canvas c, FishingRiverRound round, Rect visible) {
     final t = fish.elapsed / RiverJumpFish.airTime;
     final point = fish.position;
     c.drawOval(Rect.fromCenter(center: point, width: 22, height: 6),
-        Paint()..color = const Color(0x334A7375));
+        _kRiverEncounterArt5);
     c.save();
     c.translate(point.dx, point.dy - fish.height);
     final face = fish.end.dx > fish.start.dx ? 1.0 : -1.0;
@@ -95,22 +85,12 @@ void paintRiverEncounters(Canvas c, FishingRiverRound round, Rect visible) {
           ..lineTo(-25, -9)
           ..lineTo(-23, 9)
           ..close(),
-        Paint()..color = const Color(0xFF638F91));
-    c.drawArc(
-        const Rect.fromLTWH(-15, -8, 30, 16),
-        math.pi,
-        math.pi,
-        false,
-        Paint()
-          ..color = const Color(0xFF608F91)
-          ..strokeWidth = 3
-          ..style = PaintingStyle.stroke);
-    c.drawOval(const Rect.fromLTWH(-8, 1, 18, 5),
-        Paint()..color = const Color(0xFFE2E9CE));
-    c.drawCircle(
-        const Offset(11, -2), 2, Paint()..color = const Color(0xFF314E55));
-    c.drawCircle(
-        const Offset(11.5, -2.5), .6, Paint()..color = const Color(0xFFF9F1D0));
+        _kRiverEncounterArt6);
+    c.drawArc(const Rect.fromLTWH(-15, -8, 30, 16), math.pi, math.pi, false,
+        _kRiverEncounterArt7);
+    c.drawOval(const Rect.fromLTWH(-8, 1, 18, 5), _kRiverEncounterArt8);
+    c.drawCircle(const Offset(11, -2), 2, _kRiverEncounterArt9);
+    c.drawCircle(const Offset(11.5, -2.5), .6, _kRiverEncounterArt10);
     c.restore();
     if (t < .18) _splash(c, fish.start, t / .18 * .35);
   }
@@ -135,7 +115,29 @@ void _splash(Canvas c, Offset p, double t) {
               Offset(math.cos(a) * t * 65,
                   -math.sin(a) * math.sin(t / .45 * math.pi) * 23),
           2,
-          Paint()..color = const Color(0xBBE0F2DE));
+          _kRiverEncounterArt11);
     }
   }
 }
+
+// Constant paints shared by every frame (hoisted out of the paint loops).
+final _kRiverEncounterArt0 = Paint()..color = const Color(0xFF516B51);
+final _kRiverEncounterArt1 = Paint()..color = const Color(0xFF91A66B);
+final _kRiverEncounterArt2 = Paint()
+  ..color = const Color(0xFF627E55)
+  ..style = PaintingStyle.stroke
+  ..strokeWidth = 1.3;
+final _kRiverEncounterArt3 = Paint()..color = const Color(0xFF2D493D);
+final _kRiverEncounterArt4 = Paint()
+  ..color = const Color(0xFF2D493D)
+  ..strokeWidth = 1;
+final _kRiverEncounterArt5 = Paint()..color = const Color(0x334A7375);
+final _kRiverEncounterArt6 = Paint()..color = const Color(0xFF638F91);
+final _kRiverEncounterArt7 = Paint()
+  ..color = const Color(0xFF608F91)
+  ..strokeWidth = 3
+  ..style = PaintingStyle.stroke;
+final _kRiverEncounterArt8 = Paint()..color = const Color(0xFFE2E9CE);
+final _kRiverEncounterArt9 = Paint()..color = const Color(0xFF314E55);
+final _kRiverEncounterArt10 = Paint()..color = const Color(0xFFF9F1D0);
+final _kRiverEncounterArt11 = Paint()..color = const Color(0xBBE0F2DE);

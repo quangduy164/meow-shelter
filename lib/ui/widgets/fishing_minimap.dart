@@ -29,6 +29,48 @@ class FishingMinimap extends StatefulWidget {
 class _FishingMinimapState extends State<FishingMinimap> {
   late final ui.Picture _base = _record();
 
+  /// Fires only when something the minimap shows has changed, instead of
+  /// every game frame (the fog path is rebuilt on each repaint).
+  final _repaint = ValueNotifier(0);
+  Object? _shown;
+
+  Object get _state {
+    final r = widget.round;
+    return (
+      r.cameraLeft,
+      r.cameraTop,
+      r.visibleWidth,
+      r.visibleHeight,
+      r.cameraFocus,
+      r.exploration.version,
+      FishingQuests.instance.current?.target,
+    );
+  }
+
+  void _onFrame() {
+    final state = _state;
+    if (state == _shown) return;
+    _shown = state;
+    _repaint.value++;
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    widget.frames.addListener(_onFrame);
+  }
+
+  @override
+  void didUpdateWidget(FishingMinimap old) {
+    super.didUpdateWidget(old);
+    if (old.frames != widget.frames) {
+      old.frames.removeListener(_onFrame);
+      widget.frames.addListener(_onFrame);
+    }
+    _shown = null;
+    _repaint.value++;
+  }
+
   /// Recorded in world units; the painter scales it to any size.
   static ui.Picture _record() {
     final recorder = ui.PictureRecorder();
@@ -87,6 +129,8 @@ class _FishingMinimapState extends State<FishingMinimap> {
 
   @override
   void dispose() {
+    widget.frames.removeListener(_onFrame);
+    _repaint.dispose();
     _base.dispose();
     super.dispose();
   }
@@ -109,8 +153,8 @@ class _FishingMinimapState extends State<FishingMinimap> {
         child: RepaintBoundary(
           child: CustomPaint(
               size: Size(widget.size, height),
-              painter: _MinimapPainter(
-                  widget.round, _base, widget.frames, widget.full)),
+              painter:
+                  _MinimapPainter(widget.round, _base, _repaint, widget.full)),
         ),
       ),
     );

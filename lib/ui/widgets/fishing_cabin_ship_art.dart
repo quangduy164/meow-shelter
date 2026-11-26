@@ -48,9 +48,9 @@ class _ShipPainter extends CustomPainter {
       flag.lineTo(2 + i * 9.0, -270 + math.sin(wave - i * .9) * i * .7);
     }
     flag.close();
-    c.drawPath(flag, Paint()..color = const Color(0xFF1F1A17));
-    c.drawCircle(Offset(26, -283 + math.sin(wave - 2.7) * 2), 5,
-        Paint()..color = const Color(0xFFF1E2BE));
+    c.drawPath(flag, _kFishingCabinShipArt0);
+    c.drawCircle(
+        Offset(26, -283 + math.sin(wave - 2.7) * 2), 5, _kFishingCabinShipArt1);
     final t = (round.clock * .35) % 1;
     c.drawOval(
         Rect.fromCenter(
@@ -66,11 +66,7 @@ class _ShipPainter extends CustomPainter {
           ..moveTo(-6, 106)
           ..lineTo(0, 100)
           ..lineTo(6, 106),
-        Paint()
-          ..color = const Color(0xFFFFEDB1)
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = 2
-          ..strokeCap = StrokeCap.round);
+        _kFishingCabinShipArt2);
     c.restore();
   }
 
@@ -324,3 +320,12 @@ void _ship(Canvas c) {
   _line(c, const Offset(main - 18, -284), const Offset(main + 18, -284),
       const Color(0xFFD9A441), 2);
 }
+
+// Constant paints shared by every frame (hoisted out of the paint loops).
+final _kFishingCabinShipArt0 = Paint()..color = const Color(0xFF1F1A17);
+final _kFishingCabinShipArt1 = Paint()..color = const Color(0xFFF1E2BE);
+final _kFishingCabinShipArt2 = Paint()
+  ..color = const Color(0xFFFFEDB1)
+  ..style = PaintingStyle.stroke
+  ..strokeWidth = 2
+  ..strokeCap = StrokeCap.round;

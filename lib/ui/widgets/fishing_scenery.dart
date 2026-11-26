@@ -92,7 +92,7 @@ class _SceneryPainter extends CustomPainter {
       final fade = aboveCat &&
           item.bounds.overlaps(Rect.fromLTWH(cat.dx - 22, cat.dy - 58, 44, 65));
       if (fade) {
-        c.saveLayer(item.bounds, Paint()..color = const Color(0x66FFFFFF));
+        c.saveLayer(item.bounds, _kFishingScenery0);
       }
       c.drawPicture(item.picture);
       c.save();
@@ -127,22 +127,19 @@ void _box(Canvas c, Rect r, Color color) {
 void _jar(Canvas c, Offset p) {
   c.drawOval(
       Rect.fromCenter(center: p + const Offset(0, 3), width: 27, height: 8),
-      Paint()..color = const Color(0x33595C40));
+      _kFishingScenery1);
   c.drawOval(
       Rect.fromCenter(center: p - const Offset(0, 13), width: 24, height: 30),
-      Paint()..color = const Color(0xFFA87958));
+      _kFishingScenery2);
   c.drawOval(
       Rect.fromCenter(center: p - const Offset(0, 26), width: 19, height: 7),
-      Paint()..color = const Color(0xFF6D5843));
+      _kFishingScenery3);
   c.drawArc(
       Rect.fromCenter(center: p - const Offset(3, 13), width: 12, height: 20),
       math.pi / 2,
       math.pi,
       false,
-      Paint()
-        ..color = const Color(0xFFC6A174)
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 2);
+      _kFishingScenery4);
 }
 
 void _net(Canvas c, Offset p, double w, double h) {
@@ -193,8 +190,7 @@ void _shelter(Canvas c, {bool abandoned = false}) {
 
 void _cluster(Canvas c, int kind) {
   if (kind < 4) {
-    c.drawOval(const Rect.fromLTWH(-145, -25, 290, 55),
-        Paint()..color = const Color(0x2292955F));
+    c.drawOval(const Rect.fromLTWH(-145, -25, 290, 55), _kFishingScenery5);
   }
   switch (kind) {
     case 0:
@@ -218,20 +214,14 @@ void _cluster(Canvas c, int kind) {
           c.drawOval(
               Rect.fromCenter(
                   center: p + const Offset(0, 25), width: 9, height: 17),
-              Paint()..color = const Color(0xFFB4C57E));
+              _kFishingScenery6);
         }
       }
       _jar(c, const Offset(-15, 0));
       _jar(c, const Offset(12, 6));
       // Bicycle leaning near the garden.
       for (final x in [69.0, 117.0]) {
-        c.drawCircle(
-            Offset(x, -9),
-            18,
-            Paint()
-              ..color = const Color(0xFF6D755F)
-              ..style = PaintingStyle.stroke
-              ..strokeWidth = 3);
+        c.drawCircle(Offset(x, -9), 18, _kFishingScenery7);
       }
       final frame = Path()
         ..moveTo(69, -9)
@@ -243,12 +233,7 @@ void _cluster(Canvas c, int kind) {
         ..lineTo(97, -9)
         ..moveTo(108, -39)
         ..lineTo(117, -9);
-      c.drawPath(
-          frame,
-          Paint()
-            ..color = const Color(0xFF6A9F98)
-            ..style = PaintingStyle.stroke
-            ..strokeWidth = 3);
+      c.drawPath(frame, _kFishingScenery8);
       _line(c, const Offset(78, -42), const Offset(90, -42),
           const Color(0xFF75624B), 4);
       _line(c, const Offset(107, -39), const Offset(109, -52),
@@ -276,7 +261,7 @@ void _cluster(Canvas c, int kind) {
           c.drawOval(
               Rect.fromCenter(
                   center: Offset(x - 8, -20 - j * 21.0), width: 26, height: 7),
-              Paint()..color = const Color(0xFF84A56E));
+              _kFishingScenery9);
         }
       }
       _box(c, const Rect.fromLTWH(-12, -18, 38, 10), const Color(0xFF92764E));
@@ -296,7 +281,7 @@ void _cluster(Canvas c, int kind) {
         ..lineTo(-55, -30)
         ..lineTo(-130, -30)
         ..close();
-      c.drawPath(hull, Paint()..color = const Color(0xFF8C9E97));
+      c.drawPath(hull, _kFishingScenery10);
       for (var i = 0; i < 6; i++) {
         _line(c, Offset(-124 + i * 12.0, -36), Offset(-118 + i * 10.0, -52),
             const Color(0xFFC0C5A6), 2);
@@ -308,8 +293,7 @@ void _cluster(Canvas c, int kind) {
             Paint()
               ..color =
                   i.isEven ? const Color(0xFFB98163) : const Color(0xFFD1BC87));
-        c.drawCircle(Offset(68 + i * 24.0, 18), 4,
-            Paint()..color = const Color(0xFF8F9D80));
+        c.drawCircle(Offset(68 + i * 24.0, 18), 4, _kFishingScenery11);
       }
     case 4:
     case 5:
@@ -325,8 +309,7 @@ void _cluster(Canvas c, int kind) {
               ..color =
                   i.isEven ? const Color(0xFF88A267) : const Color(0xFF9BB67B));
         if (i % 3 == 0) {
-          c.drawCircle(p - const Offset(0, 5), 3,
-              Paint()..color = const Color(0xFFEAC0A0));
+          c.drawCircle(p - const Offset(0, 5), 3, _kFishingScenery12);
         }
       }
       _line(c, const Offset(-40, 22), const Offset(16, 32),
@@ -340,12 +323,7 @@ void _motion(Canvas c, int kind, double time, double seed) {
     final line = Path()
       ..moveTo(38, -142)
       ..quadraticBezierTo(95, -127, 146, -142);
-    c.drawPath(
-        line,
-        Paint()
-          ..color = const Color(0xFF96856A)
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = 1.5);
+    c.drawPath(line, _kFishingScenery13);
     for (var i = 0; i < 3; i++) {
       final x = 55 + i * 27.0;
       final y = -137.0 + (i == 1 ? 7 : 0);
@@ -377,25 +355,13 @@ void _motion(Canvas c, int kind, double time, double seed) {
   } else if (kind == 4) {
     c.save();
     c.rotate(time * .35);
-    c.drawCircle(
-        Offset.zero,
-        34,
-        Paint()
-          ..color = const Color(0xFF9C774E)
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = 7);
-    c.drawCircle(
-        Offset.zero,
-        25,
-        Paint()
-          ..color = const Color(0xFFD1AF79)
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = 2);
+    c.drawCircle(Offset.zero, 34, _kFishingScenery14);
+    c.drawCircle(Offset.zero, 25, _kFishingScenery15);
     for (var i = 0; i < 8; i++) {
       _line(c, Offset.zero, Offset.fromDirection(i * math.pi / 4, 33),
           const Color(0xFFBDA16C), 3);
     }
-    c.drawCircle(Offset.zero, 6, Paint()..color = const Color(0xFF715A40));
+    c.drawCircle(Offset.zero, 6, _kFishingScenery16);
     c.restore();
   } else if (kind == 1) {
     for (var i = 0; i < 5; i++) {
@@ -405,7 +371,7 @@ void _motion(Canvas c, int kind, double time, double seed) {
       c.drawOval(
           Rect.fromCenter(
               center: tip + const Offset(5, 5), width: 25, height: 7),
-          Paint()..color = const Color(0xFF96B57A));
+          _kFishingScenery17);
     }
   } else if (kind == 2) {
     final sway = math.sin(time * .8 + seed) * 3;
@@ -417,6 +383,45 @@ void _motion(Canvas c, int kind, double time, double seed) {
           ..lineTo(16, -143 + sway)
           ..lineTo(-10, -133)
           ..close(),
-        Paint()..color = const Color(0xFFD1A06B));
+        _kFishingScenery18);
   }
 }
+
+// Constant paints shared by every frame (hoisted out of the paint loops).
+final _kFishingScenery0 = Paint()..color = const Color(0x66FFFFFF);
+final _kFishingScenery1 = Paint()..color = const Color(0x33595C40);
+final _kFishingScenery2 = Paint()..color = const Color(0xFFA87958);
+final _kFishingScenery3 = Paint()..color = const Color(0xFF6D5843);
+final _kFishingScenery4 = Paint()
+  ..color = const Color(0xFFC6A174)
+  ..style = PaintingStyle.stroke
+  ..strokeWidth = 2;
+final _kFishingScenery5 = Paint()..color = const Color(0x2292955F);
+final _kFishingScenery6 = Paint()..color = const Color(0xFFB4C57E);
+final _kFishingScenery7 = Paint()
+  ..color = const Color(0xFF6D755F)
+  ..style = PaintingStyle.stroke
+  ..strokeWidth = 3;
+final _kFishingScenery8 = Paint()
+  ..color = const Color(0xFF6A9F98)
+  ..style = PaintingStyle.stroke
+  ..strokeWidth = 3;
+final _kFishingScenery9 = Paint()..color = const Color(0xFF84A56E);
+final _kFishingScenery10 = Paint()..color = const Color(0xFF8C9E97);
+final _kFishingScenery11 = Paint()..color = const Color(0xFF8F9D80);
+final _kFishingScenery12 = Paint()..color = const Color(0xFFEAC0A0);
+final _kFishingScenery13 = Paint()
+  ..color = const Color(0xFF96856A)
+  ..style = PaintingStyle.stroke
+  ..strokeWidth = 1.5;
+final _kFishingScenery14 = Paint()
+  ..color = const Color(0xFF9C774E)
+  ..style = PaintingStyle.stroke
+  ..strokeWidth = 7;
+final _kFishingScenery15 = Paint()
+  ..color = const Color(0xFFD1AF79)
+  ..style = PaintingStyle.stroke
+  ..strokeWidth = 2;
+final _kFishingScenery16 = Paint()..color = const Color(0xFF715A40);
+final _kFishingScenery17 = Paint()..color = const Color(0xFF96B57A);
+final _kFishingScenery18 = Paint()..color = const Color(0xFFD1A06B);

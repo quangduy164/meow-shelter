@@ -148,7 +148,7 @@ class FishingCave {
 
   /// Seconds left of the somersault after a double jump.
   double spin = 0;
-  static const spinTime = .42;
+  static const spinTime = .8;
 
   /// Seconds left of the head-bump wobble under a low ceiling.
   double bonk = 0;

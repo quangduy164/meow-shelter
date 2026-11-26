@@ -195,7 +195,7 @@ class _FishingCaveRunState extends State<FishingCaveRun> {
 (String, int, double) _pose(FishingCave cave) {
   // Pit or crystal spike: the cat panics while it drops.
   if (cave.state == CaveRunState.falling) {
-    return ('panic', (cave.clock * 12).floor() % framesPanic, 0);
+    return ('panic', (cave.clock * 8).floor() % framesPanic, 0);
   }
   // Double jump: a somersault through the curled frames 1-4 of the roll.
   if (cave.spin > 0) {
@@ -213,7 +213,7 @@ class _FishingCaveRunState extends State<FishingCaveRun> {
   }
   if (cave.landing > 0) return ('jump', 4, 0);
   if (cave.state == CaveRunState.running) {
-    return ('run', (cave.clock * 14).floor() % framesRun, 0);
+    return ('run', (cave.clock * 10).floor() % framesRun, 0);
   }
   return ('idle', (cave.clock * 7).floor() % framesIdle, 0);
 }

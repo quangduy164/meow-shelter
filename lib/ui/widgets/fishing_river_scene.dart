@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 import 'dart:ui' as ui;
+import 'package:flutter/scheduler.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../../fishing/fishing_river.dart';
@@ -33,16 +34,43 @@ class FishingRiverBackdrop extends StatefulWidget {
 }
 
 class _FishingRiverBackdropState extends State<FishingRiverBackdrop> {
-  late final _pictures = [
-    for (var i = 0; i < FishingRiver.sectionCount; i++) recordFishingRiver(i)
-  ];
-  late final _tiles = _BackdropTiles(_pictures);
+  /// Landscape chunks are recorded on demand (visible ones at once, their
+  /// neighbours when the app is idle) instead of all seven on entry, and
+  /// chunks far from the camera are released. Recording is deterministic,
+  /// so a chunk recorded again draws exactly the same.
+  final _pictures = List<ui.Picture?>.filled(FishingRiver.sectionCount, null);
+  late final _tiles = _BackdropTiles(_section, _visibleSections);
+  bool _idleQueued = false, _disposed = false;
+
+  ui.Picture _section(int i) => _pictures[i] ??= recordFishingRiver(i);
+
+  void _visibleSections(int first, int last) {
+    for (var i = 0; i < _pictures.length; i++) {
+      if (i < first - 2 || i > last + 2) {
+        _pictures[i]?.dispose();
+        _pictures[i] = null;
+      }
+    }
+    if (_idleQueued) return;
+    final wanted = [
+      for (final i in [first - 1, last + 1])
+        if (i >= 0 && i < _pictures.length && _pictures[i] == null) i
+    ];
+    if (wanted.isEmpty) return;
+    _idleQueued = true;
+    SchedulerBinding.instance.scheduleTask(() {
+      _idleQueued = false;
+      if (_disposed) return;
+      _section(wanted.first);
+    }, Priority.idle);
+  }
 
   @override
   void dispose() {
+    _disposed = true;
     _tiles.dispose();
     for (final picture in _pictures) {
-      picture.dispose();
+      picture?.dispose();
     }
     super.dispose();
   }
@@ -58,8 +86,13 @@ class _FishingRiverBackdropState extends State<FishingRiverBackdrop> {
 /// once with [ui.Picture.toImageSync] and then drawn as a single image.
 /// Zoomed-out views use coarser levels; least recently used tiles are freed.
 class _BackdropTiles {
-  _BackdropTiles(this.pictures);
-  final List<ui.Picture> pictures;
+  _BackdropTiles(this.section, this.onVisible);
+
+  /// Recorded landscape chunk [i] (recorded on first use).
+  final ui.Picture Function(int i) section;
+
+  /// Reports the chunk range in view, so far chunks can be released.
+  final void Function(int first, int last) onVisible;
 
   /// World size of a level-0 tile and its pixel density.
   static const tileWorld = 256.0, baseRes = 2.0, pad = 2;
@@ -86,13 +119,13 @@ class _BackdropTiles {
     c.scale(res);
     c.translate(-rect.left, -rect.top);
     c.clipRect(rect.inflate(pad / res));
-    for (var i = 0; i < pictures.length; i++) {
+    for (var i = 0; i < FishingRiver.sectionCount; i++) {
       final start = i * FishingRiver.sectionLength;
       if (start > rect.right + 4 ||
           start + FishingRiver.sectionLength < rect.left - 4) {
         continue;
       }
-      c.drawPicture(pictures[i]);
+      c.drawPicture(section(i));
     }
     final picture = recorder.endRecording();
     final image = picture.toImageSync(px + pad * 2, px + pad * 2);
@@ -101,6 +134,9 @@ class _BackdropTiles {
   }
 
   void paint(Canvas canvas, Rect view, double pixelsPerUnit) {
+    const len = FishingRiver.sectionLength;
+    onVisible((view.left / len).floor().clamp(0, FishingRiver.sectionCount - 1),
+        (view.right / len).floor().clamp(0, FishingRiver.sectionCount - 1));
     final level = levelFor(pixelsPerUnit);
     final size = tileWorld * (1 << level);
     const px = tileWorld * baseRes;
@@ -120,13 +156,13 @@ class _BackdropTiles {
           // Not rasterised yet this frame: replay the chunk just here.
           canvas.save();
           canvas.clipRect(dst);
-          for (var i = 0; i < pictures.length; i++) {
+          for (var i = 0; i < FishingRiver.sectionCount; i++) {
             final start = i * FishingRiver.sectionLength;
             if (start > dst.right ||
                 start + FishingRiver.sectionLength < dst.left) {
               continue;
             }
-            canvas.drawPicture(pictures[i]);
+            canvas.drawPicture(section(i));
           }
           canvas.restore();
           continue;
@@ -332,12 +368,8 @@ class FishingRiverSurface extends CustomPainter {
       canvas.drawOval(
           Rect.fromCenter(
               center: destination, width: radius * 2, height: radius),
-          Paint()
-            ..color = const Color(0xDDFFF0B2)
-            ..style = PaintingStyle.stroke
-            ..strokeWidth = 2.5);
-      canvas.drawCircle(
-          destination, 2, Paint()..color = const Color(0xFFFFF5CE));
+          _kFishingRiverScene0);
+      canvas.drawCircle(destination, 2, _kFishingRiverScene1);
     }
     canvas.restore();
   }
@@ -629,3 +661,10 @@ class FishingRiverBoatPainter extends CustomPainter {
   @override
   bool shouldRepaint(FishingRiverBoatPainter oldDelegate) => true;
 }
+
+// Constant paints shared by every frame (hoisted out of the paint loops).
+final _kFishingRiverScene0 = Paint()
+  ..color = const Color(0xDDFFF0B2)
+  ..style = PaintingStyle.stroke
+  ..strokeWidth = 2.5;
+final _kFishingRiverScene1 = Paint()..color = const Color(0xFFFFF5CE);

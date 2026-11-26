@@ -9,8 +9,7 @@ import '../../fishing/fishing_lighting.dart';
 
 void paintIslandDock(Canvas c) {
   final p = FishingIslandVisit.dockTap - const Offset(18, 19);
-  c.drawRect(Rect.fromLTWH(p.dx, p.dy + 6, 65, 38),
-      Paint()..color = const Color(0x33436560));
+  c.drawRect(Rect.fromLTWH(p.dx, p.dy + 6, 65, 38), _kFishingIslandArt0);
   for (var i = 0; i < 9; i++) {
     c.drawRect(
         Rect.fromLTWH(p.dx + i * 7.0, p.dy, 6, 38),
@@ -20,10 +19,8 @@ void paintIslandDock(Canvas c) {
   }
   for (final x in [0.0, 60.0]) {
     for (final y in [0.0, 38.0]) {
-      c.drawCircle(
-          p + Offset(x, y), 4, Paint()..color = const Color(0xFF785B40));
-      c.drawCircle(
-          p + Offset(x, y - 2), 3, Paint()..color = const Color(0xFFE1BB80));
+      c.drawCircle(p + Offset(x, y), 4, _kFishingIslandArt1);
+      c.drawCircle(p + Offset(x, y - 2), 3, _kFishingIslandArt2);
     }
   }
 }
@@ -62,26 +59,17 @@ class FishingIslandPainter extends CustomPainter {
       c.scale(round.scale);
       c.translate(-round.cameraLeft, -round.cameraTop);
       final point = island.visitLanding;
-      c.drawOval(
-          Rect.fromCenter(center: point, width: 38, height: 20),
-          Paint()
-            ..color = const Color(0x99FFF1B8)
-            ..style = PaintingStyle.stroke
-            ..strokeWidth = 2);
+      c.drawOval(Rect.fromCenter(center: point, width: 38, height: 20),
+          _kFishingIslandArt3);
       final post = point + const Offset(24, -6);
-      c.drawLine(
-          post,
-          post - const Offset(0, 30),
-          Paint()
-            ..color = const Color(0xFF8D704A)
-            ..strokeWidth = 4);
+      c.drawLine(post, post - const Offset(0, 30), _kFishingIslandArt4);
       c.drawPath(
           Path()
             ..moveTo(post.dx, post.dy - 30)
             ..lineTo(post.dx + 19, post.dy - 23)
             ..lineTo(post.dx, post.dy - 17)
             ..close(),
-          Paint()..color = const Color(0xFFE4AE61));
+          _kFishingIslandArt5);
       c.restore();
     }
     if (!visible
@@ -156,10 +144,7 @@ class FishingIslandPainter extends CustomPainter {
               center: FishingIslandVisit.lighthouseDoor + const Offset(0, 6),
               width: 44 + pulse,
               height: 18 + pulse),
-          Paint()
-            ..color = const Color(0xAAFFF3B7)
-            ..style = PaintingStyle.stroke
-            ..strokeWidth = 2);
+          _kFishingIslandArt6);
     }
     if (!island.ashore) {
       final pulse = math.sin(round.clock * 3) * 2;
@@ -168,10 +153,7 @@ class FishingIslandPainter extends CustomPainter {
               center: FishingIslandVisit.dockTap,
               width: 36 + pulse,
               height: 22 + pulse),
-          Paint()
-            ..color = const Color(0xAAFFF3B7)
-            ..style = PaintingStyle.stroke
-            ..strokeWidth = 2);
+          _kFishingIslandArt6);
     }
     for (var i = 0; i < FishingIslandVisit.shellOffsets.length; i++) {
       if (island.collectedShells.contains(i)) continue;
@@ -228,3 +210,20 @@ class FishingIslandPainter extends CustomPainter {
   @override
   bool shouldRepaint(FishingIslandPainter old) => old.round != round;
 }
+
+// Constant paints shared by every frame (hoisted out of the paint loops).
+final _kFishingIslandArt0 = Paint()..color = const Color(0x33436560);
+final _kFishingIslandArt1 = Paint()..color = const Color(0xFF785B40);
+final _kFishingIslandArt2 = Paint()..color = const Color(0xFFE1BB80);
+final _kFishingIslandArt3 = Paint()
+  ..color = const Color(0x99FFF1B8)
+  ..style = PaintingStyle.stroke
+  ..strokeWidth = 2;
+final _kFishingIslandArt4 = Paint()
+  ..color = const Color(0xFF8D704A)
+  ..strokeWidth = 4;
+final _kFishingIslandArt5 = Paint()..color = const Color(0xFFE4AE61);
+final _kFishingIslandArt6 = Paint()
+  ..color = const Color(0xAAFFF3B7)
+  ..style = PaintingStyle.stroke
+  ..strokeWidth = 2;

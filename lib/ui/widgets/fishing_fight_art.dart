@@ -28,13 +28,8 @@ void paintFishingFight(Canvas canvas, FishingController controller) {
     if (fight.blocked) {
       for (var i = 0; i < 6; i++) {
         final dir = Offset.fromDirection(i * math.pi / 3, 1);
-        canvas.drawLine(
-            dir * 38,
-            dir * (43 + math.sin(time * 9).abs() * 5),
-            Paint()
-              ..color = const Color(0xDDFFD582)
-              ..strokeWidth = 2
-              ..strokeCap = StrokeCap.round);
+        canvas.drawLine(dir * 38, dir * (43 + math.sin(time * 9).abs() * 5),
+            _kFishingFightArt0);
       }
     }
   } else if (fight.move != FishFightMove.dive) {
@@ -52,13 +47,8 @@ void paintFishingFight(Canvas canvas, FishingController controller) {
         paint);
     if (fight.move == FishFightMove.dash) {
       for (var i = 0; i < 3; i++) {
-        canvas.drawLine(
-            Offset(-40 - i * 7.0, (i - 1) * 8.0),
-            Offset(-61 - i * 8.0, (i - 1) * 8.0),
-            Paint()
-              ..color = const Color(0xCCE1FFF0)
-              ..strokeWidth = 2
-              ..strokeCap = StrokeCap.round);
+        canvas.drawLine(Offset(-40 - i * 7.0, (i - 1) * 8.0),
+            Offset(-61 - i * 8.0, (i - 1) * 8.0), _kFishingFightArt1);
       }
     }
     canvas.restore();
@@ -99,11 +89,22 @@ void paintFishingFight(Canvas canvas, FishingController controller) {
           ..moveTo(-6, y - sign * 4)
           ..lineTo(0, y + sign * 3)
           ..lineTo(6, y - sign * 4),
-        Paint()
-          ..color = const Color(0xFFFFE4A1)
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = 3
-          ..strokeCap = StrokeCap.round);
+        _kFishingFightArt2);
   }
   canvas.restore();
 }
+
+// Constant paints shared by every frame (hoisted out of the paint loops).
+final _kFishingFightArt0 = Paint()
+  ..color = const Color(0xDDFFD582)
+  ..strokeWidth = 2
+  ..strokeCap = StrokeCap.round;
+final _kFishingFightArt1 = Paint()
+  ..color = const Color(0xCCE1FFF0)
+  ..strokeWidth = 2
+  ..strokeCap = StrokeCap.round;
+final _kFishingFightArt2 = Paint()
+  ..color = const Color(0xFFFFE4A1)
+  ..style = PaintingStyle.stroke
+  ..strokeWidth = 3
+  ..strokeCap = StrokeCap.round;

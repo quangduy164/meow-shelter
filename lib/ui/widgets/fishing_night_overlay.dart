@@ -20,6 +20,25 @@ import 'fishing_shrine.dart' show shrineStatues;
 /// then additive glows for lights that matter at night. Drawn above the
 /// world and below the HUD; nothing is re-recorded.
 final _firefly = Paint()..blendMode = BlendMode.plus;
+final _tintPaint = Paint()..blendMode = BlendMode.multiply;
+final _glowPaint = Paint()..blendMode = BlendMode.plus;
+final _windowPaint = Paint()..blendMode = BlendMode.plus;
+
+/// Radial glows built once around the origin with radius 1 and drawn under
+/// a translate + scale, so moving or flickering lights reuse them. The hour
+/// (and so the glow strength) only changes once a second; the cache is
+/// rebuilt then, which keeps every colour exactly as before.
+final _glowShaders = <(int, double), Shader>{};
+double? _glowFor;
+const _unit = Rect.fromLTRB(-1, -1, 1, 1);
+
+Shader _glowShader(Color color, double alpha) =>
+    _glowShaders.putIfAbsent((color.toARGB32(), alpha), () {
+      return RadialGradient(colors: [
+        color.withValues(alpha: alpha),
+        color.withValues(alpha: 0),
+      ]).createShader(_unit);
+    });
 
 class FishingNightOverlay extends CustomPainter {
   FishingNightOverlay(this.round, Listenable frames) : super(repaint: frames);
@@ -38,12 +57,12 @@ class FishingNightOverlay extends CustomPainter {
     if (light.night < .01 && light.warmth < .01) return;
     canvas.save();
     canvas.clipRect(Offset.zero & size);
-    canvas.drawRect(
-        Offset.zero & size,
-        Paint()
-          ..color = tint
-          ..blendMode = BlendMode.multiply);
+    canvas.drawRect(Offset.zero & size, _tintPaint..color = tint);
     final glow = light.night;
+    if (glow != _glowFor) {
+      _glowShaders.clear();
+      _glowFor = glow;
+    }
     if (glow < .05) {
       canvas.restore();
       return;
@@ -54,15 +73,13 @@ class FishingNightOverlay extends CustomPainter {
         round.visibleWidth, round.visibleHeight);
     void lamp(Offset p, double radius, Color color, double strength) {
       if (!view.inflate(radius).contains(p)) return;
-      canvas.drawCircle(
-          p,
-          radius,
-          Paint()
-            ..blendMode = BlendMode.plus
-            ..shader = RadialGradient(colors: [
-              color.withValues(alpha: strength * glow),
-              color.withValues(alpha: 0),
-            ]).createShader(Rect.fromCircle(center: p, radius: radius)));
+      canvas
+        ..save()
+        ..translate(p.dx, p.dy)
+        ..scale(radius)
+        ..drawCircle(Offset.zero, 1,
+            _glowPaint..shader = _glowShader(color, strength * glow))
+        ..restore();
     }
 
     final t = round.clock;
@@ -77,19 +94,22 @@ class FishingNightOverlay extends CustomPainter {
         final reach = 820 * (.55 + .45 * math.cos(a).abs());
         final dir = Offset(math.cos(a), math.sin(a) * .45);
         final side = Offset(-dir.dy, dir.dx);
-        final end = top + dir * reach;
-        canvas.drawPath(
-            Path()
-              ..moveTo(top.dx, top.dy)
-              ..lineTo((end + side * 90).dx, (end + side * 90).dy)
-              ..lineTo((end - side * 90).dx, (end - side * 90).dy)
-              ..close(),
-            Paint()
-              ..blendMode = BlendMode.plus
-              ..shader = RadialGradient(colors: [
-                Color.fromRGBO(255, 236, 170, .38 * glow),
-                const Color(0x00FFECAA),
-              ]).createShader(Rect.fromCircle(center: top, radius: reach)));
+        // Same beam in units of [reach] around the lamp.
+        final a1 = (dir * reach + side * 90) / reach;
+        final a2 = (dir * reach - side * 90) / reach;
+        canvas
+          ..save()
+          ..translate(top.dx, top.dy)
+          ..scale(reach)
+          ..drawPath(
+              Path()
+                ..moveTo(0, 0)
+                ..lineTo(a1.dx, a1.dy)
+                ..lineTo(a2.dx, a2.dy)
+                ..close(),
+              _glowPaint
+                ..shader = _glowShader(const Color(0xFFFFECAA), .38 * glow))
+          ..restore();
       }
     }
     // Coast lighthouse lamp.
@@ -111,11 +131,8 @@ class FishingNightOverlay extends CustomPainter {
     // Village cottages light their windows.
     for (final (p, s) in fishingCottageWindows()) {
       if (!view.inflate(80).contains(p)) continue;
-      canvas.drawRect(
-          Rect.fromCenter(center: p, width: 18 * s, height: 20 * s),
-          Paint()
-            ..blendMode = BlendMode.plus
-            ..color = Color.fromRGBO(255, 196, 96, .75 * glow));
+      canvas.drawRect(Rect.fromCenter(center: p, width: 18 * s, height: 20 * s),
+          _windowPaint..color = Color.fromRGBO(255, 196, 96, .75 * glow));
       lamp(p, 75 * s, const Color(0xFFFFC870), .45);
       lamp(p + Offset(0, 48 * s), 60 * s, const Color(0xFFFFC870), .2);
     }

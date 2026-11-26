@@ -103,18 +103,14 @@ class FishingPainter extends CustomPainter {
               height: 4 + t * 12),
           ripple..color = Color.fromRGBO(215, 255, 246, (1 - t) * .7));
     }
-    canvas.drawLine(
-        bobber - const Offset(0, 15),
-        bobber + const Offset(0, 4),
-        Paint()
-          ..color = const Color(0xFF593822)
-          ..strokeWidth = 2);
+    canvas.drawLine(bobber - const Offset(0, 15), bobber + const Offset(0, 4),
+        _kFishingPainter0);
     canvas.drawOval(Rect.fromCenter(center: bobber, width: 9, height: 15),
         Paint()..color = Colors.white);
     canvas.drawOval(
         Rect.fromCenter(
             center: bobber - const Offset(0, 3), width: 9, height: 9),
-        Paint()..color = const Color(0xFFE25536));
+        _kFishingPainter1);
     if (phase == FishingPhase.reeling) {
       _drawTensionBar(canvas, bobber, size);
     }
@@ -220,12 +216,7 @@ class FishingPainter extends CustomPainter {
         final eye = guide(t);
         threadedLine.lineTo(eye.dx, eye.dy);
       }
-      canvas.drawPath(
-          threadedLine,
-          Paint()
-            ..color = const Color(0xCCF4F5DB)
-            ..style = PaintingStyle.stroke
-            ..strokeWidth = 1);
+      canvas.drawPath(threadedLine, _kFishingPainter2);
       for (final t in guides) {
         final center = shaft(t);
         final direction = tangent(t);
@@ -241,10 +232,7 @@ class FishingPainter extends CustomPainter {
               ..strokeWidth = 3);
         canvas.drawOval(
             Rect.fromCenter(center: Offset(0, side * 5), width: 4, height: 5),
-            Paint()
-              ..color = const Color(0xFFDFE4D4)
-              ..style = PaintingStyle.stroke
-              ..strokeWidth = 1);
+            _kFishingPainter3);
         canvas.restore();
       }
     } else {
@@ -280,11 +268,11 @@ class FishingPainter extends CustomPainter {
       canvas.drawRRect(
           RRect.fromRectAndRadius(
               const Rect.fromLTWH(-4, -34, 8, 40), const Radius.circular(3)),
-          Paint()..color = const Color(0xFF725338));
+          _kFishingPainter4);
       canvas.drawRRect(
           RRect.fromRectAndRadius(
               const Rect.fromLTWH(-3, -32, 5, 35), const Radius.circular(2)),
-          Paint()..color = const Color(0xFFD5AF75));
+          _kFishingPainter5);
       for (var i = 0; i < 7; i++) {
         canvas.drawLine(
             Offset(-3, -28 + i * 4.0),
@@ -293,8 +281,7 @@ class FishingPainter extends CustomPainter {
               ..color = const Color(0x887A5D3D)
               ..strokeWidth = .8);
       }
-      canvas.drawRect(const Rect.fromLTWH(-4, -38, 8, 5),
-          Paint()..color = const Color(0xFFDBD5BA));
+      canvas.drawRect(const Rect.fromLTWH(-4, -38, 8, 5), _kFishingPainter6);
       canvas.scale(side, 1);
       canvas.drawLine(
           const Offset(3, -24),
@@ -302,17 +289,9 @@ class FishingPainter extends CustomPainter {
           stroke
             ..color = const Color(0xFF3B5350)
             ..strokeWidth = 3);
-      canvas.drawCircle(
-          const Offset(12, -17), 8, Paint()..color = const Color(0xFF284C49));
-      canvas.drawCircle(
-          const Offset(12, -17), 6, Paint()..color = const Color(0xFFE1C486));
-      canvas.drawCircle(
-          const Offset(12, -17),
-          3.5,
-          Paint()
-            ..color = const Color(0xFF91AAA0)
-            ..style = PaintingStyle.stroke
-            ..strokeWidth = 2);
+      canvas.drawCircle(const Offset(12, -17), 8, _kFishingPainter7);
+      canvas.drawCircle(const Offset(12, -17), 6, _kFishingPainter8);
+      canvas.drawCircle(const Offset(12, -17), 3.5, _kFishingPainter9);
       final crank = const Offset(12, -17) +
           Offset.fromDirection(pulling ? clock * 8 : .6, 10);
       canvas.drawLine(
@@ -321,7 +300,7 @@ class FishingPainter extends CustomPainter {
           stroke
             ..color = const Color(0xFFE7DEBC)
             ..strokeWidth = 2);
-      canvas.drawCircle(crank, 2.5, Paint()..color = const Color(0xFF725338));
+      canvas.drawCircle(crank, 2.5, _kFishingPainter4);
       canvas.restore();
     }
     if (lantern) {
@@ -406,7 +385,7 @@ class FishingPainter extends CustomPainter {
         : math.min<double>(bobber.dy + 27, size.height - height - 12);
     final rect = Rect.fromLTWH(x, y, width, height);
     final panel = RRect.fromRectAndRadius(rect, const Radius.circular(8));
-    canvas.drawRRect(panel, Paint()..color = const Color(0xDE243F43));
+    canvas.drawRRect(panel, _kFishingPainter10);
     canvas.drawRRect(
         panel,
         Paint()
@@ -436,29 +415,51 @@ class FishingPainter extends CustomPainter {
         track.top - 2,
         track.left + track.width * (sweetCenter + half).clamp(0.0, 1.0),
         track.bottom + 2);
-    canvas.drawRRect(
-        RRect.fromRectAndRadius(sweet, const Radius.circular(2)),
-        Paint()
-          ..color = const Color(0xFFFFEC94)
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = 2);
+    canvas.drawRRect(RRect.fromRectAndRadius(sweet, const Radius.circular(2)),
+        _kFishingPainter11);
     final needleX = track.left + track.width * tension.clamp(0.0, 1.0);
-    canvas.drawLine(
-        Offset(needleX, track.top - 4),
-        Offset(needleX, track.bottom + 3),
-        Paint()
-          ..color = const Color(0xFF172F34)
-          ..strokeWidth = 3.5
-          ..strokeCap = StrokeCap.round);
-    canvas.drawLine(
-        Offset(needleX, track.top - 4),
-        Offset(needleX, track.bottom + 3),
-        Paint()
-          ..color = const Color(0xFFFFF9E5)
-          ..strokeWidth = 1.6
-          ..strokeCap = StrokeCap.round);
+    canvas.drawLine(Offset(needleX, track.top - 4),
+        Offset(needleX, track.bottom + 3), _kFishingPainter12);
+    canvas.drawLine(Offset(needleX, track.top - 4),
+        Offset(needleX, track.bottom + 3), _kFishingPainter13);
   }
 
   @override
   bool shouldRepaint(covariant FishingPainter oldDelegate) => true;
 }
+
+// Constant paints shared by every frame (hoisted out of the paint loops).
+final _kFishingPainter0 = Paint()
+  ..color = const Color(0xFF593822)
+  ..strokeWidth = 2;
+final _kFishingPainter1 = Paint()..color = const Color(0xFFE25536);
+final _kFishingPainter2 = Paint()
+  ..color = const Color(0xCCF4F5DB)
+  ..style = PaintingStyle.stroke
+  ..strokeWidth = 1;
+final _kFishingPainter3 = Paint()
+  ..color = const Color(0xFFDFE4D4)
+  ..style = PaintingStyle.stroke
+  ..strokeWidth = 1;
+final _kFishingPainter4 = Paint()..color = const Color(0xFF725338);
+final _kFishingPainter5 = Paint()..color = const Color(0xFFD5AF75);
+final _kFishingPainter6 = Paint()..color = const Color(0xFFDBD5BA);
+final _kFishingPainter7 = Paint()..color = const Color(0xFF284C49);
+final _kFishingPainter8 = Paint()..color = const Color(0xFFE1C486);
+final _kFishingPainter9 = Paint()
+  ..color = const Color(0xFF91AAA0)
+  ..style = PaintingStyle.stroke
+  ..strokeWidth = 2;
+final _kFishingPainter10 = Paint()..color = const Color(0xDE243F43);
+final _kFishingPainter11 = Paint()
+  ..color = const Color(0xFFFFEC94)
+  ..style = PaintingStyle.stroke
+  ..strokeWidth = 2;
+final _kFishingPainter12 = Paint()
+  ..color = const Color(0xFF172F34)
+  ..strokeWidth = 3.5
+  ..strokeCap = StrokeCap.round;
+final _kFishingPainter13 = Paint()
+  ..color = const Color(0xFFFFF9E5)
+  ..strokeWidth = 1.6
+  ..strokeCap = StrokeCap.round;

@@ -650,7 +650,7 @@ class _FishingScreenState extends State<FishingScreen>
       FishingPhase.reeling => (
           'fish-reel',
           framesFishReel,
-          _controller.pulling ? (_river.clock * 9).floor() % framesFishReel : 5
+          _reelFrame()
         ),
       FishingPhase.saving => ('fish-reel', framesFishReel, 5),
       FishingPhase.caught => ('fish-hold', framesFishHold, _holdFrame),
@@ -662,6 +662,18 @@ class _FishingScreenState extends State<FishingScreen>
         ),
       FishingPhase.ready => null,
     };
+  }
+
+  /// Reel frame while fighting a fish. The sheet's frames are not a loop in
+  /// order: 0, 1, 3 and 4 lean back by different amounts, 2 is yanked
+  /// forward and 5 sits upright. Pulling sways back and forth through the
+  /// lean-back frames (ping-pong, so the head never jumps); a surging fish
+  /// yanks the cat forward; slack line sits upright.
+  int _reelFrame() {
+    if (_controller.surging || _controller.fight.dangerous) return 2;
+    if (!_controller.pulling) return 5;
+    const sway = [0, 4, 3, 1, 3, 4];
+    return sway[(_river.clock * 6).floor() % sway.length];
   }
 
   /// Paws stay cupped while the catch flies in, then lift it up to show off.

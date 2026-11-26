@@ -15,17 +15,18 @@ void paintRockyBay(Canvas c, double left, double right) {
   final from = math.max(left, FishingRiver.rockyBayStart - 300),
       to = math.min(right, FishingRiver.openSeaStart + 300);
   if (from >= to) return;
-  c.saveLayer(Rect.fromLTRB(from - 4, 0, to + 4, FishingRiver.height), Paint());
+  c.saveLayer(Rect.fromLTRB(from - 4, 0, to + 4, FishingRiver.height),
+      _kFishingRockyBayArt0);
   c.drawRect(Rect.fromLTRB(from - 4, 0, to + 4, FishingRiver.height),
-      Paint()..color = const Color(0xFF9C9282));
+      _kFishingRockyBayArt1);
   c.drawPath(
       bankBand(from, to, (x) => FishingRiver.top(x) - 110,
           (x) => FishingRiver.bottom(x) + 125),
-      Paint()..color = const Color(0xFFB5A88F));
+      _kFishingRockyBayArt2);
   c.drawPath(
       bankBand(from, to, (x) => FishingRiver.top(x) - 42,
           (x) => FishingRiver.bottom(x) + 48),
-      Paint()..color = const Color(0xFFDCCCA8));
+      _kFishingRockyBayArt3);
   paintWaterBody(c, from, to, tint: 0x22355E70);
   // The cavern: a round chamber whose neck opens onto the bay. Ground rings
   // follow the water shape, dark rock fades out away from it.
@@ -38,7 +39,7 @@ void paintRockyBay(Canvas c, double left, double right) {
   c.save();
   c.clipPath(bankBand(math.max(from, outer.left), math.min(to, outer.right),
       (_) => 0, (x) => FishingRiver.bayTop(x) + 12));
-  c.saveLayer(outer, Paint());
+  c.saveLayer(outer, _kFishingRockyBayArt0);
   c.drawRect(outer, fillPaint(0xFF343F49));
   c.drawPath(water, strokePaint(0xFF687471, 160));
   c.drawPath(water, strokePaint(0xFF929A89, 60));
@@ -120,14 +121,9 @@ void paintRockyBay(Canvas c, double left, double right) {
           Paint()
             ..color =
                 j.isEven ? const Color(0xFF53635F) : const Color(0xFF4A5955));
-      c.drawLine(
-          Offset(sx - w * .4, edge - 88),
-          Offset(sx - 1, tip + 8),
-          Paint()
-            ..color = const Color(0xFF81918A)
-            ..strokeWidth = 1.6);
-      c.drawCircle(
-          Offset(sx, tip + 2), 1.8, Paint()..color = const Color(0xAA9AD6D0));
+      c.drawLine(Offset(sx - w * .4, edge - 88), Offset(sx - 1, tip + 8),
+          _kFishingRockyBayArt4);
+      c.drawCircle(Offset(sx, tip + 2), 1.8, _kFishingRockyBayArt5);
     }
   }
   // A shelf with a rope post and weathered boards gives a clear landing landmark.
@@ -141,18 +137,11 @@ void paintRockyBay(Canvas c, double left, double right) {
             ..color =
                 i.isEven ? const Color(0xFFB1A484) : const Color(0xFF938C74));
     }
-    c.drawLine(
-        p + const Offset(34, 0),
-        p + const Offset(34, 42),
-        Paint()
-          ..color = const Color(0xFF79765E)
-          ..strokeWidth = 5);
+    c.drawLine(p + const Offset(34, 0), p + const Offset(34, 42),
+        _kFishingRockyBayArt6);
     c.drawOval(
         Rect.fromCenter(center: p + const Offset(34, 12), width: 19, height: 8),
-        Paint()
-          ..color = const Color(0xFFD0C29A)
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = 2);
+        _kFishingRockyBayArt7);
   }
   for (var i = (from / 160).floor(); i * 160 < to; i++) {
     final x = i * 160.0 + 30;
@@ -187,12 +176,8 @@ void paintRockyBay(Canvas c, double left, double right) {
             ..lineTo(bx + 10 * size, p.dy)
             ..close(),
           Paint()..color = Color(j.isEven ? tone.$1 : tone.$2));
-      c.drawLine(
-          Offset(bx + 3, p.dy - 2),
-          Offset(bx + 4 + lean, p.dy - hgt * .7),
-          Paint()
-            ..color = const Color(0x88FFFFFF)
-            ..strokeWidth = 1.2);
+      c.drawLine(Offset(bx + 3, p.dy - 2),
+          Offset(bx + 4 + lean, p.dy - hgt * .7), _kFishingRockyBayArt8);
     }
   }
   _caveLife(c, from, to);
@@ -245,12 +230,8 @@ void _gull(Canvas c, Offset feet) {
           center: feet + const Offset(-2, -8), width: 10, height: 6),
       fillPaint(0xFF9AA3A6));
   c.drawCircle(feet + const Offset(7, -12), 4, fillPaint(0xFFF4F4EE));
-  c.drawLine(
-      feet + const Offset(10, -12),
-      feet + const Offset(15, -11),
-      Paint()
-        ..color = const Color(0xFFE9B949)
-        ..strokeWidth = 2);
+  c.drawLine(feet + const Offset(10, -12), feet + const Offset(15, -11),
+      _kFishingRockyBayArt9);
   c.drawCircle(feet + const Offset(8, -13), 1, fillPaint(0xFF1F1A17));
 }
 
@@ -392,11 +373,7 @@ void _seaStack(Canvas c, Offset p, double r, int seed) {
   for (var i = 1; i < 5; i++) {
     final y = p.dy - h * i / 5;
     c.drawLine(
-        Offset(p.dx - r, y),
-        Offset(p.dx + r, y - 4),
-        Paint()
-          ..color = const Color(0x44C9D6CF)
-          ..strokeWidth = 2);
+        Offset(p.dx - r, y), Offset(p.dx + r, y - 4), _kFishingRockyBayArt10);
   }
   c.drawRect(Rect.fromLTRB(p.dx - r, p.dy - 10, p.dx + r, p.dy),
       fillPaint(0x553B5B4E));
@@ -526,20 +503,11 @@ void _caveLife(Canvas c, double from, double to) {
                 base.dx + w * .3, base.dy - hgt * .5, base.dx + w, base.dy)
             ..close(),
           fillPaint(0xFF6B7A74));
-      c.drawLine(
-          Offset(base.dx - w * .4, base.dy - 2),
-          Offset(base.dx - 1, base.dy - hgt + 4),
-          Paint()
-            ..color = const Color(0x66B9C9C2)
-            ..strokeWidth = 1.2);
+      c.drawLine(Offset(base.dx - w * .4, base.dy - 2),
+          Offset(base.dx - 1, base.dy - hgt + 4), _kFishingRockyBayArt11);
     } else if (r < .7) {
       final b = Offset(x, edge - 60 - artNoise(i, 75) * 40);
-      c.drawLine(
-          b - const Offset(0, 6),
-          b,
-          Paint()
-            ..color = const Color(0xFF2A2F35)
-            ..strokeWidth = 1.2);
+      c.drawLine(b - const Offset(0, 6), b, _kFishingRockyBayArt12);
       c.drawOval(
           Rect.fromCenter(center: b + const Offset(0, 6), width: 8, height: 12),
           fillPaint(0xFF2A2F35));
@@ -615,12 +583,7 @@ class FishingCaveLight extends CustomPainter {
       final start = FishingRiver.top(x) + 5;
       if (t < .6) {
         final y = start + t / .6 * 50;
-        c.drawLine(
-            Offset(x, y - 4),
-            Offset(x, y),
-            Paint()
-              ..color = const Color(0x668BC6C2)
-              ..strokeWidth = 1.5);
+        c.drawLine(Offset(x, y - 4), Offset(x, y), _kFishingRockyBayArt13);
       } else {
         c.drawOval(
             Rect.fromCenter(
@@ -658,3 +621,38 @@ class FishingCaveLight extends CustomPainter {
   @override
   bool shouldRepaint(FishingCaveLight old) => old.round != round;
 }
+
+// Constant paints shared by every frame (hoisted out of the paint loops).
+final _kFishingRockyBayArt0 = Paint();
+final _kFishingRockyBayArt1 = Paint()..color = const Color(0xFF9C9282);
+final _kFishingRockyBayArt2 = Paint()..color = const Color(0xFFB5A88F);
+final _kFishingRockyBayArt3 = Paint()..color = const Color(0xFFDCCCA8);
+final _kFishingRockyBayArt4 = Paint()
+  ..color = const Color(0xFF81918A)
+  ..strokeWidth = 1.6;
+final _kFishingRockyBayArt5 = Paint()..color = const Color(0xAA9AD6D0);
+final _kFishingRockyBayArt6 = Paint()
+  ..color = const Color(0xFF79765E)
+  ..strokeWidth = 5;
+final _kFishingRockyBayArt7 = Paint()
+  ..color = const Color(0xFFD0C29A)
+  ..style = PaintingStyle.stroke
+  ..strokeWidth = 2;
+final _kFishingRockyBayArt8 = Paint()
+  ..color = const Color(0x88FFFFFF)
+  ..strokeWidth = 1.2;
+final _kFishingRockyBayArt9 = Paint()
+  ..color = const Color(0xFFE9B949)
+  ..strokeWidth = 2;
+final _kFishingRockyBayArt10 = Paint()
+  ..color = const Color(0x44C9D6CF)
+  ..strokeWidth = 2;
+final _kFishingRockyBayArt11 = Paint()
+  ..color = const Color(0x66B9C9C2)
+  ..strokeWidth = 1.2;
+final _kFishingRockyBayArt12 = Paint()
+  ..color = const Color(0xFF2A2F35)
+  ..strokeWidth = 1.2;
+final _kFishingRockyBayArt13 = Paint()
+  ..color = const Color(0x668BC6C2)
+  ..strokeWidth = 1.5;

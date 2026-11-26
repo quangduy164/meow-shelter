@@ -92,43 +92,21 @@ void paintFishingOarWater(Canvas canvas, FishingOarPose pose, double clock) {
 void _paintToyOar(Canvas canvas, double length, double wet) {
   final stick = RRect.fromRectAndRadius(
       Rect.fromLTRB(-10, -3, length - 6, 3), const Radius.circular(3));
-  canvas.drawRRect(stick, Paint()..color = const Color(0xFFF3DDB0));
-  canvas.drawRRect(
-      stick,
-      Paint()
-        ..color = const Color(0xFFB58B52)
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 1.2);
+  canvas.drawRRect(stick, _kFishingOarArt0);
+  canvas.drawRRect(stick, _kFishingOarArt1);
   canvas.drawLine(
-      const Offset(-4, -1),
-      Offset(length - 12, -1),
-      Paint()
-        ..color = const Color(0x55FFFFFF)
-        ..strokeWidth = 1);
+      const Offset(-4, -1), Offset(length - 12, -1), _kFishingOarArt2);
   // Spoon: thin neck taped to the stick, then a round bowl.
   for (final x in [length - 16, length - 11]) {
-    canvas.drawRect(
-        Rect.fromLTWH(x, -4, 3, 8), Paint()..color = const Color(0xFFF7F3E6));
+    canvas.drawRect(Rect.fromLTWH(x, -4, 3, 8), _kFishingOarArt3);
   }
   final bowl =
       Rect.fromCenter(center: Offset(length + 8, 0), width: 26, height: 17);
-  canvas.drawOval(bowl, Paint()..color = const Color(0xFF6CC2E8));
-  canvas.drawOval(bowl.deflate(3), Paint()..color = const Color(0xFF9AD8F2));
+  canvas.drawOval(bowl, _kFishingOarArt4);
+  canvas.drawOval(bowl.deflate(3), _kFishingOarArt5);
   canvas.drawArc(
-      bowl.deflate(5),
-      math.pi * 1.1,
-      math.pi * .5,
-      false,
-      Paint()
-        ..color = const Color(0xCCFFFFFF)
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 1.6);
-  canvas.drawOval(
-      bowl,
-      Paint()
-        ..color = const Color(0xFF3B8FB8)
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 1.4);
+      bowl.deflate(5), math.pi * 1.1, math.pi * .5, false, _kFishingOarArt6);
+  canvas.drawOval(bowl, _kFishingOarArt7);
   if (wet > .05) {
     canvas.drawOval(
         bowl, Paint()..color = Color.fromRGBO(57, 128, 128, .2 * wet));
@@ -168,13 +146,8 @@ void paintFishingOar(Canvas canvas, FishingOarPose pose, {bool toy = false}) {
     ..quadraticBezierTo(length + 6, 13, length - 8, 9)
     ..quadraticBezierTo(length - 10, 3, length - 20, 2.5)
     ..close();
-  canvas.drawPath(blade, Paint()..color = const Color(0xFFD7AE70));
-  canvas.drawPath(
-      blade,
-      Paint()
-        ..color = const Color(0xFF795838)
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 1.8);
+  canvas.drawPath(blade, _kFishingOarArt8);
+  canvas.drawPath(blade, _kFishingOarArt9);
   canvas.save();
   canvas.clipPath(blade);
   for (final y in [-4.0, 0.0, 4.0]) {
@@ -182,19 +155,13 @@ void paintFishingOar(Canvas canvas, FishingOarPose pose, {bool toy = false}) {
         Path()
           ..moveTo(length - 10, y)
           ..quadraticBezierTo(length + 3, y - 2, length + 18, y),
-        Paint()
-          ..color = const Color(0xFFB58B52)
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = 1);
+        _kFishingOarArt10);
   }
   canvas.drawPath(
       Path()
         ..moveTo(length - 5, -7)
         ..quadraticBezierTo(length + 7, -9, length + 14, -5),
-      Paint()
-        ..color = const Color(0xFFF2D294)
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 1.5);
+      _kFishingOarArt11);
   if (pose.wet > .05) {
     canvas.drawRect(Rect.fromLTWH(length + 3, -12, 20, 24),
         Paint()..color = Color.fromRGBO(57, 128, 128, .23 * pose.wet));
@@ -202,3 +169,37 @@ void paintFishingOar(Canvas canvas, FishingOarPose pose, {bool toy = false}) {
   canvas.restore();
   canvas.restore();
 }
+
+// Constant paints shared by every frame (hoisted out of the paint loops).
+final _kFishingOarArt0 = Paint()..color = const Color(0xFFF3DDB0);
+final _kFishingOarArt1 = Paint()
+  ..color = const Color(0xFFB58B52)
+  ..style = PaintingStyle.stroke
+  ..strokeWidth = 1.2;
+final _kFishingOarArt2 = Paint()
+  ..color = const Color(0x55FFFFFF)
+  ..strokeWidth = 1;
+final _kFishingOarArt3 = Paint()..color = const Color(0xFFF7F3E6);
+final _kFishingOarArt4 = Paint()..color = const Color(0xFF6CC2E8);
+final _kFishingOarArt5 = Paint()..color = const Color(0xFF9AD8F2);
+final _kFishingOarArt6 = Paint()
+  ..color = const Color(0xCCFFFFFF)
+  ..style = PaintingStyle.stroke
+  ..strokeWidth = 1.6;
+final _kFishingOarArt7 = Paint()
+  ..color = const Color(0xFF3B8FB8)
+  ..style = PaintingStyle.stroke
+  ..strokeWidth = 1.4;
+final _kFishingOarArt8 = Paint()..color = const Color(0xFFD7AE70);
+final _kFishingOarArt9 = Paint()
+  ..color = const Color(0xFF795838)
+  ..style = PaintingStyle.stroke
+  ..strokeWidth = 1.8;
+final _kFishingOarArt10 = Paint()
+  ..color = const Color(0xFFB58B52)
+  ..style = PaintingStyle.stroke
+  ..strokeWidth = 1;
+final _kFishingOarArt11 = Paint()
+  ..color = const Color(0xFFF2D294)
+  ..style = PaintingStyle.stroke
+  ..strokeWidth = 1.5;
