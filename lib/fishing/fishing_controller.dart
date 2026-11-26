@@ -75,7 +75,7 @@ class FishingController extends ChangeNotifier {
   bool get showFishingArt =>
       active ||
       _phase == FishingPhase.caught ||
-      (_phase == FishingPhase.lost && _elapsed < .6);
+      (_phase == FishingPhase.lost && _elapsed < 2);
   FishingQuests get quests => FishingQuests.instance;
 
   /// Where the current cast was made from; quests use its region.
@@ -473,7 +473,7 @@ class FishingController extends ChangeNotifier {
     activities.density =
         FishingActivities.densityAt(_worldHour, rain: river.weather.rain);
     if (river.cabin.inside) {
-      river.cabin.update(dt);
+      river.cabin.update(dt, hour: river.hour);
       notifyListeners();
       return;
     }

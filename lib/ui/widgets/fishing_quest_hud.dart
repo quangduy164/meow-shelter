@@ -11,7 +11,7 @@ import '../design.dart';
 import 'game_surfaces.dart';
 import 'fishing_dialog_kit.dart';
 
-/// Compact quest card under the Home button: "📜 Title · 1/3".
+/// Flat, compact quest shortcut aligned with the Home button.
 class FishingQuestChip extends StatelessWidget {
   const FishingQuestChip({super.key, required this.onTap});
   final VoidCallback onTap;
@@ -23,41 +23,54 @@ class FishingQuestChip extends StatelessWidget {
         listenable: quests,
         builder: (context, _) {
           final q = quests.current;
-          final text = q == null
-              ? 'Đền Hang biển đã thức tỉnh'
-              : q.goal > 1
-                  ? '${q.title} · ${quests.progress}/${q.goal}'
-                  : q.title;
+          final text = q?.title ?? 'Đền Hang biển đã thức tỉnh';
+          final progress = q == null ? null : '${quests.progress}/${q.goal}';
           return Tooltip(
-              message: 'Nhiệm vụ',
-              child: GestureDetector(
-                  onTap: onTap,
-                  child: Container(
-                      constraints: const BoxConstraints(maxWidth: 230),
-                      padding: const EdgeInsets.fromLTRB(8, 5, 10, 5),
-                      decoration: BoxDecoration(
-                          color: const Color(0xE6FFF4DA),
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(
-                              color: const Color(0xFFB27A3E), width: 1.5)),
-                      child: Row(mainAxisSize: MainAxisSize.min, children: [
-                        Icon(
-                            q == null
-                                ? Icons.emoji_events_rounded
-                                : Icons.assignment_rounded,
-                            size: 18,
-                            color: const Color(0xFFB27A3E)),
-                        const SizedBox(width: 6),
-                        Flexible(
-                            child: Text(text,
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(
-                                    color: DS.ink,
-                                    fontSize: 12,
-                                    height: 1.2,
-                                    fontWeight: FontWeight.w800))),
-                      ]))));
+              message:
+                  'Nhiệm vụ: $text${progress == null ? "" : " · $progress"}',
+              child: Material(
+                  type: MaterialType.transparency,
+                  child: InkWell(
+                      borderRadius: BorderRadius.circular(10),
+                      onTap: onTap,
+                      child: SizedBox(
+                          width: 230,
+                          height: 44,
+                          child: Center(
+                              child: Container(
+                                  height: 32,
+                                  padding:
+                                      const EdgeInsets.symmetric(horizontal: 8),
+                                  decoration: BoxDecoration(
+                                      color: DS.cream.withValues(alpha: .92),
+                                      borderRadius: BorderRadius.circular(10)),
+                                  child: Row(children: [
+                                    Icon(
+                                        q == null
+                                            ? Icons.emoji_events_rounded
+                                            : Icons.assignment_rounded,
+                                        size: 17,
+                                        color: DS.goldEdge),
+                                    const SizedBox(width: 6),
+                                    Expanded(
+                                        child: Text(text,
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                            style: const TextStyle(
+                                                color: DS.ink,
+                                                fontSize: 11,
+                                                fontWeight: FontWeight.w700))),
+                                    if (progress != null) ...[
+                                      const SizedBox(width: 6),
+                                      Text(progress,
+                                          style: const TextStyle(
+                                              color: DS.goldEdge,
+                                              fontSize: 11,
+                                              fontWeight: FontWeight.w800)),
+                                    ],
+                                    const Icon(Icons.chevron_right_rounded,
+                                        size: 16, color: DS.goldEdge),
+                                  ])))))));
         });
   }
 }

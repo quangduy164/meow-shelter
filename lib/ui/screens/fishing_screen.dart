@@ -37,6 +37,7 @@ import '../../audio/game_audio.dart';
 import '../widgets/game_glyphs.dart';
 import '../widgets/game_surfaces.dart';
 import '../widgets/round_button.dart';
+import '../widgets/paw_loader.dart';
 import '../../collection/fish_collection.dart';
 import '../../fishing/fishing_boat.dart';
 import '../../fishing/fishing_rod.dart';
@@ -122,9 +123,12 @@ class _FishingScreenState extends State<FishingScreen>
     if (_river.cabin.dawnDue) {
       _river.cabin.dawnDue = false;
       final now = DateTime.now();
-      FishCollection.instance.preferences
-          .setInt(FishingLighting.shiftKey, FishingLighting.skipTo(6, now));
-      _setHour(now);
+      final hour = FishingLighting.gameHour(now);
+      if (hour >= 18 || hour < 6) {
+        FishCollection.instance.preferences
+            .setInt(FishingLighting.shiftKey, FishingLighting.skipTo(6, now));
+        _setHour(now);
+      }
     }
     _sinceWeather += dt;
     if (_sinceWeather > .5) {
@@ -486,12 +490,15 @@ class _FishingScreenState extends State<FishingScreen>
               const SizedBox(width: 48),
             ]),
             const SizedBox(height: DS.spaceMd),
-            Text(
-                _loadingCat
-                    ? 'Đang chuẩn bị chuyến đi…'
-                    : 'Chọn một bé mèo để bắt đầu chuyến đi câu',
-                textAlign: TextAlign.center,
-                style: const TextStyle(color: DS.cream, fontSize: DS.fontBody)),
+            SizedBox(
+                height: 32,
+                child: Center(
+                    child: _loadingCat
+                        ? const PawLoader(size: 32, color: DS.cream)
+                        : const Text('Chọn một bé mèo để bắt đầu chuyến đi câu',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                                color: DS.cream, fontSize: DS.fontBody)))),
             Expanded(
                 child: Center(
                     child: SingleChildScrollView(
@@ -634,6 +641,7 @@ class _FishingScreenState extends State<FishingScreen>
   (String, int, int)? _anglerPose(FishingOarPose? oar, {required bool rowing}) {
     final elapsed = _controller.elapsed;
     if (rowing && oar != null) return ('row', framesRow, oar.rowFrame);
+    if (!_controller.showFishingArt) return null;
     return switch (_controller.phase) {
       FishingPhase.casting => (
           'fish-cast',
@@ -650,11 +658,11 @@ class _FishingScreenState extends State<FishingScreen>
       FishingPhase.reeling => (
           'fish-reel',
           framesFishReel,
-          _reelFrame()
+          _controller.pulling ? (_river.clock * 5).floor() % framesFishReel : 5
         ),
       FishingPhase.saving => ('fish-reel', framesFishReel, 5),
       FishingPhase.caught => ('fish-hold', framesFishHold, _holdFrame),
-      // The sulk plays once and holds its last frame.
+      // The sulk plays briefly, then the normal idle/walk pose resumes.
       FishingPhase.lost => (
           'drop-wrong',
           framesDropWrong,
@@ -662,18 +670,6 @@ class _FishingScreenState extends State<FishingScreen>
         ),
       FishingPhase.ready => null,
     };
-  }
-
-  /// Reel frame while fighting a fish. The sheet's frames are not a loop in
-  /// order: 0, 1, 3 and 4 lean back by different amounts, 2 is yanked
-  /// forward and 5 sits upright. Pulling sways back and forth through the
-  /// lean-back frames (ping-pong, so the head never jumps); a surging fish
-  /// yanks the cat forward; slack line sits upright.
-  int _reelFrame() {
-    if (_controller.surging || _controller.fight.dangerous) return 2;
-    if (!_controller.pulling) return 5;
-    const sway = [0, 4, 3, 1, 3, 4];
-    return sway[(_river.clock * 6).floor() % sway.length];
   }
 
   /// Paws stay cupped while the catch flies in, then lift it up to show off.
@@ -840,11 +836,32 @@ class _FishingScreenState extends State<FishingScreen>
                             Positioned(
                                 left: padding.left + 8,
                                 top: padding.top + 8,
-                                child: RoundButton(
-                                    glyph: GameGlyph.home,
-                                    size: 44,
-                                    tooltip: 'Về Trang chủ',
-                                    onPressed: () => Navigator.pop(context))),
+                                child: Tooltip(
+                                    message: 'Về Trang chủ',
+                                    child: Material(
+                                        type: MaterialType.transparency,
+                                        child: InkWell(
+                                            customBorder: const CircleBorder(),
+                                            onTap: () => Navigator.pop(context),
+                                            child: SizedBox.square(
+                                                dimension: 44,
+                                                child: Center(
+                                                    child: Container(
+                                                        width: 32,
+                                                        height: 32,
+                                                        decoration:
+                                                            BoxDecoration(
+                                                                color: DS.cream
+                                                                    .withValues(
+                                                                        alpha:
+                                                                            .92),
+                                                                shape: BoxShape
+                                                                    .circle),
+                                                        child: const Center(
+                                                            child: GameGlyphView(
+                                                                GameGlyph.home,
+                                                                size:
+                                                                    20))))))))),
                             if (!(_controller.phase == FishingPhase.reeling))
                               Positioned(
                                   right: padding.right + 8,
@@ -960,9 +977,13 @@ class _FishingScreenState extends State<FishingScreen>
                             if (!_controller.tutorial &&
                                 _controller.phase != FishingPhase.reeling)
                               Positioned(
-                                  left: padding.left + 8,
-                                  top: padding.top + 60,
-                                  child: FishingQuestChip(onTap: _openQuests)),
+                                  left: padding.left + 56,
+                                  right: padding.right + 132,
+                                  top: padding.top + 8,
+                                  child: Align(
+                                      alignment: Alignment.topLeft,
+                                      child: FishingQuestChip(
+                                          onTap: _openQuests))),
                             if (_questToast case final quest?)
                               Positioned(
                                   top: padding.top + 12,
