@@ -46,14 +46,18 @@ void paintFishingFight(Canvas canvas, FishingController controller) {
           ..close(),
         paint);
     if (fight.move == FishFightMove.dash) {
-      for (var i = 0; i < 3; i++) {
+      final streaks = controller.fish == FishSpecies.seaDragon
+          ? 3 + ((fight.pullMultiplier - 1) * 10).round()
+          : 3;
+      for (var i = 0; i < streaks; i++) {
         canvas.drawLine(Offset(-40 - i * 7.0, (i - 1) * 8.0),
             Offset(-61 - i * 8.0, (i - 1) * 8.0), _kFishingFightArt1);
       }
     }
     canvas.restore();
   }
-  if (controller.fish == FishSpecies.catfish &&
+  if ((controller.fish == FishSpecies.catfish ||
+          controller.fish == FishSpecies.moonfish) &&
       (fight.warning || fight.move == FishFightMove.dive)) {
     for (var i = 0; i < 7; i++) {
       final t = (time * .8 + i * .17) % 1;
@@ -78,6 +82,17 @@ void paintFishingFight(Canvas canvas, FishingController controller) {
               ..style = PaintingStyle.stroke
               ..strokeWidth = 2);
       }
+    }
+  }
+  if (controller.fish == FishSpecies.moonfish && !fight.warning) {
+    for (var i = 0; i < 2; i++) {
+      final phase = (time * .65 + i * .5) % 1;
+      canvas.drawOval(
+          Rect.fromCenter(
+              center: Offset.zero,
+              width: 24 + phase * 54,
+              height: 8 + phase * 20),
+          _moonRipple..color = Color.fromRGBO(192, 207, 255, (1 - phase) * .6));
     }
   }
   if (fight.move == FishFightMove.orbit) {
@@ -108,3 +123,7 @@ final _kFishingFightArt2 = Paint()
   ..style = PaintingStyle.stroke
   ..strokeWidth = 3
   ..strokeCap = StrokeCap.round;
+
+final _moonRipple = Paint()
+  ..style = PaintingStyle.stroke
+  ..strokeWidth = 1.6;

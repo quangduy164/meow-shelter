@@ -135,7 +135,7 @@ class _FishingQuestDialogState extends State<FishingQuestDialog> {
   FishingQuests get _quests => FishingQuests.instance;
   late int _selected = math.min(_quests.index, FishingQuest.values.length - 1);
 
-  _Stone _state(FishingQuest q) => q.index < _quests.index
+  _Stone _state(FishingQuest q) => _quests.isCompleted(q)
       ? _Stone.done
       : q == _quests.current
           ? _Stone.now
@@ -143,7 +143,7 @@ class _FishingQuestDialogState extends State<FishingQuestDialog> {
 
   @override
   Widget build(BuildContext context) {
-    final done = math.min(_quests.index, FishingQuest.values.length);
+    final done = _quests.completedCount;
     return GameDialog(
         maxWidth: 640,
         padding: const EdgeInsets.fromLTRB(18, 14, 18, 16),
@@ -182,9 +182,12 @@ class _FishingQuestDialogState extends State<FishingQuestDialog> {
             child: Stack(clipBehavior: Clip.none, children: [
               Positioned.fill(
                   child: CustomPaint(
-                      painter: _TrailPainter(
-                          [for (var i = 0; i < n; i++) at(i)],
-                          math.min(_quests.index, n)))),
+                      painter: _TrailPainter([
+                for (var i = 0; i < n; i++) at(i)
+              ], {
+                for (final q in FishingQuest.values)
+                  if (_quests.isCompleted(q)) q.index
+              }))),
               for (final q in FishingQuest.values)
                 Positioned(
                     left: at(q.index).dx - 36,
@@ -402,7 +405,7 @@ class _FishingQuestDialogState extends State<FishingQuestDialog> {
 class _TrailPainter extends CustomPainter {
   _TrailPainter(this.points, this.done);
   final List<Offset> points;
-  final int done;
+  final Set<int> done;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -411,7 +414,7 @@ class _TrailPainter extends CustomPainter {
       ..strokeCap = StrokeCap.round;
     for (var i = 0; i < points.length - 1; i++) {
       final a = points[i], b = points[i + 1];
-      if (i < done) {
+      if (done.contains(i) && done.contains(i + 1)) {
         canvas.drawLine(a, b, paint..color = const Color(0xFF8CC79E));
         continue;
       }
@@ -426,7 +429,8 @@ class _TrailPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(_TrailPainter old) =>
-      old.done != done ||
+      old.done.length != done.length ||
+      !old.done.containsAll(done) ||
       old.points.length != points.length ||
       old.points.first != points.first ||
       old.points.last != points.last;

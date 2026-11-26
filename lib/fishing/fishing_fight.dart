@@ -5,9 +5,10 @@ enum FishFightMove { steady, warning, dive, inflate, dash, rest, orbit }
 
 /// One timeline for simulation and visual cues; warnings always precede bursts.
 class FishingFight {
-  const FishingFight(this.move, this.surge, this.cue, {this.lateral = 0});
+  const FishingFight(this.move, this.surge, this.cue,
+      {this.lateral = 0, this.pullMultiplier = 1});
   final FishFightMove move;
-  final double surge, lateral;
+  final double surge, lateral, pullMultiplier;
   final String cue;
   bool get blocked => move == FishFightMove.inflate;
   bool get dangerous =>
@@ -22,8 +23,7 @@ class FishingFight {
       FishSpecies.grouper => FishSpecies.carp,
       FishSpecies.butterflyfish => FishSpecies.clownfish,
       FishSpecies.cavefish => FishSpecies.catfish,
-      FishSpecies.lanternfish || FishSpecies.moonfish => FishSpecies.koi,
-      FishSpecies.seaDragon => FishSpecies.mackerel,
+      FishSpecies.lanternfish => FishSpecies.koi,
       _ => fish,
     };
     switch (fish) {
@@ -98,17 +98,67 @@ class FishingFight {
         return const FishingFight(
             FishFightMove.steady, .35, 'Cá lượn nhanh · Vuốt lái và kéo đều');
       case FishSpecies.catMew:
-        final t = elapsed % 5.5;
-        if (t < 3.5) {
+        // Two reverse pulls alternate direction, separated by a breather.
+        final t = elapsed % 6.8;
+        if (t < 2.6) {
           return const FishingFight(
-              FishFightMove.rest, .1, 'Giả vờ ngoan · Tranh thủ kéo');
+              FishFightMove.rest, .1, 'Nước lặng · Tranh thủ kéo');
         }
-        if (t < 4.3) {
+        if (t < 3.3 || (t >= 4.6 && t < 5.3)) {
           return const FishingFight(
-              FishFightMove.warning, .3, 'Quẫy đuôi! Sắp kéo ngược');
+              FishFightMove.warning, .3, 'Đuôi quẫy ngược · Chuẩn bị nới dây');
+        }
+        if (t < 4.1 || (t >= 5.3 && t < 6.1)) {
+          return FishingFight(
+              FishFightMove.dash, .9, 'Kéo ngược! Nới dây và ghìm thuyền',
+              lateral: t < 4.1 ? -.7 : .7);
         }
         return const FishingFight(
-            FishFightMove.dash, 1, 'Kéo ngược! Nới dây và lái thuyền');
+            FishFightMove.rest, .12, 'Ngừng quẫy · Kéo vào!');
+      case FishSpecies.seaDragon:
+        // Three warned surges get faster, followed by a long recovery.
+        final t = elapsed % 9;
+        if ((t >= 2 && t < 2.7) ||
+            (t >= 3.3 && t < 4) ||
+            (t >= 4.8 && t < 5.5)) {
+          return const FishingFight(
+              FishFightMove.warning, .35, 'Sóng dồn lại · Chuẩn bị nới dây');
+        }
+        if (t >= 2.7 && t < 3.3) {
+          return const FishingFight(
+              FishFightMove.dash, .7, 'Lao đợt đầu · Thả nút kéo',
+              pullMultiplier: 1);
+        }
+        if (t >= 4 && t < 4.8) {
+          return const FishingFight(
+              FishFightMove.dash, .85, 'Lao nhanh hơn · Thả nút và ghìm thuyền',
+              pullMultiplier: 1.2);
+        }
+        if (t >= 5.5 && t < 6.5) {
+          return const FishingFight(
+              FishFightMove.dash, 1, 'Sóng cuộn mạnh · Nới dây!',
+              pullMultiplier: 1.4);
+        }
+        return const FishingFight(
+            FishFightMove.rest, .1, 'Sóng dịu xuống · Tranh thủ kéo!');
+      case FishSpecies.moonfish:
+        final t = elapsed % 8;
+        if (t < 2.3 || t >= 6.2) {
+          return const FishingFight(
+              FishFightMove.rest, .12, 'Ánh bạc hiện lên · Tranh thủ kéo');
+        }
+        if (t < 3.1) {
+          return const FishingFight(
+              FishFightMove.warning, .3, 'Bóng cá chìm dần · Chuẩn bị nới dây');
+        }
+        if (t < 4.6) {
+          return const FishingFight(
+              FishFightMove.dive, .9, 'Cá lặn mất bóng · Nới dây, chờ nổi',
+              pullMultiplier: .65);
+        }
+        return FishingFight(
+            FishFightMove.orbit, .3, 'Ánh bạc trở lại · Ghìm thuyền và kéo',
+            lateral: math.sin((t - 4.6) * math.pi / 1.6) * .7);
       default:
         return const FishingFight(
             FishFightMove.steady, .3, 'Kéo đều · Canh kim trong khung vàng');

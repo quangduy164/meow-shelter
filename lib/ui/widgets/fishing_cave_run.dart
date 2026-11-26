@@ -145,9 +145,8 @@ class _FishingCaveRunState extends State<FishingCaveRun> {
                 Positioned(
                     left: pad.left + 8,
                     top: pad.top + 8,
-                    child: RoundButton(
+                    child: FlatRoundButton(
                         glyph: GameGlyph.back,
-                        size: 44,
                         tooltip: 'Ra khỏi hang',
                         onPressed: widget.onExit)),
                 Positioned(

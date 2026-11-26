@@ -30,7 +30,7 @@ enum FishingRod {
   bool get available =>
       this != lantern ||
       FishCollection.instance.shrineOfferings > 0 ||
-      FishingQuests.instance.index > FishingQuest.findShrine.index;
+      FishingQuests.instance.isCompleted(FishingQuest.findShrine);
   static const _key = 'fishing_rod_v1';
   static FishingRod load(SharedPreferences preferences) {
     final name = preferences.getString(_key);

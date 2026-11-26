@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/painting.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -16,23 +18,30 @@ enum FishingQuest {
   villageFish(
       'Câu 3 con cá ở Làng', 'Bấm nước để chèo, bấm cần câu để thả câu.', 3,
       coins: 10),
-  sell(
-      'Bán cá ở chợ cá nổi', 'Chợ nổi ở Cửa biển. Bấm chợ để đổi cá lấy xu.', 1,
+  bambooRare(
+      'Câu 1 cá hiếm ở Sông tre',
+      'Chèo tiếp đến Sông tre. Cá trê, koi và cá vàng ở đây. Nhận mồi để thử săn Nessie.',
+      1,
+      coins: 15,
       bait: 1),
-  bambooRare('Câu 1 cá hiếm ở Sông tre',
-      'Chèo ngược lên Sông tre. Cá trê, koi và cá vàng ở đây.', 1,
-      coins: 15),
-  activeWater('Câu ở chỗ nước có cá động',
-      'Tìm chỗ nước sủi bọt hoặc cá quẫy. Cá hiếm cắn nhiều hơn.', 1,
-      coins: 15),
   nessie('Câu được Mèo Nessie',
-      'Huyền thoại ở Sông tre. Bật mồi huyền thoại để dễ gặp hơn.', 1,
+      'Ở lại Sông tre, bật mồi huyền thoại vừa nhận để thử săn Nessie.', 1,
+      bait: 1),
+  activeWater(
+      'Câu ở chỗ nước có cá động',
+      'Đi tiếp đến Rừng ngập mặn, tìm nước sủi bọt hoặc cá quẫy. Điểm cá động ở vùng khác cũng được tính.',
+      1,
+      coins: 15),
+  sell('Bán cá ở chợ cá nổi',
+      'Đi tiếp ra Cửa biển. Bấm chợ nổi để bán cá lấy xu.', 1,
       bait: 1),
   findShrine('Tìm đền trong Hang biển',
       'Hang nằm ở bờ trên Vịnh đá. Chèo vào cửa hang.', 1,
       coins: 20),
-  moonfish('Câu cá nguyệt quang',
-      'Chỉ cắn câu ban đêm trong hang. Ngủ trên thuyền lớn để qua ngày.', 1,
+  moonfish(
+      'Câu cá nguyệt quang',
+      'Chỉ cắn câu từ 18:00 đến trước 06:00 trong Hang biển. Xem giờ trên bản đồ; ban ngày có thể bán cá, khám phá đảo hoặc chơi parkour trong lúc chờ tối.',
+      1,
       bait: 1),
   seaDragon('Câu Rồng biển', 'Huyền thoại ngoài Biển rộng, vùng xa nhất.', 1,
       bait: 1),
@@ -53,6 +62,7 @@ enum FishingQuest {
   /// World point the step asks the player to reach, if any.
   Offset? get target => switch (this) {
         sell => FishingMarket.center,
+        activeWater => _along(4500),
         bambooRare || nessie => _along(2700),
         findShrine || moonfish || shrine => FishingShrine.center,
         seaDragon => _along(10800),
@@ -64,13 +74,60 @@ enum FishingQuest {
 
 class FishingQuests extends ChangeNotifier {
   FishingQuests(this.preferences) {
-    final saved = preferences.getStringList(_key);
-    _index = int.tryParse(saved?.elementAtOrNull(0) ?? '') ?? 0;
-    _progress = int.tryParse(saved?.elementAtOrNull(1) ?? '') ?? 0;
-    _index = _index.clamp(0, FishingQuest.values.length);
+    final saved = preferences.getString(_key);
+    if (saved != null) {
+      try {
+        final data = jsonDecode(saved) as Map<String, dynamic>;
+        _completed.addAll((data['done'] as List)
+            .cast<String>()
+            .where((name) => FishingQuest.values.any((q) => q.name == name)));
+        _progress = (data['progress'] as int).clamp(0, 3);
+      } catch (error) {
+        debugPrint('FishingQuests: unreadable progress ($error)');
+        preferences.setString('${_key}_broken', saved);
+        _loadLegacy();
+      }
+    } else {
+      _loadLegacy();
+    }
+    _findCurrent();
   }
 
-  static const _key = 'fishing_quests_v1';
+  static const _key = 'fishing_quests_v2';
+  // v1 saved the index in this original order, rather than quest names.
+  static const _legacyOrder = [
+    'villageFish',
+    'sell',
+    'bambooRare',
+    'activeWater',
+    'nessie',
+    'findShrine',
+    'moonfish',
+    'seaDragon',
+    'shrine',
+  ];
+  final Set<String> _completed = {};
+  void _loadLegacy() {
+    _completed.clear();
+    final saved = preferences.getStringList('fishing_quests_v1');
+    final index = (int.tryParse(saved?.elementAtOrNull(0) ?? '') ?? 0)
+        .clamp(0, _legacyOrder.length);
+    _completed.addAll(_legacyOrder.take(index));
+    _progress = index < _legacyOrder.length &&
+            _legacyOrder[index] ==
+                FishingQuest.values.firstWhere((q) => !isCompleted(q)).name
+        ? (int.tryParse(saved?.elementAtOrNull(1) ?? '') ?? 0).clamp(0, 3)
+        : 0;
+  }
+
+  void _findCurrent() {
+    _index = FishingQuest.values.indexWhere((q) => !isCompleted(q));
+    if (_index < 0) _index = FishingQuest.values.length;
+  }
+
+  bool isCompleted(FishingQuest quest) => _completed.contains(quest.name);
+  int get completedCount => _completed.length;
+  bool _completing = false;
   final SharedPreferences preferences;
 
   static FishingQuests? _instance;
@@ -95,30 +152,39 @@ class FishingQuests extends ChangeNotifier {
   /// Last finished step, for a short "done" toast. Cleared by the UI.
   FishingQuest? justDone;
 
-  Future<void> _save() =>
-      preferences.setStringList(_key, ['$_index', '$_progress']);
+  Future<void> _save() async {
+    final ok = await preferences.setString(
+        _key, jsonEncode({'done': _completed.toList(), 'progress': _progress}));
+    if (!ok) debugPrint('FishingQuests: could not save progress');
+  }
 
-  Future<void> _complete() async {
+  Future<bool> _complete() async {
+    if (_completing || current == null) return false;
+    _completing = true;
     final quest = current!;
-    // Pay first, keyed per quest: if the app dies before the step is saved,
-    // the step completes again on the next visit but is not paid twice.
-    final paid = await CampState.instance.grantReward(
-        'quest-reward:${quest.name}',
-        coins: quest.coins,
-        legendaryBait: quest.bait);
-    if (!paid) return;
-    _index++;
-    _progress = 0;
-    justDone = quest;
-    await _save();
-    await sync();
+    try {
+      // The stable name also prevents paying a migrated quest twice.
+      final paid = await CampState.instance.grantReward(
+          'quest-reward:${quest.name}',
+          coins: quest.coins,
+          legendaryBait: quest.bait);
+      if (!paid) return false;
+      _completed.add(quest.name);
+      _findCurrent();
+      _progress = 0;
+      justDone = quest;
+      await _save();
+      return true;
+    } finally {
+      _completing = false;
+    }
   }
 
   Future<void> _advance(FishingQuest step, [int by = 1]) async {
-    if (current != step) return;
+    if (_completing || current != step) return;
     _progress += by;
     if (_progress >= step.goal) {
-      await _complete();
+      if (await _complete()) await sync();
     } else {
       await _save();
     }
@@ -129,7 +195,7 @@ class FishingQuests extends ChangeNotifier {
   /// shrine after an offering). Safe to call any time.
   Future<void> sync() async {
     while (!allDone && _doneByState(current!)) {
-      await _complete();
+      if (!await _complete()) break;
     }
     notifyListeners();
   }

@@ -513,8 +513,8 @@ class FishingController extends ChangeNotifier {
         final steeringError =
             (river.steering.dy * 140 + behavior.lateral * (beginner ? 25 : 42))
                 .abs();
-        final orbitControlled =
-            behavior.move == FishFightMove.orbit && steeringError < 15;
+        final orbitControlled = behavior.move == FishFightMove.orbit &&
+            (shoreFishing || steeringError < 15);
         if (!shoreFishing &&
             river.chase(dt, _fish, _elapsed, _surge,
                 pulling: _pulling,

@@ -438,12 +438,12 @@ class FishingRiverRound {
 
   bool chase(double dt, FishSpecies fish, double elapsed, double surge,
       {required bool pulling, required bool beginner, double weightPull = 1}) {
+    final behavior = FishingFight.at(fish, elapsed);
     final weave = switch (fish) {
       FishSpecies.perch => math.sin(elapsed * 3) * .9,
       FishSpecies.sardine => math.sin(elapsed * 2.5) * .55,
-      FishSpecies.mackerel ||
-      FishSpecies.seaDragon =>
-        math.sin(elapsed * .8) * .45,
+      FishSpecies.seaDragon => math.sin(elapsed * 1.4) * .65,
+      FishSpecies.mackerel => math.sin(elapsed * .8) * .45,
       FishSpecies.clownfish => math.sin(elapsed * 2.2) * 1.05,
       FishSpecies.pufferfish => math.sin(elapsed * .7) * .3,
       FishSpecies.carp => math.sin(elapsed * .5) * .25,
@@ -451,17 +451,17 @@ class FishingRiverRound {
       FishSpecies.koi ||
       FishSpecies.lanternfish ||
       FishSpecies.moonfish =>
-        FishingFight.at(fish, elapsed).lateral,
+        behavior.lateral,
       FishSpecies.goby => math.sin(elapsed * 3) * .55,
       FishSpecies.mudskipper => math.sin(elapsed * 3.5) * 1.1,
       FishSpecies.grouper => math.sin(elapsed * .6) * .3,
       FishSpecies.butterflyfish => math.sin(elapsed * 2.3),
       FishSpecies.cavefish => math.sin(elapsed * 1.1) * .5,
       FishSpecies.goldfish => math.sin(elapsed * 2) * .75,
-      FishSpecies.catMew => math.sin(elapsed * 2.4) * .8,
+      FishSpecies.catMew => behavior.lateral,
       _ => math.sin(elapsed) * .4,
     };
-    final move = FishingFight.at(fish, elapsed).move;
+    final move = behavior.move;
     final reverse = fish == FishSpecies.catMew && move == FishFightMove.dash;
     final forward = _chaseDirection * (reverse ? -1 : 1);
     final slope = (FishingRiver.bayCenter(boat.dx + 5) -
@@ -477,6 +477,7 @@ class FishingRiverRound {
         (.65 + surge * .65) *
         (pulling ? .7 : 1) *
         speedFactor *
+        behavior.pullMultiplier *
         weightPull *
         boatStyle.dragByFish;
     var velocity = Offset(

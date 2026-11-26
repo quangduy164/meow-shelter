@@ -142,6 +142,25 @@ class _FishingScreenState extends State<FishingScreen>
       _setHour(DateTime.now());
     }
     _area = _areaName;
+    GameAudio.instance.setAmbient(_ambientName);
+  }
+
+  String? get _ambientName {
+    if (_river.cabin.inside) return null;
+    if (_river.cave.inside || FishingRiver.inCave(_controller.angler)) {
+      return 'ambientCave';
+    }
+    if (_river.weather.rain > .35) return 'ambientRain';
+    if (_river.hour < 6 || _river.hour >= 18) return 'ambientNight';
+    final region =
+        FishingRiver.regionAt(_controller.angler.dx, y: _controller.angler.dy);
+    if (_river.island.ashore && !_river.island.onBank ||
+        region == FishingRegion.coast ||
+        region == FishingRegion.rockyBay ||
+        region == FishingRegion.openSea) {
+      return 'ambientSea';
+    }
+    return region == FishingRegion.mangrove ? 'ambientRiver' : 'ambientVillage';
   }
 
   String _cat = 'orange';
@@ -280,9 +299,8 @@ class _FishingScreenState extends State<FishingScreen>
                                             fontSize: DS.fontButton))),
                                 const FishingClockChip(),
                                 const SizedBox(width: DS.spaceSm),
-                                RoundButton(
+                                FlatRoundButton(
                                     glyph: GameGlyph.close,
-                                    size: 40,
                                     tooltip: 'Đóng bản đồ',
                                     onPressed: () => Navigator.pop(context)),
                               ])),
@@ -397,6 +415,7 @@ class _FishingScreenState extends State<FishingScreen>
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    GameAudio.instance.setAmbient(null);
     _saveTrip();
     _ticker.dispose();
     _controller.dispose();
@@ -475,7 +494,7 @@ class _FishingScreenState extends State<FishingScreen>
           padding: const EdgeInsets.all(DS.spaceMd),
           child: Column(children: [
             Row(children: [
-              RoundButton(
+              FlatRoundButton(
                   glyph: GameGlyph.home,
                   tooltip: 'Về Trang chủ',
                   onPressed: () => Navigator.pop(context)),
@@ -836,32 +855,10 @@ class _FishingScreenState extends State<FishingScreen>
                             Positioned(
                                 left: padding.left + 8,
                                 top: padding.top + 8,
-                                child: Tooltip(
-                                    message: 'Về Trang chủ',
-                                    child: Material(
-                                        type: MaterialType.transparency,
-                                        child: InkWell(
-                                            customBorder: const CircleBorder(),
-                                            onTap: () => Navigator.pop(context),
-                                            child: SizedBox.square(
-                                                dimension: 44,
-                                                child: Center(
-                                                    child: Container(
-                                                        width: 32,
-                                                        height: 32,
-                                                        decoration:
-                                                            BoxDecoration(
-                                                                color: DS.cream
-                                                                    .withValues(
-                                                                        alpha:
-                                                                            .92),
-                                                                shape: BoxShape
-                                                                    .circle),
-                                                        child: const Center(
-                                                            child: GameGlyphView(
-                                                                GameGlyph.home,
-                                                                size:
-                                                                    20))))))))),
+                                child: FlatRoundButton(
+                                    glyph: GameGlyph.home,
+                                    tooltip: 'Về Trang chủ',
+                                    onPressed: () => Navigator.pop(context))),
                             if (!(_controller.phase == FishingPhase.reeling))
                               Positioned(
                                   right: padding.right + 8,
@@ -961,10 +958,9 @@ class _FishingScreenState extends State<FishingScreen>
                                 _controller.phase != FishingPhase.saving)
                               Positioned(
                                   right: padding.right + 98,
-                                  bottom: padding.bottom + 26,
-                                  child: RoundButton(
+                                  bottom: padding.bottom + 22,
+                                  child: FlatRoundButton(
                                       glyph: GameGlyph.close,
-                                      size: 36,
                                       tooltip: 'Cất cần để chèo tiếp',
                                       onPressed: _controller.cancelCast)),
                             Positioned.fill(

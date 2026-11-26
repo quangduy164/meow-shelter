@@ -153,6 +153,9 @@ enum GameSound {
 // 1514 rowing slowly (fishingRow), mixed 1275 plastic pedal tractor and
 // 2768 bladed mill wheel (fishingPedal).
 // https://bigsoundbank.com/UPLOAD/ogg/<ID>.ogg
+// Fishing ambience loops, BigSoundBank CC0: 0864 brooklet (river),
+// 2713 forest and stream (village), 1880 countryside night (night),
+// 1448 small waves and beach (sea), 2135 cave (cave), 1290 rain on puddle.
 
 /// Music and reel playback are separate from preloaded, low-latency effects.
 class GameAudio with WidgetsBindingObserver {
@@ -164,7 +167,8 @@ class GameAudio with WidgetsBindingObserver {
   final musicEnabled = ValueNotifier(true);
   final vibrationEnabled = ValueNotifier(true);
   SharedPreferences? _preferences;
-  AudioPlayer? _music, _effect, _reel;
+  AudioPlayer? _music, _effect, _reel, _ambientPlayer;
+  String? _ambient, _ambientLoaded;
   bool _reeling = false;
   bool _foreground = true, _musicLoaded = false, _homeActive = false;
   bool _exiting = false;
@@ -264,6 +268,7 @@ class GameAudio with WidgetsBindingObserver {
       }
     });
     await _syncReel();
+    await _syncAmbient();
     if (!_foreground) {
       await _silence();
       return;
@@ -367,6 +372,44 @@ class GameAudio with WidgetsBindingObserver {
     if (!_foreground || !_reeling || effectsVolume.value == 0) {
       await reel.stop();
     }
+  }
+
+  /// Looping fishing ambience; null stops it.
+  void setAmbient(String? name) {
+    if (_ambient == name) return;
+    _ambient = name;
+    unawaited(_enqueue(_syncAmbient));
+  }
+
+  Future<void> _syncAmbient() async {
+    final name = _ambient;
+    if (name == null ||
+        !_foreground ||
+        effectsVolume.value == 0 ||
+        _preferences == null) {
+      await _ambientPlayer?.stop();
+      return;
+    }
+    final player =
+        _ambientPlayer ??= AudioPlayer()..audioCache = FlameAudio.audioCache;
+    // Background only: well below effect level.
+    await player.setVolume(.16 * effectsVolume.value);
+    if (_ambientLoaded != name) {
+      await player.stop();
+      await player.setReleaseMode(ReleaseMode.loop);
+      await player.setAudioContext(AudioContext(
+        android: const AudioContextAndroid(audioFocus: AndroidAudioFocus.none),
+        iOS: AudioContextIOS(
+            options: const {AVAudioSessionOptions.mixWithOthers}),
+      ));
+      await player.setSource(AssetSource('$name.ogg'));
+      _ambientLoaded = name;
+    }
+    if (_ambient != name || !_foreground || effectsVolume.value == 0) {
+      await player.stop();
+      return;
+    }
+    if (player.state != PlayerState.playing) await player.resume();
   }
 
   void playRescue(GameSound sound, {bool important = false}) {
@@ -492,6 +535,7 @@ class GameAudio with WidgetsBindingObserver {
         if (_music != null) _music!.stop(),
         if (_effect != null) _effect!.stop(),
         if (_reel != null) _reel!.stop(),
+        if (_ambientPlayer != null) _ambientPlayer!.stop(),
       ].map((operation) => operation.catchError((Object error) {
             debugPrint('Could not silence audio: $error');
           })));
@@ -501,6 +545,7 @@ class GameAudio with WidgetsBindingObserver {
     _foreground = false;
     _homeActive = false;
     _reeling = false;
+    _ambient = null;
     _effectRequest++;
     await _silence();
   }
@@ -525,7 +570,9 @@ class GameAudio with WidgetsBindingObserver {
     }
     _effectPlayers.clear();
     await _reel?.dispose();
-    _reel = null;
+    await _ambientPlayer?.dispose();
+    _reel = _ambientPlayer = null;
+    _ambientLoaded = null;
     _music = _effect = null;
     _musicLoaded = false;
     _preferences = null;

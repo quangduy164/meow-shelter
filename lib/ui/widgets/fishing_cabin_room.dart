@@ -205,7 +205,7 @@ class _FishingCabinRoomState extends State<FishingCabinRoom> {
               Positioned(
                   left: MediaQuery.paddingOf(context).left + 8,
                   top: MediaQuery.paddingOf(context).top + 8,
-                  child: RoundButton(
+                  child: FlatRoundButton(
                       glyph: GameGlyph.back,
                       tooltip: 'Ra ngoài thuyền',
                       onPressed: widget.onExit)),

@@ -46,3 +46,37 @@ class RoundButton extends StatelessWidget {
         ),
       );
 }
+
+/// Flat navigation control with a compact face and a full touch target.
+class FlatRoundButton extends StatelessWidget {
+  const FlatRoundButton({
+    super.key,
+    required this.glyph,
+    required this.tooltip,
+    required this.onPressed,
+  });
+
+  final GameGlyph glyph;
+  final String tooltip;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) => Tooltip(
+      message: tooltip,
+      child: Material(
+          type: MaterialType.transparency,
+          child: InkWell(
+              customBorder: const CircleBorder(),
+              onTap: onPressed,
+              child: SizedBox.square(
+                  dimension: 44,
+                  child: Center(
+                      child: Container(
+                          width: 32,
+                          height: 32,
+                          decoration: BoxDecoration(
+                              color: DS.cream.withValues(alpha: .92),
+                              shape: BoxShape.circle),
+                          child: Center(
+                              child: GameGlyphView(glyph, size: 20))))))));
+}
