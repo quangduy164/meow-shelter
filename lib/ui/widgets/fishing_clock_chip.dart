@@ -8,7 +8,8 @@ import '../design.dart';
 /// In-game time for the map header, e.g. "07:30 · Buổi sáng". The 40-minute
 /// day moves 0.6 game minutes per second, so it refreshes every second.
 class FishingClockChip extends StatefulWidget {
-  const FishingClockChip({super.key});
+  const FishingClockChip({super.key, this.hourProvider});
+  final double Function()? hourProvider;
   @override
   State<FishingClockChip> createState() => _FishingClockChipState();
 }
@@ -30,7 +31,8 @@ class _FishingClockChipState extends State<FishingClockChip> {
 
   @override
   Widget build(BuildContext context) {
-    final hour = FishingLighting.gameHour(DateTime.now());
+    final hour =
+        widget.hourProvider?.call() ?? FishingLighting.gameHour(DateTime.now());
     final day = hour >= 6 && hour < 18;
     return Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),

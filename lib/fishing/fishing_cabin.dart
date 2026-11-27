@@ -52,11 +52,12 @@ class FishingCabin {
   static const sleepFade = 1.2, sleepHold = .6, sleepWake = 1.2;
   double sleptFor = 0;
   bool dawnDue = false;
+  bool canSkipNight = true;
   bool _sleepThroughNight = false;
 
   /// 0..1 darkness of the sleep fade.
   double get sleepDark {
-    if (!sleeping || !_sleepThroughNight) return 0;
+    if (!sleeping || !_sleepThroughNight || !canSkipNight) return 0;
     if (sleptFor < sleepFade) return sleptFor / sleepFade;
     if (sleptFor < sleepFade + sleepHold) return 1;
     return (1 - (sleptFor - sleepFade - sleepHold) / sleepWake).clamp(0.0, 1.0);
@@ -182,6 +183,7 @@ class FishingCabin {
       final before = sleptFor;
       sleptFor += dt;
       if (_sleepThroughNight &&
+          canSkipNight &&
           before < sleepFade + sleepHold / 2 &&
           sleptFor >= sleepFade + sleepHold / 2) {
         dawnDue = true;
@@ -199,7 +201,7 @@ class FishingCabin {
         sleeping = hopTo == bedSpot;
         if (sleeping) {
           sleptFor = 0;
-          _sleepThroughNight = hour >= 18 || hour < 6;
+          _sleepThroughNight = canSkipNight && (hour >= 18 || hour < 6);
         }
         if (sleeping) GameAudio.instance.playGameplay(GameSound.catNap);
         final then = _afterHop;

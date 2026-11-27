@@ -22,6 +22,7 @@ class FishingMinimap extends StatefulWidget {
   final Listenable frames;
   final double size;
   final bool full;
+
   @override
   State<FishingMinimap> createState() => _FishingMinimapState();
 }

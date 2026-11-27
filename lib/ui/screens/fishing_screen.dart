@@ -1,3 +1,9 @@
+import '../widgets/fishing_menu_button.dart';
+import '../../fishing/fishing_environment.dart';
+import '../../online/fishing_world.dart';
+import '../../online/fishing_peer.dart';
+import '../widgets/fishing_world_lobby.dart';
+import '../widgets/fishing_remote_players.dart';
 import 'dart:async';
 import 'dart:math' as math;
 import '../../online/firebase_session.dart';
@@ -31,7 +37,6 @@ import '../../fishing/fishing_quests.dart';
 import '../widgets/fishing_cave_run.dart';
 import '../widgets/fishing_night_overlay.dart';
 import '../widgets/fishing_weather_overlay.dart';
-import '../../fishing/fishing_weather.dart';
 import '../../fishing/fishing_trip.dart';
 import '../widgets/fishing_rocky_bay_art.dart';
 import '../../fishing/fishing_player.dart';
@@ -64,9 +69,13 @@ class _FishingScreenState extends State<FishingScreen>
   FishingRiverRound get _river => _controller.river;
   final _frames = ValueNotifier(0);
   late final Ticker _ticker;
+  late final FishingWorld _world;
   Duration? _lastTick;
   bool _collectionOpen = false, _paused = false, _choosingCat = true;
   bool _loadingCat = false;
+  bool get _visitingFriend => _visitCode.text.trim().isNotEmpty;
+  final _visitCode = TextEditingController();
+  String? _lobbyError;
 
   /// Everything the HUD shows except per-frame animation; it rebuilds only
   /// when this value changes (records compare by value).
@@ -105,9 +114,12 @@ class _FishingScreenState extends State<FishingScreen>
 
   /// Day/night runs on a 40-minute game day (FishingLighting.gameHour).
   void _setHour(DateTime now) {
-    final hour = FishingLighting.gameHour(now);
+    final time = _world.environmentTime(now);
+    final environment = _world.environment;
+    final hour = environment.hourAt(time);
     _river.hour = hour;
-    _river.weather = FishingWeather.at(now);
+    _river.cabin.canSkipNight = !_world.visiting;
+    _river.weather = environment.weatherAt(time);
     _controller.setWorldHour(hour);
   }
 
@@ -126,16 +138,21 @@ class _FishingScreenState extends State<FishingScreen>
       _river.cabin.dawnDue = false;
       final now = DateTime.now();
       final hour = FishingLighting.gameHour(now);
-      if (hour >= 18 || hour < 6) {
-        FishCollection.instance.preferences
-            .setInt(FishingLighting.shiftKey, FishingLighting.skipTo(6, now));
+      if (!_world.visiting && (hour >= 18 || hour < 6)) {
+        final shift = FishingLighting.skipTo(6, now);
+        unawaited(FishCollection.instance.preferences
+            .setInt(FishingLighting.shiftKey, shift)
+            .then((saved) {
+          if (saved && mounted) unawaited(_world.publishEnvironment());
+        }));
         _setHour(now);
       }
     }
     _sinceWeather += dt;
     if (_sinceWeather > .5) {
       _sinceWeather = 0;
-      _river.weather = FishingWeather.at(DateTime.now());
+      _river.weather =
+          _world.environment.weatherAt(_world.environmentTime(DateTime.now()));
     }
     _sinceClock += dt;
     // A 40-minute day moves 0.6 game minutes per second: refresh every second.
@@ -175,10 +192,27 @@ class _FishingScreenState extends State<FishingScreen>
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _controller = FishingController(FishCollection.instance);
+    _world = FishingWorld(
+        preferences: FishCollection.instance.preferences,
+        capture: (stamp) {
+          _controller.syncLocalPlayer();
+          return FishingPeerSnapshot.local(_controller, stamp);
+        },
+        onVisitChanged: _worldChanged);
     unawaited(FirebaseSession.instance.connect());
     final preferences = FishCollection.instance.preferences;
-    FishingLighting.shiftMs = preferences.getInt(FishingLighting.shiftKey) ?? 0;
     final now = DateTime.now();
+    unawaited(FishingEnvironment.initialize(preferences, now,
+            firstTrip: !preferences.containsKey(FishingTrip.key) &&
+                !CampState.instance.seenGuides
+                    .contains(FishingController.boatGuideKey) &&
+                FishCollection.instance.count == 0)
+        .then((_) {
+      if (mounted) {
+        _setHour(DateTime.now());
+        unawaited(_world.prepare());
+      }
+    }));
     _setHour(now);
     FishingQuests.instance.sync();
     FishingTrip.restore(preferences, _river);
@@ -198,6 +232,7 @@ class _FishingScreenState extends State<FishingScreen>
         ? (_river.clock * 9 / (2 * math.pi)).floor()
         : ((_river.clock / 1.65) % 1);
     _controller.update(dt);
+    _world.update(dt);
     final strokeAfter = swan
         ? (_river.clock * 9 / (2 * math.pi)).floor()
         : ((_river.clock / 1.65) % 1);
@@ -241,7 +276,7 @@ class _FishingScreenState extends State<FishingScreen>
   }
 
   void _saveTrip() {
-    if (_choosingCat) return;
+    if (_choosingCat || _world.visiting) return;
     _sinceSave = 0;
     _savedBoat = _river.boat;
     FishingTrip.save(FishCollection.instance.preferences, _river, _cat);
@@ -252,12 +287,35 @@ class _FishingScreenState extends State<FishingScreen>
     _paused = state != AppLifecycleState.resumed;
     if (_paused) {
       _saveTrip();
+      if (!_choosingCat) unawaited(_world.setActive(false));
     } else {
       unawaited(FirebaseSession.instance.connect());
+      if (!_choosingCat) unawaited(_world.setActive(true));
     }
     _controller.setPulling(false);
     _controller.stopSteering();
     _lastTick = null;
+  }
+
+  void _worldChanged(bool visiting) {
+    _controller.cancelCast();
+    _river.stop();
+    _river.cabin.inside = false;
+    _river.cabin.pending = false;
+    _river.cave.inside = false;
+    _river.island.phase = IslandVisitPhase.aboard;
+    _river.island.dockRequested = false;
+    _river.island.boardRequested = false;
+    if (visiting) {
+      _river.restore(boat: FishingRiver.startBoat, heading: 0);
+    } else {
+      FishingTrip.restore(FishCollection.instance.preferences, _river);
+    }
+    _setHour(DateTime.now());
+    _controller.syncLocalPlayer();
+    _savedBoat = _river.boat;
+    _lastTick = null;
+    if (mounted) setState(() {});
   }
 
   Future<void> _openCollection() async {
@@ -304,7 +362,10 @@ class _FishingScreenState extends State<FishingScreen>
                                             color: DS.cream,
                                             fontWeight: FontWeight.w900,
                                             fontSize: DS.fontButton))),
-                                const FishingClockChip(),
+                                FishingClockChip(
+                                    hourProvider: () => _world.environment
+                                        .hourAt(_world
+                                            .environmentTime(DateTime.now()))),
                                 const SizedBox(width: DS.spaceSm),
                                 FlatRoundButton(
                                     glyph: GameGlyph.close,
@@ -422,6 +483,8 @@ class _FishingScreenState extends State<FishingScreen>
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    _world.dispose();
+    _visitCode.dispose();
     GameAudio.instance.setAmbient(null);
     _saveTrip();
     _ticker.dispose();
@@ -464,31 +527,96 @@ class _FishingScreenState extends State<FishingScreen>
 
   Future<void> _startWithCat(String type) async {
     if (!_choosingCat || _loadingCat) return;
-    setState(() => _loadingCat = true);
-    await _controller.identity.saved;
-    if (!mounted) return;
-    final scale = MediaQuery.sizeOf(context).height / FishingRiver.viewHeight;
-    await CatSprite.precacheActions(context, type: type, actions: const [
-      'idle',
-      'row',
-      'walk',
-      'jump',
-      'fish-cast',
-      'fish-wait',
-      'fish-reel',
-      'fish-hold'
-    ], sizes: [
-      114 * scale,
-      84 * scale
-    ]);
-    if (!mounted) return;
+    final code = FishingWorld.normalizeCode(_visitCode.text);
+    if (_visitingFriend && !FishingWorld.validCode(code)) {
+      setState(() =>
+          _lobbyError = 'Nhập mã ghé gồm 7 chữ hoặc số trước khi chọn mèo.');
+      return;
+    }
+    FocusScope.of(context).unfocus();
     setState(() {
-      _controller.selectCat(type);
-      _choosingCat = false;
-      _loadingCat = false;
-      _lastTick = null;
+      _loadingCat = true;
+      _lobbyError = null;
     });
-    _ticker.start();
+    try {
+      await _controller.identity.saved;
+      if (!mounted) return;
+      final scale = MediaQuery.sizeOf(context).height / FishingRiver.viewHeight;
+      await CatSprite.precacheActions(context, type: type, actions: const [
+        'idle',
+        'row',
+        'walk',
+        'jump',
+        'fish-cast',
+        'fish-wait',
+        'fish-reel',
+        'fish-hold'
+      ], sizes: [
+        114 * scale,
+        84 * scale
+      ]);
+      if (!mounted) return;
+      _controller.selectCat(type);
+      if (_visitingFriend) {
+        if (!await _world.waitForOnline()) {
+          if (mounted) {
+            setState(() => _lobbyError = _world.error ??
+                'Chưa kết nối được. Bạn có thể chọn Nhà mình để chơi offline.');
+          }
+          await _world.leaveGameplay();
+          return;
+        }
+        if (!mounted) return;
+        await FishingTrip.save(
+            FishCollection.instance.preferences, _river, _cat);
+        if (!mounted) return;
+        if (!await _world.visit(code)) {
+          if (mounted) {
+            setState(() =>
+                _lobbyError = _world.error ?? 'Chưa ghé được thế giới này.');
+          }
+          await _world.leaveGameplay();
+          return;
+        }
+      }
+      if (!mounted) return;
+      setState(() {
+        _choosingCat = false;
+        _lastTick = null;
+      });
+      _ticker.start();
+      if (!_visitingFriend) unawaited(_world.start());
+    } finally {
+      if (mounted) setState(() => _loadingCat = false);
+    }
+  }
+
+  Future<void> _openLobby() async {
+    if (_loadingCat || _collectionOpen) return;
+    setState(() => _collectionOpen = true);
+    try {
+      await showGameDialog<void>(
+          context: context,
+          builder: (dialogContext) => StatefulBuilder(
+              builder: (context, updateDialog) => GameDialog(
+                  maxWidth: 560,
+                  padding: EdgeInsets.zero,
+                  insetPadding: const EdgeInsets.all(12),
+                  child: FishingWorldLobby(
+                      world: _world,
+                      code: _visitCode,
+                      enabled: !_loadingCat,
+                      error: _lobbyError,
+                      onClose: () => Navigator.pop(dialogContext),
+                      onChanged: (_) {
+                        setState(() {
+                          _lobbyError = null;
+                        });
+                        updateDialog(() {});
+                      }))));
+    } finally {
+      if (mounted) setState(() => _collectionOpen = false);
+    }
   }
 
   Widget _catSelection() => DecoratedBox(
@@ -503,10 +631,10 @@ class _FishingScreenState extends State<FishingScreen>
           padding: const EdgeInsets.all(DS.spaceMd),
           child: Column(children: [
             Row(children: [
-              FlatRoundButton(
-                  glyph: GameGlyph.home,
+              FishingMenuButton(
                   tooltip: 'Về Trang chủ',
-                  onPressed: () => Navigator.pop(context)),
+                  onPressed: () => Navigator.pop(context),
+                  child: const GameGlyphView(GameGlyph.home, size: 22)),
               const Expanded(
                   child: Text('CHỌN MÈO ĐI CÂU',
                       textAlign: TextAlign.center,
@@ -517,22 +645,32 @@ class _FishingScreenState extends State<FishingScreen>
                           letterSpacing: 1))),
               const SizedBox(width: 48),
             ]),
-            const SizedBox(height: DS.spaceMd),
-            SizedBox(
-                height: 32,
-                child: Center(
-                    child: _loadingCat
-                        ? const PawLoader(size: 32, color: DS.cream)
-                        : const Text('Chọn một bé mèo để bắt đầu chuyến đi câu',
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
-                                color: DS.cream, fontSize: DS.fontBody)))),
+            const SizedBox(height: DS.spaceSm),
+            Row(children: [
+              FishingMenuButton(
+                  tooltip: 'Thế giới và ghé bạn',
+                  onPressed: _loadingCat ? null : _openLobby,
+                  child: const Icon(Icons.people_alt_rounded, size: 22)),
+              Expanded(
+                  child: Center(
+                      child: _loadingCat
+                          ? const PawLoader(size: 32, color: DS.cream)
+                          : Text(
+                              _lobbyError ??
+                                  (_visitingFriend
+                                      ? 'Ghé bạn · Chọn một bé mèo để bắt đầu'
+                                      : 'Chọn một bé mèo để bắt đầu chuyến đi câu'),
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(
+                                  color: DS.cream, fontSize: DS.fontBody)))),
+              const SizedBox(width: 44),
+            ]),
             Expanded(
                 child: Center(
                     child: SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(vertical: DS.spaceLg),
-              child: _catChoices(_startWithCat),
-            ))),
+                        padding:
+                            const EdgeInsets.symmetric(vertical: DS.spaceLg),
+                        child: _catChoices(_startWithCat)))),
           ]),
         )),
       );
@@ -771,8 +909,7 @@ class _FishingScreenState extends State<FishingScreen>
                         behavior: HitTestBehavior.opaque,
                         onTapUp: (event) {
                           if (!_collectionOpen) {
-                            _controller.setWorldHour(
-                                FishingLighting.gameHour(DateTime.now()));
+                            _setHour(DateTime.now());
                             _controller.tapRiver(event.localPosition);
                           }
                         },
@@ -783,9 +920,14 @@ class _FishingScreenState extends State<FishingScreen>
                         child: IgnorePointer(
                             child: AnimatedBuilder(
                                 animation: _frames,
-                                builder: (context, _) => Stack(
-                                    fit: StackFit.expand,
-                                    children: [_boat(), _islandCat()]))),
+                                builder: (context, _) =>
+                                    Stack(fit: StackFit.expand, children: [
+                                      FishingRemotePlayers(
+                                          round: _river,
+                                          peers: _world.peers.values),
+                                      _boat(),
+                                      _islandCat()
+                                    ]))),
                       )),
                   // Light and weather overlays share one layer.
                   IgnorePointer(

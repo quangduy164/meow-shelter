@@ -1,0 +1,110 @@
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+    "worldCodes": {
+      "$code": {
+        ".read": "auth != null",
+        ".write": "auth != null && (!data.exists() || data.val() == auth.uid) && newData.isString() && newData.val() == auth.uid",
+        ".validate": "$code.matches(/^[A-HJ-NP-Z2-9]{7}$/)"
+      }
+    },
+    "worlds": {
+      "$world": {
+        ".read": "auth != null",
+        ".write": "auth != null && auth.uid == $world",
+        ".validate": "newData.hasChildren(['code','mapVersion','createdAt'])",
+        "code": {
+          ".validate": "newData.isString() && newData.val().matches(/^[A-HJ-NP-Z2-9]{7}$/) && root.child('worldCodes').child(newData.val()).val() == auth.uid && (!data.exists() || newData.val() == data.val())"
+        },
+        "mapVersion": {
+          ".validate": "newData.isNumber() && newData.val() % 1 == 0 && newData.val() >= 1 && newData.val() <= 2147483647"
+        },
+        "createdAt": {
+          ".validate": "newData.isNumber() && (!data.exists() || newData.val() == data.val())"
+        },
+        "hosts": {
+          "$connection": {
+            ".validate": "newData.isBoolean() && newData.val() == true"
+          }
+        },
+        "$other": {
+          ".validate": false
+        },
+        "environment": {
+          ".validate": "newData.hasChildren(['shiftMs','sunnyUntil'])",
+          "shiftMs": {
+            ".validate": "newData.isNumber() && newData.val() % 1 == 0 && newData.val() >= 0 && newData.val() < 2400000"
+          },
+          "sunnyUntil": {
+            ".validate": "newData.isNumber() && newData.val() % 1 == 0 && newData.val() >= 0 && newData.val() <= 8640000000000000"
+          },
+          "$other": {
+            ".validate": false
+          }
+        },
+        "display": {
+          ".validate": "newData.isString() && newData.val().length <= 8192"
+        }
+      }
+    },
+    "sessions": {
+      "$world": {
+        "players": {
+          ".read": "auth != null && (auth.uid == $world || root.child('worlds').child($world).child('hosts').hasChildren())",
+          "$uid": {
+            "$connection": {
+              ".write": "auth != null && auth.uid == $uid && (!newData.exists() || (root.child('worlds').child($world).child('mapVersion').isNumber() && root.child('worlds').child($world).child('mapVersion').val() >= 1 && (auth.uid == $world || root.child('worlds').child($world).child('hosts').hasChildren())))",
+              ".validate": "newData.hasChildren(['cat','location','x','y','right','action','frame','boat','bx','by','boatRight','rowing','stamp'])",
+              "cat": {
+                ".validate": "newData.isString() && newData.val().matches(/^[A-Za-z][A-Za-z0-9_-]{0,63}$/)"
+              },
+              "location": {
+                ".validate": "newData.isString() && newData.val().matches(/^[A-Za-z][A-Za-z0-9_-]{0,63}$/)"
+              },
+              "action": {
+                ".validate": "newData.isString() && newData.val().matches(/^[A-Za-z][A-Za-z0-9_-]{0,63}$/)"
+              },
+              "frame": {
+                ".validate": "newData.isNumber() && newData.val() % 1 == 0 && newData.val() >= 0 && newData.val() < 256"
+              },
+              "boat": {
+                ".validate": "newData.isString() && newData.val().matches(/^[A-Za-z][A-Za-z0-9_-]{0,63}$/)"
+              },
+              "stamp": {
+                ".validate": "newData.isNumber() && newData.val() % 1 == 0 && newData.val() >= now - 15000 && newData.val() <= now + 5000"
+              },
+              "x": {
+                ".validate": "newData.isNumber() && newData.val() >= -1000000 && newData.val() <= 1000000"
+              },
+              "y": {
+                ".validate": "newData.isNumber() && newData.val() >= -1000000 && newData.val() <= 1000000"
+              },
+              "bx": {
+                ".validate": "newData.isNumber() && newData.val() >= -1000000 && newData.val() <= 1000000"
+              },
+              "by": {
+                ".validate": "newData.isNumber() && newData.val() >= -1000000 && newData.val() <= 1000000"
+              },
+              "right": {
+                ".validate": "newData.isBoolean()"
+              },
+              "boatRight": {
+                ".validate": "newData.isBoolean()"
+              },
+              "rowing": {
+                ".validate": "newData.isBoolean()"
+              },
+              "$other": {
+                ".validate": false
+              },
+              "display": {
+                ".validate": "newData.isString() && newData.val().length <= 8192"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
