@@ -13,6 +13,8 @@ import 'fishing_region.dart';
 import 'fishing_weather.dart';
 import 'fishing_boat.dart';
 import 'fishing_crew.dart';
+import 'fishing_player.dart';
+import 'player_identity.dart';
 export 'fishing_region.dart';
 import 'dart:math' as math;
 import 'package:flutter/painting.dart';
@@ -311,11 +313,31 @@ class FishingRiver {
 
 /// Click-to-row movement and a smoothly following two-axis camera.
 class FishingRiverRound {
+  FishingRiverRound({FishingPlayerState? localPlayer})
+      : localPlayer =
+            localPlayer ?? FishingPlayerState(id: PlayerIdentity.generateId()) {
+    crew = FishingCrew(boatId: 'boat:${this.localPlayer.id}');
+    crew.board(this.localPlayer);
+  }
+
+  final FishingPlayerState localPlayer;
+
+  bool get boatFacingRight => catFacingRight ?? heading.dx >= 0;
+
+  /// Seat-based anchors apply equally to a local passenger and the driver.
+  Offset playerPosition(FishingPlayerState player) {
+    final seat = crew.seatOf(player.id);
+    return seat == null
+        ? player.position
+        : boat + boatStyle.seatOffset(seat, facingRight: boatFacingRight);
+  }
+
   final props = RiverProps();
   final island = FishingIslandVisit();
   final cabin = FishingCabin();
   final cave = FishingCave();
-  Offset get cameraFocus => island.ashore ? island.cat : boat;
+  Offset get cameraFocus =>
+      island.ashore ? island.cat : playerPosition(localPlayer);
   Offset boat = FishingRiver.startBoat;
   Offset _lastBoat = FishingRiver.startBoat;
   Offset heading = const Offset(1, 0);
@@ -375,12 +397,15 @@ class FishingRiverRound {
   FishingBoat _boatStyle = FishingBoat.basket;
   set boatStyle(FishingBoat boat) {
     _boatStyle = boat;
-    crew.refit(boat);
+    final displaced = crew.refit(boat);
+    for (final player in displaced) {
+      player.position = this.boat;
+    }
   }
 
   /// Who rides the boat; only the driver (seat 0) rows and steers.
-  final crew = FishingCrew();
-  bool get localDrives => crew.canSteer(FishingCrew.localId);
+  late final FishingCrew crew;
+  bool get localDrives => crew.canSteer(localPlayer.id);
 
   /// Current weather from the real clock; set by the screen.
   FishingWeather weather = FishingWeather.clear;
@@ -421,6 +446,7 @@ class FishingRiverRound {
   }
 
   void beginFight(Offset fish) {
+    if (!localDrives) return;
     stop();
     chasing = true;
     steering = Offset.zero;
@@ -438,6 +464,7 @@ class FishingRiverRound {
 
   bool chase(double dt, FishSpecies fish, double elapsed, double surge,
       {required bool pulling, required bool beginner, double weightPull = 1}) {
+    if (!localDrives) return false;
     final behavior = FishingFight.at(fish, elapsed);
     final weave = switch (fish) {
       FishSpecies.perch => math.sin(elapsed * 3) * .9,
@@ -648,6 +675,7 @@ class FishingRiverRound {
     assert(dt >= 0 && dt <= .05);
     clock += dt;
     hitTime = math.max(0, hitTime - dt);
+    if (!localDrives && _route.isNotEmpty) stop();
     if (_route.isNotEmpty) {
       var remaining = 0.0;
       var previous = boat;

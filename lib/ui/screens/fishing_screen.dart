@@ -1,4 +1,6 @@
+import 'dart:async';
 import 'dart:math' as math;
+import '../../online/firebase_session.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter/scheduler.dart';
 
@@ -32,7 +34,7 @@ import '../widgets/fishing_weather_overlay.dart';
 import '../../fishing/fishing_weather.dart';
 import '../../fishing/fishing_trip.dart';
 import '../widgets/fishing_rocky_bay_art.dart';
-import '../widgets/fishing_oar_art.dart';
+import '../../fishing/fishing_player.dart';
 import '../../audio/game_audio.dart';
 import '../widgets/game_glyphs.dart';
 import '../widgets/game_surfaces.dart';
@@ -163,7 +165,7 @@ class _FishingScreenState extends State<FishingScreen>
     return region == FishingRegion.mangrove ? 'ambientRiver' : 'ambientVillage';
   }
 
-  String _cat = 'orange';
+  String get _cat => _controller.player.cat;
   String? _lastCat;
   double _sinceSave = 0;
   Offset _savedBoat = Offset.zero;
@@ -173,6 +175,7 @@ class _FishingScreenState extends State<FishingScreen>
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _controller = FishingController(FishCollection.instance);
+    unawaited(FirebaseSession.instance.connect());
     final preferences = FishCollection.instance.preferences;
     FishingLighting.shiftMs = preferences.getInt(FishingLighting.shiftKey) ?? 0;
     final now = DateTime.now();
@@ -247,7 +250,11 @@ class _FishingScreenState extends State<FishingScreen>
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     _paused = state != AppLifecycleState.resumed;
-    if (_paused) _saveTrip();
+    if (_paused) {
+      _saveTrip();
+    } else {
+      unawaited(FirebaseSession.instance.connect());
+    }
     _controller.setPulling(false);
     _controller.stopSteering();
     _lastTick = null;
@@ -458,6 +465,8 @@ class _FishingScreenState extends State<FishingScreen>
   Future<void> _startWithCat(String type) async {
     if (!_choosingCat || _loadingCat) return;
     setState(() => _loadingCat = true);
+    await _controller.identity.saved;
+    if (!mounted) return;
     final scale = MediaQuery.sizeOf(context).height / FishingRiver.viewHeight;
     await CatSprite.precacheActions(context, type: type, actions: const [
       'idle',
@@ -474,7 +483,7 @@ class _FishingScreenState extends State<FishingScreen>
     ]);
     if (!mounted) return;
     setState(() {
-      _cat = type;
+      _controller.selectCat(type);
       _choosingCat = false;
       _loadingCat = false;
       _lastTick = null;
@@ -536,10 +545,7 @@ class _FishingScreenState extends State<FishingScreen>
     final fishing = _controller.showFishingArt;
     final facingRight = fishing
         ? _controller.spot.dx >= _controller.angler.dx
-        : _river.heading.dx >= 0;
-    final oar = FishingOarPose(_river.clock,
-        moving: _river.moving && !fishing, facingRight: facingRight);
-    _river.catFacingRight = facingRight;
+        : _controller.player.facingRight;
     // Where the lantern rod's lantern hangs, for its glow in the dark.
     final f = _river.island.ashore ? .74 : 1.0;
     _river.rodLantern = fishing && !won && _controller.rod == FishingRod.lantern
@@ -550,10 +556,10 @@ class _FishingScreenState extends State<FishingScreen>
         ? math.sin(_controller.clock * 20) * .035
         : 0.0;
     // The swan is pedalled: no oar, the cat bobs gently with each push.
-    final pedalling =
-        _river.boatStyle == FishingBoat.swan && _river.moving && !fishing;
-    final rowing =
-        _river.moving && !fishing && _river.boatStyle != FishingBoat.swan;
+    final pedalling = _river.localDrives &&
+        _river.boatStyle == FishingBoat.swan &&
+        _river.moving &&
+        !fishing;
     final pedalBob = pedalling
         ? -math.sin(_river.clock * 9).abs() * 2.2 * _river.scale
         : 0.0;
@@ -563,29 +569,31 @@ class _FishingScreenState extends State<FishingScreen>
         _river.boatStyle == FishingBoat.swan && action == 'idle'
             ? 10 * _river.scale
             : 0;
-    final (action, frames, frame) = _anglerPose(oar, rowing: rowing) ??
-        ('idle', framesIdle, (_river.clock * 7).floor() % framesIdle);
+    final (action, frames, frame) = _controller.player.pose;
+    final driverFishing = _river.localDrives
+        ? fishing
+        : (_river.crew.driver?.pose.$1.startsWith('fish-') ?? false);
     final bob = math.sin(_river.clock * 2.5) * 1.8 * _river.scale;
     return Stack(fit: StackFit.expand, children: [
       CustomPaint(
-          painter: FishingRiverBoatPainter(_river,
-              fishing: fishing && !_river.island.ashore)),
-      // Passengers (online friends) sit in the seats behind the driver.
-      if (!_river.island.ashore)
-        for (final (seat, member) in _river.crew.passengers)
+          painter: FishingRiverBoatPainter(_river, fishing: driverFishing)),
+      // Every other occupied seat, including a remote driver.
+      for (final member in _river.crew.seats.whereType<FishingPlayerState>())
+        if (member.id != _controller.player.id)
           Builder(builder: (context) {
-            final p = _river.toScreen(_river.boat +
-                _river.boatStyle.seatOffset(seat, facingRight: facingRight));
+            final p = _river.toScreen(_river.playerPosition(member));
+            final pose = member.pose;
+            final riderSize = 114 * _river.scale;
             return Positioned(
-                left: p.dx - catSize / 2,
-                top: p.dy - catSize * .69 + bob - swanSeatLift('idle'),
+                left: p.dx - riderSize / 2,
+                top: p.dy - riderSize * .69 + bob - swanSeatLift(pose.$1),
                 child: CatSprite(
                     type: member.cat,
-                    size: catSize,
-                    action: 'idle',
-                    frames: framesIdle,
-                    frame: (_river.clock * 7).floor() % framesIdle,
-                    flip: !facingRight));
+                    size: riderSize,
+                    action: pose.$1,
+                    frames: pose.$2,
+                    frame: pose.$3,
+                    flip: !member.facingRight));
           }),
       if (!_river.island.ashore)
         Positioned(
@@ -608,7 +616,7 @@ class _FishingScreenState extends State<FishingScreen>
             )),
       CustomPaint(
           painter: FishingRiverBoatPainter(_river,
-              front: true, fishing: fishing && !_river.island.ashore)),
+              front: true, fishing: driverFishing)),
       if (fishing && !won)
         Builder(builder: (context) {
           final spot = _river.toScreen(_controller.spot);
@@ -655,47 +663,7 @@ class _FishingScreenState extends State<FishingScreen>
     ]);
   }
 
-  /// Sheet, frame count and frame for the angler while fishing or rowing;
-  /// null keeps the plain idle/walk choice.
-  (String, int, int)? _anglerPose(FishingOarPose? oar, {required bool rowing}) {
-    final elapsed = _controller.elapsed;
-    if (rowing && oar != null) return ('row', framesRow, oar.rowFrame);
-    if (!_controller.showFishingArt) return null;
-    return switch (_controller.phase) {
-      FishingPhase.casting => (
-          'fish-cast',
-          framesFishCast,
-          (elapsed / .65 * framesFishCast).floor().clamp(0, framesFishCast - 1)
-        ),
-      FishingPhase.waiting => (
-          'fish-wait',
-          framesFishWait,
-          (_river.clock * 5).floor() % framesFishWait
-        ),
-      // Yanked forward by the bite: the surprised reel frame.
-      FishingPhase.bite => ('fish-reel', framesFishReel, 2),
-      FishingPhase.reeling => (
-          'fish-reel',
-          framesFishReel,
-          _controller.pulling ? (_river.clock * 5).floor() % framesFishReel : 5
-        ),
-      FishingPhase.saving => ('fish-reel', framesFishReel, 5),
-      FishingPhase.caught => ('fish-hold', framesFishHold, _holdFrame),
-      // The sulk plays briefly, then the normal idle/walk pose resumes.
-      FishingPhase.lost => (
-          'drop-wrong',
-          framesDropWrong,
-          (elapsed * 8).floor().clamp(0, framesDropWrong - 1)
-        ),
-      FishingPhase.ready => null,
-    };
-  }
-
-  /// Paws stay cupped while the catch flies in, then lift it up to show off.
-  int get _holdFrame {
-    final t = _controller.elapsed;
-    return t < 1 ? 0 : 1 + ((t - 1) * 3).floor() % 2;
-  }
+  int get _holdFrame => _controller.holdFrame;
 
   /// Screen position of a point given in sheet pixels (256 x 256 frame,
   /// facing right) of the angler sprite, in the boat or on the bank.
@@ -722,25 +690,7 @@ class _FishingScreenState extends State<FishingScreen>
     final fishing = _controller.showFishingArt;
     final size = 84 * _river.scale;
     final hopping = island.hopProgress != null;
-    final angling = fishing && !hopping && !island.walking
-        ? _anglerPose(null, rowing: false)
-        : null;
-    final (action, frames, frame) = angling ??
-        (hopping
-            ? (
-                'jump',
-                framesJump,
-                (island.hopProgress! * framesJump)
-                    .floor()
-                    .clamp(0, framesJump - 1)
-              )
-            : island.walking
-                ? ('walk', framesWalk, (_river.clock * 10).floor() % framesWalk)
-                : (
-                    'idle',
-                    framesIdle,
-                    (_river.clock * 7).floor() % framesIdle
-                  ));
+    final (action, frames, frame) = _controller.player.pose;
     // The jump sheet already lifts the cat in its air frames.
     final sheetLift = hopping ? jumpSheetLift[frame] * size : 0.0;
     return Stack(children: [

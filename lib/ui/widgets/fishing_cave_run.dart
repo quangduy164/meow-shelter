@@ -106,7 +106,7 @@ class _FishingCaveRunState extends State<FishingCaveRun> {
           final catSize = 84 * scale;
           final screenCat =
               Offset((cave.cat.dx - camera) * scale, cave.cat.dy * scale);
-          final pose = _pose(cave);
+          final pose = cave.pose;
           final pad = MediaQuery.paddingOf(context);
           return PopScope(
               canPop: false,
@@ -191,31 +191,6 @@ class _FishingCaveRunState extends State<FishingCaveRun> {
 /// Sheet, frame and vertical correction for the cat. The jump sheet draws
 /// the cat higher in its air frames; [jumpSheetLift] cancels that so the feet
 /// follow the physics.
-(String, int, double) _pose(FishingCave cave) {
-  // Pit or crystal spike: the cat panics while it drops.
-  if (cave.state == CaveRunState.falling) {
-    return ('panic', (cave.clock * 8).floor() % framesPanic, 0);
-  }
-  // Double jump: a somersault through the curled frames 1-4 of the roll.
-  if (cave.spin > 0) {
-    final t = 1 - cave.spin / FishingCave.spinTime;
-    return ('roll', 1 + (t * 4).floor().clamp(0, 3), 0);
-  }
-  final airborne = !cave.grounded || cave.state == CaveRunState.falling;
-  if (airborne) {
-    final frame = cave.vy < -280
-        ? 1
-        : cave.vy < 280
-            ? 2
-            : 3;
-    return ('jump', frame, jumpSheetLift[frame]);
-  }
-  if (cave.landing > 0) return ('jump', 4, 0);
-  if (cave.state == CaveRunState.running) {
-    return ('run', (cave.clock * 10).floor() % framesRun, 0);
-  }
-  return ('idle', (cave.clock * 7).floor() % framesIdle, 0);
-}
 
 class _CavePainter extends CustomPainter {
   _CavePainter(this.cave, this.back, this.level, this.scale, this.camera);

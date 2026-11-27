@@ -1,3 +1,5 @@
+import '../game/constants.dart';
+import 'fishing_player.dart';
 import 'dart:math' as math;
 
 import 'package:flutter/painting.dart';
@@ -59,6 +61,18 @@ class FishingCabin {
     if (sleptFor < sleepFade + sleepHold) return 1;
     return (1 - (sleptFor - sleepFade - sleepHold) / sleepWake).clamp(0.0, 1.0);
   }
+
+  FishingPlayerPose get pose => sleeping
+      ? ('sleep', framesSleep, (clock * 3).floor() % framesSleep)
+      : hopping
+          ? (
+              'jump',
+              framesJump,
+              (hop * framesJump).floor().clamp(0, framesJump - 1)
+            )
+          : walking
+              ? ('walk', framesWalk, (clock * 10).floor() % framesWalk)
+              : ('idle', framesIdle, (clock * 7).floor() % framesIdle);
 
   int room = 0;
   bool chestRequested = false, bedRequested = false, sleeping = false;

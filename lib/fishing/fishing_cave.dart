@@ -1,3 +1,4 @@
+import '../game/constants.dart';
 import 'dart:convert';
 import 'dart:math' as math;
 import 'package:flutter/painting.dart';
@@ -137,6 +138,32 @@ class FishingCave {
     const Offset(6460, 220),
     const Offset(6760, 280),
   ];
+
+  (String, int, double) get pose {
+    // Pit or crystal spike: the cat panics while it drops.
+    if (state == CaveRunState.falling) {
+      return ('panic', (clock * 8).floor() % framesPanic, 0);
+    }
+    // Double jump: a somersault through the curled frames 1-4 of the roll.
+    if (spin > 0) {
+      final t = 1 - spin / FishingCave.spinTime;
+      return ('roll', 1 + (t * 4).floor().clamp(0, 3), 0);
+    }
+    final airborne = !grounded || state == CaveRunState.falling;
+    if (airborne) {
+      final frame = vy < -280
+          ? 1
+          : vy < 280
+              ? 2
+              : 3;
+      return ('jump', frame, jumpSheetLift[frame]);
+    }
+    if (landing > 0) return ('jump', 4, 0);
+    if (state == CaveRunState.running) {
+      return ('run', (clock * 10).floor() % framesRun, 0);
+    }
+    return ('idle', (clock * 7).floor() % framesIdle, 0);
+  }
 
   bool inside = false;
   CaveRunState state = CaveRunState.ready;

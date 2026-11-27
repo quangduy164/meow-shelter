@@ -1,3 +1,7 @@
+import '../game/cats/cat_breed.dart';
+import 'fishing_player.dart';
+import 'player_identity.dart';
+import '../game/constants.dart';
 import 'fishing_fight.dart';
 import 'fishing_activity.dart';
 import 'fishing_river.dart';
@@ -32,7 +36,11 @@ enum FishingPhase {
 
 class FishingController extends ChangeNotifier {
   FishingController(this.collection, {math.Random? random})
-      : _random = random ?? math.Random();
+      : _random = random ?? math.Random(),
+        identity = PlayerIdentity.load(collection.preferences) {
+    river = FishingRiverRound(localPlayer: FishingPlayerState(id: identity.id));
+    syncLocalPlayer();
+  }
 
   bool _preparingCast = false;
   bool get preparingCast => _preparingCast;
@@ -53,7 +61,14 @@ class FishingController extends ChangeNotifier {
 
   final FishCollection collection;
   final math.Random _random;
-  final river = FishingRiverRound();
+  final PlayerIdentity identity;
+  late final FishingRiverRound river;
+  FishingPlayerState get player => river.localPlayer;
+  void selectCat(String cat) {
+    player.cat = CatBreed.of(cat).id;
+    notifyListeners();
+  }
+
   final activities = FishingActivities();
   bool _activeWater = false, _shoreCastPending = false;
   FishFightMove? _soundMove;
@@ -70,13 +85,139 @@ class FishingController extends ChangeNotifier {
     return arrived;
   }
 
-  Offset get angler => river.island.ashore ? river.island.cat : river.boat;
+  Offset get angler =>
+      river.island.ashore ? river.island.cat : river.playerPosition(player);
   bool get shoreFishing => river.island.ashore;
   bool get showFishingArt =>
       active ||
       _phase == FishingPhase.caught ||
       (_phase == FishingPhase.lost && _elapsed < 2);
   FishingQuests get quests => FishingQuests.instance;
+
+  /// Same animation state used locally and by a future transport.
+  FishingPlayerPose? get fishingPose {
+    if (!showFishingArt) return null;
+    final elapsed = _elapsed;
+    return switch (_phase) {
+      FishingPhase.casting => (
+          'fish-cast',
+          framesFishCast,
+          (elapsed / .65 * framesFishCast).floor().clamp(0, framesFishCast - 1)
+        ),
+      FishingPhase.waiting => (
+          'fish-wait',
+          framesFishWait,
+          (river.clock * 5).floor() % framesFishWait
+        ),
+      // Yanked forward by the bite: the surprised reel frame.
+      FishingPhase.bite => ('fish-reel', framesFishReel, 2),
+      FishingPhase.reeling => (
+          'fish-reel',
+          framesFishReel,
+          _pulling ? (river.clock * 5).floor() % framesFishReel : 5
+        ),
+      FishingPhase.saving => ('fish-reel', framesFishReel, 5),
+      FishingPhase.caught => ('fish-hold', framesFishHold, holdFrame),
+      // The sulk plays briefly, then the normal idle/walk pose resumes.
+      FishingPhase.lost => (
+          'drop-wrong',
+          framesDropWrong,
+          (elapsed * 8).floor().clamp(0, framesDropWrong - 1)
+        ),
+      FishingPhase.ready => null,
+    };
+  }
+
+  int get holdFrame => _elapsed < 1 ? 0 : 1 + ((_elapsed - 1) * 3).floor() % 2;
+
+  bool _wasAway = false;
+  void syncLocalPlayer() {
+    final island = river.island;
+    final cabin = river.cabin;
+    final cave = river.cave;
+    final away = island.ashore || cabin.inside || cave.inside;
+    if (away) {
+      river.crew.leave(player.id);
+    } else if (_wasAway) {
+      river.crew.board(player);
+    }
+    _wasAway = away;
+    if (cabin.inside) {
+      player
+        ..location = cabin.room == 0
+            ? FishingPlayerLocation.cabin
+            : FishingPlayerLocation.bedroom
+        ..position = cabin.cat
+        ..facingRight = cabin.facingRight
+        ..pose = cabin.pose;
+      return;
+    }
+    if (cave.inside) {
+      final pose = cave.pose;
+      player
+        ..location = FishingPlayerLocation.parkour
+        ..position = cave.cat
+        ..facingRight = true
+        ..pose = (
+          pose.$1,
+          switch (pose.$1) {
+            'panic' => framesPanic,
+            'roll' => framesRoll,
+            'jump' => framesJump,
+            'run' => framesRun,
+            _ => framesIdle,
+          },
+          pose.$2
+        );
+      return;
+    }
+    final fishing = fishingPose;
+    river.catFacingRight = river.localDrives
+        ? (fishing != null ? spot.dx >= angler.dx : river.heading.dx >= 0)
+        : river.crew.driver?.facingRight;
+    final rowing = river.localDrives &&
+        river.moving &&
+        fishing == null &&
+        river.boatStyle != FishingBoat.swan;
+    player
+      ..location = island.ashore
+          ? FishingPlayerLocation.land
+          : FishingPlayerLocation.water
+      ..position = angler
+      ..facingRight = fishing != null
+          ? spot.dx >= angler.dx
+          : island.ashore
+              ? island.facingRight
+              : river.boatFacingRight
+      ..pose = island.ashore && island.hopProgress != null
+          ? (
+              'jump',
+              framesJump,
+              (island.hopProgress! * framesJump)
+                  .floor()
+                  .clamp(0, framesJump - 1)
+            )
+          : island.ashore && island.walking
+              ? ('walk', framesWalk, (river.clock * 10).floor() % framesWalk)
+              : fishing ??
+                  (rowing
+                      ? (
+                          'row',
+                          framesRow,
+                          rowingFrame((river.clock / 1.65) % 1)
+                        )
+                      : (
+                          'idle',
+                          framesIdle,
+                          (river.clock * 7).floor() % framesIdle
+                        ));
+  }
+
+  @override
+  void notifyListeners() {
+    syncLocalPlayer();
+    super.notifyListeners();
+  }
 
   /// Where the current cast was made from; quests use its region.
   Offset _castFrom = Offset.zero;
@@ -233,6 +374,7 @@ class FishingController extends ChangeNotifier {
     if (_phase == FishingPhase.saving || _phase == FishingPhase.caught) return;
     if (river.cabin.inside || river.cave.inside) return;
     if (_preparingCast) return;
+    if (!river.island.ashore && !river.localDrives) return;
     final point = river.toWorld(screen);
     river.cabin.pending = false;
     final island = river.island;
@@ -338,10 +480,12 @@ class FishingController extends ChangeNotifier {
     if (_phase == FishingPhase.reeling) river.steer(delta);
   }
 
-  void stopSteering() => river.steering = Offset.zero;
+  void stopSteering() {
+    if (river.localDrives) river.steering = Offset.zero;
+  }
 
   void cancelNavigation() {
-    river.stop();
+    if (river.localDrives) river.stop();
   }
 
   void cancelCast() {
@@ -457,7 +601,7 @@ class FishingController extends ChangeNotifier {
     if (sound != null) GameAudio.instance.play(sound);
     _phase = phase;
     _soundMove = null;
-    if (phase != FishingPhase.reeling) {
+    if (phase != FishingPhase.reeling && river.localDrives) {
       river.chasing = false;
       stopSteering();
     }
@@ -516,6 +660,7 @@ class FishingController extends ChangeNotifier {
         final orbitControlled = behavior.move == FishFightMove.orbit &&
             (shoreFishing || steeringError < 15);
         if (!shoreFishing &&
+            river.localDrives &&
             river.chase(dt, _fish, _elapsed, _surge,
                 pulling: _pulling,
                 beginner: beginner,
@@ -704,7 +849,7 @@ class FishingController extends ChangeNotifier {
     final location = angler;
     _castFrom = location;
     final direction = river.heading.dx >= 0 ? 1.0 : -1.0;
-    river.stop();
+    if (river.localDrives) river.stop();
     _spot = shoreFishing
         ? river.island.fishingWater(location)
         : river.castPoint(location, direction);
@@ -776,7 +921,7 @@ class FishingController extends ChangeNotifier {
       _tension = .32;
       _progress = beginner ? .25 : .16;
       _hookProgress = _progress;
-      if (!shoreFishing) river.beginFight(_spot);
+      if (!shoreFishing && river.localDrives) river.beginFight(_spot);
       _setPhase(FishingPhase.reeling);
       _vibrate(HapticFeedback.mediumImpact);
     } else if (_phase == FishingPhase.waiting) {

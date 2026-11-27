@@ -23,17 +23,7 @@ class _FishingCabinRoomState extends State<FishingCabinRoom> {
   Widget _cat(Offset point, double size, double scale) {
     final round = widget.round;
     final clock = round.clock;
-    final (action, frames, frame) = round.sleeping
-        ? ('sleep', framesSleep, (clock * 3).floor() % framesSleep)
-        : round.hopping
-            ? (
-                'jump',
-                framesJump,
-                (round.hop * framesJump).floor().clamp(0, framesJump - 1)
-              )
-            : round.walking
-                ? ('walk', framesWalk, (clock * 10).floor() % framesWalk)
-                : ('idle', framesIdle, (clock * 7).floor() % framesIdle);
+    final (action, frames, frame) = round.pose;
     // A small arc for the hop; the jump sheet already lifts its air frames.
     final lift = round.hopping
         ? math.sin(round.hop * math.pi) * 38 * scale -

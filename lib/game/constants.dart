@@ -54,3 +54,10 @@ const int framesVanish = 6;
 const double animationStepTime = 0.12;
 const double vanishStepTime = 0.22;
 const double sleepStepTime = 0.32;
+
+/// Sprite frame at a normalized rowing stroke; shared by paws and oar art.
+int rowingFrame(double cycle) => cycle < .18
+    ? 0
+    : cycle < .65
+        ? 1 + ((cycle - .18) / .47 * 3).floor().clamp(0, 2)
+        : 4 + ((cycle - .65) / .35 * 2).floor().clamp(0, 1);

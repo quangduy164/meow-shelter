@@ -1,3 +1,7 @@
+import 'dart:async';
+
+import 'fishing/player_identity.dart';
+import 'online/firebase_session.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter/services.dart';
 import 'audio/game_audio.dart';
@@ -11,6 +15,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   final preferences = await SharedPreferences.getInstance();
+  unawaited(PlayerIdentity.load(preferences).saved);
   FishCollection.instance = FishCollection(preferences);
   CampState.instance = CampState(preferences);
   GameAudio.instance.initialize(preferences);
@@ -32,4 +37,6 @@ Future<void> main() async {
     builder: (context, child) => UiScaleBox(child: child!),
     home: const HomeScreen(),
   ));
+  // Guest sign-in runs in the background; Home never waits for the network.
+  unawaited(FirebaseSession.instance.connect());
 }

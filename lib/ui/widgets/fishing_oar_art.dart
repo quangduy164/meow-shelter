@@ -1,3 +1,4 @@
+import '../../game/constants.dart';
 import 'dart:math' as math;
 import 'package:flutter/painting.dart';
 
@@ -53,11 +54,7 @@ class FishingOarPose {
 
   /// Row sheet frame for this point of the stroke: lean in at the catch,
   /// pull back through the drive, come forward on the recovery.
-  int get rowFrame => cycle < .18
-      ? 0
-      : cycle < .65
-          ? 1 + ((cycle - .18) / .47 * 3).floor().clamp(0, 2)
-          : 4 + ((cycle - .65) / .35 * 2).floor().clamp(0, 1);
+  int get rowFrame => rowingFrame(cycle);
   late final double lean;
   late double wet;
 }

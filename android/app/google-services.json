@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "149294632616",
+    "project_id": "meow-shelter-428db",
+    "storage_bucket": "meow-shelter-428db.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:149294632616:android:1010c3c4fadb4205783c9d",
+        "android_client_info": {
+          "package_name": "com.doron.meowshelter"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAy7JBioQBGUIJLmcPSBUIn75OlMMIjoD8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
