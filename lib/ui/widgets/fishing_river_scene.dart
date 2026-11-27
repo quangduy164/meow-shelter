@@ -1,6 +1,6 @@
+import 'dart:async';
 import 'dart:math' as math;
 import 'dart:ui' as ui;
-import 'package:flutter/scheduler.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../../fishing/fishing_river.dart';
@@ -25,53 +25,23 @@ import '../../fishing/fishing_boat.dart';
 /// Like Adventure's cached background: only the visible stretch is replayed.
 class FishingRiverBackdrop extends StatefulWidget {
   const FishingRiverBackdrop(
-      {super.key, required this.round, required this.frames});
+      {super.key, required this.round, required this.frames, this.landscape});
   final FishingRiverRound round;
   final Listenable frames;
+  final FishingLandscapeCache? landscape;
 
   @override
   State<FishingRiverBackdrop> createState() => _FishingRiverBackdropState();
 }
 
 class _FishingRiverBackdropState extends State<FishingRiverBackdrop> {
-  /// Landscape chunks are recorded on demand (visible ones at once, their
-  /// neighbours when the app is idle) instead of all seven on entry, and
-  /// chunks far from the camera are released. Recording is deterministic,
-  /// so a chunk recorded again draws exactly the same.
-  final _pictures = List<ui.Picture?>.filled(FishingRiver.sectionCount, null);
-  late final _tiles = _BackdropTiles(_section, _visibleSections);
-  bool _idleQueued = false, _disposed = false;
-
-  ui.Picture _section(int i) => _pictures[i] ??= recordFishingRiver(i);
-
-  void _visibleSections(int first, int last) {
-    for (var i = 0; i < _pictures.length; i++) {
-      if (i < first - 2 || i > last + 2) {
-        _pictures[i]?.dispose();
-        _pictures[i] = null;
-      }
-    }
-    if (_idleQueued) return;
-    final wanted = [
-      for (final i in [first - 1, last + 1])
-        if (i >= 0 && i < _pictures.length && _pictures[i] == null) i
-    ];
-    if (wanted.isEmpty) return;
-    _idleQueued = true;
-    SchedulerBinding.instance.scheduleTask(() {
-      _idleQueued = false;
-      if (_disposed) return;
-      _section(wanted.first);
-    }, Priority.idle);
-  }
+  late final _landscape = widget.landscape ?? FishingLandscapeCache();
+  late final _tiles = _BackdropTiles(_landscape.section, (_, __) {});
 
   @override
   void dispose() {
-    _disposed = true;
     _tiles.dispose();
-    for (final picture in _pictures) {
-      picture?.dispose();
-    }
+    if (widget.landscape == null) _landscape.dispose();
     super.dispose();
   }
 
@@ -79,6 +49,36 @@ class _FishingRiverBackdropState extends State<FishingRiverBackdrop> {
   Widget build(BuildContext context) => CustomPaint(
       painter: _RiverBackdropPainter(widget.round, _tiles, widget.frames,
           MediaQuery.devicePixelRatioOf(context)));
+}
+
+/// Session-owned static scenery, prepared while the cat-selection loader is up.
+/// Keep all seven recordings so crossing a biome never records art in paint.
+class FishingLandscapeCache {
+  final _pictures = <int, ui.Picture>{};
+  bool _disposed = false;
+  Future<void>? _warming;
+
+  int get bytes =>
+      _pictures.values.fold(0, (n, p) => n + p.approximateBytesUsed);
+  ui.Picture section(int i) => _pictures[i] ??= recordFishingRiver(i);
+
+  Future<void> warm() => _warming ??= _warm();
+  Future<void> _warm() async {
+    for (var i = 0; i < FishingRiver.sectionCount; i++) {
+      // Give the loading animation and input an event-loop turn between regions.
+      await Future<void>.delayed(const Duration(milliseconds: 1));
+      if (_disposed) return;
+      section(i);
+    }
+  }
+
+  void dispose() {
+    _disposed = true;
+    for (final picture in _pictures.values) {
+      picture.dispose();
+    }
+    _pictures.clear();
+  }
 }
 
 /// Rasterised backdrop tiles. Replaying the recorded chunks costs tens of
@@ -96,7 +96,7 @@ class _BackdropTiles {
 
   /// World size of a level-0 tile and its pixel density.
   static const tileWorld = 256.0, baseRes = 2.0, pad = 2;
-  static const maxTiles = 40, newPerFrame = 6;
+  static const maxTiles = 40, newPerFrame = 2;
   final _cache = <int, ui.Image>{};
   final _imagePaint = Paint()..filterQuality = FilterQuality.low;
 
@@ -141,6 +141,8 @@ class _BackdropTiles {
     final size = tileWorld * (1 << level);
     const px = tileWorld * baseRes;
     var budget = newPerFrame;
+    final missing = Path();
+    var hasMissing = false;
     for (var ty = (view.top / size).floor(); ty * size < view.bottom; ty++) {
       if (ty < 0 || ty * size >= FishingRiver.height) continue;
       for (var tx = (view.left / size).floor(); tx * size < view.right; tx++) {
@@ -153,18 +155,8 @@ class _BackdropTiles {
           image = _render(level, tx, ty);
         }
         if (image == null) {
-          // Not rasterised yet this frame: replay the chunk just here.
-          canvas.save();
-          canvas.clipRect(dst);
-          for (var i = 0; i < FishingRiver.sectionCount; i++) {
-            final start = i * FishingRiver.sectionLength;
-            if (start > dst.right ||
-                start + FishingRiver.sectionLength < dst.left) {
-              continue;
-            }
-            canvas.drawPicture(section(i));
-          }
-          canvas.restore();
+          missing.addRect(dst);
+          hasMissing = true;
           continue;
         }
         _cache[key] = image;
@@ -174,6 +166,20 @@ class _BackdropTiles {
             dst,
             _imagePaint);
       }
+    }
+    // Replay the remaining scenery once instead of repeating its layers per tile.
+    if (hasMissing) {
+      canvas.save();
+      canvas.clipPath(missing, doAntiAlias: false);
+      for (var i = 0; i < FishingRiver.sectionCount; i++) {
+        final start = i * FishingRiver.sectionLength;
+        if (start > view.right ||
+            start + FishingRiver.sectionLength < view.left) {
+          continue;
+        }
+        canvas.drawPicture(section(i));
+      }
+      canvas.restore();
     }
     while (_cache.length > maxTiles) {
       final oldest = _cache.keys.first;

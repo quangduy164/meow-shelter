@@ -34,31 +34,51 @@ class GamePanel extends StatelessWidget {
       );
 }
 
-/// Shared modal shell; it never adds a hidden scroll view or scales controls.
+/// Shared modal shell. Forms opt into scrolling and can pin their header.
+/// Dialog owns keyboard insets; children use the remaining layout constraints.
 class GameDialog extends StatelessWidget {
   const GameDialog({
     super.key,
     required this.child,
     this.maxWidth = DS.dialogWidth,
+    this.scrollable = false,
+    this.header,
     this.padding = const EdgeInsets.all(DS.spaceLg),
     this.insetPadding = const EdgeInsets.all(DS.spaceLg),
   });
 
   final Widget child;
   final double maxWidth;
+  final bool scrollable;
+  final Widget? header;
   final EdgeInsetsGeometry padding;
   final EdgeInsets insetPadding;
 
   @override
-  Widget build(BuildContext context) => Dialog(
-        insetPadding: insetPadding,
+  Widget build(BuildContext context) {
+    final keyboard = MediaQuery.viewInsetsOf(context).bottom > 0;
+    EdgeInsets compact(EdgeInsets insets) => !keyboard
+        ? insets
+        : insets.copyWith(
+            top: insets.top.clamp(0, DS.spaceSm).toDouble(),
+            bottom: insets.bottom.clamp(0, DS.spaceSm).toDouble());
+    final body = scrollable ? SingleChildScrollView(child: child) : child;
+    return Dialog(
+        insetPadding: compact(insetPadding),
         backgroundColor: DS.cream,
         shape: DS.dialogShape,
         child: ConstrainedBox(
           constraints: BoxConstraints(maxWidth: maxWidth),
-          child: Padding(padding: padding, child: child),
-        ),
-      );
+          child: Padding(
+              padding: compact(padding.resolve(Directionality.of(context))),
+              child: header == null
+                  ? body
+                  : Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [header!, Flexible(child: body)])),
+        ));
+  }
 }
 
 class GameDialogHeader extends StatelessWidget {

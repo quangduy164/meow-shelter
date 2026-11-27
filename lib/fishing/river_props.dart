@@ -43,8 +43,18 @@ class RiverProp {
       kind == RiverPropKind.baitHouse;
 
   /// Solid reach toward [p]; the island follows its coastline.
-  double reachTowards(Offset p) =>
-      kind == RiverPropKind.island ? fishingSeaIsland.radiusTowards(p) : radius;
+  double reachTowards(Offset p) {
+    if (kind == RiverPropKind.island) return fishingSeaIsland.radiusTowards(p);
+    final depth = switch (kind) {
+      RiverPropKind.market => FishingMarket.waterDepth,
+      RiverPropKind.shrine => FishingShrine.waterDepth,
+      RiverPropKind.baitHouse => FishingBaitHouse.waterDepth,
+      RiverPropKind.cabinShip => FishingCabin.waterDepth,
+      _ => radius,
+    };
+    return FishingRiver.structureReach(p - anchor, radius, depth);
+  }
+
   static Offset waterPoint(Offset p) {
     final x = p.dx.clamp(55.0, FishingRiver.length - 55);
     return Offset(
@@ -238,9 +248,20 @@ class RiverProps {
     final delta = b - a;
     final length2 = delta.distanceSquared;
     final count = math.max(1, (delta.distance / 8).ceil());
+    final corridor = Rect.fromPoints(a, b);
     for (final rock in rocks) {
-      if (rock.kind == RiverPropKind.island) {
-        // The coastline bulges and dips, so sample the whole segment.
+      if (rock.kind != RiverPropKind.island &&
+          !corridor
+              .inflate(rock.radius + boatRadius + 4)
+              .contains(rock.anchor)) {
+        continue;
+      }
+      if (rock.kind == RiverPropKind.island ||
+          rock.kind == RiverPropKind.market ||
+          rock.kind == RiverPropKind.shrine ||
+          rock.kind == RiverPropKind.baitHouse ||
+          rock.kind == RiverPropKind.cabinShip) {
+        // Directional footprints need a swept check, not a circular closest point.
         for (var i = 0; i <= count; i++) {
           final p = Offset.lerp(a, b, i / count)!;
           if ((p - rock.anchor).distance <

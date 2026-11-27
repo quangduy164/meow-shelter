@@ -40,7 +40,9 @@ Keep local overrides limited to layout and meaningful domain colours.
 Paths in this table are relative to `lib/ui/`. Components own appearance and
 input feedback; screens own layout, navigation and scrolling. `GameDialog`
 does not add scrolling automatically: short settings fit directly, while
-collections use an explicitly constrained scrollable body.
+collections use an explicitly constrained scrollable body. Input forms use
+`scrollable: true` and `header: GameDialogHeader(...)` to keep the close
+button visible while the form scrolls. Do not nest another scroll view.
 
 ```dart
 showGameDialog<void>(
@@ -362,3 +364,20 @@ Home now uses a two-column, three-row mode grid with 168x88 tiles to fit the
 Its Flame field uses the shared joystick; intro and result use DS cards and
 buttons. The HUD shows delivered cats, current chain, score and remaining
 lives. Cat art comes from the existing idle/walk sprite sheets.
+
+### Keyboard and text-input dialogs
+
+- Use `showGameDialog` and `GameDialog`. The shell uses Flutter's keyboard
+  insets once and reduces vertical padding/margins to at most 8 design units
+  while the keyboard is open. Never subtract the keyboard height again inside.
+- Basic forms opt into `scrollable: true` with a pinned `header`. Custom layouts
+  such as the fishing room may stay non-scrolling when their controls fit the
+  available constraints; remove previews and decorative headings first.
+- Keep controllers/focus nodes in widget state and dispose them. Keep each input
+  in the same keyed subtree as layouts adapt; never swap a focused field between
+  separate Row/Column branches or toggle scroll wrappers with keyboard visibility.
+- Game-screen Scaffolds hosting input dialogs set `resizeToAvoidBottomInset: false`
+  so the map and background panels keep their size. The modal handles the keyboard.
+- Verify focus, selection/text persistence, typing, Done, save/cancel and close
+  accessibility through opening/closing the keyboard. Exercise small landscape
+  screens, both partial and full keyboard insets, and the app's `UiScaleBox`.

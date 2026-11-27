@@ -63,6 +63,7 @@ class FishingBoatHouse {
 
   /// Where the cat stands to use the boathouse: at the foot of the slipway.
   static Offset get door => base + const Offset(-24, 30);
+  static Offset get mooring => Offset(x, FishingRiver.bottom(x) - 34);
 
   /// Close enough to the boathouse to pick a boat, on foot or by boat.
   static const reach = 110.0;

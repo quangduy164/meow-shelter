@@ -28,6 +28,10 @@ class FishingRemotePlayers extends StatelessWidget {
             view.contains(peer.position))
           _cat(peer, scale),
         if (view.contains(peer.boatPosition)) _boat(peer, true, scale),
+        if ((peer.target.location == FishingPlayerLocation.water ||
+                peer.target.location == FishingPlayerLocation.land) &&
+            view.contains(peer.position))
+          _name(peer, scale),
       ],
     ]));
   }
@@ -36,7 +40,7 @@ class FishingRemotePlayers extends StatelessWidget {
     final p = round.toScreen(peer.position);
     final land = peer.target.location == FishingPlayerLocation.land;
     final size = (land ? 84 : 114) * scale;
-    final pose = peer.target.pose;
+    final pose = peer.pose;
     final lift =
         !land && peer.target.boat == FishingBoat.swan && pose.$1 == 'idle'
             ? 10 * scale
@@ -52,6 +56,33 @@ class FishingRemotePlayers extends StatelessWidget {
             frames: pose.$2,
             frame: pose.$3,
             flip: !peer.target.facingRight));
+  }
+
+  Widget _name(FishingPeer peer, double scale) {
+    final p = round.toScreen(peer.position);
+    final land = peer.target.location == FishingPlayerLocation.land;
+    final lift = !land &&
+            peer.target.boat == FishingBoat.swan &&
+            peer.target.pose.$1 == 'idle'
+        ? 10 * scale
+        : 0.0;
+    return Positioned(
+        left: p.dx - 75,
+        top: p.dy - (land ? 84 * .78 : 114 * .69) * scale - lift - 24,
+        width: 150,
+        child: Center(
+            child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                    color: const Color(0xAA24373D),
+                    borderRadius: BorderRadius.circular(8)),
+                child: Text(peer.target.displayName,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600)))));
   }
 
   Widget _boat(FishingPeer peer, bool front, double scale) {

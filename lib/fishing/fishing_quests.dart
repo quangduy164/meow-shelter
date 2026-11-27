@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
@@ -11,7 +12,7 @@ import 'fishing_market.dart';
 import 'fishing_river.dart';
 import 'fishing_shrine.dart';
 
-/// Main fishing storyline: nine steps leading to the Sea Cave shrine.
+/// Main fishing storyline: steps leading to the Sea Cave shrine.
 /// Each step teaches one system on the way. Add a step by adding a row
 /// here and a rule in [FishingQuests.onCatch] / [FishingQuests._doneByState].
 enum FishingQuest {
@@ -20,12 +21,9 @@ enum FishingQuest {
       coins: 10),
   bambooRare(
       'Câu 1 cá hiếm ở Sông tre',
-      'Chèo tiếp đến Sông tre. Cá trê, koi và cá vàng ở đây. Nhận mồi để thử săn Nessie.',
+      'Chèo tới Sông tre, thử câu cá trê, koi hoặc cá vàng rồi tiếp tục khám phá.',
       1,
       coins: 15,
-      bait: 1),
-  nessie('Câu được Mèo Nessie',
-      'Ở lại Sông tre, bật mồi huyền thoại vừa nhận để thử săn Nessie.', 1,
       bait: 1),
   activeWater(
       'Câu ở chỗ nước có cá động',
@@ -38,6 +36,14 @@ enum FishingQuest {
   findShrine('Tìm đền trong Hang biển',
       'Hang nằm ở bờ trên Vịnh đá. Chèo vào cửa hang.', 1,
       coins: 20),
+  exploreWorld(
+      'Khám phá đủ 7 vùng',
+      'Ghé đủ các vùng trên bản đồ, gồm cả Hang biển và Biển rộng. Sau đó bắt đầu tìm 3 cá huyền thoại để hiến tế.',
+      7,
+      coins: 20),
+  nessie('Câu được Mèo Nessie',
+      'Trở lại Sông tre, dùng mồi huyền thoại để tìm Mèo Nessie.', 1,
+      bait: 1),
   moonfish(
       'Câu cá nguyệt quang',
       'Chỉ cắn câu từ 18:00 đến trước 06:00 trong Hang biển. Xem giờ trên bản đồ; ban ngày có thể bán cá, khám phá đảo hoặc chơi parkour trong lúc chờ tối.',
@@ -78,22 +84,47 @@ class FishingQuests extends ChangeNotifier {
     if (saved != null) {
       try {
         final data = jsonDecode(saved) as Map<String, dynamic>;
-        _completed.addAll((data['done'] as List)
-            .cast<String>()
-            .where((name) => FishingQuest.values.any((q) => q.name == name)));
-        _progress = (data['progress'] as int).clamp(0, 3);
+        _completed.addAll((data['done'] as List).cast<String>().where(_known));
+        final counts = data['counts'];
+        if (counts is Map) {
+          for (final e in counts.entries) {
+            if (e.key is String && _known(e.key) && e.value is int) {
+              _counts[e.key as String] = (e.value as int).clamp(0, 7);
+            }
+          }
+        }
+        _visited.addAll((data['visited'] as List? ?? [])
+            .whereType<String>()
+            .where((name) => FishingRegion.values.any((r) => r.name == name)));
+        _reached.addAll(
+            (data['reached'] as List? ?? []).whereType<String>().where(_known));
       } catch (error) {
         debugPrint('FishingQuests: unreadable progress ($error)');
         preferences.setString('${_key}_broken', saved);
-        _loadLegacy();
+        _completed.clear();
+        _counts.clear();
+        _visited.clear();
+        _reached.clear();
+        _loadPrevious();
       }
     } else {
-      _loadLegacy();
+      _loadPrevious();
     }
     _findCurrent();
   }
 
-  static const _key = 'fishing_quests_v2';
+  static const _key = 'fishing_quests_v3';
+  static const _v2Order = [
+    'villageFish',
+    'bambooRare',
+    'nessie',
+    'activeWater',
+    'sell',
+    'findShrine',
+    'moonfish',
+    'seaDragon',
+    'shrine'
+  ];
   // v1 saved the index in this original order, rather than quest names.
   static const _legacyOrder = [
     'villageFish',
@@ -107,17 +138,83 @@ class FishingQuests extends ChangeNotifier {
     'shrine',
   ];
   final Set<String> _completed = {};
+  final Map<String, int> _counts = {};
+  final Set<String> _visited = {}, _reached = {};
+  static bool _known(String name) =>
+      FishingQuest.values.any((q) => q.name == name);
+
+  void _loadPrevious() {
+    final v2 = preferences.getString('fishing_quests_v2');
+    if (v2 != null) {
+      try {
+        final data = jsonDecode(v2) as Map<String, dynamic>;
+        _completed.addAll((data['done'] as List).cast<String>().where(_known));
+        final active =
+            _v2Order.where((name) => !_completed.contains(name)).firstOrNull;
+        if (active != null) {
+          _counts[active] = (data['progress'] as int).clamp(0, 3);
+        }
+      } catch (e) {
+        debugPrint('FishingQuests: unreadable v2 ($e)');
+        _loadLegacy();
+      }
+    } else {
+      _loadLegacy();
+    }
+    // Old completed steps prove these visits without resetting existing saves.
+    for (final (quest, region) in [
+      (FishingQuest.villageFish, FishingRegion.village),
+      (FishingQuest.bambooRare, FishingRegion.bamboo),
+      (FishingQuest.nessie, FishingRegion.bamboo),
+      (FishingQuest.sell, FishingRegion.coast),
+      (FishingQuest.findShrine, FishingRegion.cave),
+      (FishingQuest.seaDragon, FishingRegion.openSea),
+    ]) {
+      if (isCompleted(quest)) _visited.add(region.name);
+    }
+    if (isCompleted(FishingQuest.shrine)) {
+      _visited.addAll(FishingRegion.values.map((r) => r.name));
+      _completed.add(FishingQuest.exploreWorld.name);
+    }
+  }
+
   void _loadLegacy() {
     _completed.clear();
+    _counts.clear();
     final saved = preferences.getStringList('fishing_quests_v1');
     final index = (int.tryParse(saved?.elementAtOrNull(0) ?? '') ?? 0)
         .clamp(0, _legacyOrder.length);
     _completed.addAll(_legacyOrder.take(index));
-    _progress = index < _legacyOrder.length &&
-            _legacyOrder[index] ==
-                FishingQuest.values.firstWhere((q) => !isCompleted(q)).name
-        ? (int.tryParse(saved?.elementAtOrNull(1) ?? '') ?? 0).clamp(0, 3)
-        : 0;
+    if (index < _legacyOrder.length) {
+      _counts[_legacyOrder[index]] =
+          (int.tryParse(saved?.elementAtOrNull(1) ?? '') ?? 0).clamp(0, 3);
+    }
+  }
+
+  static const explorationOrder = [
+    FishingRegion.village,
+    FishingRegion.bamboo,
+    FishingRegion.mangrove,
+    FishingRegion.coast,
+    FishingRegion.rockyBay,
+    FishingRegion.cave,
+    FishingRegion.openSea
+  ];
+  bool hasVisited(FishingRegion region) => _visited.contains(region.name);
+  bool get explorationComplete => explorationOrder.every(hasVisited);
+  static Offset regionTarget(FishingRegion r) => r == FishingRegion.cave
+      ? FishingShrine.center
+      : Offset(
+          (r.start + r.end) / 2, FishingRiver.bayCenter((r.start + r.end) / 2));
+
+  /// A destination disappears after reaching it, even if a catch/sale remains.
+  Offset? get navigationTarget {
+    final q = current;
+    if (q == FishingQuest.exploreWorld) {
+      final next = explorationOrder.where((r) => !hasVisited(r)).firstOrNull;
+      return next == null ? null : regionTarget(next);
+    }
+    return q == null || _reached.contains(q.name) ? null : q.target;
   }
 
   void _findCurrent() {
@@ -139,7 +236,7 @@ class FishingQuests extends ChangeNotifier {
     return _instance!;
   }
 
-  int _index = 0, _progress = 0;
+  int _index = 0;
   int get index => _index;
   bool get allDone => _index >= FishingQuest.values.length;
   FishingQuest? get current => allDone ? null : FishingQuest.values[_index];
@@ -147,14 +244,22 @@ class FishingQuests extends ChangeNotifier {
   /// Progress toward [current]; the shrine step reads offerings directly.
   int get progress => current == FishingQuest.shrine
       ? FishCollection.instance.shrineOfferings
-      : _progress;
+      : current == FishingQuest.exploreWorld
+          ? _visited.length
+          : _counts[current?.name] ?? 0;
 
   /// Last finished step, for a short "done" toast. Cleared by the UI.
   FishingQuest? justDone;
 
   Future<void> _save() async {
     final ok = await preferences.setString(
-        _key, jsonEncode({'done': _completed.toList(), 'progress': _progress}));
+        _key,
+        jsonEncode({
+          'done': _completed.toList(),
+          'counts': _counts,
+          'visited': _visited.toList(),
+          'reached': _reached.toList()
+        }));
     if (!ok) debugPrint('FishingQuests: could not save progress');
   }
 
@@ -171,7 +276,7 @@ class FishingQuests extends ChangeNotifier {
       if (!paid) return false;
       _completed.add(quest.name);
       _findCurrent();
-      _progress = 0;
+      _counts.remove(quest.name);
       justDone = quest;
       await _save();
       return true;
@@ -182,8 +287,8 @@ class FishingQuests extends ChangeNotifier {
 
   Future<void> _advance(FishingQuest step, [int by = 1]) async {
     if (_completing || current != step) return;
-    _progress += by;
-    if (_progress >= step.goal) {
+    _counts[step.name] = (_counts[step.name] ?? 0) + by;
+    if (_counts[step.name]! >= step.goal) {
       if (await _complete()) await sync();
     } else {
       await _save();
@@ -211,7 +316,9 @@ class FishingQuests extends ChangeNotifier {
       FishingQuest.bambooRare =>
         caught(FishSpecies.koi) || caught(FishSpecies.goldfish),
       FishingQuest.nessie => caught(FishSpecies.catMew),
-      FishingQuest.findShrine => c.shrineOfferings > 0,
+      FishingQuest.findShrine =>
+        _reached.contains(q.name) || c.shrineOfferings > 0,
+      FishingQuest.exploreWorld => explorationComplete,
       FishingQuest.moonfish => caught(FishSpecies.moonfish),
       FishingQuest.seaDragon => caught(FishSpecies.seaDragon),
       FishingQuest.shrine => c.shrineOfferings >= FishingShrine.requiredFish,
@@ -246,11 +353,23 @@ class FishingQuests extends ChangeNotifier {
     if (count > 0) await _advance(FishingQuest.sell);
   }
 
-  /// Called with the boat position; cheap unless the step is "find".
+  /// Remember visits regardless of the active quest; never erase them on departure.
   void onBoatAt(Offset boat) {
-    if (current == FishingQuest.findShrine &&
-        (boat - FishingShrine.center).distance < 520) {
-      _advance(FishingQuest.findShrine);
+    var changed = _visited.add(FishingRiver.regionAt(boat.dx, y: boat.dy).name);
+    final q = current;
+    final target = q?.target;
+    if (q != null && target != null && !_reached.contains(q.name)) {
+      final caveTarget = q == FishingQuest.findShrine ||
+          q == FishingQuest.moonfish ||
+          q == FishingQuest.shrine;
+      if ((boat - target).distance < 520 &&
+          (!caveTarget || FishingRiver.inCave(boat))) {
+        changed = _reached.add(q.name) || changed;
+      }
+    }
+    if (changed) {
+      unawaited(_save());
+      unawaited(sync());
     }
   }
 }

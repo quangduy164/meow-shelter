@@ -81,9 +81,15 @@ void paintRodPreview(Canvas c, Size size, FishingRod rod) {
   c.scale(size.width / 100, size.height / 100);
   final bamboo = rod == FishingRod.bamboo;
   final lantern = rod == FishingRod.lantern;
+  const base = Offset(22, 86), control = Offset(43, 12), tip = Offset(77, 17);
+  final along = (control - base) / (control - base).distance;
+  final neck = bamboo ? base : base + along * 22;
+  Offset point(double t) =>
+      neck * ((1 - t) * (1 - t)) + control * (2 * (1 - t) * t) + tip * (t * t);
+  Offset tangent(double t) => (control - neck) * (1 - t) + (tip - control) * t;
   final shaft = Path()
-    ..moveTo(22, 86)
-    ..quadraticBezierTo(43, 12, 77, 17);
+    ..moveTo(neck.dx, neck.dy)
+    ..quadraticBezierTo(control.dx, control.dy, tip.dx, tip.dy);
   c.drawPath(
       shaft,
       strokePaint(
@@ -104,30 +110,27 @@ void paintRodPreview(Canvas c, Size size, FishingRod rod) {
           2.5));
   if (bamboo) {
     for (final t in [.2, .4, .6, .8]) {
-      final p = const Offset(22, 86) * ((1 - t) * (1 - t)) +
-          const Offset(43, 12) * (2 * (1 - t) * t) +
-          const Offset(77, 17) * (t * t);
+      final p = point(t);
       c.drawLine(p + const Offset(-3, -1), p + const Offset(3, 1),
           strokePaint(0xFF27683A, 2));
     }
   } else {
-    c.drawCircle(const Offset(31, 70), 10, fillPaint(0xFF3D6760));
-    c.drawCircle(const Offset(31, 70), 6, fillPaint(0xFFDCC38B));
+    final mount = base + along * 13;
+    final reel = mount + Offset(-along.dy, along.dx) * 9;
+    c.drawLine(mount, reel, strokePaint(0xFF3D6760, 3));
+    c.drawCircle(reel, 8, fillPaint(0xFF3D6760));
+    c.drawCircle(reel, 5, fillPaint(0xFFDCC38B));
   }
   if (bamboo) {
     for (final (t, side) in const [(.46, 1.0), (.73, -1.0)]) {
-      final p = const Offset(22, 86) * ((1 - t) * (1 - t)) +
-          const Offset(43, 12) * (2 * (1 - t) * t) +
-          const Offset(77, 17) * (t * t);
-      final direction =
-          const Offset(21, -74) * (1 - t) + const Offset(34, 5) * t;
+      final p = point(t);
+      final direction = tangent(t);
       paintBambooLeaves(c, p, direction, scale: .62, side: side);
     }
     c.drawLine(
         const Offset(20, 94), const Offset(22, 86), strokePaint(0xFF387E42, 5));
   } else {
-    c.drawLine(
-        const Offset(22, 86), const Offset(28, 65), strokePaint(0xFF967148, 7));
+    c.drawLine(base - along * 4, neck, strokePaint(0xFF967148, 7));
   }
   c.drawPath(
       Path()
@@ -138,9 +141,7 @@ void paintRodPreview(Canvas c, Size size, FishingRod rod) {
   c.drawOval(const Rect.fromLTWH(76, 63, 8, 7), fillPaint(0xFFE27859));
   if (lantern) {
     for (final t in [.25, .5]) {
-      final p = const Offset(22, 86) * ((1 - t) * (1 - t)) +
-          const Offset(43, 12) * (2 * (1 - t) * t) +
-          const Offset(77, 17) * (t * t);
+      final p = point(t);
       c.drawCircle(p, 2.6, fillPaint(0xFFD9A441));
     }
     paintRodLantern(c, const Offset(60, 17), scale: 1.25);

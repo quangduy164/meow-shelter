@@ -371,6 +371,8 @@ class _CampScreenState extends State<CampScreen>
             .merge(DS.captionText.copyWith(color: DS.ink)),
         MediaQuery.textScalerOf(context));
     return Scaffold(
+      // The name dialog handles keyboard insets; keep the room/panels full size.
+      resizeToAvoidBottomInset: false,
       body: Stack(fit: StackFit.expand, children: [
         LayoutBuilder(builder: (context, box) {
           final w = box.maxWidth, h = box.maxHeight;
@@ -664,45 +666,43 @@ class _CatNameDialogState extends State<_CatNameDialog> {
   @override
   Widget build(BuildContext context) => GameDialog(
         maxWidth: 360,
-        child: SingleChildScrollView(
-          child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                GameDialogHeader(
-                    title: widget.initialName == null
-                        ? 'ĐẶT TÊN CHO MÈO'
-                        : 'ĐỔI TÊN MÈO',
-                    onClose: () => Navigator.of(context).pop()),
-                const SizedBox(height: DS.spaceSm),
-                TextField(
-                  controller: _name,
-                  maxLength: 20,
-                  textCapitalization: TextCapitalization.words,
-                  textInputAction: TextInputAction.done,
-                  onSubmitted: (_) => _confirm(),
-                  style: DS.bodyText,
-                  decoration: InputDecoration(
-                    labelText: 'Tên của bé',
-                    hintText: widget.breed.name,
-                    filled: true,
-                    fillColor: DS.surfaceRaised,
-                    border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(DS.radiusMd)),
-                  ),
+        scrollable: true,
+        header: GameDialogHeader(
+            title:
+                widget.initialName == null ? 'ĐẶT TÊN CHO MÈO' : 'ĐỔI TÊN MÈO',
+            onClose: () => Navigator.of(context).pop()),
+        child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const SizedBox(height: DS.spaceSm),
+              TextField(
+                controller: _name,
+                maxLength: 20,
+                textCapitalization: TextCapitalization.words,
+                textInputAction: TextInputAction.done,
+                onSubmitted: (_) => _confirm(),
+                style: DS.bodyText,
+                decoration: InputDecoration(
+                  labelText: 'Tên của bé',
+                  hintText: widget.breed.name,
+                  filled: true,
+                  fillColor: DS.surfaceRaised,
+                  border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(DS.radiusMd)),
                 ),
-                const Text('Để trống để dùng tên giống mèo.',
-                    style: DS.captionText),
-                const SizedBox(height: DS.spaceMd),
-                ElevatedButton.icon(
-                  onPressed: _confirm,
-                  icon: const Icon(Icons.pets_rounded, size: DS.iconSm),
-                  label: Text(widget.initialName == null
-                      ? 'ĐÓN VỀ · ${CampState.catPrices[widget.breed.id]} XU'
-                      : 'LƯU TÊN'),
-                ),
-              ]),
-        ),
+              ),
+              const Text('Để trống để dùng tên giống mèo.',
+                  style: DS.captionText),
+              const SizedBox(height: DS.spaceMd),
+              ElevatedButton.icon(
+                onPressed: _confirm,
+                icon: const Icon(Icons.pets_rounded, size: DS.iconSm),
+                label: Text(widget.initialName == null
+                    ? 'ĐÓN VỀ · ${CampState.catPrices[widget.breed.id]} XU'
+                    : 'LƯU TÊN'),
+              ),
+            ]),
       );
 }
 

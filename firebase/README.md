@@ -62,3 +62,8 @@ paths remain denied. Malformed display JSON is ignored by clients. Display data
 is cosmetic: never derive coins, rewards, inventory, trade confirmation or boat
 control authority from it. New shared permissions (trading, shared boat control,
 world storage) still require explicit Rules and an authoritative implementation.
+
+Online shared sleep uses `display.sleep` under the existing presentation envelope.
+All active players must be lying asleep before the owner advances to morning;
+waking before the dawn point cancels it. Guests never write the owner's clock.
+This feature needs the existing display-enabled baseline Rules, not new Rules.

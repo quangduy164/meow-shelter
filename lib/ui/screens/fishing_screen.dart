@@ -1,3 +1,4 @@
+import '../widgets/fishing_arrival_notice.dart';
 import '../widgets/fishing_menu_button.dart';
 import '../../fishing/fishing_environment.dart';
 import '../../online/fishing_world.dart';
@@ -68,6 +69,7 @@ class _FishingScreenState extends State<FishingScreen>
   late final FishingController _controller;
   FishingRiverRound get _river => _controller.river;
   final _frames = ValueNotifier(0);
+  final _landscape = FishingLandscapeCache();
   late final Ticker _ticker;
   late final FishingWorld _world;
   Duration? _lastTick;
@@ -118,7 +120,7 @@ class _FishingScreenState extends State<FishingScreen>
     final environment = _world.environment;
     final hour = environment.hourAt(time);
     _river.hour = hour;
-    _river.cabin.canSkipNight = !_world.visiting;
+    _river.cabin.canSkipNight = !_world.online && !_world.visiting;
     _river.weather = environment.weatherAt(time);
     _controller.setWorldHour(hour);
   }
@@ -134,7 +136,7 @@ class _FishingScreenState extends State<FishingScreen>
       if (_questToastLeft <= 0) _questToast = null;
     }
     // A night in the cabin bed: jump the shared game clock to sunrise (6:00).
-    if (_river.cabin.dawnDue) {
+    if (_river.cabin.dawnDue || _world.takeSleepDawn()) {
       _river.cabin.dawnDue = false;
       final now = DateTime.now();
       final hour = FishingLighting.gameHour(now);
@@ -231,8 +233,11 @@ class _FishingScreenState extends State<FishingScreen>
     final strokeBefore = swan
         ? (_river.clock * 9 / (2 * math.pi)).floor()
         : ((_river.clock / 1.65) % 1);
+    _river.cabin.canSkipNight = !_world.online && !_world.visiting;
     _controller.update(dt);
     _world.update(dt);
+    _river.cabin.sharedSleepDark =
+        _world.online ? _world.sharedSleepDark : null;
     final strokeAfter = swan
         ? (_river.clock * 9 / (2 * math.pi)).floor()
         : ((_river.clock / 1.65) % 1);
@@ -490,6 +495,7 @@ class _FishingScreenState extends State<FishingScreen>
     _ticker.dispose();
     _controller.dispose();
     _frames.dispose();
+    _landscape.dispose();
     _hud.dispose();
     super.dispose();
   }
@@ -529,8 +535,7 @@ class _FishingScreenState extends State<FishingScreen>
     if (!_choosingCat || _loadingCat) return;
     final code = FishingWorld.normalizeCode(_visitCode.text);
     if (_visitingFriend && !FishingWorld.validCode(code)) {
-      setState(() =>
-          _lobbyError = 'Nhập mã ghé gồm 7 chữ hoặc số trước khi chọn mèo.');
+      setState(() => _lobbyError = 'Mã phòng cần đủ 7 chữ hoặc số.');
       return;
     }
     FocusScope.of(context).unfocus();
@@ -556,12 +561,14 @@ class _FishingScreenState extends State<FishingScreen>
         84 * scale
       ]);
       if (!mounted) return;
+      await _landscape.warm();
+      if (!mounted) return;
       _controller.selectCat(type);
       if (_visitingFriend) {
         if (!await _world.waitForOnline()) {
           if (mounted) {
             setState(() => _lobbyError = _world.error ??
-                'Chưa kết nối được. Bạn có thể chọn Nhà mình để chơi offline.');
+                'Chưa kết nối được. Xóa mã phòng để chơi offline.');
           }
           await _world.leaveGameplay();
           return;
@@ -572,8 +579,8 @@ class _FishingScreenState extends State<FishingScreen>
         if (!mounted) return;
         if (!await _world.visit(code)) {
           if (mounted) {
-            setState(() =>
-                _lobbyError = _world.error ?? 'Chưa ghé được thế giới này.');
+            setState(
+                () => _lobbyError = _world.error ?? 'Chưa vào được phòng này.');
           }
           await _world.leaveGameplay();
           return;
@@ -594,29 +601,40 @@ class _FishingScreenState extends State<FishingScreen>
   Future<void> _openLobby() async {
     if (_loadingCat || _collectionOpen) return;
     setState(() => _collectionOpen = true);
+    var enter = false;
     try {
-      await showGameDialog<void>(
-          context: context,
-          builder: (dialogContext) => StatefulBuilder(
-              builder: (context, updateDialog) => GameDialog(
-                  maxWidth: 560,
-                  padding: EdgeInsets.zero,
-                  insetPadding: const EdgeInsets.all(12),
-                  child: FishingWorldLobby(
-                      world: _world,
-                      code: _visitCode,
-                      enabled: !_loadingCat,
-                      error: _lobbyError,
-                      onClose: () => Navigator.pop(dialogContext),
-                      onChanged: (_) {
-                        setState(() {
-                          _lobbyError = null;
-                        });
-                        updateDialog(() {});
-                      }))));
+      enter = await showGameDialog<bool>(
+              context: context,
+              builder: (dialogContext) => StatefulBuilder(
+                  builder: (context, updateDialog) => GameDialog(
+                      maxWidth: 560,
+                      padding: EdgeInsets.zero,
+                      insetPadding: const EdgeInsets.all(12),
+                      child: FishingWorldLobby(
+                          world: _world,
+                          code: _visitCode,
+                          enabled: !_loadingCat,
+                          error: _lobbyError,
+                          onClose: () => Navigator.pop(dialogContext),
+                          onEnter: () => Navigator.pop(dialogContext, true),
+                          onChanged: (_) {
+                            setState(() {
+                              _lobbyError = null;
+                            });
+                            updateDialog(() {});
+                          })))) ??
+          false;
     } finally {
       if (mounted) setState(() => _collectionOpen = false);
     }
+    if (!mounted || !enter) return;
+    final remembered = _lastCat;
+    final type = remembered != null &&
+            CatBreed.all.any((breed) => breed.id == remembered) &&
+            CampState.instance.unlocked(remembered)
+        ? remembered
+        : _cat;
+    await _startWithCat(type);
   }
 
   Widget _catSelection() => DecoratedBox(
@@ -648,7 +666,7 @@ class _FishingScreenState extends State<FishingScreen>
             const SizedBox(height: DS.spaceSm),
             Row(children: [
               FishingMenuButton(
-                  tooltip: 'Thế giới và ghé bạn',
+                  tooltip: 'Phòng chơi',
                   onPressed: _loadingCat ? null : _openLobby,
                   child: const Icon(Icons.people_alt_rounded, size: 22)),
               Expanded(
@@ -658,7 +676,7 @@ class _FishingScreenState extends State<FishingScreen>
                           : Text(
                               _lobbyError ??
                                   (_visitingFriend
-                                      ? 'Ghé bạn · Chọn một bé mèo để bắt đầu'
+                                      ? 'Chọn một bé mèo để vào phòng'
                                       : 'Chọn một bé mèo để bắt đầu chuyến đi câu'),
                               textAlign: TextAlign.center,
                               style: const TextStyle(
@@ -858,241 +876,270 @@ class _FishingScreenState extends State<FishingScreen>
 
   @override
   Widget build(BuildContext context) => Scaffold(
-        body: _choosingCat
-            ? _catSelection()
-            : LayoutBuilder(builder: (context, constraints) {
-                _river
-                    .resize(Size(constraints.maxWidth, constraints.maxHeight));
-                final padding = MediaQuery.paddingOf(context);
-                _shownCabin = _river.cabin.inside;
-                _shownCave = _river.cave.inside;
-                // Cabin and cave scenes still rebuild every frame (they read
-                // the round directly); the river scene below does not.
-                if (_shownCabin) {
-                  return AnimatedBuilder(
-                      animation: _frames,
-                      builder: (context, _) => FishingCabinRoom(
-                          round: _river.cabin,
-                          cat: _cat,
-                          onExit: _river.cabin.requestExit,
-                          hour: _river.hour));
-                }
-                if (_shownCave) {
-                  return AnimatedBuilder(
-                      animation: _frames,
-                      builder: (context, _) => FishingCaveRun(
-                          cave: _river.cave,
-                          cat: _cat,
-                          onExit: () => setState(_river.cave.exit)));
-                }
-                // Painters repaint themselves through [_frames]; only the
-                // cat/boat widgets and the HUD rebuild per frame.
-                return Stack(fit: StackFit.expand, children: [
-                  // Everything under the cat shares one layer.
-                  RepaintBoundary(
-                      child: Stack(fit: StackFit.expand, children: [
-                    const ColoredBox(color: Color(0xFFA7BF78)),
-                    FishingRiverBackdrop(round: _river, frames: _frames),
-                    CustomPaint(
-                        painter: FishingRiverSurface(_river, _frames,
-                            fishing: _controller)),
-                    CustomPaint(painter: FishingIslandPainter(_river, _frames)),
-                    FishingCabinShip(round: _river, frames: _frames),
-                    FishingMarketStalls(round: _river, frames: _frames),
-                    FishingShrineView(round: _river, frames: _frames),
-                    FishingBaitHouseView(round: _river, frames: _frames),
-                  ])),
-                  FishingScenery(
-                      round: _river,
-                      frames: _frames,
-                      child: GestureDetector(
-                        behavior: HitTestBehavior.opaque,
-                        onTapUp: (event) {
-                          if (!_collectionOpen) {
-                            _setHour(DateTime.now());
-                            _controller.tapRiver(event.localPosition);
-                          }
-                        },
-                        onPanUpdate: (event) => _controller.steerBoat(
-                            Offset(event.delta.dx / 90, event.delta.dy / 70)),
-                        onPanEnd: (_) => _controller.stopSteering(),
-                        onPanCancel: _controller.stopSteering,
-                        child: IgnorePointer(
-                            child: AnimatedBuilder(
-                                animation: _frames,
-                                builder: (context, _) =>
-                                    Stack(fit: StackFit.expand, children: [
-                                      FishingRemotePlayers(
-                                          round: _river,
-                                          peers: _world.peers.values),
-                                      _boat(),
-                                      _islandCat()
-                                    ]))),
-                      )),
-                  // Light and weather overlays share one layer.
-                  IgnorePointer(
-                      child: RepaintBoundary(
-                          child: Stack(fit: StackFit.expand, children: [
-                    CustomPaint(painter: FishingCaveLight(_river, _frames)),
-                    CustomPaint(painter: FishingNightOverlay(_river, _frames)),
-                    CustomPaint(
-                        painter: FishingWeatherOverlay(_river, _frames)),
-                  ]))),
-                  // HUD rebuilds only when its state changes; the reel
-                  // button and distance bar animate on their own.
-                  ValueListenableBuilder(
-                      valueListenable: _hud,
-                      builder: (context, _, __) =>
-                          Stack(fit: StackFit.expand, children: [
-                            Positioned(
-                                left: padding.left + 8,
-                                top: padding.top + 8,
-                                child: FlatRoundButton(
-                                    glyph: GameGlyph.home,
-                                    tooltip: 'Về Trang chủ',
-                                    onPressed: () => Navigator.pop(context))),
-                            if (!(_controller.phase == FishingPhase.reeling))
-                              Positioned(
-                                  right: padding.right + 8,
-                                  top: padding.top + 8,
-                                  child: GestureDetector(
-                                      onTap: _openMap,
-                                      child: Tooltip(
-                                          message: 'Mở bản đồ',
-                                          child: Opacity(
-                                              opacity: .9,
-                                              child: Column(children: [
-                                                FishingMinimap(
-                                                    round: _river,
-                                                    frames: _frames),
-                                                Container(
-                                                    width: 110,
-                                                    margin: const EdgeInsets
-                                                        .only(top: 3),
-                                                    padding: const EdgeInsets
-                                                        .symmetric(vertical: 2),
-                                                    decoration: BoxDecoration(
-                                                        color: const Color(
-                                                            0xB31E2A30),
-                                                        borderRadius:
-                                                            BorderRadius
-                                                                .circular(8)),
-                                                    child: Text(
-                                                        _area,
-                                                        textAlign:
-                                                            TextAlign.center,
-                                                        maxLines: 1,
-                                                        overflow: TextOverflow
-                                                            .ellipsis,
-                                                        style: const TextStyle(
-                                                            color: Colors.white,
-                                                            fontSize: 11,
-                                                            fontWeight:
-                                                                FontWeight
-                                                                    .w700))),
-                                              ]))))),
-                            Positioned(
-                                left: padding.left + 12,
-                                bottom: padding.bottom + 12,
-                                child: Opacity(
-                                    opacity: _controller.phase ==
-                                            FishingPhase.reeling
-                                        ? .35
-                                        : 1,
-                                    child: FishingActionButton(
-                                        tooltip: 'Bộ sưu tập cá',
-                                        onPressed: _controller.active
-                                            ? null
-                                            : _openCollection,
-                                        tool: FishingTool.basket))),
-                            if (_controller.phase == FishingPhase.reeling)
-                              Positioned(
-                                  left: padding.left + 10,
-                                  top: padding.top + 80,
-                                  bottom: padding.bottom + 85,
-                                  width: 54,
-                                  child: IgnorePointer(
-                                      child: AnimatedBuilder(
-                                          animation: _frames,
-                                          builder: (context, _) =>
-                                              FishingDistance(
-                                                  progress:
-                                                      _controller.progress)))),
-                            if (_river.island.ashore &&
-                                !_river.island.lookout &&
-                                !_controller.showFishingArt)
-                              Positioned(
-                                  right: padding.right + 164,
-                                  bottom: padding.bottom + 22,
-                                  child: FishingActionButton(
-                                      tool: FishingTool.boat,
-                                      tooltip: 'Về thuyền',
-                                      onPressed: _controller.phase ==
-                                                  FishingPhase.saving ||
-                                              _controller.phase ==
-                                                  FishingPhase.caught
-                                          ? null
-                                          : _controller.returnToBoat)),
-                            if (!_river.island.lookout &&
-                                (!_river.island.ashore ||
-                                    _river.island.phase ==
-                                        IslandVisitPhase.exploring))
-                              Positioned(
-                                  right: padding.right + 8,
-                                  bottom: padding.bottom + 8,
-                                  width: 144,
-                                  height: 80,
+        // Input dialogs handle the keyboard without shrinking the game behind them.
+        resizeToAvoidBottomInset: false,
+        body: Stack(fit: StackFit.expand, children: [
+          Positioned.fill(
+              child: _choosingCat
+                  ? _catSelection()
+                  : LayoutBuilder(builder: (context, constraints) {
+                      _river.resize(
+                          Size(constraints.maxWidth, constraints.maxHeight));
+                      final padding = MediaQuery.paddingOf(context);
+                      _shownCabin = _river.cabin.inside;
+                      _shownCave = _river.cave.inside;
+                      // Cabin and cave scenes still rebuild every frame (they read
+                      // the round directly); the river scene below does not.
+                      if (_shownCabin) {
+                        return AnimatedBuilder(
+                            animation: _frames,
+                            builder: (context, _) => FishingCabinRoom(
+                                round: _river.cabin,
+                                cat: _cat,
+                                onExit: _river.cabin.requestExit,
+                                hour: _river.hour));
+                      }
+                      if (_shownCave) {
+                        return AnimatedBuilder(
+                            animation: _frames,
+                            builder: (context, _) => FishingCaveRun(
+                                cave: _river.cave,
+                                cat: _cat,
+                                onExit: () => setState(_river.cave.exit)));
+                      }
+                      // Painters repaint themselves through [_frames]; only the
+                      // cat/boat widgets and the HUD rebuild per frame.
+                      return Stack(fit: StackFit.expand, children: [
+                        // Everything under the cat shares one layer.
+                        RepaintBoundary(
+                            child: Stack(fit: StackFit.expand, children: [
+                          const ColoredBox(color: Color(0xFFA7BF78)),
+                          FishingRiverBackdrop(
+                              round: _river,
+                              frames: _frames,
+                              landscape: _landscape),
+                          CustomPaint(
+                              painter: FishingRiverSurface(_river, _frames,
+                                  fishing: _controller)),
+                          CustomPaint(
+                              painter: FishingIslandPainter(_river, _frames)),
+                          FishingCabinShip(round: _river, frames: _frames),
+                          FishingMarketStalls(round: _river, frames: _frames),
+                          FishingShrineView(round: _river, frames: _frames),
+                          FishingBaitHouseView(round: _river, frames: _frames),
+                        ])),
+                        FishingScenery(
+                            round: _river,
+                            frames: _frames,
+                            child: GestureDetector(
+                              behavior: HitTestBehavior.opaque,
+                              onTapUp: (event) {
+                                if (!_collectionOpen) {
+                                  _setHour(DateTime.now());
+                                  _controller.tapRiver(event.localPosition);
+                                }
+                              },
+                              onPanUpdate: (event) => _controller.steerBoat(
+                                  Offset(event.delta.dx / 90,
+                                      event.delta.dy / 70)),
+                              onPanEnd: (_) => _controller.stopSteering(),
+                              onPanCancel: _controller.stopSteering,
+                              child: IgnorePointer(
                                   child: AnimatedBuilder(
                                       animation: _frames,
-                                      builder: (context, _) => FishingControls(
-                                          controller: _controller))),
-                            if (_controller.active &&
-                                _controller.phase != FishingPhase.saving)
-                              Positioned(
-                                  right: padding.right + 98,
-                                  bottom: padding.bottom + 22,
-                                  child: FlatRoundButton(
-                                      glyph: GameGlyph.close,
-                                      tooltip: 'Cất cần để chèo tiếp',
-                                      onPressed: _controller.cancelCast)),
-                            Positioned.fill(
-                                child: IgnorePointer(
-                                    child: CustomPaint(
-                                        painter: FishingQuestArrowPainter(
-                                            _river, _frames,
-                                            hidden: _controller.tutorial ||
-                                                _controller.active)))),
-                            if (!_controller.tutorial &&
-                                _controller.phase != FishingPhase.reeling)
-                              Positioned(
-                                  left: padding.left + 56,
-                                  right: padding.right + 132,
-                                  top: padding.top + 8,
-                                  child: Align(
-                                      alignment: Alignment.topLeft,
-                                      child: FishingQuestChip(
-                                          onTap: _openQuests))),
-                            if (_questToast case final quest?)
-                              Positioned(
-                                  top: padding.top + 12,
-                                  left: 0,
-                                  right: 0,
-                                  child: Center(
-                                      child: FishingQuestToast(quest: quest))),
-                            if (_controller.tutorialStep case final step?)
-                              ..._tutorialOverlay(step, padding),
-                            if (_controller.phase == FishingPhase.caught &&
-                                _controller.elapsed >= 1)
-                              Positioned.fill(
-                                  child: FishingCatchPopup(
-                                      fish: _controller.fish,
-                                      grams: _controller.grams,
-                                      newRecord: _controller.newRecord,
-                                      fishScale: _controller.fishScale,
-                                      onNext: _controller.dismissResult)),
-                          ])),
-                ]);
-              }),
+                                      builder: (context, _) => Stack(
+                                              fit: StackFit.expand,
+                                              children: [
+                                                FishingRemotePlayers(
+                                                    round: _river,
+                                                    peers: _world.peers.values),
+                                                _boat(),
+                                                _islandCat()
+                                              ]))),
+                            )),
+                        // Light and weather overlays share one layer.
+                        IgnorePointer(
+                            child: RepaintBoundary(
+                                child: Stack(fit: StackFit.expand, children: [
+                          CustomPaint(
+                              painter: FishingCaveLight(_river, _frames)),
+                          CustomPaint(
+                              painter: FishingNightOverlay(_river, _frames)),
+                          CustomPaint(
+                              painter: FishingWeatherOverlay(_river, _frames)),
+                        ]))),
+                        // HUD rebuilds only when its state changes; the reel
+                        // button and distance bar animate on their own.
+                        ValueListenableBuilder(
+                            valueListenable: _hud,
+                            builder: (context, _, __) =>
+                                Stack(fit: StackFit.expand, children: [
+                                  Positioned(
+                                      left: padding.left + 8,
+                                      top: padding.top + 8,
+                                      child: FlatRoundButton(
+                                          glyph: GameGlyph.home,
+                                          tooltip: 'Về Trang chủ',
+                                          onPressed: () =>
+                                              Navigator.pop(context))),
+                                  if (!(_controller.phase ==
+                                      FishingPhase.reeling))
+                                    Positioned(
+                                        right: padding.right + 8,
+                                        top: padding.top + 8,
+                                        child: GestureDetector(
+                                            onTap: _openMap,
+                                            child: Tooltip(
+                                                message: 'Mở bản đồ',
+                                                child: Opacity(
+                                                    opacity: .9,
+                                                    child: Column(children: [
+                                                      FishingMinimap(
+                                                          round: _river,
+                                                          frames: _frames),
+                                                      Container(
+                                                          width: 110,
+                                                          margin: const EdgeInsets
+                                                              .only(top: 3),
+                                                          padding:
+                                                              const EdgeInsets.symmetric(
+                                                                  vertical: 2),
+                                                          decoration: BoxDecoration(
+                                                              color: const Color(
+                                                                  0xB31E2A30),
+                                                              borderRadius:
+                                                                  BorderRadius
+                                                                      .circular(
+                                                                          8)),
+                                                          child: Text(_area,
+                                                              textAlign:
+                                                                  TextAlign
+                                                                      .center,
+                                                              maxLines: 1,
+                                                              overflow:
+                                                                  TextOverflow
+                                                                      .ellipsis,
+                                                              style: const TextStyle(
+                                                                  color: Colors
+                                                                      .white,
+                                                                  fontSize: 11,
+                                                                  fontWeight:
+                                                                      FontWeight
+                                                                          .w700))),
+                                                    ]))))),
+                                  Positioned(
+                                      left: padding.left + 12,
+                                      bottom: padding.bottom + 12,
+                                      child: Opacity(
+                                          opacity: _controller.phase ==
+                                                  FishingPhase.reeling
+                                              ? .35
+                                              : 1,
+                                          child: FishingActionButton(
+                                              tooltip: 'Bộ sưu tập cá',
+                                              onPressed: _controller.active
+                                                  ? null
+                                                  : _openCollection,
+                                              tool: FishingTool.basket))),
+                                  if (_controller.phase == FishingPhase.reeling)
+                                    Positioned(
+                                        left: padding.left + 10,
+                                        top: padding.top + 80,
+                                        bottom: padding.bottom + 85,
+                                        width: 54,
+                                        child: IgnorePointer(
+                                            child: AnimatedBuilder(
+                                                animation: _frames,
+                                                builder: (context, _) =>
+                                                    FishingDistance(
+                                                        progress: _controller
+                                                            .progress)))),
+                                  if (_river.island.ashore &&
+                                      !_river.island.lookout &&
+                                      !_controller.showFishingArt)
+                                    Positioned(
+                                        right: padding.right + 164,
+                                        bottom: padding.bottom + 22,
+                                        child: FishingActionButton(
+                                            tool: FishingTool.boat,
+                                            tooltip: 'Về thuyền',
+                                            onPressed: _controller.phase ==
+                                                        FishingPhase.saving ||
+                                                    _controller.phase ==
+                                                        FishingPhase.caught
+                                                ? null
+                                                : _controller.returnToBoat)),
+                                  if (!_river.island.lookout &&
+                                      (!_river.island.ashore ||
+                                          _river.island.phase ==
+                                              IslandVisitPhase.exploring))
+                                    Positioned(
+                                        right: padding.right + 8,
+                                        bottom: padding.bottom + 8,
+                                        width: 144,
+                                        height: 80,
+                                        child: AnimatedBuilder(
+                                            animation: _frames,
+                                            builder: (context, _) =>
+                                                FishingControls(
+                                                    controller: _controller))),
+                                  if (_controller.active &&
+                                      _controller.phase != FishingPhase.saving)
+                                    Positioned(
+                                        right: padding.right + 98,
+                                        bottom: padding.bottom + 22,
+                                        child: FlatRoundButton(
+                                            glyph: GameGlyph.close,
+                                            tooltip: 'Cất cần để chèo tiếp',
+                                            onPressed: _controller.cancelCast)),
+                                  Positioned.fill(
+                                      child: IgnorePointer(
+                                          child: CustomPaint(
+                                              painter: FishingQuestArrowPainter(
+                                                  _river, _frames,
+                                                  hidden: _controller
+                                                          .tutorial ||
+                                                      _controller.active)))),
+                                  if (!_controller.tutorial &&
+                                      _controller.phase != FishingPhase.reeling)
+                                    Positioned(
+                                        left: padding.left + 56,
+                                        right: padding.right + 132,
+                                        top: padding.top + 8,
+                                        child: Align(
+                                            alignment: Alignment.topLeft,
+                                            child: FishingQuestChip(
+                                                onTap: _openQuests))),
+                                  if (_questToast case final quest?)
+                                    Positioned(
+                                        top: padding.top + 12,
+                                        left: 0,
+                                        right: 0,
+                                        child: Center(
+                                            child: FishingQuestToast(
+                                                quest: quest))),
+                                  if (_controller.tutorialStep case final step?)
+                                    ..._tutorialOverlay(step, padding),
+                                  if (_controller.phase ==
+                                          FishingPhase.caught &&
+                                      _controller.elapsed >= 1)
+                                    Positioned.fill(
+                                        child: FishingCatchPopup(
+                                            fish: _controller.fish,
+                                            grams: _controller.grams,
+                                            newRecord: _controller.newRecord,
+                                            fishScale: _controller.fishScale,
+                                            onNext: _controller.dismissResult)),
+                                ])),
+                      ]);
+                    })),
+          if (!_choosingCat)
+            Positioned(
+                top: MediaQuery.paddingOf(context).top + 48,
+                left: 64,
+                right: 64,
+                child: FishingArrivalNotice(world: _world)),
+        ]),
       );
 }
 

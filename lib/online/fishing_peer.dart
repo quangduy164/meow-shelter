@@ -1,4 +1,5 @@
 import 'visual_state.dart';
+import '../camp/camp_state.dart';
 import 'dart:math' as math;
 import 'package:flutter/painting.dart';
 
@@ -33,6 +34,14 @@ class FishingPeerSnapshot {
   final int stamp;
   final Map<String, dynamic> display;
 
+  String get displayName {
+    final value = display['name'];
+    if (value is! String) return CatBreed.of(cat).name;
+    final name = value.replaceAll(RegExp(r'[\x00-\x1f\x7f]'), '').trim();
+    if (name.isEmpty) return CatBreed.of(cat).name;
+    return String.fromCharCodes(name.runes.take(40));
+  }
+
   static int framesFor(String action) => switch (action) {
         'idle' => framesIdle,
         'walk' => framesWalk,
@@ -63,7 +72,12 @@ class FishingPeerSnapshot {
         boatRight: r.boatFacingRight,
         rowing:
             r.rowing && !r.island.ashore && !r.cabin.inside && !r.cave.inside,
-        stamp: stamp);
+        stamp: stamp,
+        display: {
+          'name': CampState.instance.nameOf(p.cat),
+          'animating': p.pose.$1 != 'fish-reel' || c.pulling,
+          'pose': c.phase.name
+        });
   }
 
   Map<String, Object> toJson() => {
@@ -135,10 +149,45 @@ class FishingPeerSnapshot {
 class FishingPeer {
   FishingPeer(this.uid, this.target)
       : position = target.position,
-        boatPosition = target.boatPosition;
+        boatPosition = target.boatPosition,
+        _firstFrame = target.pose.$3;
   final String uid;
   FishingPeerSnapshot target;
   Offset position, boatPosition;
+  double _animationTime = 0;
+  int _firstFrame;
+
+  FishingPlayerPose get pose {
+    final (action, frames, _) = target.pose;
+    if (target.display['animating'] == false) return target.pose;
+    final fps = switch (action) {
+      'idle' => 7.0,
+      'walk' || 'run' => 10.0,
+      'sleep' => 3.0,
+      'fish-wait' || 'fish-reel' => 5.0,
+      'fish-cast' => frames / .65,
+      _ => 8.0,
+    };
+    if (action == 'row') {
+      return (action, frames, rowingFrame((_animationTime / 1.65) % 1));
+    }
+    final frame = _firstFrame + (_animationTime * fps).floor();
+    final once =
+        const {'jump', 'roll', 'fish-cast', 'drop-wrong'}.contains(action);
+    if (action == 'fish-hold') {
+      return (
+        action,
+        frames,
+        _animationTime < 1 && _firstFrame == 0
+            ? 0
+            : 1 +
+                (((_animationTime - 1).clamp(0, double.infinity)) * 3).floor() %
+                    (frames - 1)
+      );
+    }
+    return (action, frames, once ? frame.clamp(0, frames - 1) : frame % frames);
+  }
+
   void accept(FishingPeerSnapshot next) {
     if (next.stamp < target.stamp) return;
     if (next.location != target.location ||
@@ -148,10 +197,19 @@ class FishingPeer {
     if ((next.boatPosition - boatPosition).distance > 600) {
       boatPosition = next.boatPosition;
     }
+    if (next.cat != target.cat ||
+        next.location != target.location ||
+        next.pose.$1 != target.pose.$1 ||
+        next.display['animating'] != target.display['animating'] ||
+        next.display['pose'] != target.display['pose']) {
+      _animationTime = 0;
+      _firstFrame = next.pose.$3;
+    }
     target = next;
   }
 
   void update(double dt) {
+    _animationTime += dt;
     final k = 1 - math.exp(-14 * dt);
     position = Offset.lerp(position, target.position, k)!;
     boatPosition = Offset.lerp(boatPosition, target.boatPosition, k)!;

@@ -75,7 +75,7 @@ class FishingQuestChip extends StatelessWidget {
   }
 }
 
-/// Journey view of the nine steps: a trail of stepping stones ending at the
+/// Journey view of the steps: a trail of stepping stones ending at the
 /// shrine, and a detail card for the selected stone (current by default).
 class FishingQuestDialog extends StatefulWidget {
   const FishingQuestDialog({super.key});
@@ -98,6 +98,7 @@ extension on FishingQuest {
         FishingQuest.activeWater => 'Nước động',
         FishingQuest.nessie => 'Nessie',
         FishingQuest.findShrine => 'Tìm đền',
+        FishingQuest.exploreWorld => 'Khám phá',
         FishingQuest.moonfish => 'Nguyệt quang',
         FishingQuest.seaDragon => 'Rồng biển',
         FishingQuest.shrine => 'Hiến tế',
@@ -109,6 +110,7 @@ extension on FishingQuest {
         FishingQuest.bambooRare || FishingQuest.nessie => 'Sông tre',
         FishingQuest.activeWater => 'Mọi vùng nước',
         FishingQuest.findShrine => 'Vịnh đá → Hang biển',
+        FishingQuest.exploreWorld => 'Tất cả 7 vùng',
         FishingQuest.moonfish => 'Hang biển · ban đêm',
         FishingQuest.seaDragon => 'Biển rộng',
         FishingQuest.shrine => 'Đền Hang biển',
@@ -126,7 +128,9 @@ extension on FishingQuest {
   IconData get icon => switch (this) {
         FishingQuest.sell => Icons.storefront_rounded,
         FishingQuest.activeWater => Icons.bubble_chart_rounded,
-        FishingQuest.findShrine => Icons.explore_rounded,
+        FishingQuest.findShrine ||
+        FishingQuest.exploreWorld =>
+          Icons.explore_rounded,
         _ => Icons.account_balance_rounded,
       };
 }
@@ -171,9 +175,10 @@ class _FishingQuestDialogState extends State<FishingQuestDialog> {
         ])));
   }
 
-  /// Nine stones on a gently waving path; the last one is the shrine.
+  /// Quest stones on a gently waving path; the last one is the shrine.
   Widget _trail() => LayoutBuilder(builder: (context, box) {
-        const n = 9, h = 96.0, r = 22.0;
+        final n = FishingQuest.values.length;
+        const h = 96.0, r = 22.0;
         final w = box.maxWidth;
         Offset at(int i) => Offset(r + 4 + i * (w - 2 * r - 8) / (n - 1),
             40 + math.sin(i * 1.15) * 10);
@@ -371,6 +376,25 @@ class _FishingQuestDialogState extends State<FishingQuestDialog> {
                 const SizedBox(height: 4),
                 Text(q.hint,
                     style: const TextStyle(color: DS.ink, fontSize: 12.5)),
+                if (q == FishingQuest.exploreWorld) ...[
+                  const SizedBox(height: 8),
+                  Wrap(spacing: 8, runSpacing: 6, children: [
+                    for (final region in FishingQuests.explorationOrder)
+                      Row(mainAxisSize: MainAxisSize.min, children: [
+                        Icon(
+                            _quests.hasVisited(region)
+                                ? Icons.check_circle_rounded
+                                : Icons.radio_button_unchecked_rounded,
+                            size: 14,
+                            color:
+                                _quests.hasVisited(region) ? _green : _brown),
+                        const SizedBox(width: 3),
+                        Text(region.label,
+                            style:
+                                const TextStyle(color: DS.ink, fontSize: 11)),
+                      ]),
+                  ]),
+                ],
               ])),
         ]));
   }
@@ -488,7 +512,7 @@ class FishingQuestArrowPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    final target = FishingQuests.instance.current?.target;
+    final target = FishingQuests.instance.navigationTarget;
     if (hidden || target == null) return;
     if ((round.cameraFocus - target).distance < 600) return;
     final p = round.toScreen(target);

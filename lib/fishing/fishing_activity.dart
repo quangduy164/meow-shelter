@@ -83,15 +83,23 @@ class FishingActivities {
     }
   }
 
-  /// Closest active water within [castDistance] x [reach] of [boat].
-  FishingActivity? nearby(double clock, Offset boat, {double reach = 1}) {
+  /// Closest reachable sighting, optionally inside a 120-degree forward cone.
+  FishingActivity? nearby(double clock, Offset boat,
+      {double reach = 1, Offset? direction, bool Function(Offset)? canReach}) {
     FishingActivity? best;
     final range = castDistance * reach;
     var distance = range;
     for (final activity in visible(clock, boat.dx - range, boat.dx + range,
         top: boat.dy - range, bottom: boat.dy + range)) {
-      final d = (activity.position - boat).distance;
-      if (d < distance) {
+      final delta = activity.position - boat;
+      final d = delta.distance;
+      if (direction != null &&
+          direction.distance > .001 &&
+          delta.dx * direction.dx + delta.dy * direction.dy <=
+              .5 * d * direction.distance) {
+        continue;
+      }
+      if (d < distance && (canReach == null || canReach(activity.position))) {
         best = activity;
         distance = d;
       }

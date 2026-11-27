@@ -44,7 +44,7 @@ class _FishingMinimapState extends State<FishingMinimap> {
       r.visibleHeight,
       r.cameraFocus,
       r.exploration.version,
-      FishingQuests.instance.current?.target,
+      FishingQuests.instance.navigationTarget,
     );
   }
 
@@ -218,7 +218,7 @@ class _MinimapPainter extends CustomPainter {
         _view..strokeWidth = 1.2 / s);
     // Quest destination: a gold star, drawn over the fog so it can lead
     // the player into unexplored water.
-    if (FishingQuests.instance.current?.target case final t?) {
+    if (FishingQuests.instance.navigationTarget case final t?) {
       final r = (full ? 11 : 6) / s;
       final star = Path();
       for (var i = 0; i < 10; i++) {

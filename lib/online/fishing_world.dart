@@ -1,3 +1,7 @@
+import 'fishing_presence_gate.dart';
+import 'fishing_sleep.dart';
+import 'fishing_arrivals.dart';
+import '../fishing/fishing_player.dart';
 import 'visual_state.dart';
 import '../fishing/fishing_environment.dart';
 import 'dart:async';
@@ -23,6 +27,43 @@ class FishingWorld extends ChangeNotifier {
   final void Function(bool visiting) onVisitChanged;
   final SharedPreferences preferences;
   final Map<String, FishingPeer> peers = {};
+  final sleep = FishingSleep();
+  final _arrivals = FishingArrivals();
+  final _arrivalNames = <String>[];
+  String? takeArrival() =>
+      _arrivalNames.isEmpty ? null : _arrivalNames.removeAt(0);
+  bool _playersReady = false;
+  // Latest live snapshot per remote player, kept from child events.
+  final Map<String, FishingPeerSnapshot> _room = {};
+  // Last sent presence, so an idle player only sends a heartbeat.
+  final _sendGate = FishingPresenceGate();
+  DatabaseReference? _sentRef;
+  int? _publishedSleepStart;
+
+  bool get _localSleeping {
+    final state = capture(serverNow);
+    return state.location == FishingPlayerLocation.bedroom &&
+        state.pose.$1 == 'sleep';
+  }
+
+  bool get allSleeping =>
+      _playersReady &&
+      _localSleeping &&
+      peers.values.every((peer) =>
+          serverNow - peer.target.stamp <= 2500 &&
+          peer.target.location == FishingPlayerLocation.bedroom &&
+          peer.target.pose.$1 == 'sleep');
+  double get sharedSleepDark => online
+      ? sleep.darkness(serverNow,
+          localSleeping: _localSleeping, allSleeping: allSleeping)
+      : 0;
+  bool takeSleepDawn() =>
+      online &&
+      !visiting &&
+      _publishedSleepStart != null &&
+      _publishedSleepStart == sleep.startedAt &&
+      sleep.takeDawn(serverNow, allSleeping: allSleeping);
+
   String? homeCode, worldId, visitingCode, error;
   bool connected = false, busy = false;
   bool get online => connected && _presence != null;
@@ -81,7 +122,7 @@ class FishingWorld extends ChangeNotifier {
     try {
       if (!await FirebaseSession.instance.connect()) {
         if (!_disposed) {
-          error = 'Chơi offline vẫn được. Có mạng để lấy mã và ghé bạn.';
+          error = 'Bạn vẫn có thể chơi offline. Kết nối mạng để lấy mã phòng.';
         }
         return;
       }
@@ -311,42 +352,48 @@ class FishingWorld extends ChangeNotifier {
       await _hostSub?.cancel();
       await _environmentSub?.cancel();
       peers.clear();
+      sleep.reset();
+      _publishedSleepStart = null;
+      _playersReady = false;
+      _arrivals.reset();
+      _arrivalNames.clear();
       _hostMissing = false;
       _lastHostSeen = serverNow;
-      _playersSub = _db!.ref('sessions/$id/players').onValue.listen((event) {
-        if (!_valid(epoch)) return;
-        final latest = <String, FishingPeerSnapshot>{};
-        for (final player in event.snapshot.children) {
-          if (player.key == _uid) continue;
-          for (final connection in player.children) {
-            final value = FishingPeerSnapshot.parse(connection.value);
-            if (value == null ||
-                serverNow - value.stamp > 15000 ||
-                value.stamp > serverNow + 5000) {
-              continue;
-            }
-            final key = player.key!;
-            if (latest[key] == null || value.stamp > latest[key]!.stamp) {
-              latest[key] = value;
-            }
-          }
-        }
-        if (latest.containsKey(id)) _lastHostSeen = latest[id]!.stamp;
-        peers.removeWhere((uid, _) => !latest.containsKey(uid));
-        for (final entry in latest.entries) {
-          if (peers.containsKey(entry.key)) {
-            peers[entry.key]!.accept(entry.value);
-          } else {
-            peers[entry.key] = FishingPeer(entry.key, entry.value);
-          }
-        }
-        _notify();
-      }, onError: (Object e) {
+      _room.clear();
+      final players = _db!.ref('sessions/$id/players');
+      void playersFailed(Object e) {
         if (_valid(epoch)) {
           _fail(e);
           if (visiting) unawaited(goHome());
         }
-      });
+      }
+
+      // Child events carry only the player who changed, not the whole room.
+      _playersSub = _childEvents(players).listen((event) {
+        if (!_valid(epoch)) return;
+        final key = event.snapshot.key;
+        if (key == null || key == _uid) return;
+        if (event.type == DatabaseEventType.childRemoved) {
+          _room.remove(key);
+        } else {
+          _readPlayer(event.snapshot);
+        }
+        _applyPlayers(id);
+      }, onError: playersFailed);
+      // One full read marks the initial roster, so it is not announced.
+      unawaited(() async {
+        try {
+          final event = await players.once();
+          if (!_valid(epoch)) return;
+          for (final player in event.snapshot.children) {
+            _readPlayer(player);
+          }
+          _playersReady = true;
+          _applyPlayers(id);
+        } catch (e) {
+          playersFailed(e);
+        }
+      }());
       if (id != _uid) {
         _environmentSub = _db!.ref('worlds/$id').onValue.listen((event) {
           if (!_valid(epoch)) return;
@@ -356,6 +403,10 @@ class FishingWorld extends ChangeNotifier {
             return;
           }
           _visitorEnvironment = value;
+          final metadata = event.snapshot.value;
+          final display =
+              metadata is Map ? VisualState.decode(metadata['display']) : null;
+          sleep.read(display?['sleep'], serverNow);
           _notify();
         }, onError: (Object e) {
           if (_valid(epoch)) {
@@ -365,7 +416,7 @@ class FishingWorld extends ChangeNotifier {
         });
         _hostSub = _db!.ref('worlds/$id/hosts').onValue.listen((event) {
           if (_valid(epoch) && !event.snapshot.exists) {
-            error = 'Chủ thế giới đã rời đi. Bạn đã về thế giới riêng.';
+            error = 'Chủ phòng đã rời đi. Bạn đã về phòng của mình.';
             _hostMissing = true;
             unawaited(goHome());
           }
@@ -396,7 +447,7 @@ class FishingWorld extends ChangeNotifier {
       return false;
     }
     if (!connected || _db == null || busy || _switching) {
-      error = 'Cần kết nối mạng trước khi ghé bạn.';
+      error = 'Cần kết nối mạng để vào phòng khác.';
       _notify();
       return false;
     }
@@ -411,11 +462,11 @@ class FishingWorld extends ChangeNotifier {
           .get()
           .timeout(const Duration(seconds: 10));
       if (found.value is! String) {
-        throw const FormatException('Không tìm thấy mã thế giới này.');
+        throw const FormatException('Không tìm thấy phòng có mã này.');
       }
       final id = found.value as String;
       if (id == _uid) {
-        throw const FormatException('Đây là mã thế giới của bạn.');
+        throw const FormatException('Đây là mã phòng của bạn.');
       }
       final world = await _db!
           .ref('worlds/$id')
@@ -425,13 +476,12 @@ class FishingWorld extends ChangeNotifier {
         throw const FormatException('Hai máy cần cùng phiên bản game.');
       }
       if (!world.child('hosts').exists) {
-        throw const FormatException(
-            'Chủ thế giới chưa online trong mode câu cá.');
+        throw const FormatException('Chủ phòng chưa vào chơi câu cá.');
       }
       final sharedEnvironment = _readEnvironment(world.value);
       if (sharedEnvironment == null) {
         throw const FormatException(
-            'Chủ thế giới cần cập nhật game rồi vào lại mode câu cá.');
+            'Chủ phòng cần cập nhật game rồi vào lại câu cá.');
       }
       final players = await _db!
           .ref('sessions/$id/players')
@@ -444,8 +494,7 @@ class FishingWorld extends ChangeNotifier {
             peer.stamp <= serverNow + 5000;
       });
       if (!hostAlive) {
-        throw const FormatException(
-            'Chủ thế giới chưa online trong mode câu cá.');
+        throw const FormatException('Chủ phòng chưa vào chơi câu cá.');
       }
       if (players.children.where((p) => p.key != _uid).length >= maxPlayers) {
         throw const FormatException('Thế giới đã đủ 8 người.');
@@ -557,6 +606,7 @@ class FishingWorld extends ChangeNotifier {
 
   String _environmentDisplay() => VisualState.encode({
         ..._homeDisplay,
+        'sleep': sleep.toJson(),
         'environment':
             FishingEnvironment.local(preferences).toServer(_offset).toJson(),
       });
@@ -569,16 +619,86 @@ class FishingWorld extends ChangeNotifier {
         FishingEnvironment.parse(value['environment']);
   }
 
-  Future<void> publishEnvironment() async {
-    if (_disposed || !online || visiting || _db == null) return;
+  Future<bool> publishEnvironment() async {
+    if (_disposed || !online || visiting || _db == null) return false;
     try {
       await _db!
           .ref('worlds/$_uid/display')
           .set(_environmentDisplay())
           .timeout(const Duration(seconds: 5));
+      return true;
     } catch (e) {
       if (!_disposed) _fail(e);
+      return false;
     }
+  }
+
+  Future<void> _publishSleep() async {
+    final start = sleep.startedAt, epoch = _epoch;
+    _publishedSleepStart = null;
+    if (await publishEnvironment() &&
+        _valid(epoch) &&
+        sleep.startedAt == start) {
+      _publishedSleepStart = start;
+    }
+  }
+
+  static Stream<DatabaseEvent> _childEvents(Query query) {
+    final subs = <StreamSubscription<DatabaseEvent>>[];
+    late final StreamController<DatabaseEvent> out;
+    out = StreamController(
+        onListen: () {
+          for (final stream in [
+            query.onChildAdded,
+            query.onChildChanged,
+            query.onChildRemoved
+          ]) {
+            subs.add(stream.listen(out.add, onError: out.addError));
+          }
+        },
+        onCancel: () => Future.wait(subs.map((s) => s.cancel())));
+    return out.stream;
+  }
+
+  void _readPlayer(DataSnapshot player) {
+    final key = player.key!, now = serverNow;
+    if (key == _uid) return;
+    FishingPeerSnapshot? best;
+    for (final connection in player.children) {
+      final value = FishingPeerSnapshot.parse(connection.value);
+      if (value == null || value.stamp > now + 5000) continue;
+      if (best == null || value.stamp > best.stamp) best = value;
+    }
+    if (best == null) {
+      _room.remove(key);
+    } else {
+      _room[key] = best;
+    }
+  }
+
+  void _applyPlayers(String hostId) {
+    final now = serverNow;
+    final latest = {
+      for (final entry in _room.entries)
+        if (now - entry.value.stamp <= 15000) entry.key: entry.value
+    };
+    if (_playersReady) {
+      for (final uid in _arrivals.update(latest.keys, now)) {
+        if (_arrivalNames.length < maxPlayers) {
+          _arrivalNames.add(latest[uid]!.displayName);
+        }
+      }
+    }
+    if (latest.containsKey(hostId)) _lastHostSeen = latest[hostId]!.stamp;
+    peers.removeWhere((uid, _) => !latest.containsKey(uid));
+    for (final entry in latest.entries) {
+      if (peers.containsKey(entry.key)) {
+        peers[entry.key]!.accept(entry.value);
+      } else {
+        peers[entry.key] = FishingPeer(entry.key, entry.value);
+      }
+    }
+    _notify();
   }
 
   Future<void> _publish() async {
@@ -586,11 +706,27 @@ class FishingWorld extends ChangeNotifier {
     if (_disposed || _suspended || !connected || ref == null || _writing) {
       return;
     }
+    final now = serverNow;
+    final state = capture(now).toJson();
+    if (ref != _sentRef) {
+      _sendGate.reset();
+      _sentRef = ref;
+    }
+    if (!_sendGate.shouldSend(state, now)) return;
+    final epoch = _epoch;
+    _sendGate.attempted(now);
     _writing = true;
     try {
-      await ref
-          .set(capture(serverNow).toJson())
-          .timeout(const Duration(seconds: 3));
+      final write = ref.set(state);
+      try {
+        await write.timeout(const Duration(seconds: 3));
+      } on TimeoutException catch (e) {
+        if (!_disposed && ref == _presence) _fail(e);
+        // A timeout does not cancel an RTDB write. Keep the single-flight lock
+        // until it finishes; the next tick captures the newest state, never a queue.
+        await write;
+      }
+      if (_valid(epoch) && ref == _presence) _sendGate.acknowledged(state, now);
     } catch (e) {
       if (!_disposed && ref == _presence) _fail(e);
     } finally {
@@ -599,6 +735,15 @@ class FishingWorld extends ChangeNotifier {
   }
 
   void update(double dt) {
+    if (online && !visiting && !busy) {
+      final hour = environment.hourAt(environmentTime(DateTime.now()));
+      if (sleep.update(
+          now: serverNow,
+          night: hour < 6 || hour >= 18,
+          allSleeping: allSleeping)) {
+        unawaited(_publishSleep());
+      }
+    }
     for (final peer in peers.values) {
       peer.update(dt);
     }
@@ -606,6 +751,12 @@ class FishingWorld extends ChangeNotifier {
 
   void _disconnected() {
     connected = false;
+    sleep.reset();
+    _playersReady = false;
+    _room.clear();
+    _arrivals.reset();
+    _arrivalNames.clear();
+    _publishedSleepStart = null;
     busy = false;
     ++_epoch;
     _presence = null;
@@ -633,7 +784,7 @@ class FishingWorld extends ChangeNotifier {
         : e is FirebaseException &&
                 (e.code == 'permission-denied' || e.code == 'permission_denied')
             ? 'Firebase chưa cho phép truy cập. Cần áp dụng Rules của game.'
-            : 'Chưa kết nối được thế giới. Bạn vẫn có thể chơi offline.';
+            : 'Chưa kết nối được phòng. Bạn vẫn có thể chơi offline.';
     _notify();
   }
 

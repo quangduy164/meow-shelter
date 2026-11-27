@@ -11,7 +11,7 @@ enum FishSpecies {
   catfish('Cá trê', 12, 'Hiếm'),
   koi('Cá koi', 7, 'Quý'),
   goldfish('Cá vàng', 2, 'Cực hiếm'),
-  catMew('Cá mèo', 0, 'Huyền thoại'),
+  catMew('Mèo Nessie', 0, 'Huyền thoại'),
   sardine('Cá mòi', 0, 'Phổ biến'),
   mackerel('Cá thu', 0, 'Hiếm'),
   clownfish('Cá hề', 0, 'Quý'),

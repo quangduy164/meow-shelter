@@ -8,8 +8,9 @@ import '../audio/game_audio.dart';
 /// A moored vessel with a separate, session-only walkable cabin.
 class FishingCabin {
   static const radius = 130.0;
+  static const waterDepth = 95.0;
   static const ship = Offset(11500, 1000);
-  static const mooring = Offset(11500, 1195);
+  static const mooring = Offset(11500, 1000 + waterDepth + 55);
   static const roomSize = Size(800, 480);
   static const exit = Offset(400, 410);
   static const floor = Rect.fromLTRB(155, 205, 650, 414);
@@ -53,10 +54,12 @@ class FishingCabin {
   double sleptFor = 0;
   bool dawnDue = false;
   bool canSkipNight = true;
+  double? sharedSleepDark;
   bool _sleepThroughNight = false;
 
   /// 0..1 darkness of the sleep fade.
   double get sleepDark {
+    if (sharedSleepDark != null) return sleeping ? sharedSleepDark! : 0;
     if (!sleeping || !_sleepThroughNight || !canSkipNight) return 0;
     if (sleptFor < sleepFade) return sleptFor / sleepFade;
     if (sleptFor < sleepFade + sleepHold) return 1;

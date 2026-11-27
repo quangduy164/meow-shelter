@@ -136,8 +136,6 @@ class FishingPainter extends CustomPainter {
     final motion = _rodMotion();
     final scale = artScale ?? math.min(size.width / 800, size.height / 327);
     final side = facingRight ? 1.0 : -1.0;
-    final reeled =
-        phase == FishingPhase.reeling ? progress.clamp(0.0, 1.0) : 0.0;
     final body = point(boat.dx, boat.dy) +
         Offset(0, math.sin(clock * 2.5) * 1.8) * scale;
     // Handle bottom just under the paws drawn by the fish-* sheets.
@@ -155,19 +153,21 @@ class FishingPainter extends CustomPainter {
             Offset(0, motion.bend * 70 * scale);
     final tip = swing(base +
             Offset(
-                    side * (103 - reeled * 65) + drift * load * 4,
+                    side * 103 + drift * load * 4,
                     -91 +
-                        reeled * 40 +
                         load * 15 +
                         (pulling ? math.sin(clock * 9) * 1.5 : 0)) *
                 scale) +
         Offset(0, motion.bend * 200 * scale);
+    // Start the curved shaft at the grip's upper collar, not inside the grip.
+    final along = (control - base) / (control - base).distance;
+    final neck = bamboo ? base : base + along * 36 * scale;
     Offset shaft(double t) =>
-        base * ((1 - t) * (1 - t)) +
+        neck * ((1 - t) * (1 - t)) +
         control * (2 * (1 - t) * t) +
         tip * (t * t);
     Offset tangent(double t) =>
-        (control - base) * (1 - t) + (tip - control) * t;
+        (control - neck) * (1 - t) + (tip - control) * t;
     Offset guide(double t) {
       final direction = tangent(t);
       return shaft(t) +

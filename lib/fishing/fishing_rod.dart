@@ -48,6 +48,6 @@ class FishingRodHouse {
   static Rect get bounds =>
       Rect.fromLTRB(base.dx - 104, base.dy - 155, base.dx + 104, base.dy + 28);
   static Offset get door => base + const Offset(0, 30);
-  static Offset get mooring => Offset(x, FishingRiver.bottom(x) - 60);
+  static Offset get mooring => Offset(x, FishingRiver.bottom(x) - 34);
   static bool hit(Offset p) => bounds.inflate(8).contains(p);
 }

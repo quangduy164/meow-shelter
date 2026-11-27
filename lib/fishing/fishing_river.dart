@@ -287,13 +287,18 @@ class FishingRiver {
       safe = fishingSeaIsland.center + direction * clearance;
     }
     // Moored structures: the pirate ship and the floating market.
-    for (final (at, reach) in [
-      (FishingCabin.ship, FishingCabin.radius),
-      (FishingMarket.center, FishingMarket.radius),
-      (FishingShrine.center, FishingShrine.radius),
-      (FishingBaitHouse.center, FishingBaitHouse.radius),
+    for (final (at, radius, depth) in [
+      (FishingCabin.ship, FishingCabin.radius, FishingCabin.waterDepth),
+      (FishingMarket.center, FishingMarket.radius, FishingMarket.waterDepth),
+      (FishingShrine.center, FishingShrine.radius, FishingShrine.waterDepth),
+      (
+        FishingBaitHouse.center,
+        FishingBaitHouse.radius,
+        FishingBaitHouse.waterDepth
+      ),
     ]) {
       final d = safe - at;
+      final reach = structureReach(d, radius, depth);
       if (d.distance < reach + boatMargin) {
         safe = at +
             (d.distance > .001 ? d / d.distance : const Offset(0, 1)) *
@@ -301,6 +306,15 @@ class FishingRiver {
       }
     }
     return safe;
+  }
+
+  /// Radial reach of a shallow top-down structure, shared by routing/collision.
+  static double structureReach(Offset delta, double radius, double depth) {
+    if (delta.distance < .001 || radius == depth) return radius;
+    final unit = delta / delta.distance;
+    return 1 /
+        math.sqrt(unit.dx * unit.dx / (radius * radius) +
+            unit.dy * unit.dy / (depth * depth));
   }
 
   static Offset constrainBanks(Offset p) {
@@ -563,24 +577,13 @@ class FishingRiverRound {
     return Offset.lerp(from, to, lo)!;
   }
 
-  /// Prefer the facing direction, then try other angles in the same cave.
-  /// The longest clear ray wins, so narrow water naturally shortens the cast.
-  Offset castPoint(Offset from, double facing) {
-    final caveOnly = FishingRiver.inCave(from);
-    var best = from, distance = 0.0;
-    for (var i = 0; i < 16; i++) {
-      final angle = -math.atan2(25, 280) +
-          (i == 0 ? 0 : (i.isOdd ? 1 : -1) * ((i + 1) ~/ 2) * math.pi / 8);
-      final ray = Offset(math.cos(angle) * facing, math.sin(angle));
-      final point = clipCast(from, from + ray * 280, caveOnly: caveOnly);
-      final reach = (point - from).distance;
-      if (reach > distance) {
-        best = point;
-        distance = reach;
-      }
-      if (reach >= 279.9) break;
-    }
-    return best;
+  /// Keep the chosen heading; obstacles shorten the cast without turning it.
+  Offset castPoint(Offset from, Offset direction) {
+    final ray = direction.distance > .001
+        ? direction / direction.distance
+        : Offset(boatFacingRight ? 1 : -1, 0);
+    return clipCast(from, from + ray * 280,
+        caveOnly: FishingRiver.inCave(from));
   }
 
   void sailTo(Offset world) {

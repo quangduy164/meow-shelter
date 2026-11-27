@@ -14,9 +14,10 @@ class FishingMarket {
 
   /// Solid reach for boat collision and routing.
   static const radius = 150.0;
+  static const waterDepth = 80.0;
 
   /// Where the boat stops to trade, just south of the stalls.
-  static const mooring = Offset(6050, 1250 + 200);
+  static const mooring = Offset(6050, 1250 + waterDepth + 55);
 
   /// Tap area: the whole art, awnings and lantern strings included.
   static bool hit(Offset world) => Rect.fromCenter(

@@ -45,6 +45,7 @@ class FishingController extends ChangeNotifier {
   bool _preparingCast = false;
   bool get preparingCast => _preparingCast;
   bool useLegendaryBait = false;
+  bool _castBaited = false;
   void toggleLegendaryBait() {
     if (!canSail || _preparingCast) return;
     useLegendaryBait = !useLegendaryBait;
@@ -352,9 +353,7 @@ class FishingController extends ChangeNotifier {
     return switch (_phase) {
       FishingPhase.ready => river.moving
           ? 'Đang chèo · Bấm cần câu góc phải để câu tại đây'
-          : activities.nearby(FishingActivities.worldClock(), river.boat,
-                      reach: river.boatStyle.activeReach) !=
-                  null
+          : _nearbyCastActivity(angler, _castDirection) != null
               ? 'Có cá động gần đây! Bấm cần câu để thử vận may'
               : 'Bấm nước để chèo · Bấm bờ để xuống đi bộ',
       FishingPhase.casting => _activeWater
@@ -489,6 +488,8 @@ class FishingController extends ChangeNotifier {
   }
 
   void cancelCast() {
+    if (_preparingCast) return;
+    _castBaited = false;
     _shoreCastPending = false;
     if (!active || _phase == FishingPhase.saving) return;
     cancelNavigation();
@@ -532,7 +533,9 @@ class FishingController extends ChangeNotifier {
     final reeled =
         ((_progress - _hookProgress) / (1 - _hookProgress)).clamp(0.0, 1.0);
     final startDistance = _castOffset.distance;
-    final finishDistance = math.min(95.0, startDistance * .5);
+    // Stop outside the hull and rod tip; short casts must never move outward.
+    final finishDistance =
+        math.min(startDistance, shoreFishing ? 140.0 : 180.0);
     final distance = startDistance + (finishDistance - startDistance) * reeled;
     if (startDistance < .001) return angler;
     final target = angler + _castOffset / startDistance * distance;
@@ -636,9 +639,8 @@ class FishingController extends ChangeNotifier {
           if (_activeWater) GameAudio.instance.play(GameSound.rescueSplash);
         }
       case FishingPhase.waiting:
-        if (_elapsed >= _wait) {
-          _setPhase(FishingPhase.bite);
-          _vibrate(HapticFeedback.mediumImpact);
+        if (_elapsed >= _wait && !_preparingCast) {
+          _beginBite();
         }
       case FishingPhase.bite:
         if (!_tutorial && _elapsed > (beginner ? 3 : 2)) {
@@ -754,7 +756,7 @@ class FishingController extends ChangeNotifier {
         break;
     }
     river.update(dt);
-    quests.onBoatAt(river.boat);
+    quests.onBoatAt(shoreFishing ? angler : river.boat);
     if (_tutorial && !_tutorialRowed && river.moving) _tutorialRowed = true;
     if (river.cabin.pending &&
         !river.moving &&
@@ -807,6 +809,18 @@ class FishingController extends ChangeNotifier {
     _startCast();
   }
 
+  Offset get _castDirection => river.heading.distance > .001
+      ? river.heading
+      : Offset(player.facingRight ? 1 : -1, 0);
+
+  FishingActivity? _nearbyCastActivity(Offset location, Offset direction) =>
+      activities.nearby(FishingActivities.worldClock(), location,
+          reach: river.boatStyle.activeReach,
+          direction: direction,
+          canReach: (target) =>
+              river.props.clearLine(location, target) &&
+              (!FishingRiver.inCave(location) || FishingRiver.inCave(target)));
+
   /// Bad-luck protection: casts in legendary water without one. Each miss
   /// adds 1/30 to the legendary odds (up to x4); a legendary catch resets it.
   static const legendMissKey = 'fishing_legend_misses_v1';
@@ -822,15 +836,7 @@ class FishingController extends ChangeNotifier {
     _preparingCast = true;
     notifyListeners();
     try {
-      var baited = false;
-      if (useLegendaryBait && collection.legendaryBait > 0) {
-        baited = await collection.consumeLegendaryBait();
-        if (!baited) {
-          _error = 'Chưa lưu được mồi câu, hãy thử lại';
-          _setPhase(FishingPhase.lost);
-          return;
-        }
-      }
+      final baited = useLegendaryBait && collection.legendaryBait > 0;
       if (_disposed) return;
       _finishCast(baited);
     } catch (_) {
@@ -844,11 +850,39 @@ class FishingController extends ChangeNotifier {
     }
   }
 
+  Future<void> _beginBite() async {
+    if (_preparingCast || _phase != FishingPhase.waiting) return;
+    _preparingCast = true;
+    try {
+      // Pay only when a fish takes this cast; canceling the wait costs nothing.
+      if (_castBaited && !await collection.consumeLegendaryBait()) {
+        if (!_disposed) {
+          _error = 'Chưa lưu được mồi câu, hãy thử lại';
+          _setPhase(FishingPhase.lost);
+        }
+        return;
+      }
+      if (_disposed) return;
+      _castBaited = false;
+      _setPhase(FishingPhase.bite);
+      _vibrate(HapticFeedback.mediumImpact);
+    } catch (_) {
+      if (!_disposed) {
+        _error = 'Chưa lưu được mồi câu, hãy thử lại';
+        _setPhase(FishingPhase.lost);
+      }
+    } finally {
+      _preparingCast = false;
+      if (!_disposed) notifyListeners();
+    }
+  }
+
   void _finishCast(bool baited) {
+    _castBaited = baited;
     if (shoreFishing) river.island.stopWalking();
     final location = angler;
     _castFrom = location;
-    final direction = river.heading.dx >= 0 ? 1.0 : -1.0;
+    final direction = _castDirection;
     if (river.localDrives) river.stop();
     _spot = shoreFishing
         ? river.island.fishingWater(location)
@@ -856,16 +890,8 @@ class FishingController extends ChangeNotifier {
     if (shoreFishing) {
       river.island.facingRight = _spot.dx >= location.dx;
     }
-    var activity = shoreFishing
-        ? null
-        : activities.nearby(FishingActivities.worldClock(), location,
-            reach: river.boatStyle.activeReach);
-    if (activity != null &&
-        (!river.props.clearLine(location, activity.position) ||
-            (FishingRiver.inCave(location) &&
-                !FishingRiver.inCave(activity.position)))) {
-      activity = null;
-    }
+    final activity =
+        shoreFishing ? null : _nearbyCastActivity(location, direction);
     _activeWater = activity != null;
     if (activity != null) {
       if ((activity.position - location).distance >= 110) {
@@ -1008,7 +1034,7 @@ enum FishingVisit {
 
   /// Where the boat stops for this place.
   Offset get mooring => switch (this) {
-        boatHouse => FishingRiver.startBoat,
+        boatHouse => FishingBoatHouse.mooring,
         market => FishingMarket.mooring,
         shrine => FishingShrine.mooring,
         baitHouse => FishingBaitHouse.mooring,
