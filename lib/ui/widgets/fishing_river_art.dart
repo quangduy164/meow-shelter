@@ -1,3 +1,4 @@
+import '../../fishing/fishing_place.dart';
 import 'dart:math' as math;
 import 'dart:ui' as ui;
 import 'package:flutter/painting.dart';
@@ -12,8 +13,6 @@ import 'fishing_mangrove_art.dart';
 import 'fishing_rocky_bay_art.dart';
 import 'fishing_harbor_art.dart';
 import 'fishing_rod_house.dart';
-import '../../fishing/fishing_rod.dart';
-import '../../fishing/fishing_boat.dart';
 
 /// Recorded once per stretch; seeds and world positions agree across seams.
 ui.Picture recordFishingRiver(int section) {
@@ -246,8 +245,8 @@ void _paintLandscape(Canvas canvas, double left, double right) {
     if (x < 1800) {
       // Keep the meadow clear of the boathouse.
       bool clear(double at) =>
-          (at - FishingBoatHouse.x).abs() > 125 &&
-          (at - FishingRodHouse.x).abs() > 130;
+          (at - FishingVisit.boatHouse.x).abs() > 125 &&
+          (at - FishingVisit.rodHouse.x).abs() > 130;
       if (clear(x)) _flowers(canvas, Offset(x, y + 36), seed: i);
       if (i % 3 == 0 && clear(x + 90)) {
         paintLeafyTree(canvas, Offset(x + 90, y + 157), 83, seed: i + 51);
@@ -265,11 +264,12 @@ void _paintLandscape(Canvas canvas, double left, double right) {
     _dock(canvas, Offset(x, FishingRiver.bottom(x) - 15));
     if (x == FishingRiver.startDockX) paintHarbourPier(canvas);
   }
-  if (FishingBoatHouse.bounds.left < to &&
-      FishingBoatHouse.bounds.right > from) {
+  if (FishingVisit.boatHouse.bounds.left < to &&
+      FishingVisit.boatHouse.bounds.right > from) {
     paintBoatHouse(canvas);
   }
-  if (FishingRodHouse.bounds.left < to && FishingRodHouse.bounds.right > from) {
+  if (FishingVisit.rodHouse.bounds.left < to &&
+      FishingVisit.rodHouse.bounds.right > from) {
     paintFishingRodHouse(canvas);
   }
   if (left < 2850 && right > 2500) {

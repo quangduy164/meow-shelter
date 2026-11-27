@@ -1,12 +1,9 @@
+import '../../fishing/fishing_place.dart';
 import 'dart:math' as math;
 import 'package:material_ui/material_ui.dart';
 import '../../fishing/fishing_boat.dart';
-import '../../fishing/fishing_rod.dart';
-import '../../fishing/fishing_bait_house.dart';
-import '../../fishing/fishing_shrine.dart';
 import '../../collection/fish_collection.dart';
 import '../../collection/fish_species.dart';
-import '../../fishing/fishing_cabin.dart';
 import '../../fishing/fishing_island.dart';
 import '../../fishing/fishing_lighting.dart';
 import '../../fishing/fishing_river.dart';
@@ -119,9 +116,9 @@ class FishingNightOverlay extends CustomPainter {
     lamp(fishingSeaIsland.center + const Offset(-210, 226), 150 + flick * 10,
         const Color(0xFFFFA65A), .75);
     // Pirate ship stern windows and lantern.
-    lamp(FishingCabin.ship + const Offset(-106, -28), 120,
+    lamp(FishingVisit.cabinShip.anchor + const Offset(-106, -28), 120,
         const Color(0xFFFFCB70), .6);
-    lamp(FishingCabin.ship + const Offset(-126, -132), 70,
+    lamp(FishingVisit.cabinShip.anchor + const Offset(-126, -132), 70,
         const Color(0xFFFFD98A), .8);
     // Cave crystals.
     for (final x in [8000.0, 8200.0]) {
@@ -153,19 +150,19 @@ class FishingNightOverlay extends CustomPainter {
           .hasShrineOffering(FishSpecies.legendary[i])) {
         continue;
       }
-      lamp(FishingShrine.center + shrineStatues[i].at, 115,
+      lamp(FishingVisit.shrine.anchor + shrineStatues[i].at, 115,
           const Color(0xFFFFF0B0), .55);
     }
-    lamp(FishingBaitHouse.center + const Offset(77, -62), 65,
+    lamp(FishingVisit.baitHouse.anchor + const Offset(77, -62), 65,
         const Color(0xFFFFD27A), .7);
     // Floating market lantern strings.
     for (final p in fishMarketLanterns()) {
       lamp(p + const Offset(0, 8), 34, const Color(0xFFFFB45C), .8);
     }
-    lamp(FishingRodHouse.base + const Offset(33, -53), 55,
+    lamp(FishingVisit.rodHouse.anchor + const Offset(33, -53), 55,
         const Color(0xFFFFD17C), .6);
     // Harbour: boathouse lantern, beacon tower and pier lamp.
-    final house = FishingBoatHouse.base;
+    final house = FishingVisit.boatHouse.anchor;
     lamp(house + const Offset(18, -60), 45, const Color(0xFFFFD27A), .7);
     lamp(house + const Offset(73, -132), 80, const Color(0xFFFFE6A0), .8);
     const pierX = FishingRiver.startDockX;

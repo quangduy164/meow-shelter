@@ -1,6 +1,4 @@
-import 'package:flutter/painting.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'fishing_river.dart';
 import 'fishing_quests.dart';
 import '../camp/camp_state.dart';
 import '../collection/fish_collection.dart';
@@ -40,14 +38,4 @@ enum FishingRod {
 
   Future<bool> save(SharedPreferences preferences) =>
       preferences.setString(_key, name);
-}
-
-class FishingRodHouse {
-  static const x = 400.0;
-  static Offset get base => Offset(x, FishingRiver.bottom(x) + 180);
-  static Rect get bounds =>
-      Rect.fromLTRB(base.dx - 104, base.dy - 155, base.dx + 104, base.dy + 28);
-  static Offset get door => base + const Offset(0, 30);
-  static Offset get mooring => Offset(x, FishingRiver.bottom(x) - 34);
-  static bool hit(Offset p) => bounds.inflate(8).contains(p);
 }

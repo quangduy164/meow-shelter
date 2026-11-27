@@ -1,3 +1,4 @@
+import '../../fishing/fishing_place.dart';
 import 'dart:math' as math;
 import 'dart:ui' as ui;
 import 'package:material_ui/material_ui.dart';
@@ -95,7 +96,7 @@ class _ShrinePainter extends CustomPainter {
   final List<ui.Picture> lit;
   @override
   void paint(Canvas c, Size size) {
-    final p = round.toScreen(FishingShrine.center);
+    final p = round.toScreen(FishingVisit.shrine.anchor);
     if (!(Offset.zero & size).inflate(460 * round.scale).contains(p)) return;
     c.save();
     c.clipRect(Offset.zero & size);

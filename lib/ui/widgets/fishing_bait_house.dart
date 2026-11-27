@@ -1,9 +1,9 @@
+import '../../fishing/fishing_place.dart';
 import '../../collection/fish_species.dart';
 import 'dart:ui' as ui;
 import 'package:material_ui/material_ui.dart';
 import '../../collection/fish_collection.dart';
 import '../../camp/camp_state.dart';
-import '../../fishing/fishing_bait_house.dart';
 import '../../fishing/fishing_river.dart';
 import '../design.dart';
 import 'fishing_art_kit.dart';
@@ -47,7 +47,7 @@ class _HousePainter extends CustomPainter {
   final ui.Picture picture;
   @override
   void paint(Canvas c, Size size) {
-    final p = round.toScreen(FishingBaitHouse.center);
+    final p = round.toScreen(FishingVisit.baitHouse.anchor);
     if (!(Offset.zero & size).inflate(220 * round.scale).contains(p)) return;
     c.save();
     c.clipRect(Offset.zero & size);

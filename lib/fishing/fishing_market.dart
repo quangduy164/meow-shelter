@@ -1,6 +1,5 @@
 import 'fishing_quests.dart';
 import 'dart:math' as math;
-import 'package:flutter/painting.dart';
 
 import '../camp/camp_state.dart';
 import '../collection/fish_collection.dart';
@@ -10,20 +9,6 @@ import '../collection/fish_species.dart';
 /// the water. Basket fish sell for camp coins; one species a day is wanted
 /// and sells for double.
 class FishingMarket {
-  static const center = Offset(6050, 1250);
-
-  /// Solid reach for boat collision and routing.
-  static const radius = 150.0;
-  static const waterDepth = 80.0;
-
-  /// Where the boat stops to trade, just south of the stalls.
-  static const mooring = Offset(6050, 1250 + waterDepth + 55);
-
-  /// Tap area: the whole art, awnings and lantern strings included.
-  static bool hit(Offset world) => Rect.fromCenter(
-          center: center - const Offset(0, 30), width: 400, height: 290)
-      .contains(world);
-
   static int basePrice(FishSpecies fish) => fish == FishSpecies.seashell
       ? 8
       : switch (fish.rarity) {

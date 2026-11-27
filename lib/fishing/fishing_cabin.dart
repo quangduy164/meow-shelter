@@ -7,10 +7,6 @@ import '../audio/game_audio.dart';
 
 /// A moored vessel with a separate, session-only walkable cabin.
 class FishingCabin {
-  static const radius = 130.0;
-  static const waterDepth = 95.0;
-  static const ship = Offset(11500, 1000);
-  static const mooring = Offset(11500, 1000 + waterDepth + 55);
   static const roomSize = Size(800, 480);
   static const exit = Offset(400, 410);
   static const floor = Rect.fromLTRB(155, 205, 650, 414);
@@ -126,8 +122,6 @@ class FishingCabin {
 
   int? _nextRoom;
   Rect get currentFloor => room == 0 ? floor : bedroomFloor;
-  static bool hit(Offset point) =>
-      Rect.fromLTWH(ship.dx - 150, ship.dy - 150, 300, 230).contains(point);
   bool pending = false, inside = false, leaving = false, facingRight = true;
   Offset cat = exit;
   Offset? destination;

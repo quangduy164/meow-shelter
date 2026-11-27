@@ -11,7 +11,7 @@ import '../../audio/game_audio.dart';
 
 /// Static village workshop, recorded into the river landscape chunks.
 void paintFishingRodHouse(Canvas c) {
-  final base = FishingRodHouse.base;
+  final base = FishingVisit.rodHouse.anchor;
   c.save();
   c.translate(base.dx, base.dy);
   c.drawOval(const Rect.fromLTWH(-102, -6, 204, 25), fillPaint(0x334E5037));

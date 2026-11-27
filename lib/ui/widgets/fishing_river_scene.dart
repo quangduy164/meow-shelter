@@ -36,7 +36,7 @@ class FishingRiverBackdrop extends StatefulWidget {
 
 class _FishingRiverBackdropState extends State<FishingRiverBackdrop> {
   late final _landscape = widget.landscape ?? FishingLandscapeCache();
-  late final _tiles = _BackdropTiles(_landscape.section, (_, __) {});
+  late final _tiles = _BackdropTiles(_landscape.section);
 
   @override
   void dispose() {
@@ -86,13 +86,10 @@ class FishingLandscapeCache {
 /// once with [ui.Picture.toImageSync] and then drawn as a single image.
 /// Zoomed-out views use coarser levels; least recently used tiles are freed.
 class _BackdropTiles {
-  _BackdropTiles(this.section, this.onVisible);
+  _BackdropTiles(this.section);
 
   /// Recorded landscape chunk [i] (recorded on first use).
   final ui.Picture Function(int i) section;
-
-  /// Reports the chunk range in view, so far chunks can be released.
-  final void Function(int first, int last) onVisible;
 
   /// World size of a level-0 tile and its pixel density.
   static const tileWorld = 256.0, baseRes = 2.0, pad = 2;
@@ -134,9 +131,6 @@ class _BackdropTiles {
   }
 
   void paint(Canvas canvas, Rect view, double pixelsPerUnit) {
-    const len = FishingRiver.sectionLength;
-    onVisible((view.left / len).floor().clamp(0, FishingRiver.sectionCount - 1),
-        (view.right / len).floor().clamp(0, FishingRiver.sectionCount - 1));
     final level = levelFor(pixelsPerUnit);
     final size = tileWorld * (1 << level);
     const px = tileWorld * baseRes;

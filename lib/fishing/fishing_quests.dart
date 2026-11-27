@@ -1,3 +1,4 @@
+import 'fishing_place.dart';
 import 'dart:async';
 import 'dart:convert';
 
@@ -8,7 +9,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../camp/camp_state.dart';
 import '../collection/fish_collection.dart';
 import '../collection/fish_species.dart';
-import 'fishing_market.dart';
 import 'fishing_river.dart';
 import 'fishing_shrine.dart';
 
@@ -67,10 +67,10 @@ enum FishingQuest {
 
   /// World point the step asks the player to reach, if any.
   Offset? get target => switch (this) {
-        sell => FishingMarket.center,
+        sell => FishingVisit.market.anchor,
         activeWater => _along(4500),
         bambooRare || nessie => _along(2700),
-        findShrine || moonfish || shrine => FishingShrine.center,
+        findShrine || moonfish || shrine => FishingVisit.shrine.anchor,
         seaDragon => _along(10800),
         _ => null,
       };
@@ -203,7 +203,7 @@ class FishingQuests extends ChangeNotifier {
   bool hasVisited(FishingRegion region) => _visited.contains(region.name);
   bool get explorationComplete => explorationOrder.every(hasVisited);
   static Offset regionTarget(FishingRegion r) => r == FishingRegion.cave
-      ? FishingShrine.center
+      ? FishingVisit.shrine.anchor
       : Offset(
           (r.start + r.end) / 2, FishingRiver.bayCenter((r.start + r.end) / 2));
 

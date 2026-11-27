@@ -30,7 +30,7 @@ class _ShipPainter extends CustomPainter {
   final ui.Picture picture;
   @override
   void paint(Canvas c, Size size) {
-    final point = round.toScreen(FishingCabin.ship);
+    final point = round.toScreen(FishingVisit.cabinShip.anchor);
     if (!(Offset.zero & size).inflate(320 * round.scale).contains(point)) {
       return;
     }
@@ -75,7 +75,7 @@ class _ShipPainter extends CustomPainter {
       old.round != round || old.picture != picture;
 }
 
-/// Pirate ship, bow to the right. Origin = FishingCabin.ship; the hull stays
+/// Pirate ship, bow to the right. Origin = FishingVisit.cabinShip.anchor; the hull stays
 /// inside the solid radius, masts and sails rise above it.
 void _ship(Canvas c) {
   c.drawOval(const Rect.fromLTWH(-160, 70, 345, 80), _fill(0x33405C5A));

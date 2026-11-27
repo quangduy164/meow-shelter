@@ -1,7 +1,7 @@
+import '../../fishing/fishing_place.dart';
 import 'dart:math' as math;
 import 'package:flutter/painting.dart';
 import '../../fishing/fishing_river.dart';
-import '../../fishing/fishing_rod.dart';
 import 'fishing_art_kit.dart';
 import 'fishing_river_art.dart';
 
@@ -21,7 +21,9 @@ void paintLandScenery(Canvas c, double left, double right) {
       if (x < from || x > to || y < 300 || y > FishingRiver.height - 70) {
         continue;
       }
-      if (FishingRodHouse.bounds.inflate(100).contains(Offset(x, y))) continue;
+      if (FishingVisit.rodHouse.bounds.inflate(100).contains(Offset(x, y))) {
+        continue;
+      }
       final region = _region(x);
       final margin = _margin(region);
       final north = y < FishingRiver.top(x) - margin.$1;

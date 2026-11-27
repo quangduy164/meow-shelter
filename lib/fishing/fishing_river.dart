@@ -1,12 +1,10 @@
+import 'fishing_place.dart';
 import 'fishing_fight.dart';
 import 'river_props.dart';
 import 'river_navigation.dart';
 import 'river_sea_land.dart';
 import 'fishing_island.dart';
 import 'fishing_cabin.dart';
-import 'fishing_market.dart';
-import 'fishing_shrine.dart';
-import 'fishing_bait_house.dart';
 import 'fishing_cave.dart';
 import 'fishing_exploration.dart';
 import 'fishing_region.dart';
@@ -271,10 +269,8 @@ class FishingRiver {
       p.dy <= bottom(p.dx) &&
       !inCaveLip(p) &&
       !fishingSeaIsland.contains(p) &&
-      (p - FishingCabin.ship).distance > FishingCabin.radius &&
-      (p - FishingMarket.center).distance > FishingMarket.radius &&
-      (p - FishingShrine.center).distance > FishingShrine.radius &&
-      (p - FishingBaitHouse.center).distance > FishingBaitHouse.radius;
+      FishingVisit.floating
+          .every((place) => (p - place.anchor).distance > place.radius);
 
   static Offset constrain(Offset p) {
     var safe = constrainBanks(p);
@@ -287,18 +283,10 @@ class FishingRiver {
       safe = fishingSeaIsland.center + direction * clearance;
     }
     // Moored structures: the pirate ship and the floating market.
-    for (final (at, radius, depth) in [
-      (FishingCabin.ship, FishingCabin.radius, FishingCabin.waterDepth),
-      (FishingMarket.center, FishingMarket.radius, FishingMarket.waterDepth),
-      (FishingShrine.center, FishingShrine.radius, FishingShrine.waterDepth),
-      (
-        FishingBaitHouse.center,
-        FishingBaitHouse.radius,
-        FishingBaitHouse.waterDepth
-      ),
-    ]) {
+    for (final place in FishingVisit.floating) {
+      final at = place.anchor;
       final d = safe - at;
-      final reach = structureReach(d, radius, depth);
+      final reach = place.reachTowards(safe);
       if (d.distance < reach + boatMargin) {
         safe = at +
             (d.distance > .001 ? d / d.distance : const Offset(0, 1)) *
@@ -306,15 +294,6 @@ class FishingRiver {
       }
     }
     return safe;
-  }
-
-  /// Radial reach of a shallow top-down structure, shared by routing/collision.
-  static double structureReach(Offset delta, double radius, double depth) {
-    if (delta.distance < .001 || radius == depth) return radius;
-    final unit = delta / delta.distance;
-    return 1 /
-        math.sqrt(unit.dx * unit.dx / (radius * radius) +
-            unit.dy * unit.dy / (depth * depth));
   }
 
   static Offset constrainBanks(Offset p) {

@@ -1,7 +1,7 @@
+import '../../fishing/fishing_place.dart';
 import 'dart:math' as math;
 import 'package:flutter/painting.dart';
 
-import '../../fishing/fishing_boat.dart';
 import '../../fishing/fishing_river.dart';
 import 'fishing_art_kit.dart';
 import 'fishing_boat_art.dart';
@@ -16,7 +16,7 @@ const _ink = 0xFF4A2F1C;
 /// Boathouse with a red tile roof, a stone base, a beacon tower and both
 /// boats waiting inside the bay door.
 void paintBoatHouse(Canvas c) {
-  final b = FishingBoatHouse.base;
+  final b = FishingVisit.boatHouse.anchor;
   c.save();
   c.translate(b.dx, b.dy);
   // Ground shadow and a plank slipway out of the bay door.

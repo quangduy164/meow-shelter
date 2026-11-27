@@ -1,3 +1,6 @@
+import 'fishing_navigation.dart';
+export 'fishing_place.dart' show FishingVisit;
+import 'fishing_place.dart';
 import '../game/cats/cat_breed.dart';
 import 'fishing_player.dart';
 import 'player_identity.dart';
@@ -6,13 +9,10 @@ import 'fishing_fight.dart';
 import 'fishing_activity.dart';
 import 'fishing_river.dart';
 import 'fishing_island.dart';
-import 'fishing_cabin.dart';
 import 'fishing_boat.dart';
 import 'fishing_rod.dart';
-import 'fishing_market.dart';
 import 'fishing_shrine.dart';
 import 'fishing_quests.dart';
-import 'fishing_bait_house.dart';
 import '../camp/camp_state.dart';
 import '../audio/game_audio.dart';
 import 'dart:math' as math;
@@ -76,15 +76,11 @@ class FishingController extends ChangeNotifier {
 
   /// Place the cat is heading to; its screen opens on arrival (see
   /// [takeArrival]).
-  FishingVisit? _visit, _arrived;
-  FishingVisit? get visitRequested => _visit;
+  late final navigation = FishingNavigation(river);
+  FishingVisit? get visitRequested => navigation.requested;
 
   /// The place the cat just reached, once; null otherwise.
-  FishingVisit? takeArrival() {
-    final arrived = _arrived;
-    _arrived = null;
-    return arrived;
-  }
+  FishingVisit? takeArrival() => navigation.takeArrival();
 
   Offset get angler =>
       river.island.ashore ? river.island.cat : river.playerPosition(player);
@@ -301,11 +297,11 @@ class FishingController extends ChangeNotifier {
     if (river.cabin.pending) return 'Đang chèo tới thuyền gỗ…';
     if (!island.ashore &&
         !active &&
-        (river.boat - FishingCabin.ship).distance < 650) {
+        (river.boat - FishingVisit.cabinShip.anchor).distance < 650) {
       return 'Bấm thuyền lớn để vào khoang nghỉ';
     }
     if (island.lookout) return 'Ngắm toàn vùng biển · Bấm để leo xuống';
-    switch (_visit) {
+    switch (navigation.requested) {
       case FishingVisit.rodHouse:
         return 'Đang tới nhà đổi cần câu…';
       case FishingVisit.boatHouse:
@@ -318,24 +314,25 @@ class FishingController extends ChangeNotifier {
         return 'Đang chèo tới đền hiến tế…';
       case FishingVisit.baitHouse:
         return 'Đang chèo tới nhà pha mồi…';
+      case FishingVisit.cabinShip:
       case null:
         break;
     }
     if (!island.ashore &&
         !active &&
-        (river.boat - FishingShrine.center).distance < 500) {
+        (river.boat - FishingVisit.shrine.anchor).distance < 500) {
       return collection.shrineOfferings >= FishingShrine.requiredFish
           ? 'Đền Hang biển đã thức tỉnh'
           : 'Bấm đền đá để dâng 3 loài huyền thoại';
     }
     if (!island.ashore &&
         !active &&
-        (river.boat - FishingMarket.center).distance < 600) {
+        (river.boat - FishingVisit.market.anchor).distance < 600) {
       return 'Bấm chợ cá nổi để bán cá lấy xu';
     }
     if (!island.ashore &&
         !active &&
-        (river.boat - FishingBaitHouse.center).distance < 400) {
+        (river.boat - FishingVisit.baitHouse.anchor).distance < 400) {
       return 'Nhà pha mồi · Đổi 5 cá phổ biến lấy mồi huyền thoại';
     }
     if (island.lookoutRequested) return 'Mèo đang tới hải đăng…';
@@ -371,108 +368,18 @@ class FishingController extends ChangeNotifier {
 
   void tapRiver(Offset screen) {
     if (_phase == FishingPhase.saving || _phase == FishingPhase.caught) return;
-    if (river.cabin.inside || river.cave.inside) return;
-    if (_preparingCast) return;
+    if (river.cabin.inside || river.cave.inside || _preparingCast) return;
     if (!river.island.ashore && !river.localDrives) return;
-    final point = river.toWorld(screen);
-    river.cabin.pending = false;
-    final island = river.island;
     _shoreCastPending = false;
-    _visit = null;
-    if (island.lookout) {
-      island.climbDown();
-      notifyListeners();
-      return;
-    }
-    if ((FishingBoatHouse.hit(point) && _goTo(FishingVisit.boatHouse)) ||
-        (FishingMarket.hit(point) && _goTo(FishingVisit.market)) ||
-        (FishingShrine.hit(point) && _goTo(FishingVisit.shrine)) ||
-        (FishingBaitHouse.hit(point) && _goTo(FishingVisit.baitHouse)) ||
-        (FishingRodHouse.hit(point) && _goTo(FishingVisit.rodHouse))) {
-      notifyListeners();
-      return;
-    }
-    if (island.ashore) {
+    final changed =
+        navigation.tap(river.toWorld(screen), beforeMove: (clearLoss) {
       if (active) cancelCast();
-      if (!island.onBank && FishingIslandVisit.hitsLighthouse(point)) {
-        island.climbLighthouse();
-      } else if (!island.onBank && FishingIslandVisit.inMountain(point)) {
-        island.goToCave();
-      } else if ((point - river.boat).distance < 70) {
-        returnToBoat();
-      } else if (island.landContains(point)) {
-        island.walkTo(point);
+      if (clearLoss && _phase == FishingPhase.lost) {
+        _error = null;
+        _setPhase(FishingPhase.ready);
       }
-      notifyListeners();
-      return;
-    }
-    if (FishingCabin.hit(point)) {
-      if (active) cancelCast();
-      if (_phase == FishingPhase.lost) _setPhase(FishingPhase.ready);
-      river.sailTo(FishingCabin.mooring);
-      river.cabin.pending = true;
-      notifyListeners();
-      return;
-    }
-    final docking = FishingIslandVisit.contains(point) ||
-        (point - FishingIslandVisit.dockTap).distance < 45;
-    final bank = point.dx >= 80 &&
-        point.dx <= FishingRiver.length - 80 &&
-        point.dy >= 150 &&
-        point.dy <= FishingRiver.height - 30 &&
-        (point.dy < FishingRiver.top(point.dx) - 10 ||
-            point.dy > FishingRiver.bottom(point.dx) + 10);
-    if (!docking && !bank && !FishingRiver.contains(point)) return;
-    if (active) cancelCast();
-    if (_phase == FishingPhase.lost) {
-      _error = null;
-      _setPhase(FishingPhase.ready);
-    }
-    if (bank && !docking) {
-      island.chooseBank(point);
-      island.bankMooring = river.props.resolve(island.visitMooring);
-    } else if (docking) {
-      island.chooseIsland();
-    }
-    island.dockRequested = docking || bank;
-    river.sailTo(island.dockRequested ? island.visitMooring : point);
-    notifyListeners();
-  }
-
-  /// Rows (or, for the boathouse, also walks along the near bank) to
-  /// [visit]; its screen only opens there. False when it cannot be reached
-  /// from here (e.g. the market while ashore), so the tap is handled as usual.
-  bool _goTo(FishingVisit visit) {
-    final island = river.island;
-    final walk = island.ashore;
-    if (walk && (visit.bankDoor == null || island.northBank != false)) {
-      return false;
-    }
-    if (active) cancelCast();
-    if (_phase == FishingPhase.lost) {
-      _error = null;
-      _setPhase(FishingPhase.ready);
-    }
-    _visit = visit;
-    if (walk) {
-      island.walkTo(visit.bankDoor!);
-    } else {
-      river.sailTo(visit.mooring);
-    }
-    return true;
-  }
-
-  void _updateVisit() {
-    final visit = _visit;
-    if (visit == null) return;
-    final island = river.island;
-    if (island.ashore ? island.walking : river.moving) return;
-    _visit = null;
-    final arrived = island.ashore
-        ? visit.bankDoor != null &&
-            (island.cat - visit.bankDoor!).distance < 110
-        : (river.boat - visit.mooring).distance < 30;
-    if (arrived) _arrived = visit;
+    }, returnToBoat: returnToBoat);
+    if (changed) notifyListeners();
   }
 
   void steerBoat(Offset delta) {
@@ -760,11 +667,11 @@ class FishingController extends ChangeNotifier {
     if (_tutorial && !_tutorialRowed && river.moving) _tutorialRowed = true;
     if (river.cabin.pending &&
         !river.moving &&
-        (river.boat - FishingCabin.mooring).distance < 2) {
+        (river.boat - FishingVisit.cabinShip.mooring).distance < 2) {
       river.cabin.enter();
       stopSteering();
     }
-    _updateVisit();
+    navigation.update();
     if (_shoreCastPending &&
         river.island.phase == IslandVisitPhase.exploring &&
         !river.island.walking) {
@@ -1018,26 +925,3 @@ class FishingController extends ChangeNotifier {
 /// Places that open their own screen once the cat gets there.
 /// Button the tutorial arrow points at.
 enum FishingTutorialTarget { none, rod, basket }
-
-enum FishingVisit {
-  boatHouse,
-  market,
-  shrine,
-  baitHouse,
-  rodHouse;
-
-  Offset? get bankDoor => switch (this) {
-        boatHouse => FishingBoatHouse.door,
-        rodHouse => FishingRodHouse.door,
-        _ => null,
-      };
-
-  /// Where the boat stops for this place.
-  Offset get mooring => switch (this) {
-        boatHouse => FishingBoatHouse.mooring,
-        market => FishingMarket.mooring,
-        shrine => FishingShrine.mooring,
-        baitHouse => FishingBaitHouse.mooring,
-        rodHouse => FishingRodHouse.mooring,
-      };
-}

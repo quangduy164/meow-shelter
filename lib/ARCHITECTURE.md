@@ -48,6 +48,32 @@
   - `systems/bait_system.dart`, `catch_window.dart`, `world/`.
 - `game/adventure/`: the Adventure mode. Road and biomes, spawner,
   obstacles, cat, scenery, HUD, joystick — one concern per file.
+  - `adventure_game.dart`: run state, Flame load/resize/update/render/disposal,
+    overlays and rewards. Its behavior parts share this one state owner:
+    `adventure_targeting.dart` handles aim/target selection and cast entry;
+    `adventure_combat.dart` handles effects, cooldowns, combos and damage;
+    `adventure_boss_fight.dart` connects the dragon to cat/hazard combat;
+    `adventure_run_rules.dart` handles hazards, wind, water, pickups,
+    checkpoints and respawn. Keep the existing update order in the game.
+  - `adventure_dragon.dart`: boss state, AI, phase timing and shared tail
+    geometry. Its artwork parts separate the common drawing/turn poses
+    (`adventure_dragon_art.dart`), original body/wings (`*_body_art.dart`),
+    evolved body/head (`*_ascended_art.dart`) and original head/status effects
+    (`*_head_art.dart`). `adventure_dragon_attacks.dart` owns telegraphed attack
+    components and damage text; collision and art share the same geometry.
+  - `adventure_skills.dart`: the public effect library, tuning constants and
+    common ground geometry. Components live in parts by effect family:
+    `adventure_projectiles.dart`, `adventure_fire_effects.dart`,
+    `adventure_shadow_effects.dart`, `adventure_ice_effects.dart`,
+    `adventure_earth_effects.dart`, `adventure_support_effects.dart` and
+    `adventure_aim_indicator.dart`. Existing imports still expose these types.
+    Behavior/art parts keep private state private; do not add a second game
+    instance, ticker, cache or lifecycle owner just to split a file.
+  - `ui/screens/adventure_screen.dart` owns screen entry, navigation and the
+    pause/resume contract for combo help. Widgets `adventure_skill_controls.dart`,
+    `adventure_combo_help.dart` and `adventure_victory_overlay.dart` own the skill
+    controls, combo guide and results. The screen supplies replay navigation;
+    the controls cancel their refresh timer on disposal.
 - `game/cat_herd/`: Lead the Herd mode, independent of rescue and Adventure.
   - `herd_round.dart`: deterministic simulation when seeded: recruitment,
     distance-sampled leader trail, followers, patrol hits, scattering,
@@ -302,7 +328,7 @@
     `fillPaint`, `strokePaint`, `bankBand`). Mangrove, rocky bay and cave art use
     deterministic `artNoise(i, salt)` for
     species, size, offset and mirroring (cached chunks stay identical each run).
-    The village harbour at the start (`fishing_harbor_art.dart`: boathouse with beacon tower, cargo and pier lamp) is static and recorded into the landscape chunks; tapping `FishingBoatHouse.bounds` rows the boat back to the start pier (or walks the cat there along the near bank) and the boat picker opens only on arrival (`FishingController.takeBoatHouseArrival`); from the island or the far bank the tap is ignored. Visits share one flow: `FishingVisit` (boatHouse, market) with its `mooring`, `_goTo` rows there and `takeArrival()` tells the screen which dialog to open; a new place adds one enum value. The floating fish market (`fishing_market.dart`, Cửa biển) is a solid `RiverPropKind.market` prop (collision, routing, `FishingRiver.contains/constrain`), drawn above the water by `FishingMarketStalls` from one recorded picture (`fishing_market_art.dart`); `FishingMarketDialog` sells basket fish for camp coins by rarity, today's `wantedOn` species at double price. Boats (`FishingBoat`: basket with a stern lantern that glows at night, paper, melon) are drawn only through `paintBoatBack`/`paintBoatFront` in `fishing_boats.dart`; a new boat adds an enum value and one case there. The world is 7 x 1800 = 12600 units; the last chunk is open sea east of the island so the lookout view stays centered. Fog saves from shorter worlds load row by row. The island centre is a cartoon rock massif (`fishing_volcano_art.dart`: snow-capped peaks, grassy hill with boulders, pines, a waterfall into a pool and a stream). Its footprint (`FishingIslandVisit.inMountain`) blocks walking and routes go around its foot; `mountainSilhouette()` keeps water effects off the peaks. Tapping it walks to `caveMouth` and opens the cave parkour (`fishing_cave.dart` + `fishing_cave_run.dart`): auto-run (`run` sheet), tap to jump/double jump (`jump` sheet: take-off, apex and fall frames chosen by vertical speed with a per-frame lift correction, landing frame for 0.12 s), the double jump plays a roll somersault. The level is 7200 units in three sections (`sectionNames`, respawn only at `checkpoints`) and speeds up from 235 to 320. Hazards: pits, crystal spikes, stalactites that drop near the cat and leave a shard pile, bobbing bats, crumbling ledges (gone `crumbleDelay` after landing, restored on respawn) and low ceilings that stop high jumps. Static art is one recorded picture; crumbling ledges, stalactites, bats, tokens and torches are drawn live and culled to the view. `rate()` gives 1-3 stars (finish, 60% of the 24 golden fish, 90% with at most one fall); the best stars/time is saved under `bestKey` and the first clear per day gives `stars` cave fish, with a lanternfish at 3 stars. Any level change must still pass a tap-timing search bot that clears the run with 3 stars. The world pauses while inside, like the cabin. The ashore return button is the `FishingTool.boat` icon. 
+    The village harbour at the start (`fishing_harbor_art.dart`: boathouse with beacon tower, cargo and pier lamp) is static and recorded into the landscape chunks; tapping `FishingVisit.boatHouse.bounds` rows the boat to its own berth (or walks the cat there along the near bank) and the boat picker opens only on arrival (`FishingController.takeArrival`); from the island or the far bank the tap is ignored. Visits share one flow: `FishingVisit` in `fishing_place.dart` with its shared anchor, hit bounds, footprint and `mooring`, `FishingNavigation._goTo` rows there and `FishingController.takeArrival()` tells the screen which dialog to open; a new place adds one enum value. The floating fish market (`fishing_market.dart`, Cửa biển) is a solid `RiverPropKind.market` prop (collision, routing, `FishingRiver.contains/constrain`), drawn above the water by `FishingMarketStalls` from one recorded picture (`fishing_market_art.dart`); `FishingMarketDialog` sells basket fish for camp coins by rarity, today's `wantedOn` species at double price. Boats (`FishingBoat`: basket with a stern lantern that glows at night, paper, melon) are drawn only through `paintBoatBack`/`paintBoatFront` in `fishing_boats.dart`; a new boat adds an enum value and one case there. The world is 7 x 1800 = 12600 units; the last chunk is open sea east of the island so the lookout view stays centered. Fog saves from shorter worlds load row by row. The island centre is a cartoon rock massif (`fishing_volcano_art.dart`: snow-capped peaks, grassy hill with boulders, pines, a waterfall into a pool and a stream). Its footprint (`FishingIslandVisit.inMountain`) blocks walking and routes go around its foot; `mountainSilhouette()` keeps water effects off the peaks. Tapping it walks to `caveMouth` and opens the cave parkour (`fishing_cave.dart` + `fishing_cave_run.dart`): auto-run (`run` sheet), tap to jump/double jump (`jump` sheet: take-off, apex and fall frames chosen by vertical speed with a per-frame lift correction, landing frame for 0.12 s), the double jump plays a roll somersault. The level is 7200 units in three sections (`sectionNames`, respawn only at `checkpoints`) and speeds up from 235 to 320. Hazards: pits, crystal spikes, stalactites that drop near the cat and leave a shard pile, bobbing bats, crumbling ledges (gone `crumbleDelay` after landing, restored on respawn) and low ceilings that stop high jumps. Static art is one recorded picture; crumbling ledges, stalactites, bats, tokens and torches are drawn live and culled to the view. `rate()` gives 1-3 stars (finish, 60% of the 24 golden fish, 90% with at most one fall); the best stars/time is saved under `bestKey` and the first clear per day gives `stars` cave fish, with a lanternfish at 3 stars. Any level change must still pass a tap-timing search bot that clears the run with 3 stars. The world pauses while inside, like the cabin. The ashore return button is the `FishingTool.boat` icon.
     Day/night runs on a 40-minute game day (`FishingLighting.gameHour`, from epoch time so it keeps running while closed; `FishingRiverRound.hour` refreshed every 1 s by the screen; also feeds night fish weights). `fishing_night_overlay.dart` multiplies one tint over the world (`FishingLighting.at`) and adds glows: lighthouse lamp and beam, campfire, ship windows, cave crystals, a soft light around the cat and mangrove fireflies. Village cottage windows glow at night (`fishingCottageWindows`). The cabin follows the same hour (`FishingCabinRoom.hour`): windows show a starry night sea with moon, the rooms stay nearly daylight-bright under a light tint, lanterns and a live bedroom chandelier glow. The old lake sky/ambient painters were removed. Weather (`fishing_weather.dart`) comes from the real clock in 5-minute slots (about 80% sunny, otherwise one slot of cloud/rain/fog; 30 s blend, no save); `round.weather` boosts some fish in `rollFish` and `fishing_weather_overlay.dart` draws cloud shadows, rain streaks and ripples, and fog above the night tint. Effects are kept light; the HUD does not show weather. `fishing_water_art.dart`: `paintWaterBody` (cached; sea-only depth bands, clear shallows, sand ripples, reef shadows, optional region tint; also used by mangrove and rocky bay) and live, view-limited `paintWaterSparkles`, `paintSeaSwells`, `paintShoreWash` and `paintIslandWash`. Region layers are inflated 4 units so their faded edges leave no seam. `fishing_rock_art.dart` holds the warm outlined rock style: `paintBoulder` (all water rocks via `paintRiverRock`, and land outcrops with `inWater: false`), `paintCliffBand` (continuous north cliff, open at the cave inlet, plus a stepped south shelf in the rocky bay) and live `paintRockFoam` rings drawn by `FishingRiverSurface`. Bay sea stacks are `fishingSeaRocks` with radius >= 45, so art, collision and
     minimap share one list. The cave dimming uses an elliptical radial mask.
     `fishing_land_art.dart` fills far land per region (weighted, deterministic
@@ -524,7 +550,7 @@ tools or test files.
   the casting position. Sea dragon uses the dash fight, moonfish orbits and
   is more active at night. Their art and journal details share FishSpecies.
 
-- Mangrove bait workshop (`FishingBaitHouse`, `FishingVisit.baitHouse`)
+- Mangrove bait workshop (`FishingVisit.baitHouse`)
   uses the visit/mooring flow and solid-prop navigation. Its static stilt
   house is recorded once by `FishingBaitHouseView`, culled and disposed.
   `FishCollection.exchangeLegendaryBait` exchanges 5 mixed common basket
@@ -668,10 +694,34 @@ tools or test files.
 
 - Reel presentation: stop the float at 180 world units from the cat afloat (140 ashore), capped by the initial cast distance so short casts never move outward. Preserve wall/cave clipping. Rod geometry is independent of reel progress; only float/line distance shortens before the catch animation brings the fish to the paws.
 
-- Structure docking: floating market, shrine, bait house and pirate ship expose `waterDepth` for their shallow top-down solid footprint. `RiverProp.reachTowards` uses the matching elliptical radius; route/resolve/collision share it. South berths are depth+55 from the building anchor (45 boat radius + 4 navigation margin + 6 clearance). Village boathouse/rod workshop berths align with their own x at bank-34, rather than reusing the starting pier. Always verify the berth survives `props.resolve` unchanged and a tap reaches/opens the destination.
+- Structure geometry (`fishing/fishing_place.dart`): `FishingVisit` is the single definition of the six interactive structures. Each row owns art anchor, tap bounds/padding, optional bank door, berth offset and optional floating prop kind/radius/depth. Rendering, quest targets, tap navigation and collision read this definition directly; economy/gear/interior classes own only their behavior. `createRiverProps` and `FishingRiver` enumerate `FishingVisit.floating`, so adding a floating structure does not require a second geometry list or a depth switch. `river_prop_kind.dart` holds the pure shared kind enum, re-exported by `river_props.dart` for existing art consumers. The pirate ship uses the same hit/berth data but enters its interior through the cabin's pending-arrival flow. All original coordinates, hit rectangles and berths are preserved; verify `props.resolve` leaves each berth unchanged and tap-to-arrival still opens all six places.
 
 - Legendary bait consumption: remember whether a cast used bait for its fish roll, but debit stock only at the waiting-to-bite transition. Canceling casting/waiting costs no bait. `_beginBite` serializes the inventory save before exposing the bite; guard duplicate ticks/cancel during this short commit, and fail the cast if the debit cannot save (never grant a free boosted catch). Once a fish bites, missed hooks/escaped fish still consume that single bait.
 
 - Rod grip alignment: the curved shaft of reel/lantern rods starts at the straight grip collar, along its tangent, instead of curving underneath the grip. Shop previews use the same straight-grip/curved-shaft junction rule and anchor their reel to that grip; bamboo remains a continuous stem. Verify both facings and loaded poses when changing rod artwork.
 
 - Presence change filter (`online/fishing_presence_gate.dart`): decisions are capped at 125 ms, with a 1 s idle heartbeat. Ignore sprite frame/stamp changes, filter cat/boat movement below 3 units relative to the last acknowledged state, and flush the exact final coordinates after a stationary sample or a pose/movement-state change. Capture only the latest state when a write slot is available; never enqueue intermediate positions. A 3 s timeout reports trouble but does not unlock an outstanding RTDB write (Future.timeout cannot cancel it). Accept acknowledgements only for the current session/ref. `display.animating` and `display.pose` distinguish animation playback/frozen reel states without new Rules fields. Remote peers animate locally, retaining animation time across movement/heartbeat packets and resetting only on breed/location/action/playback/phase changes. Frame remains a compatible initial keyframe, not a per-frame send trigger. No shared physics or authority is inferred from animation.
+
+- Solo online presence: when the host has no live remote peers, publish one full state on entering solo mode, then update only `stamp` every 5 s. Skip local snapshot capture/JSON work on other timer ticks. Keep host/code/presence subscriptions active, so guests can still join within existing 15 s freshness checks. A guest arrival forces a fresh full snapshot on the next available 125 ms send slot; while shared, use the normal movement filter and 1 s idle heartbeat. Returning to solo forces one final snapshot, then timestamp-only keepalives. Guests retain normal publishing even while the host roster loads. Existing single-flight/epoch checks apply to both writes; no new Rules fields.
+
+- Removed obsolete surfaces: backdrop tile cache no longer accepts/calls a no-op visibility callback after full-session landscape warmup; `FishingPlayerState` has no unused breed-name `displayName` getter. Online names still come through the validated peer snapshot/camp-name path. The old geometry-only bait-house model is replaced by the central place definition; the bait-house UI/economy remain.
+
+
+- Fishing module boundaries: `ui/screens/fishing_screen.dart` owns entry/preload,
+  ticker, input, world session, saving, dialogs and disposal. Presentation lives
+  in `fishing_cat_selection.dart` (owned-cat choices and entry state),
+  `fishing_player_layer.dart` (local cat, occupied boat seats, rod and catch), and
+  `fishing_boat_picker.dart` (boat choices). The screen supplies callbacks and
+  keeps save/pause/entry behavior. Player rendering remains under the existing
+  frame-driven builder; widgets add no ticker, listener or scenery cache.
+- Fishing navigation (`fishing/fishing_navigation.dart`): `FishingNavigation`
+  owns destination requests, boat/shore tap routing and arrival detection.
+  `FishingController` keeps fishing phases, input guards, cast cancellation and
+  notifications; it delegates movement routing and exposes arrivals to the
+  screen. Destination geometry still comes only from `FishingVisit`.
+- Fishing room directory (`online/fishing_world_directory.dart`):
+  `FishingWorldDirectory` owns code generation/validation, home-code reservation,
+  metadata loading/writing and destination lookup. Preserve unknown world
+  display fields and cached reservations on retry. `FishingWorld` keeps live
+  presence, admission, session switching, environment/sleep synchronization,
+  epoch checks and disposal; the directory starts no timers or subscriptions.

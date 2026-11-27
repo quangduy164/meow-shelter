@@ -1,8 +1,8 @@
+import '../../fishing/fishing_place.dart';
 import '../../fishing/fishing_quests.dart';
 import 'dart:math' as math;
 import 'dart:ui' as ui;
 import 'package:material_ui/material_ui.dart';
-import '../../fishing/fishing_cabin.dart';
 import '../../fishing/fishing_exploration.dart';
 import '../../fishing/fishing_island.dart';
 import '../../fishing/fishing_river.dart';
@@ -123,7 +123,9 @@ class _FishingMinimapState extends State<FishingMinimap> {
             width: FishingIslandVisit.mountainRadii.width * 1.5,
             height: FishingIslandVisit.mountainRadii.height * 1.5),
         Paint()..color = const Color(0xFF8C7A5E));
-    c.drawCircle(FishingCabin.ship, FishingCabin.radius + 40,
+    c.drawCircle(
+        FishingVisit.cabinShip.anchor,
+        FishingVisit.cabinShip.radius + 40,
         Paint()..color = const Color(0xFF8A5A33));
     return recorder.endRecording();
   }

@@ -1,33 +1,20 @@
+import 'fishing_place.dart';
+import 'river_prop_kind.dart';
+export 'river_prop_kind.dart';
 import 'dart:math' as math;
 import 'package:flutter/painting.dart';
 import 'fishing_river.dart';
 import 'river_frog.dart';
 import 'river_sea_land.dart';
-import 'fishing_cabin.dart';
-import 'fishing_market.dart';
-import 'fishing_shrine.dart';
-import 'fishing_bait_house.dart';
 import 'river_encounters.dart';
 
-enum RiverPropKind {
-  lily,
-  raft,
-  log,
-  rock,
-  paperBoat,
-  island,
-  mangroveRoot,
-  cabinShip,
-  market,
-  shrine,
-  baitHouse
-}
-
 class RiverProp {
-  RiverProp(this.kind, Offset point, {this.radius = 16, this.flower = false})
+  RiverProp(this.kind, Offset point,
+      {this.radius = 16, this.flower = false, this.place})
       : anchor = waterPoint(point),
         position = waterPoint(point);
   final RiverPropKind kind;
+  final FishingVisit? place;
   final Offset anchor;
   final double radius;
   final bool flower;
@@ -37,22 +24,12 @@ class RiverProp {
       kind == RiverPropKind.rock ||
       kind == RiverPropKind.island ||
       kind == RiverPropKind.mangroveRoot ||
-      kind == RiverPropKind.cabinShip ||
-      kind == RiverPropKind.market ||
-      kind == RiverPropKind.shrine ||
-      kind == RiverPropKind.baitHouse;
+      place != null;
 
   /// Solid reach toward [p]; the island follows its coastline.
   double reachTowards(Offset p) {
     if (kind == RiverPropKind.island) return fishingSeaIsland.radiusTowards(p);
-    final depth = switch (kind) {
-      RiverPropKind.market => FishingMarket.waterDepth,
-      RiverPropKind.shrine => FishingShrine.waterDepth,
-      RiverPropKind.baitHouse => FishingBaitHouse.waterDepth,
-      RiverPropKind.cabinShip => FishingCabin.waterDepth,
-      _ => radius,
-    };
-    return FishingRiver.structureReach(p - anchor, radius, depth);
+    return place?.reachTowards(p) ?? radius;
   }
 
   static Offset waterPoint(Offset p) {
@@ -146,14 +123,10 @@ List<RiverProp> createRiverProps() {
     props.add(RiverProp(RiverPropKind.rock, point,
         radius: point.dy < 1400 ? 24 : 38));
   }
-  props.add(RiverProp(RiverPropKind.cabinShip, FishingCabin.ship,
-      radius: FishingCabin.radius));
-  props.add(RiverProp(RiverPropKind.market, FishingMarket.center,
-      radius: FishingMarket.radius));
-  props.add(RiverProp(RiverPropKind.shrine, FishingShrine.center,
-      radius: FishingShrine.radius));
-  props.add(RiverProp(RiverPropKind.baitHouse, FishingBaitHouse.center,
-      radius: FishingBaitHouse.radius));
+  for (final place in FishingVisit.floating) {
+    props.add(RiverProp(place.propKind!, place.anchor,
+        radius: place.radius, place: place));
+  }
   return props;
 }
 
@@ -256,11 +229,7 @@ class RiverProps {
               .contains(rock.anchor)) {
         continue;
       }
-      if (rock.kind == RiverPropKind.island ||
-          rock.kind == RiverPropKind.market ||
-          rock.kind == RiverPropKind.shrine ||
-          rock.kind == RiverPropKind.baitHouse ||
-          rock.kind == RiverPropKind.cabinShip) {
+      if (rock.kind == RiverPropKind.island || rock.place != null) {
         // Directional footprints need a swept check, not a circular closest point.
         for (var i = 0; i <= count; i++) {
           final p = Offset.lerp(a, b, i / count)!;

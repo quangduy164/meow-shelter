@@ -16,7 +16,6 @@ class FishingPlayerState {
 
   final String id;
   String cat;
-  String get displayName => CatBreed.of(cat).name;
   Offset position = Offset.zero;
   bool facingRight = true;
   FishingPlayerLocation location = FishingPlayerLocation.water;

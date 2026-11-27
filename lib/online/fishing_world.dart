@@ -1,3 +1,4 @@
+import 'fishing_world_directory.dart';
 import 'fishing_presence_gate.dart';
 import 'fishing_sleep.dart';
 import 'fishing_arrivals.dart';
@@ -5,7 +6,6 @@ import '../fishing/fishing_player.dart';
 import 'visual_state.dart';
 import '../fishing/fishing_environment.dart';
 import 'dart:async';
-import 'dart:math';
 
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_database/firebase_database.dart';
@@ -74,7 +74,7 @@ class FishingWorld extends ChangeNotifier {
   DatabaseReference? _presence, _host;
   StreamSubscription<DatabaseEvent>? _environmentSub;
   FishingEnvironment? _visitorEnvironment;
-  Map<String, dynamic> _homeDisplay = {};
+  late final _directory = FishingWorldDirectory(preferences);
   FishingEnvironment get environment => visiting && _visitorEnvironment != null
       ? _visitorEnvironment!
       : FishingEnvironment.local(preferences).toServer(connected ? _offset : 0);
@@ -97,15 +97,10 @@ class FishingWorld extends ChangeNotifier {
   int _lastHostSeen = 0;
   int get serverNow => DateTime.now().millisecondsSinceEpoch + _offset;
 
-  static String newCode() {
-    const letters = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-    final rng = Random.secure();
-    return List.generate(7, (_) => letters[rng.nextInt(letters.length)]).join();
-  }
-
-  static String normalizeCode(String code) => code.trim().toUpperCase();
-  static bool validCode(String code) =>
-      RegExp(r'^[A-HJ-NP-Z2-9]{7}$').hasMatch(code);
+  static String newCode() => FishingWorldDirectory.newCode();
+  static String normalizeCode(String code) =>
+      FishingWorldDirectory.normalizeCode(code);
+  static bool validCode(String code) => FishingWorldDirectory.validCode(code);
 
   Future<void>? _preparing;
 
@@ -245,44 +240,8 @@ class FishingWorld extends ChangeNotifier {
   }
 
   Future<void> _ensureHome() async {
-    final ref = _db!.ref('worlds/$_uid');
-    final existing = await ref.get().timeout(const Duration(seconds: 10));
-    if (existing.exists) {
-      final code = existing.child('code').value;
-      if (code is! String || !validCode(code)) {
-        throw StateError('Invalid world code');
-      }
-      _homeDisplay = VisualState.decode(existing.child('display').value) ?? {};
-      await ref.update({
-        'mapVersion': mapVersion,
-        'display': _environmentDisplay()
-      }).timeout(const Duration(seconds: 10));
-      homeCode = code;
-      return;
-    }
-    final cached = preferences.getString('fishing_world_code_$_uid');
-    for (var attempt = 0; attempt < 8; attempt++) {
-      final code = attempt == 0 && cached != null && validCode(cached)
-          ? cached
-          : newCode();
-      final reserved =
-          await _db!.ref('worldCodes/$code').runTransaction((value) {
-        if (value == null || value == _uid) return Transaction.success(_uid);
-        return Transaction.abort();
-      }).timeout(const Duration(seconds: 10));
-      if (!reserved.committed) continue;
-      // Remember a reservation before creating metadata, so retries reuse it.
-      await preferences.setString('fishing_world_code_$_uid', code);
-      await ref.update({
-        'code': code,
-        'mapVersion': mapVersion,
-        'createdAt': ServerValue.timestamp,
-        'display': _environmentDisplay()
-      }).timeout(const Duration(seconds: 10));
-      homeCode = code;
-      return;
-    }
-    throw StateError('Could not allocate a world code');
+    homeCode = await _directory.ensureHome(_db!, _uid!,
+        mapVersion: mapVersion, encodeDisplay: _environmentDisplay);
   }
 
   Future<void> _reconnect() async {
@@ -457,27 +416,9 @@ class FishingWorld extends ChangeNotifier {
     _notify();
     var switchingWorld = false;
     try {
-      final found = await _db!
-          .ref('worldCodes/$code')
-          .get()
-          .timeout(const Duration(seconds: 10));
-      if (found.value is! String) {
-        throw const FormatException('Không tìm thấy phòng có mã này.');
-      }
-      final id = found.value as String;
-      if (id == _uid) {
-        throw const FormatException('Đây là mã phòng của bạn.');
-      }
-      final world = await _db!
-          .ref('worlds/$id')
-          .get()
-          .timeout(const Duration(seconds: 10));
-      if (world.child('mapVersion').value != mapVersion) {
-        throw const FormatException('Hai máy cần cùng phiên bản game.');
-      }
-      if (!world.child('hosts').exists) {
-        throw const FormatException('Chủ phòng chưa vào chơi câu cá.');
-      }
+      final destination = await _directory.destination(_db!, code,
+          uid: _uid!, mapVersion: mapVersion);
+      final id = destination.id, world = destination.metadata;
       final sharedEnvironment = _readEnvironment(world.value);
       if (sharedEnvironment == null) {
         throw const FormatException(
@@ -605,7 +546,7 @@ class FishingWorld extends ChangeNotifier {
   }
 
   String _environmentDisplay() => VisualState.encode({
-        ..._homeDisplay,
+        ..._directory.homeDisplay,
         'sleep': sleep.toJson(),
         'environment':
             FishingEnvironment.local(preferences).toServer(_offset).toJson(),
@@ -707,17 +648,19 @@ class FishingWorld extends ChangeNotifier {
       return;
     }
     final now = serverNow;
-    final state = capture(now).toJson();
     if (ref != _sentRef) {
       _sendGate.reset();
       _sentRef = ref;
     }
-    if (!_sendGate.shouldSend(state, now)) return;
+    if (!_sendGate.sampleDue(now, shared: visiting || peers.isNotEmpty)) return;
+    final heartbeatOnly = _sendGate.heartbeatOnly;
+    final state = heartbeatOnly ? null : capture(now).toJson();
+    if (state != null && !_sendGate.shouldSend(state, now)) return;
     final epoch = _epoch;
     _sendGate.attempted(now);
     _writing = true;
     try {
-      final write = ref.set(state);
+      final write = heartbeatOnly ? ref.update({'stamp': now}) : ref.set(state);
       try {
         await write.timeout(const Duration(seconds: 3));
       } on TimeoutException catch (e) {
@@ -726,7 +669,13 @@ class FishingWorld extends ChangeNotifier {
         // until it finishes; the next tick captures the newest state, never a queue.
         await write;
       }
-      if (_valid(epoch) && ref == _presence) _sendGate.acknowledged(state, now);
+      if (_valid(epoch) && ref == _presence) {
+        if (state == null) {
+          _sendGate.heartbeatAcknowledged(now);
+        } else {
+          _sendGate.acknowledged(state, now);
+        }
+      }
     } catch (e) {
       if (!_disposed && ref == _presence) _fail(e);
     } finally {

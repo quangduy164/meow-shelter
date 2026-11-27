@@ -1,16 +1,16 @@
+import '../../fishing/fishing_place.dart';
 import 'dart:math' as math;
 import 'dart:ui' as ui;
 import 'package:material_ui/material_ui.dart';
 
 import '../../collection/fish_species.dart';
-import '../../fishing/fishing_market.dart';
 import '../../fishing/fishing_river.dart';
 import 'fishing_art_kit.dart';
 import 'fishing_fish_art.dart';
 
 // Floating fish market at the river mouth. The art is recorded once into a
 // picture and drawn above the water surface (so ripples and sparkles do not
-// cross the stalls), bobbing gently. Origin = FishingMarket.center, y = 0 is
+// cross the stalls), bobbing gently. Origin = FishingVisit.market.anchor, y = 0 is
 // the waterline in the middle; three bamboo rafts carry the stalls.
 
 class FishingMarketStalls extends StatefulWidget {
@@ -49,7 +49,7 @@ class _MarketPainter extends CustomPainter {
 
   @override
   void paint(Canvas c, Size size) {
-    final point = round.toScreen(FishingMarket.center);
+    final point = round.toScreen(FishingVisit.market.anchor);
     if (!(Offset.zero & size).inflate(240 * round.scale).contains(point)) {
       return;
     }
@@ -70,7 +70,7 @@ const _ink = 0xFF4A2F1C;
 
 /// Lantern positions (world) for the night glow overlay.
 List<Offset> fishMarketLanterns() => [
-      for (final p in _lanterns) FishingMarket.center + p,
+      for (final p in _lanterns) FishingVisit.market.anchor + p,
     ];
 
 const _lanterns = [

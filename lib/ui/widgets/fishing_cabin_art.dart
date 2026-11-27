@@ -2,6 +2,7 @@
 /// inside (layout in [FishingCabin], pictures cached and disposed here).
 library;
 
+import '../../fishing/fishing_place.dart';
 import 'dart:math' as math;
 import 'dart:ui' as ui;
 import 'package:material_ui/material_ui.dart';
