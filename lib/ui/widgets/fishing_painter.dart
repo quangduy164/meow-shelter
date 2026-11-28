@@ -119,7 +119,7 @@ class FishingPainter extends CustomPainter {
       final painter = TextCache.layout(
           phase == FishingPhase.bite ? '!' : '+1',
           const TextStyle(
-              fontFamily: 'Roboto',
+              fontFamily: 'Nunito',
               fontSize: DS.fontSymbol,
               fontWeight: FontWeight.w900,
               color: Color(0xFFFFF0AF),

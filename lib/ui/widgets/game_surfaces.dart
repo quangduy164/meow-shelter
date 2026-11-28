@@ -41,6 +41,8 @@ class GameDialog extends StatelessWidget {
     super.key,
     required this.child,
     this.maxWidth = DS.dialogWidth,
+    this.alignment,
+    this.backgroundColor = DS.cream,
     this.scrollable = false,
     this.header,
     this.padding = const EdgeInsets.all(DS.spaceLg),
@@ -49,6 +51,8 @@ class GameDialog extends StatelessWidget {
 
   final Widget child;
   final double maxWidth;
+  final AlignmentGeometry? alignment;
+  final Color backgroundColor;
   final bool scrollable;
   final Widget? header;
   final EdgeInsetsGeometry padding;
@@ -64,8 +68,9 @@ class GameDialog extends StatelessWidget {
             bottom: insets.bottom.clamp(0, DS.spaceSm).toDouble());
     final body = scrollable ? SingleChildScrollView(child: child) : child;
     return Dialog(
+        alignment: alignment,
         insetPadding: compact(insetPadding),
-        backgroundColor: DS.cream,
+        backgroundColor: backgroundColor,
         shape: DS.dialogShape,
         child: ConstrainedBox(
           constraints: BoxConstraints(maxWidth: maxWidth),

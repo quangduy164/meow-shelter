@@ -1070,7 +1070,10 @@ class _NightCardPainter extends CustomPainter {
         text: const TextSpan(
             text: 'z',
             style: TextStyle(
-                color: _ink, fontSize: 9, fontWeight: FontWeight.w900)),
+                fontFamily: 'Nunito',
+                color: _ink,
+                fontSize: 9,
+                fontWeight: FontWeight.w900)),
         textDirection: TextDirection.ltr)
       ..layout();
     z.paint(canvas, const Offset(35, 13));
@@ -1216,7 +1219,10 @@ class _NightCardPainter extends CustomPainter {
         text: const TextSpan(
             text: '+10s',
             style: TextStyle(
-                color: _ink, fontSize: 7.5, fontWeight: FontWeight.w900)),
+                fontFamily: 'Nunito',
+                color: _ink,
+                fontSize: 7.5,
+                fontWeight: FontWeight.w900)),
         textDirection: TextDirection.ltr)
       ..layout();
     text.paint(canvas, Offset(32.5 - text.width / 2, 36.5 - text.height / 2));
@@ -1300,7 +1306,10 @@ class _NightCardPainter extends CustomPainter {
         text: TextSpan(
             text: text,
             style: const TextStyle(
-                color: _ink, fontSize: 8, fontWeight: FontWeight.w900)),
+                fontFamily: 'Nunito',
+                color: _ink,
+                fontSize: 8,
+                fontWeight: FontWeight.w900)),
         textDirection: TextDirection.ltr)
       ..layout();
     label.paint(canvas, r.center - Offset(label.width / 2, label.height / 2));
@@ -1418,7 +1427,10 @@ class _NightCardPainter extends CustomPainter {
         text: const TextSpan(
             text: '?',
             style: TextStyle(
-                color: _ink, fontSize: 13, fontWeight: FontWeight.w900)),
+                fontFamily: 'Nunito',
+                color: _ink,
+                fontSize: 13,
+                fontWeight: FontWeight.w900)),
         textDirection: TextDirection.ltr)
       ..layout();
     mark.paint(canvas, Offset(24 - mark.width / 2, 33 - mark.height / 2 + 1));

@@ -149,7 +149,7 @@ void _label(
           style: TextStyle(
             color: color,
             fontSize: fontSize,
-            fontFamily: 'Roboto',
+            fontFamily: 'Nunito',
             fontWeight: FontWeight.w800,
             fontFeatures: const [FontFeature.tabularFigures()],
           )),

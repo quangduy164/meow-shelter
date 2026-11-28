@@ -22,6 +22,7 @@ TextPainter herdLabel(String text, double size, Color color,
       text: TextSpan(
           text: text,
           style: TextStyle(
+              fontFamily: 'Nunito',
               fontSize: size,
               color: color,
               fontWeight: weight,

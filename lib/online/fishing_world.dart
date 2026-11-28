@@ -1,3 +1,4 @@
+import 'fishing_chat.dart';
 import 'fishing_world_directory.dart';
 import 'fishing_presence_gate.dart';
 import 'fishing_sleep.dart';
@@ -28,6 +29,7 @@ class FishingWorld extends ChangeNotifier {
   final SharedPreferences preferences;
   final Map<String, FishingPeer> peers = {};
   final sleep = FishingSleep();
+  late final chat = FishingChat(now: () => serverNow);
   final _arrivals = FishingArrivals();
   final _arrivalNames = <String>[];
   String? takeArrival() =>
@@ -127,9 +129,11 @@ class FishingWorld extends ChangeNotifier {
       homeCode = preferences.getString('fishing_world_code_$_uid');
       final offset = await _db!
           .ref('.info/serverTimeOffset')
-          .get()
+          .once()
           .timeout(const Duration(seconds: 10));
-      if (offset.value is num) _offset = (offset.value as num).toInt();
+      if (offset.snapshot.value is num) {
+        _offset = (offset.snapshot.value as num).toInt();
+      }
       if (!_disposed) await _ensureHome();
     } catch (e) {
       if (!_disposed) _fail(e);
@@ -386,6 +390,7 @@ class FishingWorld extends ChangeNotifier {
           }
         });
       }
+      chat.attach(_db!.ref('sessions/$id/chat'), _uid!, owner: id == _uid);
       error = null;
       _notify();
     } catch (_) {
@@ -491,9 +496,9 @@ class FishingWorld extends ChangeNotifier {
     try {
       final state = await _db!
           .ref('.info/connected')
-          .get()
+          .once()
           .timeout(const Duration(seconds: 5));
-      if (!_disposed && !_suspended && state.value == true) {
+      if (!_disposed && !_suspended && state.snapshot.value == true) {
         connected = true;
         await _reconnect();
       }
@@ -699,6 +704,7 @@ class FishingWorld extends ChangeNotifier {
   }
 
   void _disconnected() {
+    chat.detach();
     connected = false;
     sleep.reset();
     _playersReady = false;
@@ -755,6 +761,7 @@ class FishingWorld extends ChangeNotifier {
   }
 
   Future<void> _removePresence() async {
+    chat.detach();
     final playersSub = _playersSub,
         hostSub = _hostSub,
         environmentSub = _environmentSub;
@@ -773,6 +780,7 @@ class FishingWorld extends ChangeNotifier {
   @override
   void dispose() {
     _disposed = true;
+    chat.dispose();
     ++_epoch;
     _timer?.cancel();
     unawaited(_connectionSub?.cancel());

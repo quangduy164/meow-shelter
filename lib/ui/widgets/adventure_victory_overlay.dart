@@ -107,7 +107,7 @@ class AdventureVictoryOverlay extends StatelessWidget {
                     icon: const Icon(Icons.replay_rounded, size: 20),
                     label: const Text('Chơi lại',
                         style: TextStyle(
-                            fontFamily: 'Roboto', fontSize: DS.fontButton)),
+                            fontFamily: DS.fontTitleFamily, fontSize: DS.fontButton)),
                   )),
                   const SizedBox(width: DS.spaceSm),
                   Expanded(
@@ -117,7 +117,7 @@ class AdventureVictoryOverlay extends StatelessWidget {
                     icon: const GameGlyphView(GameGlyph.home, size: 20),
                     label: const Text('Trang chủ',
                         style: TextStyle(
-                            fontFamily: 'Roboto', fontSize: DS.fontButton)),
+                            fontFamily: DS.fontTitleFamily, fontSize: DS.fontButton)),
                   )),
                 ]),
               ]),

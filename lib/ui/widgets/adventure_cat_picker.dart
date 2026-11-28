@@ -328,7 +328,7 @@ class _AdventureCatPickerState extends State<AdventureCatPicker> {
                       label: Text(_starting ? 'ĐANG TẢI' : 'BẮT ĐẦU',
                           style: const TextStyle(
                               color: DS.ink,
-                              fontFamily: 'Roboto',
+                              fontFamily: 'Nunito',
                               fontSize: DS.fontButton,
                               fontWeight: FontWeight.w900)),
                     ))),

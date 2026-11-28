@@ -116,28 +116,50 @@ abstract final class DS {
   static const double fontLogoCaption = 18;
   static const double fontSymbol = 28;
 
+  static const fontBodyFamily = 'Nunito';
+  static const fontTitleFamily = 'Baloo2';
+
   static const title = TextStyle(
+      fontFamily: fontTitleFamily,
       color: ink,
       fontSize: fontTitle,
       fontWeight: FontWeight.w900,
       letterSpacing: .6);
-  static const headingText =
-      TextStyle(color: ink, fontSize: fontHeading, fontWeight: FontWeight.w900);
-  static const bodyText =
-      TextStyle(color: ink, fontSize: fontBody, fontWeight: FontWeight.w600);
+  static const headingText = TextStyle(
+      fontFamily: fontTitleFamily,
+      color: ink,
+      fontSize: fontHeading,
+      fontWeight: FontWeight.w900);
+  static const bodyText = TextStyle(
+      fontFamily: fontBodyFamily,
+      color: ink,
+      fontSize: fontBody,
+      fontWeight: FontWeight.w600);
   static const buttonText = TextStyle(
-      fontFamily: 'Roboto',
+      fontFamily: fontTitleFamily,
       fontSize: fontButton,
       fontWeight: FontWeight.w900,
       letterSpacing: .3);
   static const captionText = TextStyle(
-      color: soft, fontSize: fontCaption, fontWeight: FontWeight.w600);
-  static const microText =
-      TextStyle(color: soft, fontSize: fontMicro, fontWeight: FontWeight.w700);
-  static const valueText =
-      TextStyle(color: ink, fontSize: fontValue, fontWeight: FontWeight.w900);
-  static const displayText =
-      TextStyle(color: ink, fontSize: fontDisplay, fontWeight: FontWeight.w900);
+      fontFamily: fontBodyFamily,
+      color: soft,
+      fontSize: fontCaption,
+      fontWeight: FontWeight.w600);
+  static const microText = TextStyle(
+      fontFamily: fontBodyFamily,
+      color: soft,
+      fontSize: fontMicro,
+      fontWeight: FontWeight.w700);
+  static const valueText = TextStyle(
+      fontFamily: fontTitleFamily,
+      color: ink,
+      fontSize: fontValue,
+      fontWeight: FontWeight.w900);
+  static const displayText = TextStyle(
+      fontFamily: fontTitleFamily,
+      color: ink,
+      fontSize: fontDisplay,
+      fontWeight: FontWeight.w900);
 
   /// Also covers labels that do not specify a local TextStyle.
   static const textTheme = TextTheme(
@@ -218,7 +240,6 @@ abstract final class DS {
       TargetPlatform.android: PawPageTransitionsBuilder(),
       TargetPlatform.iOS: PawPageTransitionsBuilder(),
     }),
-    fontFamily: 'Roboto',
     textTheme: textTheme,
     colorScheme: const ColorScheme.light(
       primary: goldEdge,

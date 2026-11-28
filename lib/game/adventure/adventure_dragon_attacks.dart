@@ -693,6 +693,7 @@ class AdventureDamageText extends PositionComponent {
       text: TextSpan(
         text: text,
         style: TextStyle(
+          fontFamily: 'Nunito',
           fontSize: DS.fontHeading,
           fontWeight: FontWeight.w900,
           color: color,

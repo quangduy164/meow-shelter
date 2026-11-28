@@ -725,3 +725,48 @@ tools or test files.
   display fields and cached reservations on retry. `FishingWorld` keeps live
   presence, admission, session switching, environment/sleep synchronization,
   epoch checks and disposal; the directory starts no timers or subscriptions.
+
+
+- Fishing room chat (`online/fishing_chat.dart`): a separate room-scoped channel
+  at `sessions/{world}/chat`, attached only after live presence is acknowledged.
+  `FishingWorld` detaches it on leave, room change, suspend, disconnect and
+  disposal. No message data is added to position packets. A bounded query reads
+  at most 51 messages; the owner trims the extra oldest row and clients display
+  50. Initial history never triggers unread counts or speech bubbles. New live
+  emotes show a per-UID head bubble, text shows in the left feed for 4 seconds;
+  one expiry timer is disposed on
+  detach. Session epochs ignore late events and send completions from old rooms.
+  Sending is single-flight, costs one atomic update of message + sender clock,
+  and retains the native-write lock after a timeout. Client text is single-line,
+  capped at 120 Unicode code points (240 UTF-16 units); visible names use camp
+  nicknames capped at 40 code points. Firebase Rules require room membership,
+  immutable authored messages, bounded reads, server timestamps and a 1-second
+  per-sender cooldown; only the author/owner may delete a message. Deploy the new
+  Rules before using chat. Existing presence permissions remain independent.
+- Fishing chat UI (`fishing_chat_panel.dart`, `fishing_chat_bubbles.dart`): a flat
+  button below the minimap opens a compact translucent right-aligned `GameDialog` with a vertical rail for
+  quick phrases, emoji emotes and history, an unread badge and a keyboard-safe
+  composer. Successful text/quick/emote sends close the panel; failed sends
+  preserve the draft. A room detach closes any bound panel and releases its
+  text controller/listener, so drafts cannot move to a different room. Keep the keyed composer
+  mounted while hiding the title and scrolling the tab rail on short keyboard viewports.
+  The screen retains modal pause/input ownership; chat subscriptions keep
+  receiving while the panel is open. Outdoor emote bubbles follow visible cat
+  positions above the nameplates; text notices use screen coordinates; cabin/parkour messages stay in the panel
+  because indoor multiplayer avatars are not rendered yet. No frame listener
+  is attached to the bubble layer when it has no active bubbles.
+
+- Chat presentation: the shared `FishingChat.emotes` palette identifies emoji-only
+  emote messages without a new wire field or Rules change. Only these appear as
+  large outdoor head bubbles. Typed text and quick phrases appear in
+  `FishingChatNotice`, a pointer-transparent left-side feed capped at 3 rows.
+  Both expire after 4 seconds using the existing chat expiry timer; historical
+  messages never replay as notices. The feed listens only to chat changes, not
+  map frames. Detach clears both transient collections and cancels the timer;
+  the full 50-message history remains accessible in the chat panel.
+
+- RTDB special metadata (`.info/serverTimeOffset`, `.info/connected`) must use
+  local event listeners or `once()`, never `get()`: native get requests may send
+  the special path to the server and fail with `Invalid token in path`.
+  Chat UI distinguishes pending subscription from failed access; do not infer
+  internet availability solely from whether chat has received its first event.

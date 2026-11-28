@@ -128,6 +128,7 @@ class FishItemComponent extends PositionComponent with DragCallbacks {
           text: TextSpan(
               text: '$count',
               style: const TextStyle(
+                  fontFamily: 'Nunito',
                   color: Color(0xFFFFFAEE),
                   fontSize: 11,
                   fontWeight: FontWeight.w900)),

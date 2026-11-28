@@ -176,7 +176,7 @@ class WarehouseDoor extends PositionComponent
         text,
         TextStyle(
             color: color,
-            fontFamily: 'Roboto',
+            fontFamily: 'Nunito',
             fontSize: font,
             fontWeight: FontWeight.w900),
         maxWidth: size.x - 8);

@@ -67,3 +67,22 @@ Online shared sleep uses `display.sleep` under the existing presentation envelop
 All active players must be lying asleep before the owner advances to morning;
 waking before the dawn point cancels it. Guests never write the owner's clock.
 This feature needs the existing display-enabled baseline Rules, not new Rules.
+
+
+## Fishing room chat
+
+Publish the updated `database.rules.json` before testing chat on devices. This
+adds only `sessions/{world}/chat/messages` and `chat/lastSent/{uid}` permissions;
+position, environment and inventory behavior are unchanged. Signed-in players
+must have a live presence in that room to read/write chat. Reads are limited to
+51 rows; the host trims the extra row to retain 50. Atomic sends include a server
+message timestamp and sender clock so Rules enforce a 1-second cooldown.
+Messages cannot be edited or attributed to another UID; authors and the room
+owner can delete them. Names/text are bounded; clients further sanitize and
+limit text to 120 Unicode code points. Offline sending is disabled.
+
+On two devices, enter the same room, use the chat button below the minimap and
+check a typed message, quick phrase, unread badge and 4-second outdoor bubble.
+Names should match the camp nicknames. Test leaving/rejoining, airplane mode
+and typing with a landscape keyboard. Chat in the cabin/parkour is available
+through the panel; speech bubbles follow outdoor avatars only.

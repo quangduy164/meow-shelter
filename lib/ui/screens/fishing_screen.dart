@@ -1,3 +1,6 @@
+import '../widgets/fishing_chat_notice.dart';
+import '../widgets/fishing_chat_panel.dart';
+import '../widgets/fishing_chat_bubbles.dart';
 import '../widgets/fishing_boat_picker.dart';
 import '../widgets/fishing_cat_selection.dart';
 import '../widgets/fishing_player_layer.dart';
@@ -544,6 +547,27 @@ class _FishingScreenState extends State<FishingScreen>
     }
   }
 
+  Future<void> _openChat() async {
+    if (_collectionOpen) return;
+    _controller.stopSteering();
+    setState(() => _collectionOpen = true);
+    try {
+      await showGameDialog<void>(
+          context: context,
+          builder: (_) => FishingChatPanel(
+              chat: _world.chat,
+              name: () => CampState.instance.nameOf(_cat),
+              onReconnect: _world.retry));
+    } finally {
+      if (mounted) {
+        setState(() {
+          _collectionOpen = false;
+          _lastTick = null;
+        });
+      }
+    }
+  }
+
   Future<void> _openLobby() async {
     if (_loadingCat || _collectionOpen) return;
     setState(() => _collectionOpen = true);
@@ -848,6 +872,21 @@ class _FishingScreenState extends State<FishingScreen>
                                 ])),
                       ]);
                     })),
+          if (!_choosingCat) ...[
+            Positioned(
+                left: MediaQuery.paddingOf(context).left + 12,
+                bottom: MediaQuery.paddingOf(context).bottom + 90,
+                width: math.min(310, MediaQuery.sizeOf(context).width * .44),
+                child: FishingChatNotice(chat: _world.chat)),
+            Positioned.fill(
+                child: FishingChatBubbles(
+                    controller: _controller, world: _world, frames: _frames)),
+            Positioned(
+                right: MediaQuery.paddingOf(context).right + 24,
+                top: MediaQuery.paddingOf(context).top + 158,
+                child:
+                    FishingChatButton(chat: _world.chat, onPressed: _openChat)),
+          ],
           if (!_choosingCat)
             Positioned(
                 top: MediaQuery.paddingOf(context).top + 48,

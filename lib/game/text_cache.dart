@@ -13,6 +13,8 @@ class TextCache {
       {double maxWidth = double.infinity,
       int maxLines = 1,
       TextAlign textAlign = TextAlign.start}) {
+    // Canvas text does not inherit the app theme font.
+    if (style.fontFamily == null) style = style.copyWith(fontFamily: 'Nunito');
     final key = (text, style, maxWidth, maxLines, textAlign);
     final hit = _cache.remove(key);
     if (hit != null) return _cache[key] = hit;
