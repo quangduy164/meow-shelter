@@ -1,3 +1,4 @@
+import 'fishing_showcase_view.dart';
 import 'dart:math' as math;
 import 'package:material_ui/material_ui.dart';
 import '../../fishing/fishing_controller.dart';
@@ -21,8 +22,24 @@ class FishingPlayerLayer extends StatelessWidget {
   String get _cat => _controller.player.cat;
 
   @override
-  Widget build(BuildContext context) =>
-      Stack(fit: StackFit.expand, children: [_boat(), _islandCat()]);
+  Widget build(BuildContext context) => Stack(fit: StackFit.expand, children: [
+        _boat(),
+        _islandCat(),
+        if (_controller.showcase case final showcase?)
+          FishingShowcaseView(
+              showcase: showcase,
+              point: _river.toScreen(_controller.angler),
+              catSize: (_river.island.ashore ? 84 : 114) * _river.scale,
+              land: _river.island.ashore,
+              facingRight: _controller.player.facingRight,
+              frame: _controller.player.pose.$1 == 'fish-hold'
+                  ? _controller.player.pose.$3
+                  : 1,
+              scale: _river.scale,
+              bob: _river.island.ashore
+                  ? 0
+                  : math.sin(_river.clock * 2.5) * 1.8 * _river.scale),
+      ]);
 
   Widget _boat() {
     final point = _river.toScreen(_controller.angler);

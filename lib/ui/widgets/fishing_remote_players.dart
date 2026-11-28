@@ -1,3 +1,6 @@
+import '../../fishing/fishing_showcase.dart';
+import '../../game/constants.dart';
+import 'fishing_showcase_view.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../../fishing/fishing_boat.dart';
@@ -10,9 +13,13 @@ import 'fishing_boats.dart';
 /// Peers are display-only and never take part in local collision/rewards.
 class FishingRemotePlayers extends StatelessWidget {
   const FishingRemotePlayers(
-      {super.key, required this.round, required this.peers});
+      {super.key, required this.round, required this.peers, this.serverNow});
   final FishingRiverRound round;
   final Iterable<FishingPeer> peers;
+  final int? serverNow;
+  int get _now => serverNow ?? DateTime.now().millisecondsSinceEpoch;
+  FishingShowcase? _showcase(FishingPeer peer) =>
+      FishingShowcase.parse(peer.target.display['showcase'], _now);
   @override
   Widget build(BuildContext context) {
     final scale = round.scale;
@@ -32,6 +39,21 @@ class FishingRemotePlayers extends StatelessWidget {
                 peer.target.location == FishingPlayerLocation.land) &&
             view.contains(peer.position))
           _name(peer, scale),
+        if ((peer.target.location == FishingPlayerLocation.water ||
+                peer.target.location == FishingPlayerLocation.land) &&
+            view.contains(peer.position))
+          if (_showcase(peer) case final showcase?)
+            FishingShowcaseView(
+                showcase: showcase,
+                point: round.toScreen(peer.position),
+                catSize: (peer.target.location == FishingPlayerLocation.land
+                        ? 84
+                        : 114) *
+                    scale,
+                land: peer.target.location == FishingPlayerLocation.land,
+                facingRight: peer.target.facingRight,
+                frame: peer.pose.$1 == 'fish-hold' ? peer.pose.$3 : 1,
+                scale: scale),
       ],
     ]));
   }
@@ -40,7 +62,11 @@ class FishingRemotePlayers extends StatelessWidget {
     final p = round.toScreen(peer.position);
     final land = peer.target.location == FishingPlayerLocation.land;
     final size = (land ? 84 : 114) * scale;
-    final pose = peer.pose;
+    final expired =
+        peer.target.display.containsKey('showcase') && _showcase(peer) == null;
+    final pose = expired && peer.pose.$1 == 'fish-hold'
+        ? ('idle', framesIdle, (round.clock * 7).floor() % framesIdle)
+        : peer.pose;
     final lift =
         !land && peer.target.boat == FishingBoat.swan && pose.$1 == 'idle'
             ? 10 * scale

@@ -32,6 +32,12 @@ void paintFishingFight(Canvas canvas, FishingController controller) {
             _kFishingFightArt0);
       }
     }
+  } else if (controller.fish == FishSpecies.moonfish &&
+      fight.move == FishFightMove.rest) {
+    canvas.drawOval(const Rect.fromLTWH(-38, -22, 76, 40),
+        paint..color = const Color(0x55C4D6FF));
+    const FishingFishArt(FishSpecies.moonfish)
+        .paint(canvas, const Size(50, 34));
   } else if (fight.move != FishFightMove.dive) {
     canvas.save();
     canvas.rotate(controller.river.heading.dx < 0 ? math.pi : 0);

@@ -9,8 +9,10 @@ import 'game_surfaces.dart';
 /// Fish journal: tabbed grid on the left, details of the picked entry on
 /// the right. Undiscovered entries show as silhouettes named "???".
 class FishCollectionDialog extends StatefulWidget {
-  const FishCollectionDialog({super.key, required this.collection});
+  const FishCollectionDialog(
+      {super.key, required this.collection, this.onShowFish});
   final FishCollection collection;
+  final ValueChanged<FishSpecies>? onShowFish;
 
   @override
   State<FishCollectionDialog> createState() => _FishCollectionDialogState();
@@ -394,6 +396,9 @@ class _FishCollectionDialogState extends State<FishCollectionDialog> {
               SizedBox(
                 width: detailWidth,
                 child: _DetailPanel(
+                    onShowFish: widget.onShowFish == null
+                        ? null
+                        : () => widget.onShowFish!(_selected),
                     fish: _selected,
                     count: widget.collection.countOf(_selected),
                     heaviest: widget.collection.heaviestGrams(_selected)),
@@ -560,10 +565,15 @@ class _FishTile extends StatelessWidget {
 }
 
 class _DetailPanel extends StatelessWidget {
-  const _DetailPanel({required this.fish, required this.count, this.heaviest});
+  const _DetailPanel(
+      {required this.fish,
+      required this.count,
+      this.heaviest,
+      this.onShowFish});
   final FishSpecies fish;
   final int count;
   final int? heaviest;
+  final VoidCallback? onShowFish;
 
   String get _note => switch (fish) {
         FishSpecies.goby => 'Nhỏ nhắn, giật dây từng nhịp ngắn trong rễ đước.',
@@ -580,11 +590,12 @@ class _DetailPanel extends StatelessWidget {
           'Bọt nổi báo sắp lặn. Nới dây, chờ cá nổi mới kéo.',
         FishSpecies.koi => 'Lượn vòng. Vuốt ngược mũi tên để ghìm thuyền.',
         FishSpecies.goldfish => 'Nhỏ xíu mà lượn rất nhanh.',
-        FishSpecies.catMew => 'Bé huyền thoại ẩn trong khúc sông tre.',
+        FishSpecies.catMew =>
+          'Theo chậm sau bóng ở Sông tre; áp sát hoặc quăng lúc lặn sẽ làm Nessie chạy.',
         FishSpecies.seaDragon =>
-          'Rồng vây vàng ở Biển rộng. Nới dây khi cá lao.',
+          'Giữ vành xoáy, né ba hướng sóng; chớp lúc tâm xoáy mở để thả câu.',
         FishSpecies.moonfish =>
-          'Ánh trăng trong Hang biển, lượn vòng chậm rãi.',
+          'Có vệt trăng giả: tìm bóng cá. Chỉ kéo khi cá hiện ánh bạc.',
         FishSpecies.sardine => 'Cá biển nhỏ, đi theo đàn và khá dễ câu.',
         FishSpecies.mackerel => 'Nới dây lúc lao nhanh. Kéo khi cá dừng nghỉ.',
         FishSpecies.clownfish => 'Áo sọc cam trắng, lượn zíc zắc ở biển.',
@@ -610,124 +621,144 @@ class _DetailPanel extends StatelessWidget {
               color: level > 0 && !locked ? tone : DS.wood, width: 2.5),
           boxShadow: DS.cardShadow),
       clipBehavior: Clip.antiAlias,
-      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        Expanded(
-          child: DecoratedBox(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: locked
-                      ? const [Color(0xFF4A3B6B), Color(0xFF241B38)]
-                      : level > 0
-                          ? _rarityFill(fish)
-                          : const [Color(0xFFA9DED6), Color(0xFF5BA6A2)]),
-            ),
-            child: Stack(children: [
-              if (level > 0 && !locked)
-                Positioned.fill(child: IgnorePointer(child: _RarityAura(fish))),
-              for (final b in const [
-                Offset(.15, .7),
-                Offset(.82, .25),
-                Offset(.7, .8)
-              ])
-                Align(
-                  alignment: Alignment(b.dx * 2 - 1, b.dy * 2 - 1),
-                  child: Container(
-                    width: 7,
-                    height: 7,
-                    decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        border: Border.all(
-                            color: const Color(0x88FFFFFF), width: 1.2)),
-                  ),
-                ),
+      child: LayoutBuilder(builder: (context, box) {
+        final compact = box.maxHeight < 350;
+        return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
               Padding(
-                padding: const EdgeInsets.fromLTRB(18, 14, 18, 8),
-                child: locked
-                    ? _MysteryArt(fish: fish, mark: 40)
-                    : CustomPaint(
-                        size: Size.infinite, painter: FishingFishArt(fish)),
-              ),
-              if (!locked)
-                Positioned(
-                  left: DS.spaceSm,
-                  bottom: DS.spaceSm,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: DS.spaceSm, vertical: 2),
-                    decoration: BoxDecoration(
-                        color: const Color(0xCC2B1A0C),
-                        borderRadius: BorderRadius.circular(DS.radiusSm)),
-                    child: Text('Đã câu ×$count',
-                        style: const TextStyle(
-                            color: DS.cream,
-                            fontSize: DS.fontCaption,
-                            fontWeight: FontWeight.w900)),
-                  ),
-                ),
-            ]),
-          ),
-        ),
-        Padding(
-          padding: const EdgeInsets.fromLTRB(
-              DS.spaceMd, DS.spaceSm, DS.spaceMd, DS.spaceSm),
-          child:
-              Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Row(children: [
+                  padding: const EdgeInsets.fromLTRB(10, 8, 10, 6),
+                  child: Row(children: [
+                    Expanded(
+                        child: Text(locked ? '???' : fish.label,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                                color: DS.ink,
+                                fontSize: 16,
+                                fontWeight: FontWeight.w900))),
+                    const SizedBox(width: 5),
+                    _RarityTag(fish),
+                  ])),
               Expanded(
-                child: Text(locked ? '???' : fish.label,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                        color: DS.ink,
-                        fontSize: DS.fontDisplay,
-                        fontWeight: FontWeight.w900)),
-              ),
-              _RarityTag(fish),
-            ]),
-            const SizedBox(height: DS.spaceSm),
-            _InfoRow(
-                icon: Icons.place_rounded,
-                label: 'Khu vực',
-                value: fish.nightOnly
-                    ? '${fish.habitat} · ban đêm'
-                    : fish.habitat),
-            const SizedBox(height: DS.spaceXs),
-            _InfoRow(
-                icon: timeIcon,
-                label: fish.isJunk ? 'Hay gặp' : 'Hay cắn',
-                value: timeText),
-            if (!fish.isJunk) ...[
-              const SizedBox(height: DS.spaceXs),
-              _InfoRow(
-                  icon: Icons.emoji_events_rounded,
-                  label: 'Nặng nhất',
-                  value: heaviest == null
-                      ? 'Chưa cân'
-                      : formatFishWeight(heaviest!)),
-              const SizedBox(height: DS.spaceXs),
-              _Pips(
-                  label: 'Sức kéo',
-                  value: locked ? 0 : fish.pullStrength / 1.6),
-              const SizedBox(height: DS.spaceXs),
-              _Pips(
-                  label: 'Tốc độ',
-                  value: locked ? 0 : fish.movementSpeed / 1.7),
-            ],
-            const SizedBox(height: DS.spaceSm),
-            Text(locked ? 'Chưa câu được. Ghé khu vực này để tìm nhé!' : _note,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                    color: DS.soft,
-                    fontSize: DS.fontCaption,
-                    height: 1.3,
-                    fontStyle: FontStyle.italic,
-                    fontWeight: FontWeight.w600)),
-          ]),
-        ),
-      ]),
+                  child: DecoratedBox(
+                      decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                              begin: Alignment.topCenter,
+                              end: Alignment.bottomCenter,
+                              colors: locked
+                                  ? const [Color(0xFF4A3B6B), Color(0xFF241B38)]
+                                  : level > 0
+                                      ? _rarityFill(fish)
+                                      : const [
+                                          Color(0xFFA9DED6),
+                                          Color(0xFF5BA6A2)
+                                        ])),
+                      child: Stack(children: [
+                        if (level > 0 && !locked)
+                          Positioned.fill(
+                              child: IgnorePointer(child: _RarityAura(fish))),
+                        Positioned.fill(
+                            child: Padding(
+                                padding:
+                                    const EdgeInsets.fromLTRB(12, 6, 12, 16),
+                                child: locked
+                                    ? _MysteryArt(fish: fish, mark: 40)
+                                    : CustomPaint(
+                                        painter: FishingFishArt(fish)))),
+                        if (!locked)
+                          Positioned(
+                              left: 8,
+                              bottom: 4,
+                              child: Text('Đã câu ×$count',
+                                  style: const TextStyle(
+                                      color: DS.ink,
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.w800))),
+                      ]))),
+              Padding(
+                  padding: const EdgeInsets.all(10),
+                  child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        if (!fish.isJunk) ...[
+                          Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 9, vertical: 6),
+                              decoration: BoxDecoration(
+                                  color: const Color(0xFFFFEBC0),
+                                  borderRadius: BorderRadius.circular(8)),
+                              child: Row(children: [
+                                const Icon(Icons.emoji_events_rounded,
+                                    size: 21, color: DS.goldEdge),
+                                const SizedBox(width: 7),
+                                const Expanded(
+                                    child: Text('KỶ LỤC',
+                                        style: TextStyle(
+                                            color: DS.label,
+                                            fontSize: 10,
+                                            fontWeight: FontWeight.w800))),
+                                Text(
+                                    locked || heaviest == null
+                                        ? 'Chưa cân'
+                                        : formatFishWeight(heaviest!),
+                                    style: const TextStyle(
+                                        color: DS.ink,
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.w900)),
+                              ])),
+                          const SizedBox(height: 6),
+                        ],
+                        _InfoRow(
+                            icon: Icons.place_rounded,
+                            label: 'Khu vực',
+                            value: fish.nightOnly
+                                ? '${fish.habitat} · ban đêm'
+                                : fish.habitat),
+                        const SizedBox(height: 3),
+                        _InfoRow(
+                            icon: timeIcon,
+                            label: fish.isJunk ? 'Hay gặp' : 'Hay cắn',
+                            value: timeText),
+                        if (!fish.isJunk && !compact) ...[
+                          const SizedBox(height: 4),
+                          _Pips(
+                              label: 'Sức kéo',
+                              value: locked ? 0 : fish.pullStrength / 1.6),
+                          const SizedBox(height: 3),
+                          _Pips(
+                              label: 'Tốc độ',
+                              value: locked ? 0 : fish.movementSpeed / 1.7),
+                        ],
+                        if (!compact) ...[
+                          const SizedBox(height: 5),
+                          Text(
+                              locked
+                                  ? 'Chưa câu được. Ghé khu vực này để tìm nhé!'
+                                  : _note,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                  color: DS.soft, fontSize: 11, height: 1.25)),
+                        ],
+                        if (!fish.isJunk && onShowFish != null) ...[
+                          const SizedBox(height: 8),
+                          SizedBox(
+                              height: 36,
+                              child: ElevatedButton.icon(
+                                  style: DS.primary,
+                                  onPressed: locked ? null : onShowFish,
+                                  icon: const Icon(Icons.set_meal_rounded,
+                                      size: 18),
+                                  label: Text(
+                                      locked ? 'Chưa câu được' : 'Giơ cá lên',
+                                      style: const TextStyle(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w800)))),
+                        ],
+                      ])),
+            ]);
+      }),
     );
   }
 }

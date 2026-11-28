@@ -1,3 +1,4 @@
+import 'fishing_legendary_hunts.dart';
 import 'fishing_place.dart';
 import 'dart:async';
 import 'dart:convert';
@@ -41,15 +42,20 @@ enum FishingQuest {
       'Ghé đủ các vùng trên bản đồ, gồm cả Hang biển và Biển rộng. Sau đó bắt đầu tìm 3 cá huyền thoại để hiến tế.',
       7,
       coins: 20),
-  nessie('Câu được Mèo Nessie',
-      'Trở lại Sông tre, dùng mồi huyền thoại để tìm Mèo Nessie.', 1,
+  nessie(
+      'Câu được Mèo Nessie',
+      'Theo chậm phía sau bóng dài ở Sông tre, giữ khoảng cách. Thả câu đúng hướng lúc Nessie ngoi lên; áp sát hoặc quăng khi lặn sẽ làm nó chạy.',
+      1,
       bait: 1),
   moonfish(
       'Câu cá nguyệt quang',
-      'Chỉ cắn câu từ 18:00 đến trước 06:00 trong Hang biển. Xem giờ trên bản đồ; ban ngày có thể bán cá, khám phá đảo hoặc chơi parkour trong lúc chờ tối.',
+      'Ban đêm trong Hang biển có vệt trăng giả. Tìm bóng cá bên dưới, giữ thuyền yên và câu lúc ánh bạc sáng. Khi kéo, chỉ thu dây lúc cá sáng bạc.',
       1,
       bait: 1),
-  seaDragon('Câu Rồng biển', 'Huyền thoại ngoài Biển rộng, vùng xa nhất.', 1,
+  seaDragon(
+      'Câu Rồng biển',
+      'Ở Biển rộng, giữ thuyền trong vành xoáy và lái né ba hướng sóng. Vượt đủ ba đợt, hướng vào tâm và thả câu ngay lúc xoáy mở.',
+      1,
       bait: 1),
   shrine('Hiến đủ 3 loài huyền thoại',
       'Mang 3 cá huyền thoại tới đền trong Hang biển.', 3,
@@ -69,9 +75,11 @@ enum FishingQuest {
   Offset? get target => switch (this) {
         sell => FishingVisit.market.anchor,
         activeWater => _along(4500),
-        bambooRare || nessie => _along(2700),
-        findShrine || moonfish || shrine => FishingVisit.shrine.anchor,
-        seaDragon => _along(10800),
+        bambooRare => _along(2700),
+        nessie => FishingLegendaryHunts.nessieAt(0),
+        moonfish => FishingLegendaryHunts.moonAt,
+        findShrine || shrine => FishingVisit.shrine.anchor,
+        seaDragon => FishingLegendaryHunts.dragonAt,
         _ => null,
       };
 

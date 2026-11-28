@@ -156,8 +156,8 @@ class FishingFight {
               FishFightMove.dive, .9, 'Cá lặn mất bóng · Nới dây, chờ nổi',
               pullMultiplier: .65);
         }
-        return FishingFight(
-            FishFightMove.orbit, .3, 'Ánh bạc trở lại · Ghìm thuyền và kéo',
+        return FishingFight(FishFightMove.orbit, .3,
+            'Ánh bạc còn mờ · Ghìm thuyền, chờ sáng mới kéo',
             lateral: math.sin((t - 4.6) * math.pi / 1.6) * .7);
       default:
         return const FishingFight(

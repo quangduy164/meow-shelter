@@ -1,44 +1,11 @@
+export 'fishing_chat_button.dart';
 import 'dart:math' as math;
 import 'package:flutter/services.dart';
 import 'package:material_ui/material_ui.dart';
 import '../../online/fishing_chat.dart';
 import '../../online/fishing_sticker.dart';
 import 'fishing_sticker_art.dart';
-import '../design.dart';
-import 'round_button.dart';
 import 'game_surfaces.dart';
-
-class FishingChatButton extends StatelessWidget {
-  const FishingChatButton(
-      {super.key, required this.chat, required this.onPressed});
-  final FishingChat chat;
-  final VoidCallback onPressed;
-  @override
-  Widget build(BuildContext context) => AnimatedBuilder(
-      animation: chat,
-      builder: (context, _) => Stack(clipBehavior: Clip.none, children: [
-            FlatRoundButton(
-                icon: Icons.chat_bubble_outline_rounded,
-                tooltip: 'Trò chuyện trong phòng',
-                onPressed: onPressed),
-            if (chat.unread > 0)
-              Positioned(
-                  right: -3,
-                  top: -3,
-                  child: IgnorePointer(
-                      child: Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 4, vertical: 1),
-                          decoration: BoxDecoration(
-                              color: DS.goldEdge,
-                              borderRadius: BorderRadius.circular(8)),
-                          child: Text('${chat.unread}',
-                              style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.w800))))),
-          ]));
-}
 
 class FishingChatPanel extends StatefulWidget {
   const FishingChatPanel(

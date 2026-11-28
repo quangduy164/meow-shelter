@@ -1,3 +1,4 @@
+import '../../collection/fish_species.dart';
 import '../widgets/fishing_chat_notice.dart';
 import '../widgets/fishing_chat_panel.dart';
 import '../widgets/fishing_chat_bubbles.dart';
@@ -72,7 +73,8 @@ class _FishingScreenState extends State<FishingScreen>
   late final FishingWorld _world;
   Duration? _lastTick;
   bool _collectionOpen = false, _paused = false, _choosingCat = true;
-  bool _loadingCat = false;
+  bool _loadingCat = false, _chatOpen = false;
+  bool get _modalOpen => _collectionOpen || _chatOpen;
   bool get _visitingFriend => _visitCode.text.trim().isNotEmpty;
   final _visitCode = TextEditingController();
   String? _lobbyError;
@@ -90,6 +92,7 @@ class _FishingScreenState extends State<FishingScreen>
         _controller.phase == FishingPhase.caught && _controller.elapsed >= 1,
         _area,
         _controller.tutorialStep,
+        _controller.legendaryCue,
         _questToast,
       );
 
@@ -271,7 +274,7 @@ class _FishingScreenState extends State<FishingScreen>
           .playGameplay(swan ? GameSound.fishingPedal : GameSound.fishingRow);
     }
     // The boat picker only opens once the cat has reached the boathouse.
-    switch (_controller.takeArrival()) {
+    switch (_chatOpen ? null : _controller.takeArrival()) {
       case FishingVisit.rodHouse:
         _openRodHouse();
       case FishingVisit.boatHouse:
@@ -312,6 +315,7 @@ class _FishingScreenState extends State<FishingScreen>
   void didChangeAppLifecycleState(AppLifecycleState state) {
     _paused = state != AppLifecycleState.resumed;
     if (_paused) {
+      _controller.hideFish();
       _saveTrip();
       if (!_choosingCat) unawaited(_world.setActive(false));
     } else {
@@ -324,6 +328,7 @@ class _FishingScreenState extends State<FishingScreen>
   }
 
   void _worldChanged(bool visiting) {
+    _controller.hideFish();
     _controller.cancelCast();
     _river.stop();
     _river.cabin.inside = false;
@@ -345,22 +350,27 @@ class _FishingScreenState extends State<FishingScreen>
   }
 
   Future<void> _openCollection() async {
-    if (_collectionOpen || _controller.active) return;
+    if (_modalOpen || _controller.active) return;
     if (_controller.tutorialAwaitsBasket) _controller.finishTutorial();
     setState(() => _collectionOpen = true);
+    FishSpecies? picked;
     try {
-      await showGameDialog<void>(
+      picked = await showGameDialog<FishSpecies>(
           context: context,
-          builder: (_) =>
-              FishCollectionDialog(collection: FishCollection.instance));
+          builder: (dialogContext) => FishCollectionDialog(
+              collection: FishCollection.instance,
+              onShowFish: (fish) => Navigator.pop(dialogContext, fish)));
     } finally {
       if (mounted) setState(() => _collectionOpen = false);
       _lastTick = null;
     }
+    if (mounted && picked != null) {
+      _controller.showFish(picked, stamp: _world.serverNow);
+    }
   }
 
   Future<void> _openMap() async {
-    if (_collectionOpen) return;
+    if (_modalOpen) return;
     setState(() => _collectionOpen = true);
     final cells = _river.exploration.cells;
     final percent = cells.where((seen) => seen).length * 100 ~/ cells.length;
@@ -413,7 +423,7 @@ class _FishingScreenState extends State<FishingScreen>
   }
 
   Future<void> _openQuests() async {
-    if (_collectionOpen) return;
+    if (_modalOpen) return;
     setState(() => _collectionOpen = true);
     try {
       await showGameDialog<void>(
@@ -571,9 +581,9 @@ class _FishingScreenState extends State<FishingScreen>
   }
 
   Future<void> _openChat() async {
-    if (_collectionOpen) return;
+    if (_modalOpen) return;
     _controller.stopSteering();
-    setState(() => _collectionOpen = true);
+    setState(() => _chatOpen = true);
     try {
       await showGameDialog<void>(
           context: context,
@@ -586,15 +596,14 @@ class _FishingScreenState extends State<FishingScreen>
     } finally {
       if (mounted) {
         setState(() {
-          _collectionOpen = false;
-          _lastTick = null;
+          _chatOpen = false;
         });
       }
     }
   }
 
   Future<void> _openLobby() async {
-    if (_loadingCat || _collectionOpen) return;
+    if (_loadingCat || _modalOpen) return;
     setState(() => _collectionOpen = true);
     var enter = false;
     try {
@@ -698,7 +707,7 @@ class _FishingScreenState extends State<FishingScreen>
                             child: GestureDetector(
                               behavior: HitTestBehavior.opaque,
                               onTapUp: (event) {
-                                if (!_collectionOpen) {
+                                if (!_modalOpen) {
                                   _setHour(DateTime.now());
                                   _controller.tapRiver(event.localPosition);
                                 }
@@ -716,7 +725,9 @@ class _FishingScreenState extends State<FishingScreen>
                                               children: [
                                                 FishingRemotePlayers(
                                                     round: _river,
-                                                    peers: _world.peers.values),
+                                                    peers: _world.peers.values,
+                                                    serverNow:
+                                                        _world.serverNow),
                                                 FishingPlayerLayer(
                                                     controller: _controller)
                                               ]))),
@@ -875,6 +886,37 @@ class _FishingScreenState extends State<FishingScreen>
                                             alignment: Alignment.topLeft,
                                             child: FishingQuestChip(
                                                 onTap: _openQuests))),
+                                  if (_controller.legendaryCue case final cue?)
+                                    Positioned(
+                                        left: 70,
+                                        right: 165,
+                                        bottom: padding.bottom + 18,
+                                        child: Center(
+                                            child: Container(
+                                                constraints:
+                                                    const BoxConstraints(
+                                                        maxWidth: 360),
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                        horizontal: 10,
+                                                        vertical: 6),
+                                                decoration: BoxDecoration(
+                                                    color:
+                                                        const Color(0xB3172E3B),
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                            8)),
+                                                child: Text(cue,
+                                                    maxLines: 2,
+                                                    textAlign: TextAlign.center,
+                                                    overflow:
+                                                        TextOverflow.ellipsis,
+                                                    style: const TextStyle(
+                                                        color:
+                                                            Color(0xFFFFE5A1),
+                                                        fontSize: 11,
+                                                        fontWeight: FontWeight
+                                                            .w600))))),
                                   if (_questToast case final quest?)
                                     Positioned(
                                         top: padding.top + 12,
@@ -917,8 +959,12 @@ class _FishingScreenState extends State<FishingScreen>
             Positioned(
                 right: MediaQuery.paddingOf(context).right + 24,
                 top: MediaQuery.paddingOf(context).top + 158,
-                child:
-                    FishingChatButton(chat: _world.chat, onPressed: _openChat)),
+                child: FishingChatButton(
+                    chat: _world.chat,
+                    onPressed: _openChat,
+                    cat: _cat,
+                    name: () => CampState.instance.nameOf(_cat),
+                    partner: _stickerPartner)),
           ],
           if (!_choosingCat)
             Positioned(

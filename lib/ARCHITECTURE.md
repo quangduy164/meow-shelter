@@ -790,3 +790,90 @@ tools or test files.
   uses translucent cyan with an off-white icon. Other dialogs retain the shared
   default shape. The outdoor chat opener uses `FlatRoundButton`'s optional icon
   path, matching Home's 44-unit target, 32-unit cream circle and no border.
+
+- Opening chat sets only `_chatOpen`, separate from `_collectionOpen`'s paused
+  shop/collection state. The frame ticker, simulation and remote interpolation
+  continue under chat; the modal barrier still blocks gameplay input. Defer
+  destination dialogs until chat closes to avoid stacking shop routes over it.
+
+- Journal fish showcase (`fishing/fishing_showcase.dart`): cosmetic species,
+  record grams and server-adjusted start timestamp with a 6-second lifetime.
+  `FishingController.showFish` validates journal unlocks, stops local travel,
+  uses the existing fish-hold pose and never changes inventory or catch counts.
+  Casting, changing cats/rooms or suspending the app cancels the showcase.
+  Movement retains the fish until its original expiry, with normal walking/rowing
+  animation and a stable fish attachment frame; stationary cats use fish-hold.
+  Old unlocked entries lacking weight records remain showable at the species
+  minimum visual size but omit the unknown weight label. Junk is excluded.
+- The collection's optional `onShowFish` action returns the selected species;
+  `FishingScreen` closes the dialog and starts the showcase after modal cleanup.
+  `FishingShowcaseView` shares local/remote fish art anchored to `fishHoldPaws`,
+  with a record label and subtle static legendary glow. Normal fish width uses a 48-unit base plus cube-root record weight, bounded
+  to 54..145 units. Legends use a separate 145..230-unit curve across their
+  species weight range, so a light legendary still looks imposing. Raise the
+  fish center with its height to keep the cat visible below the catch.
+  The static fish/glow subtree uses a repaint boundary and the existing frame
+  ticker moves it; no new timer, sprite loader or animation controller is added.
+- Online showcases use the existing peer `display.showcase` envelope; no Rules
+  update is needed. The movement change gate sends begin/end state changes;
+  sprite frames continue animating on each client. Parse only known edible
+  species, in-range integer grams and a fresh timestamp. Remote rendering hides
+  expired fish even without an ending packet, and falls back to idle. This is
+  display data only; it is not proof of a catch and cannot award fish or coins.
+
+- Collection detail layout: title/rarity header above unobstructed fish art,
+  prominent record-weight strip underneath, and the full-width "Giơ cá lên"
+  action at the bottom. Short landscape layouts hide secondary stat pips and
+  descriptive notes first, preserving art, record, habitat/time and the action.
+  Locked fish show a disabled action; junk never exposes the showcase action.
+  Recorded weights and catch probabilities are unchanged by visual size tuning.
+
+- Chat hold picker (`ui/widgets/fishing_chat_button.dart`): normal taps open the
+  existing panel. Dragging away from the icon inserts one pointer-transparent overlay immediately
+  after the normal drag threshold, without a long-press timer, containing
+  two concentric rings (8 breed emotes inside, 5 paired interactions outside).
+  The outer drag detector owns tap/pan recognition and ignores the decorative
+  child button input to avoid gesture competition. Original gesture coordinates
+  select the nearest cell; releasing sends only a
+  selected cell, and releasing outside/without dragging cancels. Paired cells
+  are disabled without a nearby partner. Clamp the picker to the safe viewport;
+  previews reuse existing sticker sheets without extra frame tickers. Disable
+  the opener tooltip's long-press trigger so it cannot steal the hold gesture.
+  Cancel/dispose the OverlayEntry on pointer cancellation, room detach, cat/
+  channel changes, app suspension and widget disposal. No new Firebase fields.
+
+- Legendary clue hunts (`fishing/fishing_legendary_hunts.dart`): personal encounter
+  eligibility/progress and 45-second post-bite cooldowns, with phase positions
+  derived from `FishingActivities.worldClock`. Unlock after the exploration quest
+  or an existing legendary journal entry (old-save compatibility). Nessie moves
+  along the bamboo channel: actively follow from behind for 5 s, 145..310 units
+  away and below 150 world units/s. Coming within 125 units or speeding nearby
+  scares it for 18 s. Its surfaced casting window is 2.5 s per 24 s cycle.
+  At night, 3 cave reflections include 2 decoys; a small fish shadow identifies
+  the real patch, which rotates between cycles. Stop for 3 s and cast in the
+  3-second bright window. A decoy/early cast fails and disperses reflections for
+  8 s; it cannot snap to the correct patch. At sea, remain in the 150..260-unit
+  band while steering outside 3 rotating wave arcs. The painter and hit check
+  share `waveRadius`/`waveDirection`; a hit or leaving the band invalidates that
+  cycle. Only 3 successful waves open a 3-second casting window. Waiting at a
+  fixed angle fails, while a trajectory within boat speed is feasible. Clock
+  gaps reset trial progress so paused menus cannot skip waves.
+  Validate distance, home region, a narrow forward cone, props and cave-safe
+  cast clipping. Failed clue attempts abort before inventory/bait changes and
+  show their reason; they never fall through to a different rare fish.
+  A qualifying clue cast
+  guarantees that species and does not spend optional legendary bait. Mark the
+  clue consumed only after a successful waiting-to-bite transition, so canceling
+  the wait loses neither clue nor bait. Ordinary pools/odds remain available.
+- `fishing_legendary_hunt_art.dart` draws only visible dynamic clues through the
+  existing river surface repaint ticker; the Nessie silhouette Path and Paints
+  are reused. No new image cache, timer, network channel or static landscape
+  invalidation. A compact hint appears only near a clue, with text included in
+  the existing HUD change key. Quest targets and journal notes point to the same
+  encounter anchors; existing catches, quest reward IDs and saves are retained.
+
+- Moonfish fights: line gain is zero outside silver/rest phases, while strain
+  and escape rules remain active. `fishing_fight_art.dart` reveals the silver
+  fish during the same rest phases; orbit cues explicitly tell players to wait.
+  Regression simulations must still catch all three legends after completing
+  their trials with paced pulling; difficulty must not create an impossible run.

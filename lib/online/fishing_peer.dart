@@ -76,7 +76,8 @@ class FishingPeerSnapshot {
         display: {
           'name': CampState.instance.nameOf(p.cat),
           'animating': p.pose.$1 != 'fish-reel' || c.pulling,
-          'pose': c.phase.name
+          'pose': c.phase.name,
+          if (c.showcase != null) 'showcase': c.showcase!.toJson()
         });
   }
 
@@ -174,6 +175,9 @@ class FishingPeer {
     final frame = _firstFrame + (_animationTime * fps).floor();
     final once =
         const {'jump', 'roll', 'fish-cast', 'drop-wrong'}.contains(action);
+    if (action == 'fish-hold' && target.display['showcase'] != null) {
+      return (action, frames, 1 + (_animationTime * 3).floor() % 2);
+    }
     if (action == 'fish-hold') {
       return (
         action,

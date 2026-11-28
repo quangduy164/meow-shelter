@@ -53,18 +53,21 @@ class FlatRoundButton extends StatelessWidget {
     super.key,
     this.glyph,
     this.icon,
+    this.tooltipTriggerMode = TooltipTriggerMode.longPress,
     required this.tooltip,
     required this.onPressed,
   }) : assert(glyph != null || icon != null);
 
   final GameGlyph? glyph;
   final IconData? icon;
+  final TooltipTriggerMode tooltipTriggerMode;
   final String tooltip;
   final VoidCallback onPressed;
 
   @override
   Widget build(BuildContext context) => Tooltip(
       message: tooltip,
+      triggerMode: tooltipTriggerMode,
       child: Material(
           type: MaterialType.transparency,
           child: InkWell(

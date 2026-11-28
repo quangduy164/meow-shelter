@@ -1,3 +1,4 @@
+import 'fishing_legendary_hunt_art.dart';
 import 'dart:async';
 import 'dart:math' as math;
 import 'dart:ui' as ui;
@@ -350,6 +351,12 @@ class FishingRiverSurface extends CustomPainter {
     final controller = fishing;
     if (controller != null) {
       if (controller.canSail) {
+        final visible = Rect.fromLTWH(
+                left, round.cameraTop, right - left, round.visibleHeight)
+            .inflate(150);
+        for (final sign in controller.legendaryHunts.signs) {
+          if (visible.contains(sign.position)) paintLegendarySign(canvas, sign);
+        }
         for (final activity in controller.activities.visible(
             FishingActivities.worldClock(), left, right,
             top: round.cameraTop,

@@ -1,3 +1,5 @@
+import 'fishing_legendary_hunts.dart';
+import 'fishing_showcase.dart';
 import 'fishing_navigation.dart';
 export 'fishing_place.dart' show FishingVisit;
 import 'fishing_place.dart';
@@ -66,11 +68,81 @@ class FishingController extends ChangeNotifier {
   late final FishingRiverRound river;
   FishingPlayerState get player => river.localPlayer;
   void selectCat(String cat) {
+    hideFish();
     player.cat = CatBreed.of(cat).id;
     notifyListeners();
   }
 
+  FishingShowcase? _showcase;
+  FishingShowcase? get showcase => _showcase;
+  double _showcaseLeft = 0;
+  bool showFish(FishSpecies fish, {required int stamp}) {
+    if (!canSail ||
+        _preparingCast ||
+        fish.isJunk ||
+        collection.countOf(fish) == 0 ||
+        river.cabin.inside ||
+        river.cave.inside ||
+        river.island.lookout ||
+        river.island.hopProgress != null) {
+      return false;
+    }
+    cancelNavigation();
+    river.island.stopWalking();
+    final record = collection.heaviestGrams(fish);
+    _showcase = FishingShowcase(
+        fish: fish,
+        grams: record ?? fish.weightRange.$1,
+        startedAt: stamp,
+        measured: record != null);
+    _showcaseLeft = FishingShowcase.durationMs / 1000;
+    if (_phase == FishingPhase.lost) _setPhase(FishingPhase.ready);
+    notifyListeners();
+    return true;
+  }
+
+  void hideFish() {
+    if (showcase == null) return;
+    _showcase = null;
+    _showcaseLeft = 0;
+    notifyListeners();
+  }
+
   final activities = FishingActivities();
+  final legendaryHunts = FishingLegendaryHunts();
+  FishingLegendarySign? _huntCast;
+  bool get huntsUnlocked =>
+      quests.isCompleted(FishingQuest.exploreWorld) ||
+      FishSpecies.legendary.any((fish) => collection.countOf(fish) > 0);
+  String? get legendaryCue {
+    if (!canSail || shoreFishing || river.cabin.inside || river.cave.inside) {
+      return null;
+    }
+    if (legendaryHunts.notice case final notice?) return notice;
+    final sign = legendaryHunts.nearby(angler);
+    if (sign == null) return null;
+    if ((sign.position - angler).distance < 110) {
+      return 'Lùi thuyền một chút để thả câu vào dấu vết';
+    }
+    if (sign.ready &&
+        sign.fish != FishSpecies.moonfish &&
+        _huntTarget == null) {
+      return 'Hướng thuyền về dấu vết, tìm góc thả câu không bị cản';
+    }
+    return sign.cue;
+  }
+
+  FishingLegendarySign? get _huntTarget => shoreFishing
+      ? null
+      : legendaryHunts.castTarget(angler, _castDirection,
+          canReach: (p) =>
+              river.props.clearLine(angler, p) &&
+              (river.clipCast(angler, p,
+                              caveOnly: FishingRiver.inCave(angler)) -
+                          p)
+                      .distance <
+                  8);
+
   bool _activeWater = false, _shoreCastPending = false;
   FishFightMove? _soundMove;
 
@@ -172,7 +244,9 @@ class FishingController extends ChangeNotifier {
     river.catFacingRight = river.localDrives
         ? (fishing != null ? spot.dx >= angler.dx : river.heading.dx >= 0)
         : river.crew.driver?.facingRight;
-    final rowing = river.localDrives &&
+    final showing = showcase != null && !river.moving && !island.walking;
+    final rowing = !showing &&
+        river.localDrives &&
         river.moving &&
         fishing == null &&
         river.boatStyle != FishingBoat.swan;
@@ -196,7 +270,13 @@ class FishingController extends ChangeNotifier {
             )
           : island.ashore && island.walking
               ? ('walk', framesWalk, (river.clock * 10).floor() % framesWalk)
-              : fishing ??
+              : (showing
+                      ? (
+                          'fish-hold',
+                          framesFishHold,
+                          1 + (river.clock * 3).floor() % 2
+                        )
+                      : fishing) ??
                   (rowing
                       ? (
                           'row',
@@ -347,16 +427,24 @@ class FishingController extends ChangeNotifier {
     if (canSail && (river.boat - FishingIslandVisit.mooring).distance < 600) {
       return 'Bấm cầu gỗ trên đảo để cập bến khám phá';
     }
+    if (canSail && !island.ashore) {
+      final sign = legendaryHunts.nearby(angler);
+      if (sign != null) return sign.cue;
+    }
     return switch (_phase) {
       FishingPhase.ready => river.moving
           ? 'Đang chèo · Bấm cần câu góc phải để câu tại đây'
           : _nearbyCastActivity(angler, _castDirection) != null
               ? 'Có cá động gần đây! Bấm cần câu để thử vận may'
               : 'Bấm nước để chèo · Bấm bờ để xuống đi bộ',
-      FishingPhase.casting => _activeWater
-          ? 'Thả vào chỗ cá động · Cơ hội cá hiếm tăng!'
-          : 'Mèo đang thả cần…',
-      FishingPhase.waiting => 'Chờ phao động rồi bấm giật cần',
+      FishingPhase.casting => _huntCast != null
+          ? 'Thả câu đúng dấu vết huyền thoại…'
+          : _activeWater
+              ? 'Thả vào chỗ cá động · Cơ hội cá hiếm tăng!'
+              : 'Mèo đang thả cần…',
+      FishingPhase.waiting => _huntCast != null
+          ? 'Giữ yên, chờ phao chìm rồi giật cần'
+          : 'Chờ phao động rồi bấm giật cần',
       FishingPhase.bite => 'Cá cắn! Bấm nút giật cần!',
       FishingPhase.reeling => '',
       FishingPhase.saving => _error ?? 'Đang cất cá vào giỏ…',
@@ -396,6 +484,7 @@ class FishingController extends ChangeNotifier {
 
   void cancelCast() {
     if (_preparingCast) return;
+    _huntCast = null;
     _castBaited = false;
     _shoreCastPending = false;
     if (!active || _phase == FishingPhase.saving) return;
@@ -524,6 +613,23 @@ class FishingController extends ChangeNotifier {
   }
 
   void update(double dt) {
+    legendaryHunts.update(dt,
+        clock: FishingActivities.worldClock(),
+        hour: _worldHour,
+        player: angler,
+        moving: river.moving || river.island.walking,
+        speed: river.speed,
+        enabled: huntsUnlocked &&
+            !shoreFishing &&
+            !river.cabin.inside &&
+            !river.cave.inside &&
+            canSail);
+    if (showcase != null) {
+      _showcaseLeft -= dt;
+      if (_showcaseLeft <= 0 || river.cabin.inside || river.cave.inside) {
+        hideFish();
+      }
+    }
     activities.density =
         FishingActivities.densityAt(_worldHour, rain: river.weather.rain);
     if (river.cabin.inside) {
@@ -610,17 +716,21 @@ class FishingController extends ChangeNotifier {
           _comboTime = 0;
           if (_tension > _sweetCenter + sweetWidth) _combo = 0;
         }
-        final baseReelRate = !_pulling
-            ? (behavior.blocked ? 0.0 : -.015)
-            : behavior.blocked
-                ? 0.0
-                : behavior.dangerous
-                    ? .015
-                    : _tension > .82
-                        ? .035
-                        : sweet
-                            ? .2 * (1 + math.min(_combo, 5) * .08)
-                            : .11;
+        final moonHidden = _fish == FishSpecies.moonfish &&
+            behavior.move != FishFightMove.rest;
+        final baseReelRate = _pulling && moonHidden
+            ? 0.0
+            : !_pulling
+                ? (behavior.blocked ? 0.0 : -.015)
+                : behavior.blocked
+                    ? 0.0
+                    : behavior.dangerous
+                        ? .015
+                        : _tension > .82
+                            ? .035
+                            : sweet
+                                ? .2 * (1 + math.min(_combo, 5) * .08)
+                                : .11;
         final reelRate = baseReelRate > 0
             ? baseReelRate *
                 rod.reel *
@@ -699,6 +809,7 @@ class FishingController extends ChangeNotifier {
   }
 
   void castHere() {
+    hideFish();
     if (!canSail || _preparingCast || river.cabin.inside || river.cave.inside) {
       return;
     }
@@ -771,6 +882,7 @@ class FishingController extends ChangeNotifier {
       }
       if (_disposed) return;
       _castBaited = false;
+      if (_huntCast case final sign?) legendaryHunts.consume(sign);
       _setPhase(FishingPhase.bite);
       _vibrate(HapticFeedback.mediumImpact);
     } catch (_) {
@@ -797,8 +909,28 @@ class FishingController extends ChangeNotifier {
     if (shoreFishing) {
       river.island.facingRight = _spot.dx >= location.dx;
     }
-    final activity =
-        shoreFishing ? null : _nearbyCastActivity(location, direction);
+    final attempt = legendaryHunts.attempt(location, direction,
+        canReach: (p) =>
+            river.props.clearLine(location, p) &&
+            (river.clipCast(location, p,
+                            caveOnly: FishingRiver.inCave(location)) -
+                        p)
+                    .distance <
+                8);
+    if (attempt.error case final error?) {
+      _castBaited = false;
+      _huntCast = null;
+      _lose(error);
+      notifyListeners();
+      return;
+    }
+    _huntCast = attempt.target;
+    // Clue casts already guarantee a legendary; save optional bait for random casts.
+    _castBaited = baited && _huntCast == null;
+    final activity = _huntCast == null && !shoreFishing
+        ? _nearbyCastActivity(location, direction)
+        : null;
+    if (_huntCast case final sign?) _spot = sign.position;
     _activeWater = activity != null;
     if (activity != null) {
       if ((activity.position - location).distance >= 110) {
@@ -809,23 +941,25 @@ class FishingController extends ChangeNotifier {
     _castOffset = _spot - location;
     // The boat's casting location owns the pool, even if the float lands
     // across a regional boundary or the fish later pulls the boat elsewhere.
-    _fish = beginner && !baited
-        ? (FishingRiver.caveBlend(location.dx, y: location.dy) > .1
-            ? FishSpecies.catfish
-            : location.dx >= FishingRiver.seaStart
-                ? FishSpecies.sardine
-                : location.dx >= FishingRiver.mangroveStart
-                    ? FishSpecies.tilapia
-                    : location.dx < FishingRiver.sectionLength
+    _fish = _huntCast?.fish ??
+        (beginner && !baited
+            ? (FishingRiver.caveBlend(location.dx, y: location.dy) > .1
+                ? FishSpecies.catfish
+                : location.dx >= FishingRiver.seaStart
+                    ? FishSpecies.sardine
+                    : location.dx >= FishingRiver.mangroveStart
                         ? FishSpecies.tilapia
-                        : FishSpecies.catfish)
-        : FishingRiver.rollFish(_random.nextInt(10000), location.dx, _worldHour,
-            activeWater: _activeWater,
-            y: location.dy,
-            weatherBoost: river.weather.boost,
-            legendaryBait: baited,
-            legendaryBoost: legendaryBoost,
-            nightLure: rod == FishingRod.lantern);
+                        : location.dx < FishingRiver.sectionLength
+                            ? FishSpecies.tilapia
+                            : FishSpecies.catfish)
+            : FishingRiver.rollFish(
+                _random.nextInt(10000), location.dx, _worldHour,
+                activeWater: _activeWater,
+                y: location.dy,
+                weatherBoost: river.weather.boost,
+                legendaryBait: baited,
+                legendaryBoost: legendaryBoost,
+                nightLure: rod == FishingRod.lantern));
     if (!_fish.isLegendary &&
         FishingRiver.legendaryHere(location.dx, _worldHour, y: location.dy)) {
       _setLegendMisses(_legendMisses + 1);
