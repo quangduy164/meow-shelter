@@ -176,7 +176,7 @@ class _CampScreenState extends State<CampScreen>
     _loading = true;
     while (_queue.isNotEmpty && mounted) {
       final path = _queue.removeAt(0);
-      final idle = path.endsWith('-${CampAct.idle.sheet}.png');
+      final idle = path.endsWith('-${CampAct.idle.sheet}.webp');
       if (!idle) _markReady();
       // Only the very first non-idle sheet waits for the screen change;
       // sheets requested later during play decode straight away.

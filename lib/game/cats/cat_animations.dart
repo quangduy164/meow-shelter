@@ -16,41 +16,41 @@ Future<Map<CatState, SpriteAnimation>> loadCatAnimations(
   }
 
   return {
-    CatState.idle: await loadAnimation('cat-$catType-idle.png', framesIdle),
-    CatState.walk: await loadAnimation('cat-$catType-walk.png', framesWalk),
-    CatState.run: await loadAnimation('cat-$catType-run.png', framesRun),
+    CatState.idle: await loadAnimation('cat-$catType-idle.webp', framesIdle),
+    CatState.walk: await loadAnimation('cat-$catType-walk.webp', framesWalk),
+    CatState.run: await loadAnimation('cat-$catType-run.webp', framesRun),
     CatState.turnAround: await loadAnimation(
-      'cat-$catType-turn-around.png',
+      'cat-$catType-turn-around.webp',
       framesTurnAround,
     ),
     CatState.dashEscape: await loadAnimation(
-      'cat-$catType-dash-escape.png',
+      'cat-$catType-dash-escape.webp',
       framesDashEscape,
     ),
-    CatState.panic: await loadAnimation('cat-$catType-panic.png', framesPanic),
+    CatState.panic: await loadAnimation('cat-$catType-panic.webp', framesPanic),
     CatState.dragged: await loadAnimation(
-      'cat-$catType-dragged.png',
+      'cat-$catType-dragged.webp',
       framesDragged,
     ),
     CatState.dropSuccess: await loadAnimation(
-      'cat-$catType-drop-success.png',
+      'cat-$catType-drop-success.webp',
       framesDropSuccess,
     ),
     CatState.celebrate: await loadAnimation(
-      'cat-$catType-celebrate.png',
+      'cat-$catType-celebrate.webp',
       framesCelebrate,
     ),
     CatState.dropWrong: await loadAnimation(
-      'cat-$catType-drop-wrong.png',
+      'cat-$catType-drop-wrong.webp',
       framesDropWrong,
     ),
     CatState.vanish: await loadAnimation(
-      'cat-$catType-vanish.png',
+      'cat-$catType-vanish.webp',
       framesVanish,
       stepTime: vanishStepTime,
     ),
     CatState.sleep: await loadAnimation(
-      'cat-$catType-sleep.png',
+      'cat-$catType-sleep.webp',
       framesSleep,
       stepTime: sleepStepTime,
     ),

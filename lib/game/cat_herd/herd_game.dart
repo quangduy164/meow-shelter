@@ -125,7 +125,7 @@ class HerdGame extends FlameGame {
     // for the sum of every load.
     Future<void> loadSheet(String type, String sheet) async {
       final folder = 'Cat/${type[0].toUpperCase()}${type.substring(1)}';
-      final img = await images.load('$folder/cat-$type-$sheet.png');
+      final img = await images.load('$folder/cat-$type-$sheet.webp');
       final target = switch (sheet) {
         'walk' => _walk,
         'idle' => _idle,

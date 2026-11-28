@@ -219,7 +219,7 @@ class FishingWorldLobby extends StatelessWidget {
   Widget _postcard() => ClipRRect(
       borderRadius: BorderRadius.circular(14),
       child: Stack(fit: StackFit.expand, children: [
-        Image.asset('assets/images/previews/fishing_island.png',
+        Image.asset('assets/images/previews/fishing_island.webp',
             fit: BoxFit.cover,
             semanticLabel: 'Đảo hải đăng và thuyền cướp biển trong game',
             filterQuality: FilterQuality.medium),

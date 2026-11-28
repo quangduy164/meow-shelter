@@ -47,7 +47,7 @@ class CatBreed {
 
   /// Folder under assets/images/Cat, e.g. "Orange".
   String get folder => id[0].toUpperCase() + id.substring(1);
-  String sheet(String action) => 'Cat/$folder/cat-$id-$action.png';
+  String sheet(String action) => 'Cat/$folder/cat-$id-$action.webp';
   String get upperName => name.toUpperCase();
 
   static const orange = CatBreed(

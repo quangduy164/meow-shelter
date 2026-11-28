@@ -46,7 +46,7 @@ class _RoundResultOverlayState extends State<RoundResultOverlay>
     final type = _game.level.bossType ?? _game.level.catTypes.first;
     final folder = '${type[0].toUpperCase()}${type.substring(1)}';
     _portrait = _game.images
-        .fromCache('Cat/$folder/cat-$type-${_won ? 'celebrate' : 'idle'}.png');
+        .fromCache('Cat/$folder/cat-$type-${_won ? 'celebrate' : 'idle'}.webp');
     _frameCount = _portrait.width ~/ _portrait.height;
     _sprite = AnimationController(
         vsync: this,
