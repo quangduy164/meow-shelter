@@ -42,7 +42,7 @@ class FishingQuestChip extends StatelessWidget {
                                   padding:
                                       const EdgeInsets.symmetric(horizontal: 8),
                                   decoration: BoxDecoration(
-                                      color: DS.cream.withValues(alpha: .92),
+                                      color: DS.cream.withValues(alpha: .55),
                                       borderRadius: BorderRadius.circular(10)),
                                   child: Row(children: [
                                     Icon(

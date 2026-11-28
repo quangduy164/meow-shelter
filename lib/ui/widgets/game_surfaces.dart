@@ -43,6 +43,7 @@ class GameDialog extends StatelessWidget {
     this.maxWidth = DS.dialogWidth,
     this.alignment,
     this.backgroundColor = DS.cream,
+    this.shape,
     this.scrollable = false,
     this.header,
     this.padding = const EdgeInsets.all(DS.spaceLg),
@@ -53,6 +54,7 @@ class GameDialog extends StatelessWidget {
   final double maxWidth;
   final AlignmentGeometry? alignment;
   final Color backgroundColor;
+  final ShapeBorder? shape;
   final bool scrollable;
   final Widget? header;
   final EdgeInsetsGeometry padding;
@@ -71,7 +73,7 @@ class GameDialog extends StatelessWidget {
         alignment: alignment,
         insetPadding: compact(insetPadding),
         backgroundColor: backgroundColor,
-        shape: DS.dialogShape,
+        shape: shape ?? DS.dialogShape,
         child: ConstrainedBox(
           constraints: BoxConstraints(maxWidth: maxWidth),
           child: Padding(

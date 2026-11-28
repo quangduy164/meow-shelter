@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:flutter/foundation.dart';
+import 'fishing_sticker.dart';
 
 class FishingChatMessage {
   const FishingChatMessage(
@@ -12,7 +13,8 @@ class FishingChatMessage {
       required this.stamp});
   final String id, uid, name, text;
   final int stamp;
-  bool get isEmote => FishingChat.emotes.contains(text);
+  bool get isEmote =>
+      FishingChat.emotes.contains(text) || FishingSticker.parse(text) != null;
   static String singleLine(String text) =>
       text.replaceAll(RegExp(r'[\x00-\x1f\x7f]'), ' ').trim();
   static FishingChatMessage? parse(String? id, Object? value) {
@@ -50,6 +52,7 @@ class FishingChatMessage {
 class FishingChat extends ChangeNotifier {
   FishingChat({required this.now});
   final int Function() now;
+  static const displayDurationMs = 6000;
   static const emotes = [
     '😺',
     '😹',
@@ -71,7 +74,10 @@ class FishingChat extends ChangeNotifier {
     'Đi ngủ thôi 💤'
   ];
   List<FishingChatMessage> _messages = [];
-  List<FishingChatMessage> get messages => List.unmodifiable(_messages);
+
+  /// Chat history: emotes only show as bubbles, never in the history.
+  List<FishingChatMessage> get messages =>
+      List.unmodifiable(_messages.where((m) => !m.isEmote));
   final _bubbles = <String, FishingChatMessage>{};
   final _notices = <FishingChatMessage>[];
   List<FishingChatMessage> get notices => List.unmodifiable(_notices);
@@ -81,7 +87,7 @@ class FishingChat extends ChangeNotifier {
   DatabaseReference? _ref;
   StreamSubscription<DatabaseEvent>? _sub;
   Timer? _expiry;
-  int _epoch = 0, _lastSent = 0, unread = 0;
+  int _epoch = 0, _lastSent = 0, _joinedAt = 0, unread = 0;
   bool _disposed = false, _reading = false, _primed = false, sending = false;
   bool get ready => _ref != null && _primed;
   bool get connecting => _ref != null && !_primed && error == null;
@@ -101,6 +107,7 @@ class FishingChat extends ChangeNotifier {
     detach();
     _ref = ref;
     _uid = uid;
+    _joinedAt = now();
     final epoch = _epoch;
     _sub = ref.child('messages').orderByKey().limitToLast(51).onValue.listen(
         (event) {
@@ -112,10 +119,13 @@ class FishingChat extends ChangeNotifier {
         if (m != null) received.add(m);
       }
       received.sort((a, b) => a.id.compareTo(b.id));
-      for (final m in received) {
-        if (!previous.contains(m.id) && _primed) {
-          if (m.uid != uid && !_reading) unread = (unread + 1).clamp(0, 99);
-          if (now() - m.stamp < 4000 && m.stamp <= now() + 5000) {
+      final current = received.where((m) => m.stamp >= _joinedAt).toList();
+      for (final m in current) {
+        if (!previous.contains(m.id)) {
+          if (m.uid != uid && !_reading && !m.isEmote) {
+            unread = (unread + 1).clamp(0, 99);
+          }
+          if (now() - m.stamp < displayDurationMs && m.stamp <= now() + 5000) {
             if (m.isEmote) {
               _bubbles[m.uid] = m;
             } else {
@@ -134,9 +144,8 @@ class FishingChat extends ChangeNotifier {
           debugPrint('FishingChat trim: $e');
         }));
       }
-      _messages = received
-          .skip((received.length - 50).clamp(0, received.length))
-          .toList();
+      _messages =
+          current.skip((current.length - 50).clamp(0, current.length)).toList();
       _primed = true;
       error = null;
       _expireBubbles();
@@ -220,11 +229,11 @@ class FishingChat extends ChangeNotifier {
 
   void _expireBubbles() {
     _expiry?.cancel();
-    _bubbles.removeWhere((_, m) => now() - m.stamp >= 4000);
-    _notices.removeWhere((m) => now() - m.stamp >= 4000);
+    _bubbles.removeWhere((_, m) => now() - m.stamp >= displayDurationMs);
+    _notices.removeWhere((m) => now() - m.stamp >= displayDurationMs);
     if (_bubbles.isEmpty && _notices.isEmpty) return;
     final next = [..._bubbles.values, ..._notices]
-        .map((m) => m.stamp + 4000 - now())
+        .map((m) => m.stamp + displayDurationMs - now())
         .reduce((a, b) => a < b ? a : b);
     _expiry = Timer(Duration(milliseconds: next.clamp(1, 9000)), () {
       if (_disposed) return;
@@ -237,6 +246,7 @@ class FishingChat extends ChangeNotifier {
     ++_epoch;
     _ref = null;
     _uid = null;
+    _joinedAt = 0;
     unawaited(_sub?.cancel());
     _sub = null;
     _expiry?.cancel();

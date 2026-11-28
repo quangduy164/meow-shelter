@@ -51,12 +51,14 @@ class RoundButton extends StatelessWidget {
 class FlatRoundButton extends StatelessWidget {
   const FlatRoundButton({
     super.key,
-    required this.glyph,
+    this.glyph,
+    this.icon,
     required this.tooltip,
     required this.onPressed,
-  });
+  }) : assert(glyph != null || icon != null);
 
-  final GameGlyph glyph;
+  final GameGlyph? glyph;
+  final IconData? icon;
   final String tooltip;
   final VoidCallback onPressed;
 
@@ -78,5 +80,7 @@ class FlatRoundButton extends StatelessWidget {
                               color: DS.cream.withValues(alpha: .92),
                               shape: BoxShape.circle),
                           child: Center(
-                              child: GameGlyphView(glyph, size: 20))))))));
+                              child: glyph != null
+                                  ? GameGlyphView(glyph!, size: 20)
+                                  : Icon(icon, size: 20, color: DS.ink))))))));
 }

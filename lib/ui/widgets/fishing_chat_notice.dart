@@ -15,14 +15,9 @@ class FishingChatNotice extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     for (final message in chat.notices)
-                      Container(
+                      Padding(
                           key: ValueKey(message.id),
-                          margin: const EdgeInsets.only(top: 4),
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 9, vertical: 6),
-                          decoration: BoxDecoration(
-                              color: const Color(0xC2172E3B),
-                              borderRadius: BorderRadius.circular(8)),
+                          padding: const EdgeInsets.only(bottom: 6),
                           child: Text.rich(
                               TextSpan(children: [
                                 TextSpan(
@@ -37,6 +32,12 @@ class FishingChatNotice extends StatelessWidget {
                               style: const TextStyle(
                                   color: Colors.white,
                                   fontSize: 12,
-                                  height: 1.3))),
+                                  height: 1.3,
+                                  shadows: [
+                                    Shadow(
+                                        color: Color(0xCC14232C),
+                                        blurRadius: 3,
+                                        offset: Offset(0, 1))
+                                  ]))),
                   ])));
 }

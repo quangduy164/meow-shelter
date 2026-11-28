@@ -733,7 +733,7 @@ tools or test files.
   disposal. No message data is added to position packets. A bounded query reads
   at most 51 messages; the owner trims the extra oldest row and clients display
   50. Initial history never triggers unread counts or speech bubbles. New live
-  emotes show a per-UID head bubble, text shows in the left feed for 4 seconds;
+  emotes show a per-UID head bubble, text shows in the left feed for 6 seconds;
   one expiry timer is disposed on
   detach. Session epochs ignore late events and send completions from old rooms.
   Sending is single-flight, costs one atomic update of message + sender clock,
@@ -760,7 +760,7 @@ tools or test files.
   emote messages without a new wire field or Rules change. Only these appear as
   large outdoor head bubbles. Typed text and quick phrases appear in
   `FishingChatNotice`, a pointer-transparent left-side feed capped at 3 rows.
-  Both expire after 4 seconds using the existing chat expiry timer; historical
+  Both expire after 6 seconds using the existing chat expiry timer; historical
   messages never replay as notices. The feed listens only to chat changes, not
   map frames. Detach clears both transient collections and cancels the timer;
   the full 50-message history remains accessible in the chat panel.
@@ -770,3 +770,23 @@ tools or test files.
   the special path to the server and fail with `Invalid token in path`.
   Chat UI distinguishes pending subscription from failed access; do not infer
   internet availability solely from whether chat has received its first event.
+
+- Chat visibility starts at `FishingChat.attach`'s server-adjusted join time.
+  Filter history, unread counts and transient notices by that timestamp,
+  including the first query event, so messages sent while initial data loads
+  are retained. Detach clears the boundary; re-entry starts a fresh boundary.
+  Keep server retention cleanup separate from this per-client visibility filter.
+
+- Transient text notices sit at the vertical center of the left edge. They use
+  transparent backgrounds and a small text shadow for contrast; the whole feed
+  ignores input so it never blocks map movement underneath.
+
+- Chat text/emote expiry shares `FishingChat.displayDurationMs` (6 s). Emotes
+  have transparent backgrounds; the quest HUD chip uses a 55% cream fill.
+
+- Fishing chat palette: the compact right panel uses a square, borderless
+  `GameDialog` shape and translucent navy surface. Its composer uses a darker
+  borderless navy fill, off-white text and muted blue-grey hint; the send button
+  uses translucent cyan with an off-white icon. Other dialogs retain the shared
+  default shape. The outdoor chat opener uses `FlatRoundButton`'s optional icon
+  path, matching Home's 44-unit target, 32-unit cream circle and no border.

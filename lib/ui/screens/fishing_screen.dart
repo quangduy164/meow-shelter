@@ -17,6 +17,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:flutter/scheduler.dart';
 
 import '../../camp/camp_state.dart';
+import '../../fishing/fishing_player.dart';
 import '../../fishing/fishing_river.dart';
 import '../../fishing/fishing_controller.dart';
 import '../../fishing/fishing_island.dart';
@@ -182,6 +183,28 @@ class _FishingScreenState extends State<FishingScreen>
   }
 
   String get _cat => _controller.player.cat;
+
+  /// Nearest outdoor friend close enough for a two-cat sticker.
+  String? _stickerPartner() {
+    if (_river.cabin.inside || _river.cave.inside) return null;
+    final me = _controller.angler;
+    String? best;
+    var bestDistance = 420.0;
+    for (final peer in _world.peers.values) {
+      final location = peer.target.location;
+      if (location != FishingPlayerLocation.water &&
+          location != FishingPlayerLocation.land) {
+        continue;
+      }
+      final d = (peer.position - me).distance;
+      if (d < bestDistance) {
+        bestDistance = d;
+        best = peer.uid;
+      }
+    }
+    return best;
+  }
+
   String? _lastCat;
   double _sinceSave = 0;
   Offset _savedBoat = Offset.zero;
@@ -557,6 +580,8 @@ class _FishingScreenState extends State<FishingScreen>
           builder: (_) => FishingChatPanel(
               chat: _world.chat,
               name: () => CampState.instance.nameOf(_cat),
+              cat: _cat,
+              partner: _stickerPartner,
               onReconnect: _world.retry));
     } finally {
       if (mounted) {
@@ -737,23 +762,25 @@ class _FishingScreenState extends State<FishingScreen>
                                                           round: _river,
                                                           frames: _frames),
                                                       Container(
-                                                          width: 110,
-                                                          margin: const EdgeInsets
-                                                              .only(top: 3),
+                                                          constraints: const BoxConstraints(
+                                                              maxWidth: 110),
+                                                          margin:
+                                                              const EdgeInsets.only(
+                                                                  top: 3),
                                                           padding:
-                                                              const EdgeInsets.symmetric(
+                                                              const EdgeInsets
+                                                                  .symmetric(
+                                                                  horizontal: 7,
                                                                   vertical: 2),
                                                           decoration: BoxDecoration(
                                                               color: const Color(
                                                                   0xB31E2A30),
                                                               borderRadius:
-                                                                  BorderRadius
-                                                                      .circular(
-                                                                          8)),
+                                                                  BorderRadius.circular(
+                                                                      8)),
                                                           child: Text(_area,
-                                                              textAlign:
-                                                                  TextAlign
-                                                                      .center,
+                                                              textAlign: TextAlign
+                                                                  .center,
                                                               maxLines: 1,
                                                               overflow:
                                                                   TextOverflow
@@ -763,8 +790,7 @@ class _FishingScreenState extends State<FishingScreen>
                                                                       .white,
                                                                   fontSize: 11,
                                                                   fontWeight:
-                                                                      FontWeight
-                                                                          .w700))),
+                                                                      FontWeight.w700))),
                                                     ]))))),
                                   Positioned(
                                       left: padding.left + 12,
@@ -873,11 +899,18 @@ class _FishingScreenState extends State<FishingScreen>
                       ]);
                     })),
           if (!_choosingCat) ...[
-            Positioned(
-                left: MediaQuery.paddingOf(context).left + 12,
-                bottom: MediaQuery.paddingOf(context).bottom + 90,
-                width: math.min(310, MediaQuery.sizeOf(context).width * .44),
-                child: FishingChatNotice(chat: _world.chat)),
+            Positioned.fill(
+                child: IgnorePointer(
+                    child: Align(
+                        alignment: Alignment.centerLeft,
+                        child: Padding(
+                            padding: EdgeInsets.only(
+                                left: MediaQuery.paddingOf(context).left + 12),
+                            child: SizedBox(
+                                width: math.min(310,
+                                    MediaQuery.sizeOf(context).width * .44),
+                                child:
+                                    FishingChatNotice(chat: _world.chat)))))),
             Positioned.fill(
                 child: FishingChatBubbles(
                     controller: _controller, world: _world, frames: _frames)),

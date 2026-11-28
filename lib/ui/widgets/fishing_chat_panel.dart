@@ -2,8 +2,10 @@ import 'dart:math' as math;
 import 'package:flutter/services.dart';
 import 'package:material_ui/material_ui.dart';
 import '../../online/fishing_chat.dart';
+import '../../online/fishing_sticker.dart';
+import 'fishing_sticker_art.dart';
 import '../design.dart';
-import 'fishing_menu_button.dart';
+import 'round_button.dart';
 import 'game_surfaces.dart';
 
 class FishingChatButton extends StatelessWidget {
@@ -15,11 +17,10 @@ class FishingChatButton extends StatelessWidget {
   Widget build(BuildContext context) => AnimatedBuilder(
       animation: chat,
       builder: (context, _) => Stack(clipBehavior: Clip.none, children: [
-            FishingMenuButton(
+            FlatRoundButton(
+                icon: Icons.chat_bubble_outline_rounded,
                 tooltip: 'Trò chuyện trong phòng',
-                onPressed: onPressed,
-                size: 36,
-                child: const Icon(Icons.chat_bubble_outline_rounded, size: 20)),
+                onPressed: onPressed),
             if (chat.unread > 0)
               Positioned(
                   right: -3,
@@ -44,9 +45,17 @@ class FishingChatPanel extends StatefulWidget {
       {super.key,
       required this.chat,
       required this.name,
+      required this.cat,
+      required this.partner,
       required this.onReconnect});
   final FishingChat chat;
   final String Function() name;
+
+  /// Breed id of the local cat, for its own stickers.
+  final String cat;
+
+  /// Uid of a friend close enough for a two-cat sticker, or null.
+  final String? Function() partner;
   final Future<void> Function() onReconnect;
   @override
   State<FishingChatPanel> createState() => _FishingChatPanelState();
@@ -137,23 +146,64 @@ class _FishingChatPanelState extends State<FishingChatPanel> {
       ]);
     }
     if (_tab == 1) {
-      return GridView.count(
-          crossAxisCount: 4,
-          padding: const EdgeInsets.all(8),
-          mainAxisSpacing: 6,
-          crossAxisSpacing: 6,
-          childAspectRatio: 1.1,
-          children: [
-            for (final emote in FishingChat.emotes)
-              Material(
-                  color: const Color(0x183DB7C5),
+      final cat = widget.cat, partner = widget.partner();
+      Widget cell(Widget child, String tip, VoidCallback? onTap) => Tooltip(
+          message: tip,
+          child: Material(
+              color: const Color(0x183DB7C5),
+              borderRadius: BorderRadius.circular(10),
+              child: InkWell(
                   borderRadius: BorderRadius.circular(10),
-                  child: InkWell(
-                      borderRadius: BorderRadius.circular(10),
-                      onTap: enabled ? () => _send(emote) : null,
-                      child: Center(
-                          child: Text(emote,
-                              style: const TextStyle(fontSize: 24)))))
+                  onTap: onTap,
+                  child: Opacity(
+                      opacity: onTap == null ? .4 : 1,
+                      child: Center(child: child)))));
+      Widget header(String text) => Padding(
+          padding: const EdgeInsets.fromLTRB(2, 6, 2, 4),
+          child: Text(text,
+              style: const TextStyle(
+                  color: Color(0xFF8DE8EF),
+                  fontSize: 10,
+                  fontWeight: FontWeight.w700)));
+      Widget grid(int columns, double aspect, List<Widget> children) =>
+          GridView.count(
+              crossAxisCount: columns,
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              mainAxisSpacing: 6,
+              crossAxisSpacing: 6,
+              childAspectRatio: aspect,
+              children: children);
+      final emotes = FishingSticker.emotes[cat] ?? const <String>[];
+      return ListView(
+          padding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
+          children: [
+            header('Của mèo bạn'),
+            grid(4, 1, [
+              for (var i = 0; i < emotes.length; i++)
+                cell(
+                    FishingStickerArt(FishingSticker.emoteSheet(cat), i,
+                        FishingSticker.emoteCount,
+                        size: 44),
+                    emotes[i],
+                    enabled ? () => _send(FishingSticker.emote(cat, i)) : null)
+            ]),
+            header(partner == null
+                ? 'Tương tác (lại gần một bạn)'
+                : 'Tương tác với bạn gần nhất'),
+            grid(3, 1.3, [
+              for (var i = 0; i < FishingSticker.interactions.length; i++)
+                cell(
+                    FishingInteractionArt(
+                        index: i,
+                        left: FishingSticker.interactSheet(cat),
+                        right: FishingSticker.interactSheet(cat),
+                        size: 30),
+                    FishingSticker.interactions[i],
+                    enabled && partner != null
+                        ? () => _send(FishingSticker.interact(i, cat, partner))
+                        : null)
+            ]),
           ]);
     }
     final messages = chat.messages;
@@ -179,7 +229,7 @@ class _FishingChatPanelState extends State<FishingChatPanel> {
                                 ? const Color(0xFFFFD67B)
                                 : const Color(0xFF78D8E6),
                             fontWeight: FontWeight.w700)),
-                    TextSpan(text: m.text),
+                    TextSpan(text: FishingSticker.describe(m.text)),
                   ]),
                   style: const TextStyle(
                       color: Colors.white, fontSize: 11, height: 1.35)));
@@ -190,7 +240,8 @@ class _FishingChatPanelState extends State<FishingChatPanel> {
   Widget build(BuildContext context) => GameDialog(
       maxWidth: 260,
       alignment: Alignment.centerRight,
-      backgroundColor: const Color(0xED172E3B),
+      backgroundColor: const Color(0xD9172E3B),
+      shape: const RoundedRectangleBorder(),
       padding: EdgeInsets.zero,
       insetPadding: const EdgeInsets.fromLTRB(12, 12, 24, 12),
       child: LayoutBuilder(
@@ -278,6 +329,7 @@ class _FishingChatPanelState extends State<FishingChatPanel> {
                                       key: const ValueKey('fishing-chat-input'),
                                       controller: _text,
                                       enabled: chat.ready,
+                                      cursorColor: const Color(0xFF8DE8EF),
                                       textInputAction: TextInputAction.send,
                                       inputFormatters: [
                                         TextInputFormatter.withFunction(
@@ -288,37 +340,48 @@ class _FishingChatPanelState extends State<FishingChatPanel> {
                                       ],
                                       onSubmitted: (_) => _send(),
                                       style: const TextStyle(
-                                          color: Colors.white, fontSize: 11),
+                                          color: Color(0xFFF2F4EE),
+                                          fontSize: 11),
                                       decoration: InputDecoration(
                                           hintText: chat.ready
                                               ? 'Nhập tin nhắn…'
                                               : 'Chat chưa sẵn sàng',
                                           hintStyle: const TextStyle(
-                                              color: Colors.white54,
+                                              color: Color(0xFF8EA6AF),
                                               fontSize: 10),
                                           isDense: true,
                                           filled: true,
-                                          fillColor: const Color(0x4410202A),
+                                          fillColor: const Color(0x9910202A),
                                           contentPadding:
                                               const EdgeInsets.symmetric(
                                                   horizontal: 9, vertical: 10),
-                                          border: OutlineInputBorder(
-                                              borderRadius:
-                                                  BorderRadius.circular(6),
-                                              borderSide: const BorderSide(
-                                                  color: Color(0x445B9BAB)))))),
+                                          border: InputBorder.none,
+                                          enabledBorder: InputBorder.none,
+                                          focusedBorder: InputBorder.none,
+                                          disabledBorder: InputBorder.none))),
                               const SizedBox(width: 5),
-                              FishingMenuButton(
-                                  tooltip: 'Gửi tin nhắn',
-                                  size: 36,
-                                  onPressed: chat.ready && !chat.sending
-                                      ? () => _send()
-                                      : null,
-                                  child: Icon(
-                                      chat.sending
-                                          ? Icons.more_horiz_rounded
-                                          : Icons.send_rounded,
-                                      size: 19)),
+                              SizedBox.square(
+                                  dimension: 36,
+                                  child: IconButton(
+                                      tooltip: 'Gửi tin nhắn',
+                                      padding: EdgeInsets.zero,
+                                      style: IconButton.styleFrom(
+                                          backgroundColor:
+                                              const Color(0x333DB7C5),
+                                          foregroundColor:
+                                              const Color(0xFFF2F4EE),
+                                          disabledForegroundColor:
+                                              const Color(0x668EA6AF),
+                                          shape:
+                                              const RoundedRectangleBorder()),
+                                      onPressed: chat.ready && !chat.sending
+                                          ? () => _send()
+                                          : null,
+                                      icon: Icon(
+                                          chat.sending
+                                              ? Icons.more_horiz_rounded
+                                              : Icons.send_rounded,
+                                          size: 19))),
                             ])),
                   ]);
                 })),
